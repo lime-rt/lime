@@ -15,7 +15,8 @@
 void
 popsout(inputPars *par, struct grid *g, molData *m){
 	FILE *fp;
-	int j,k;
+	int j,ki,l;
+	double dens;
 	/* int i,mi,c,q=0,best; */
 	/* double vel[3],ra[100],rb[100],za[100],zb[100],min; */
 	
@@ -23,7 +24,9 @@ popsout(inputPars *par, struct grid *g, molData *m){
 	fp=fopen(par->outputfile,"w");
 	fprintf(fp,"# Column definition: x, y, z, H2 density, kinetic gas temperature, molecular density, pops_0...pops_n\n"); 
 	for(j=0;j<par->ncell-par->sinkPoints;j++){
-	 	fprintf(fp,"%e %e %e %e %e %e ", g[j].x[0], g[j].x[1], g[j].x[2], g[j].dens[0], g[j].t[0], g[j].nmol[0]/g[j].dens[0]);
+	    dens=0.;
+	 	for(l=0;l<par->collPart;l++) dens+=g[j].dens[l];
+	    fprintf(fp,"%e %e %e %e %e %e ", g[j].x[0], g[j].x[1], g[j].x[2], dens, g[j].t[0], g[j].nmol[0]/dens);
 		for(k=0;k<m[0].nlev;k++) fprintf(fp,"%e ",g[j].mol[0].pops[k]);
 		fprintf(fp,"\n");
 	}	
