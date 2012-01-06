@@ -63,22 +63,23 @@ kappa(molData *m, struct grid *g, inputPars *par, int s){
 	}
 
 	for(iline=0;iline<m[s].nline;iline++){
-		for(id=0;id<par->ncell;id++){
-			g[id].mol[s].knu[iline]=kappatab[iline]*2.4*AMU/gasIIdust*g[id].dens[0];
-
-			//Check if input model supplies a dust temperature. Otherwise use the kinetic temperature 
-			if(g[id].t[1]==-1) {
-			  g[id].mol[s].dust[iline]=planckfunc(iline,g[id].t[0],m,s);
-			} else {
-			  g[id].mol[s].dust[iline]=planckfunc(iline,g[id].t[1],m,s);
-			}
+	  //Convert opacity units from [g cm-2] -> [kg m-2]
+	  kappatab[iline]=kappatab[iline]*10.;
+	  for(id=0;id<par->ncell;id++){  	
+	    g[id].mol[s].knu[iline]=kappatab[iline]*2.4*AMU/gasIIdust*g[id].dens[0];
+		//Check if input model supplies a dust temperature. Otherwise use the kinetic temperature 
+		if(g[id].t[1]==-1) {
+		  g[id].mol[s].dust[iline]=planckfunc(iline,g[id].t[0],m,s);
+		} else {
+		  g[id].mol[s].dust[iline]=planckfunc(iline,g[id].t[1],m,s);
 		}
-		// fix the normalization at 230GHz
-		m[s].norm=planckfunc(0,par->tcmb,m,0);
-		m[s].norminv=1./m[s].norm;
-		if(par->tcmb>0.) m[s].cmb[iline]=planckfunc(iline,par->tcmb,m,s)/m[s].norm;
-		else m[s].cmb[iline]=0.;		
-		m[s].local_cmb[iline]=planckfunc(iline,2.728,m,s)/m[s].norm;
+	  }
+	  // fix the normalization at 230GHz
+	  m[s].norm=planckfunc(0,par->tcmb,m,0);
+	  m[s].norminv=1./m[s].norm;
+	  if(par->tcmb>0.) m[s].cmb[iline]=planckfunc(iline,par->tcmb,m,s)/m[s].norm;
+	  else m[s].cmb[iline]=0.;		
+	  m[s].local_cmb[iline]=planckfunc(iline,2.728,m,s)/m[s].norm;
 	}
 	
 	free(kappatab);

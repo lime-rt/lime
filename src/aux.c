@@ -140,6 +140,7 @@ continuumSetup(int im, image *img, molData *m, inputPars *par, struct grid *g){
     g[id].mol[0].dust = malloc(sizeof(double)*m[0].nline);
     g[id].mol[0].knu  = malloc(sizeof(double)*m[0].nline);
   } 
+  if(par->outputfile) popsout(par,g,m);
   kappa(m,g,par,0);
 }
 

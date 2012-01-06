@@ -15,7 +15,7 @@
 void
 popsout(inputPars *par, struct grid *g, molData *m){
 	FILE *fp;
-	int j,ki,l;
+	int j,k,l;
 	double dens;
 	/* int i,mi,c,q=0,best; */
 	/* double vel[3],ra[100],rb[100],za[100],zb[100],min; */
