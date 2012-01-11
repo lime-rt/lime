@@ -43,7 +43,7 @@ line_plane_intersect(struct grid *g, double *ds, int posn, int *nposn, double *d
 void 
 raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
 	int *counta, *countb,nlinetot,aa;
-	int ichan, posn,nposn,i,px,iline,tmptrans,abort;
+	int ichan, posn,nposn,i,px,iline,tmptrans;
 	double *tau, *subintens;
 	double vfac=0.,x[3],dx[3];
 	double deltav,ds,dist,ndist,size,xp,yp,zp,col,shift,minfreq,jnu,alpha,snu,dtau,snu_pol[3];
@@ -80,7 +80,6 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
 
 	/* Main loop through pixel grid */ 
 	for(px=0;px<(img[im].pxls*img[im].pxls);px++){	
-	  abort=0;
   	  for(ichan=0;ichan<img[im].nchan;ichan++){
 	    img[im].pixel[px].intense[ichan]=0.0;
 		img[im].pixel[px].tau[ichan]=0.0;
@@ -131,11 +130,11 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
 			}
 		  }		
 		  
-		  line_plane_intersect(g,&ds,posn,&nposn,dx,x);
-		  posn=nposn;
-
 		  col=0;
 		  do{
+  		    line_plane_intersect(g,&ds,posn,&nposn,dx,x);
+		    posn=nposn;
+
 			if(par->polarization){
 			  for(ichan=0;ichan<img[im].nchan;ichan++){
 			    sourceFunc_pol(snu_pol,&dtau,ds,m,vfac,g,posn,0,0,img[im].theta);
@@ -180,10 +179,7 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
 			/* new coordinates */
 			for(i=0;i<3;i++) x[i]+=ds*dx[i];
 			col+=ds;
-		    line_plane_intersect(g,&ds,posn,&nposn,dx,x);
-			if(nposn==posn) abort=1;
-			else posn=nposn;		    
-		  } while(col < 2*zp && abort==0);
+		  } while(col < 2*zp);
 
 		  /* add or subtract cmb */
 		  for(ichan=0;ichan<img[im].nchan;ichan++){
