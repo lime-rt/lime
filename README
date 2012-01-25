@@ -62,8 +62,7 @@ gsl, the GNU scientific library, is present on most modern unix and linux
 systems. Check for availability with "gsl-config --libs". If this command 
 returns a library path, there is no need to download and install it. 
 
-All three library packages are installed using the following 
-
+All three library packages are installed using the following
     $> configure --prefix=/path/to/LimePackage
     $> make 
     $> make install	
@@ -75,7 +74,8 @@ location is set for the installation.
 NOTE FOR QHULL2011.1 AND LATER: This version of qhull will sometimes not compile 
 unless the -Wno-sign-conversion flag is removed from the qhull Makefile. The 
 naming of the qhull library has changed between version 2010.1 and 2011.1. Make 
-sure to edit the qhull flag near the top of the LIME Makefile accordingly.
+sure to edit the qhull flag near the top of the LIME Makefile accordingly. Also,
+the newest versions of qhull does not include a configure script.
 
 
 
