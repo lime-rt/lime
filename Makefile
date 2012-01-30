@@ -29,7 +29,7 @@ SRCS    = src/aux.c src/curses.c src/grid.c src/LTEsolution.c   \
           src/statistics.c src/magfieldfit.c src/stokesangles.c \
 		  src/writefits.c src/weights.c src/velospline.c        \
 		  src/old_raytrace.c src/getclosest.c
-MODELS  = /Users/christianbrinch/Desktop/LimePackage/example/model.c
+MODELS  = /Users/christianbrinch/LimeModels/ratran_test/model.c
 OBJS    = src/aux.o src/curses.o src/grid.o src/LTEsolution.o   \
 		  src/main.o src/molinit.o src/photon.o src/popsout.o   \
 		  src/predefgrid.o src/raytrace.o src/ratranInput.o     \

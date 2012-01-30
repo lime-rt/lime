@@ -63,8 +63,6 @@ kappa(molData *m, struct grid *g, inputPars *par, int s){
 	}
 
 	for(iline=0;iline<m[s].nline;iline++){
-	  //Convert opacity units from [g cm-2] -> [kg m-2]
-	  kappatab[iline]=kappatab[iline]*10.;
 	  for(id=0;id<par->ncell;id++){  	
 	    g[id].mol[s].knu[iline]=kappatab[iline]*2.4*AMU/gasIIdust*g[id].dens[0];
 		//Check if input model supplies a dust temperature. Otherwise use the kinetic temperature 
