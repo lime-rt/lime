@@ -22,7 +22,7 @@ input(inputPars *par, image *img){
  */
   par->radius			= 2000*AU;
   par->minScale	   		= 0.5*AU;
-  par->pIntensity    	= 1500;
+  par->pIntensity    	= 3000;
   par->sinkPoints    	= 4000;
   par->dust				= "jena_thin_e6.tab";
   par->moldatfile[0] 	= "hco+.dat";

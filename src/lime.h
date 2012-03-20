@@ -3,7 +3,7 @@
  *  LIME, The versatile 3D line modeling environment 
  *
  *  Created by Christian Brinch on 13/11/06.
- *  Copyright 2006-2011, Christian Brinch, 
+ *  Copyright 2006-2012, Christian Brinch, 
  *  <brinch@nbi.dk>
  *  Niels Bohr institutet
  *  University of Copenhagen
@@ -181,7 +181,7 @@ double 	ratranInput(char *, char *, double, double, double);
 void   	raytrace(int, inputPars *, struct grid *, molData *, image *);
 void	report(int, inputPars *, struct grid *);
 void	smooth(inputPars *, struct grid *);
-int		sortangles(int, int, int, struct grid *, const gsl_rng *);
+int		sortangles(double *, int, struct grid *, const gsl_rng *);
 void	sourceFunc(double *, double *, double, molData *,double,struct grid *,int,int, int,int);
 void    sourceFunc_line(double *,double *,molData *, double, struct grid *, int, int,int);
 void    sourceFunc_cont(double *,double *, struct grid *, int, int,int);

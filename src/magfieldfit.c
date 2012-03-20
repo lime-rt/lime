@@ -3,7 +3,7 @@
  *  LIME, The versatile 3D line modeling environment 
  *
  *  Created by Marco Padovani on 06/04/10.
- *  Copyright 2006-2011, Marco Padovani 
+ *  Copyright 2006-2012, Marco Padovani 
  *
  *  Institut de Ciències de l'Espai (IEEC-CSIC) - 
  *  UAB - Catalunya, Spain. 

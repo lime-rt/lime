@@ -3,7 +3,7 @@
  *  LIME, The versatile 3D line modeling environment 
  *
  *  Created by Christian Brinch on 16/12/06.
- *  Copyright 2006-2011, Christian Brinch, 
+ *  Copyright 2006-2012, Christian Brinch, 
  *  <brinch@nbi.dk>
  *  Niels Bohr institutet
  *  University of Copenhagen
@@ -19,7 +19,6 @@ line_plane_intersect(struct grid *g, double *ds, int posn, int *nposn, double *d
 	double newdist, numerator, denominator ;
 	int i;
 
-	*ds=1e60;
 	for(i=0;i<g[posn].numNeigh;i++) {
 	  /* Find the shortest distance between (x,y,z) and any of the posn Voronoi faces */
 	  /* ds=(p0-l0) dot n / l dot n */
@@ -132,7 +131,8 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
 		  
 		  col=0;
 		  do{
-  		    line_plane_intersect(g,&ds,posn,&nposn,dx,x);
+  		    ds=2*zp-col;
+			line_plane_intersect(g,&ds,posn,&nposn,dx,x);
 		    posn=nposn;
 
 			if(par->polarization){
@@ -152,9 +152,9 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
 				    if(img[im].trans > -1){
   				      shift=(m[counta[iline]].freq[countb[iline]]-m[counta[iline]].freq[img[im].trans])/m[counta[iline]].freq[img[im].trans]*CLIGHT;
 				    } else {
-  				      shift=(m[counta[iline]].freq[countb[iline]]-img[im].freq)/img[im].freq*CLIGHT;
+				      shift=(m[counta[iline]].freq[countb[iline]]-img[im].freq)/img[im].freq*CLIGHT;
 				    }
-				    deltav=(ichan-(int)(img[im].nchan/2.))*img[im].velres-img[im].source_vel -shift;	
+				    deltav=(ichan-(int)(img[im].nchan/2.))*img[im].velres-img[im].source_vel + shift;	
 					
 				    if(!par->pregrid) velocityspline2(x,dx,ds,g[posn].mol[counta[iline]].binv,deltav,&vfac);
 				    else vfac=gaussline(deltav-veloproject(dx,g[posn].vel),g[posn].mol[counta[iline]].binv);			

@@ -3,7 +3,7 @@
  *  LIME, The versatile 3D line modeling environment 
  *
  *  Created by Christian Brinch on 15/11/06.
- *  Copyright 2006-2011, Christian Brinch, 
+ *  Copyright 2006-2012, Christian Brinch, 
  *  <brinch@nbi.dk>
  *  Niels Bohr institutet
  *  University of Copenhagen
@@ -14,51 +14,31 @@
 #include "lime.h"
 
 int
-sortangles(int id, int dir, int newid, struct grid *g, const gsl_rng *ran) {
-	int i,j,itmp,val;
-	/* int b,l,k; */
-	double *angle,tmp,best;
-	int *n;
+sortangles(double *inidir, int id, struct grid *g, const gsl_rng *ran) {
+	int i,n[2];
+	double angle,exit[2];
 
-	angle=malloc(sizeof(double)*g[newid].numNeigh);	
-	n=malloc(sizeof(int)*g[newid].numNeigh);	
-
-	best=1e30;
-	for(i=0;i<g[newid].numNeigh;i++){
-	  angle[i]=( g[id].dir[dir].xn[0]*g[newid].dir[i].xn[0]
-       		    +g[id].dir[dir].xn[1]*g[newid].dir[i].xn[1]
-	    		+g[id].dir[dir].xn[2]*g[newid].dir[i].xn[2]);
-	  n[i]=i;
-/*	  if(angle[i]<best){
-	 	best=angle[i];
-        b=i;
-      }*/
+	exit[0]=1e30;
+	n[0]=-1;
+	for(i=0;i<g[id].numNeigh;i++){
+	  angle=( inidir[0]*g[id].dir[i].xn[0]
+       		 +inidir[1]*g[id].dir[i].xn[1]
+	    	 +inidir[2]*g[id].dir[i].xn[2]);
+	  if(angle<exit[0]){
+		exit[1]=exit[0];
+        n[1]=n[0];
+		exit[0]=angle;
+		n[0]=i;
+	  } else if(angle<exit[1]) {
+		exit[1]=angle;
+		n[1]=i;
+	  }
 	}
-	
-	for(i=g[newid].numNeigh-1; i>=0; i--) {
-	  for(j=1; j<=i; j++) {
-	    if(angle[j-1]<angle[j]) {
-		  tmp=angle[j-1];
-		  angle[j-1]=angle[j];
-		  angle[j]=tmp;
-
-		  itmp=n[j-1];
-		  n[j-1]=n[j];
-		  n[j]=itmp;
-	    }
-	  }	
-	}	  
-
-  	if(gsl_rng_uniform(ran)<1./((1-angle[0])/(1-angle[1])+1) ) {
-  	  val=n[0];
+    if(gsl_rng_uniform(ran)<1./((1-exit[0])/(1-exit[1])+1) ) {
+      return n[0];
 	} else {
-	  val=n[1];	
+	  return n[1];
 	}
-	free(angle);
-	free(n);
-	return val;
-
-/*    return angle[b]; */
 }
 
 
@@ -187,10 +167,10 @@ double gaussline(double v, double sigma)
 
 void
 photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPars *par,blend *matrix){
-	int iphot,iline,jline,here,there,firststep,inidir,dir,np_per_line,ip_at_line,l;
+	int iphot,iline,jline,here,there,firststep,dir,np_per_line,ip_at_line,l;
 	int *counta, *countb,nlinetot;
-	double deltav,segment,vblend,snu,dtau,jnu,alpha,ds,vfac[par->nSpecies];
-	double *tau,vel[3],x[3];
+	double deltav,segment,vblend,snu,dtau,jnu,alpha,ds,vfac[par->nSpecies],pt_theta,pt_phi;
+	double *tau,vel[3],x[3], inidir[3];
 				
 	lineCount(par->nSpecies, m, &counta, &countb, &nlinetot);	
 
@@ -206,17 +186,23 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
 		}
 
 /* Initial velocity, direction and frequency offset  */		
-		inidir=iphot%g[id].numNeigh;
+		pt_theta=gsl_rng_uniform(ran)*2*PI;
+		pt_phi=gsl_rng_uniform(ran)*PI;
+		inidir[0]=cos(pt_theta)*sin(pt_phi);
+		inidir[1]=sin(pt_theta)*sin(pt_phi);
+		inidir[2]=cos(pt_phi);
+	
 
 		iter=(int) (gsl_rng_uniform(ran)*3.);
 		np_per_line=(int) g[id].nphot/g[id].numNeigh;
 		ip_at_line=(int) iphot/g[id].numNeigh;
 		segment=1/(2.*np_per_line)*(2*ip_at_line-np_per_line+iter);
-		deltav=segment*4.3*g[id].dopb+veloproject(g[id].dir[inidir].xn,vel);
 
-		dir=inidir;
+
+	  	dir=sortangles(inidir,id,g,ran);
 		here=g[id].id;
 		there=g[g[here].neigh[dir]].id;
+		deltav=segment*4.3*g[id].dopb+veloproject(g[id].dir[dir].xn,vel);
 
 /* Photon propagation loop */
 		do{
@@ -227,9 +213,9 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
               if(!par->pregrid) velocityspline(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
               else velocityspline_lin(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
 			  m[l].vfac[iphot]=vfac[0];
-              m[l].weight[iphot]=g[here].w[inidir];	
+              m[l].weight[iphot]=1; //g[here].w[inidir];	
 		    }
-			for(l=0;l<3;l++) x[l]=g[here].x[l]+(g[here].dir[dir].xn[l] * g[id].ds[inidir]/2.);
+			for(l=0;l<3;l++) x[l]=g[here].x[l]+(g[here].dir[dir].xn[l] * g[id].ds[dir]/2.);
 		  } else {
 			ds=g[here].ds[dir];
 			for(l=0;l<3;l++) x[l]=g[here].x[l];
@@ -273,7 +259,7 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
 			}
 		  }
 			
-	  	  dir=sortangles(id,inidir,there,g,ran);
+	  	  dir=sortangles(inidir,there,g,ran);
 		  here=there;
 		  there=g[g[here].neigh[dir]].id;
 		} while(!g[there].sink);

@@ -3,7 +3,7 @@
  *  LIME, The versatile 3D line modeling environment 
  *
  *  Created by Christian Brinch on 29/10/08.
- *  Copyright 2006-2011, Christian Brinch, 
+ *  Copyright 2006-2012, Christian Brinch, 
  *  <brinch@nbi.dk>
  *  Niels Bohr institutet
  *  University of Copenhagen
@@ -17,7 +17,7 @@
 void
 greetings(){
 	initscr();
-	printw("*** LIME, The versatile line modeling engine, Ver.1.1\n*** Copyright 2006--2012, Christian Brinch <brinch@nbi.dk>\n");
+	printw("*** LIME, The versatile line modeling engine, Ver.1.2\n*** Copyright 2006--2012, Christian Brinch <brinch@nbi.dk>\n");
 	refresh();	
 }
 
@@ -29,8 +29,8 @@ screenInfo(){
 	move(5,56); printw("|");
 	move(7,6);  printw("Statistics            :");
 	move(9,6);  printw("Iterations            :"); 
-	move(10,6);  printw("Propagating photons   :");
-	move(10,56); printw("|");
+	move(10,6); printw("Propagating photons   :");
+	move(10,56);printw("|");
 	move(13,6); printw("Ray-tracing model     :");
 	move(13,56);printw("|");	
 	refresh();	

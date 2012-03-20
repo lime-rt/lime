@@ -116,6 +116,10 @@ needs to be done with the fortran compiler. Modify the Makefile accordingly.
 **   4. Changelog                                                           **
 ******************************************************************************
 
+1.2 : Minor bug fix in ray-tracer (Thanks to Ruud Visser). FITS header 
+      tweaked for CASA compatability. Photon transport slightly optimized.
+      The photons nitial directions are now randomized. Multiple lines no 
+	  longer get mirrored. LIME should run faster now. 
 1.1 : Raytracer has been rewritten and optimized and now includes an anti-
       aliasing filter. The FITS header has been corrected. LIME images can
 	  now be read directly by CASA. Continuum polarization implemented.

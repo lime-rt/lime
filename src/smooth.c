@@ -3,7 +3,7 @@
  *  LIME, The versatile 3D line modeling environment 
  *
  *  Created by Christian Brinch on 08/07/06.
- *  Copyright 2006-2011, Christian Brinch, 
+ *  Copyright 2006-2012, Christian Brinch, 
  *  <brinch@nbi.dk>
  *  Niels Bohr institutet
  *  University of Copenhagen
@@ -22,7 +22,7 @@ smooth(inputPars *par, struct grid *g){
 	int k=0,j,i;				/* counters																*/
 	int sg;							/* counter for smoothing the grid			*/
 	int cn;
-	int smooth=25;			/* Amount of grid smoothing							*/
+	int smooth=20;			/* Amount of grid smoothing							*/
 	double move[3];			/* Auxillary array for smoothing the grid	*/
 	double maxdist;
 	double dist;				/* Distance to a neighbor								*/
@@ -48,7 +48,7 @@ smooth(inputPars *par, struct grid *g){
 			
 			if(cn>-1) {
 				for(k=0;k<DIM;k++){
-					move[k] = g[i].x[k] - g[i].dir[cn].x[k]*0.15;
+					move[k] = g[i].x[k] - g[i].dir[cn].x[k]*0.20;
 				}			  
 				if(sqrt(move[0]*move[0]+move[1]*move[1]+move[2]*move[2])<par->radius &&
 				   sqrt(move[0]*move[0]+move[1]*move[1]+move[2]*move[2])>par->minScale){

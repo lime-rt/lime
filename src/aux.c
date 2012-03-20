@@ -3,7 +3,7 @@
  *  LIME, The versatile 3D line modeling environment 
  *
  *  Created by Christian Brinch on 16/11/06.
- *  Copyright 2006-2011, Christian Brinch, 
+ *  Copyright 2006-2012, Christian Brinch, 
  *  <brinch@nbi.dk>
  *  Niels Bohr institutet
  *  University of Copenhagen
@@ -247,7 +247,6 @@ levelPops(molData *m, inputPars *par, struct grid *g){
 				  for(iter=0;iter<4;iter++) stat[id].pop[ilev+m[0].nlev*iter]=stat[id].pop[ilev+m[0].nlev*(iter+1)];
 				  stat[id].pop[ilev+m[0].nlev*4]=g[id].mol[0].pops[ilev];
 				}
-				
 				if(g[id].dens[0] > 0 && g[id].t[0] > 0){
 				  photon(id,g,m,0,ran,par,matrix);
 				  for(ispec=0;ispec<par->nSpecies;ispec++) stateq(id,g,m,&pstate,ispec,par);

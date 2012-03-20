@@ -3,7 +3,7 @@
  *  LIME, The versatile 3D line modeling environment 
  *
  *  Created by Christian Brinch on 11/16/06.
- *  Copyright 2006-2011, Christian Brinch, 
+ *  Copyright 2006-2012, Christian Brinch, 
  *  <brinch@nbi.dk>
  *  Niels Bohr institutet
  *  University of Copenhagen
@@ -462,10 +462,10 @@ buildGrid(inputPars *par, struct grid *g){
 		for(j=0;j<par->nSpecies;j++) g[i].nmol[j]=abun[j]*g[i].dens[0];
 	}
 
-	dumpGrid(par,g);
-	getArea(par,g, ran);
+//	getArea(par,g, ran);
 //	getMass(par,g, ran);
 	getVelosplines(par,g);
+	dumpGrid(par,g);
 	if(!silent) done(5);
 }
 
