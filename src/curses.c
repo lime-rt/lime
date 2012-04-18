@@ -57,7 +57,7 @@ progressbar(double percent, int line){
 void 
 progressbar2(int prog, double percent, double minsnr, double median){
 	move(7,30);		 printw("Min(SNR)    %3.3f", minsnr);
-	move(8,30);		 printw("Median(SNR) %4.3f", median);
+	move(8,30);		 printw("Median(SNR) %4.3f",median);
 	move(9,30+prog); printw("#");
 	if(percent<100) {
 		move(10,30);	 printw("                         ");
