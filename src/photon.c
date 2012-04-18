@@ -16,27 +16,37 @@
 int
 sortangles(double *inidir, int id, struct grid *g, const gsl_rng *ran) {
 	int i,n[2];
-	double angle,exit[2];
+	double angle,exitdir[2];
 
-	exit[0]=1e30;
+	exitdir[0]=1e30;
+    exitdir[1]=1e31;
 	n[0]=-1;
+    n[1]=-1;
 	for(i=0;i<g[id].numNeigh;i++){
 	  angle=( inidir[0]*g[id].dir[i].xn[0]
        		 +inidir[1]*g[id].dir[i].xn[1]
 	    	 +inidir[2]*g[id].dir[i].xn[2]);
-	  if(angle<exit[0]){
-		exit[1]=exit[0];
+	  if(angle<exitdir[0]){
+		exitdir[1]=exitdir[0];
         n[1]=n[0];
-		exit[0]=angle;
+		exitdir[0]=angle;
 		n[0]=i;
-	  } else if(angle<exit[1]) {
-		exit[1]=angle;
+	  } else if(angle<exitdir[1]) {
+		exitdir[1]=angle;
 		n[1]=i;
 	  }
 	}
-    if(gsl_rng_uniform(ran)<1./((1-exit[0])/(1-exit[1])+1) ) {
+    if(gsl_rng_uniform(ran)<1./((1-exitdir[0])/(1-exitdir[1])+1) ) {
+      if(n[0]==-1){
+        if(!silent) bail_out("Photon propagation error");
+        exit(1);
+      }
       return n[0];
 	} else {
+      if(n[1]==-1){
+        if(!silent) bail_out("Photon propagation error");
+        exit(1);
+      }
 	  return n[1];
 	}
 }
@@ -57,22 +67,22 @@ velocityspline(struct grid *g, int id, int k, double binv, double deltav, double
   v2=v1;
 	
   for(ispline=0;ispline<nspline;ispline++){
-	  s1=s2;
+    s1=s2;
     s2=((double)(ispline+1))/(double)nspline;					
     v1=v2;
     d=s2*g[id].ds[k];
     v2=deltav-(g[id].a4[k]*pow(d,4)+g[id].a3[k]*pow(d,3)+g[id].a2[k]*pow(d,2)+g[id].a1[k]*d+g[id].a0[k]);
-		naver=(1 > fabs(v1-v2)*binv) ? 1 : (int)(fabs(v1-v2)*binv);
-		for(iaver=0;iaver<naver;iaver++){
-	    sd=s1+(s2-s1)*((double)iaver-0.5)/(double)naver;
+    naver=(1 > fabs(v1-v2)*binv) ? 1 : (int)(fabs(v1-v2)*binv);
+    for(iaver=0;iaver<naver;iaver++){
+      sd=s1+(s2-s1)*((double)iaver-0.5)/(double)naver;
       d=sd*g[id].ds[k];
-	    v=deltav-(g[id].a4[k]*pow(d,4)+g[id].a3[k]*pow(d,3)+g[id].a2[k]*pow(d,2)+g[id].a1[k]*d+g[id].a0[k]);
+      v=deltav-(g[id].a4[k]*pow(d,4)+g[id].a3[k]*pow(d,3)+g[id].a2[k]*pow(d,2)+g[id].a1[k]*d+g[id].a0[k]);
       vfacsub=gaussline(v,binv);
       *vfac+=vfacsub/(double)naver;
     }
   }
   *vfac= *vfac/(double)nspline;
-	return;
+  return;
 }
 
 
@@ -229,7 +239,9 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
 		  for(iline=0;iline<nlinetot;iline++){
 			jnu=0.;
 			alpha=0.;
-
+            snu=0.;
+            dtau=0.;
+            
 			sourceFunc_line(&jnu,&alpha,m,vfac[counta[iline]],g,here,counta[iline],countb[iline]);
 			sourceFunc_cont(&jnu,&alpha,g,here,counta[iline],countb[iline]);
 			if(fabs(alpha)>0.){
@@ -293,6 +305,8 @@ void getjbar(int posn, molData *m, struct grid *g, inputPars *par){
 	  for(iline=0;iline<m[0].nline;iline++){						
 		jnu=0.;
 		alpha=0.;
+        snu=0.;
+        tau=0.;
 
 		sourceFunc_line(&jnu,&alpha,m,m[0].vfac[iphot],g,posn,counta[iline],countb[iline]);
 		sourceFunc_cont(&jnu,&alpha,g,posn,counta[iline],countb[iline]);
@@ -306,6 +320,8 @@ void getjbar(int posn, molData *m, struct grid *g, inputPars *par){
 	}
   } 
   for(iline=0;iline<m[0].nline;iline++) m[0].jbar[iline]=m[0].norm*m[0].jbar[iline]/vsum;
+  free(counta);
+  free(countb);
 }
 
 

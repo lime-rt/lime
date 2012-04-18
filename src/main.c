@@ -23,40 +23,41 @@
 #include "lime.h"
 
 int main () {
-	int i;					
-	int initime=time(0);	
-	int popsdone=0;			
-	molData		*m;			
-	inputPars	par;
-	struct grid	*g;
-	image		*img;
+  int i;					
+  int initime=time(0);	
+  int popsdone=0;			
+  molData	  *m;			
+  inputPars	  par;
+  struct grid *g;
+  image		  *img;
 
-	par.dust  	  = NULL;
-	par.inputfile = NULL;
-	par.outputfile= NULL;
-	par.gridfile  = NULL;
-	par.pregrid	  = NULL;
+  par.dust  	  = NULL;
+  par.inputfile = NULL;
+  par.outputfile= NULL;
+  par.gridfile  = NULL;
+  par.pregrid	  = NULL;
 
-	if(!silent) greetings();
-	if(!silent) screenInfo();
-	parseInput(&par,&img,&m);
-	gridAlloc(&par,&g);
+  if(!silent) greetings();
+  if(!silent) screenInfo();
+	
+  parseInput(&par,&img,&m);
+  gridAlloc(&par,&g);
 
-	if(par.pregrid) predefinedGrid(&par,g); 
-	else buildGrid(&par,g);
+  if(par.pregrid) predefinedGrid(&par,g); 
+  else buildGrid(&par,g);
 
-	for(i=0;i<par.nImages;i++){
-		if(img[i].doline==1 && popsdone==0) {
-			levelPops(m,&par,g);
-			popsdone=1;
-		}
-		if(img[i].doline==0) {
-		  continuumSetup(i,img,m,&par,g);
-		}
+  for(i=0;i<par.nImages;i++){
+    if(img[i].doline==1 && popsdone==0) {
+      levelPops(m,&par,g);
+      popsdone=1;
+    }
+    if(img[i].doline==0) {
+      continuumSetup(i,img,m,&par,g);
+    }
 		
-		raytrace(i,&par,g,m,img);			  	
-		writefits(i,&par,m,img);
-	}
-	if(!silent) goodnight(initime,img[0].filename);
-	return 0;
+    raytrace(i,&par,g,m,img);			  	
+    writefits(i,&par,m,img);
+  }
+  if(!silent) goodnight(initime,img[0].filename);
+  return 0;
 }

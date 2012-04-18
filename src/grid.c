@@ -44,7 +44,6 @@ gridAlloc(inputPars *par, struct grid **g){
 
 void
 qhull(inputPars *par, struct grid *g){
-  FILE *fp;
   int i,j,k,id;
   char flags[255];			    
   boolT ismalloc = False;		
@@ -60,8 +59,6 @@ qhull(inputPars *par, struct grid *g){
 	  pt_array[i*DIM+j]=g[i].x[j];
 	}
   }
-
-//  fp=fopen("tmp","w"); 
 
   sprintf(flags,"qhull d Qbb");
   if (!qh_new_qhull(DIM, par->ncell, pt_array, ismalloc, flags, NULL, NULL)) {
@@ -107,6 +104,7 @@ qhull(inputPars *par, struct grid *g){
     }
     g[i].numNeigh=j;
   }
+  free(pt_array);
   qh_freeqhull(!qh_ALL);
 }
 	
@@ -168,7 +166,6 @@ write_VTK_unstructured_Points(inputPars *par, struct grid *g){
     }
     fprintf(out,"CELLS %d %d\n",l, 5*l);
     FORALLfacets {
-      j=0;
       if (!facet->upperdelaunay) {
         fprintf(out,"4 ");
         FOREACHvertex_ (facet->vertices) {
@@ -206,7 +203,7 @@ write_VTK_unstructured_Points(inputPars *par, struct grid *g){
 
   fclose(out);
   free(pt_array);
-
+  qh_freeqhull(!qh_ALL);
 }
 
 void
@@ -278,17 +275,16 @@ getArea(inputPars *par, struct grid *g, const gsl_rng *ran){
 
 void
 getMass(inputPars *par, struct grid *g, const gsl_rng *ran){
-	FILE *fp;
-    double mass=0.,area,dist;
+    double mass=0.,dist;
 	double vol=0.,dp,dpbest,*farea,suma;
-	int i,k,j,l,p=0,cc,nv,best;
+	int i,k,j,best=-1;
     typedef struct {coordT *pt_array;int vps;int *flag;} S;
 	S *pts;
 	char flags[255];			    
     boolT ismalloc = False;		
-    facetT *facet, **facetp, *neighbor, **neighborp;  
+    facetT *facet, *neighbor, **neighborp;  
     vertexT *vertex;	
-    coordT *pt_array,*pt_array_sub;
+    coordT *pt_array;
 
 	pts=malloc(sizeof(S)*par->pIntensity);
   	pt_array=malloc(DIM*sizeof(coordT)*par->ncell);
@@ -376,7 +372,7 @@ buildGrid(inputPars *par, struct grid *g){
 	int k=0,j,i;				/* counters									*/
 	int flag;
 	
-	const gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
+	gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
 	gsl_rng_set(ran,time(0));
 
 	abun=malloc(sizeof(double)*par->nSpecies);
@@ -466,6 +462,9 @@ buildGrid(inputPars *par, struct grid *g){
 //	getMass(par,g, ran);
 	getVelosplines(par,g);
 	dumpGrid(par,g);
+    
+    gsl_rng_free(ran);
+    free(abun);
 	if(!silent) done(5);
 }
 

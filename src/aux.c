@@ -1,4 +1,4 @@
-/*
+ /*
  *  aux.c
  *  LIME, The versatile 3D line modeling environment 
  *
@@ -18,7 +18,8 @@
 
 void 
 parseInput(inputPars *par, image **img, molData **m){
-	int i,id;
+  FILE *fp;
+    int i,id;
 	double BB[3];
 
 	/* Set default values */
@@ -48,14 +49,17 @@ parseInput(inputPars *par, image **img, molData **m){
 	free(*img);
 	*img=malloc(sizeof(image)*par->nImages);
 
-	id=-1;
+	
+  
+    id=-1;
 	while(par->moldatfile[++id]!=NULL);
 	par->nSpecies=id;
 
 	free(par->moldatfile);
 	par->moldatfile=malloc(sizeof(char *)*par->nSpecies);
 
-	/* Set defaults and read inputPars and img[] */
+    
+    /* Set defaults and read inputPars and img[] */
 	for(i=0;i<par->nImages;i++) {
 	  (*img)[i].source_vel=0.0;
 	  (*img)[i].phi=0.0;
@@ -67,6 +71,23 @@ parseInput(inputPars *par, image **img, molData **m){
 	}
 	input(par,*img);
 	par->ncell=par->pIntensity+par->sinkPoints;
+
+  /* Check if files exists */
+  for(id=0;id<par->nSpecies;id++){
+    if((fp=fopen(par->moldatfile[id], "r"))==NULL) {
+      if(!silent) bail_out("Error opening molecular data file");
+      exit(1);
+	} 
+  }
+  if(par->dust != NULL){
+    if((fp=fopen(par->dust, "r"))==NULL){
+      if(!silent) bail_out("Error opening dust opacity data file!");
+      exit(1);
+    }
+  }
+  
+  
+
 
 	/* Allocate pixel space and parse image information */
 	for(i=0;i<par->nImages;i++){
@@ -133,7 +154,7 @@ continuumSetup(int im, image *img, molData *m, inputPars *par, struct grid *g){
   int id; 
   img[im].trans=0;
   m[0].nline=1;
-  m[0].freq= malloc(sizeof(double)*m[0].nline);
+  m[0].freq= malloc(sizeof(double));
   m[0].freq[0]=img[im].freq;
   for(id=0;id<par->ncell;id++) {
     g[id].mol=malloc(sizeof(struct populations)*1);	
@@ -216,7 +237,7 @@ levelPops(molData *m, inputPars *par, struct grid *g){
 			
 
 	/* Random number generator */
-	const gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	
+	gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	
 	gsl_rng_set(ran,time(0));
 	
 	/* Read in all molecular data */
@@ -283,6 +304,7 @@ levelPops(molData *m, inputPars *par, struct grid *g){
 		if(par->outputfile) popsout(par,g,m);
 	  } while(conv++<NITERATIONS);
 	}
+  gsl_rng_free(ran);
 }
 
 	  	

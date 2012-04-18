@@ -16,9 +16,8 @@
 
 void statistics(int id, molData *m, struct grid *g, int *exceed, double *opops, double *oopops, int *conv){
 	int ilev;
-	double avepops,var,snr1=fixset,snr2=fixset;
+	double avepops,var=0.,snr1=fixset,snr2=fixset;
 		
-	var=0.;	
 	for(ilev=0;ilev<m[0].nlev;ilev++){
 		avepops=(g[id].mol[0].pops[ilev]+opops[ilev+id*m[0].nlev]+oopops[ilev+id*m[0].nlev])/3.;
 		if(avepops>=0.01){

@@ -16,7 +16,7 @@
 void
 getclosest(double x, double y, double z, long *best, long *size, double *rx, double *ry, double *rz){
 
-	long i, AA, BB;
+	long i, AA=0, BB=0;
 	double dist=1e30;
 	
 	*best = -1;

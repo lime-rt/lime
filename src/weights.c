@@ -15,7 +15,7 @@
 
 int
 pointEvaluation(inputPars *par,double ran, double x, double y, double z){
-  double weight1, weight2, val[99],n0,val2[99];
+  double weight1, weight2, val[99],n0;
 
   density(par->minScale,par->minScale,par->minScale,val);
   //abundance(par->minScale,par->minScale,par->minScale,val2);

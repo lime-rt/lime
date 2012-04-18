@@ -18,7 +18,7 @@ kappa(molData *m, struct grid *g, inputPars *par, int s){
 	FILE *fp;
 	char string[80];
 	int i=0,k,j,iline,id;
-	double loglam, *lamtab, *kaptab, *kappatab,dummy;
+	double loglam, *lamtab, *kaptab, *kappatab;
 	gsl_spline *spline;
 	gsl_interp_accel *acc=gsl_interp_accel_alloc();
 
@@ -259,6 +259,7 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
 		  free(part[ipart].colld);		
 		  free(part[ipart].temp);		
 		}
+        free(ntemp);
 		free(part);
 	}
 	/* End of collision rates */

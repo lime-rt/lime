@@ -1,5 +1,5 @@
 ******************************************************************************
-**   LIME (Line Modeling Engine) v.1.1                                      **
+**   LIME (Line Modeling Engine) v.1.21                                      **
 **   Created by Christian Brinch, Copyright 2006-2011                       **
 **   brinch@nbi.dk                                                          **
 **   Niels Bohr institutet, University of Copenhagen                        **
@@ -115,7 +115,7 @@ needs to be done with the fortran compiler. Modify the Makefile accordingly.
 ******************************************************************************  
 **   4. Changelog                                                           **
 ******************************************************************************
-
+1.21: A few memory leaks fixed. 
 1.2 : Minor bug fix in ray-tracer (Thanks to Ruud Visser). FITS header 
       tweaked for CASA compatability. Photon transport slightly optimized.
       The photons nitial directions are now randomized. Multiple lines no 
