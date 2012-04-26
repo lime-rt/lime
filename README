@@ -115,7 +115,8 @@ needs to be done with the fortran compiler. Modify the Makefile accordingly.
 ******************************************************************************  
 **   4. Changelog                                                           **
 ******************************************************************************
-1.21: A few memory leaks fixed. 
+1.21: A few memory leaks fixed. Output screen updated with more information.
+      LIME now always calculates molecular density with respect to total H2
 1.2 : Minor bug fix in ray-tracer (Thanks to Ruud Visser). FITS header 
       tweaked for CASA compatability. Photon transport slightly optimized.
       The photons nitial directions are now randomized. Multiple lines no 

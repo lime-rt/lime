@@ -34,6 +34,7 @@ gridAlloc(inputPars *par, struct grid **g){
 	
 	for(i=0;i<(par->pIntensity+par->sinkPoints); i++){
 	  (*g)[i].dens=malloc(sizeof(double)*par->collPart);
+      (*g)[i].abun=malloc(sizeof(double)*par->nSpecies);
 	  (*g)[i].nmol=malloc(sizeof(double)*par->nSpecies);
 	  (*g)[i].t[0]=-1;
 	  (*g)[i].t[1]=-1;
@@ -104,7 +105,7 @@ qhull(inputPars *par, struct grid *g){
     }
     g[i].numNeigh=j;
   }
-  free(pt_array);
+  //free(pt_array); this breaks the code for some reason...?
   qh_freeqhull(!qh_ALL);
 }
 	
@@ -131,7 +132,7 @@ distCalc(inputPars *par, struct grid *g){
 
 void
 write_VTK_unstructured_Points(inputPars *par, struct grid *g){
-  FILE *out;
+  FILE *fp;
   int i,j,l=0;
   char flags[255];
   boolT ismalloc = False;
@@ -146,17 +147,20 @@ write_VTK_unstructured_Points(inputPars *par, struct grid *g){
       pt_array[i*DIM+j]=g[i].x[j];
     }
   }
-
-  out = fopen(par->gridfile,"w");
-  fprintf(out,"# vtk DataFile Version 3.0\n");
-  fprintf(out,"Lime grid\n");
-  fprintf(out,"ASCII\n");
-  fprintf(out,"DATASET UNSTRUCTURED_GRID\n");
-  fprintf(out,"POINTS %d float\n",par->ncell);
-  for(i=0; i<par->ncell; i++) {
-    fprintf(out,"%e %e %e\n", g[i].x[0], g[i].x[1], g[i].x[2]);
+  
+  if((fp=fopen(par->gridfile, "w"))==NULL){
+    if(!silent) bail_out("Error writing grid file!");
+    exit(1);
   }
-  fprintf(out, "\n");
+  fprintf(fp,"# vtk DataFile Version 3.0\n");
+  fprintf(fp,"Lime grid\n");
+  fprintf(fp,"ASCII\n");
+  fprintf(fp,"DATASET UNSTRUCTURED_GRID\n");
+  fprintf(fp,"POINTS %d float\n",par->ncell);
+  for(i=0; i<par->ncell; i++) {
+    fprintf(fp,"%e %e %e\n", g[i].x[0], g[i].x[1], g[i].x[2]);
+  }
+  fprintf(fp, "\n");
 
   sprintf(flags,"qhull d Qbb T0");
 
@@ -164,44 +168,44 @@ write_VTK_unstructured_Points(inputPars *par, struct grid *g){
     FORALLfacets {
       if (!facet->upperdelaunay) l++;
     }
-    fprintf(out,"CELLS %d %d\n",l, 5*l);
+    fprintf(fp,"CELLS %d %d\n",l, 5*l);
     FORALLfacets {
       if (!facet->upperdelaunay) {
-        fprintf(out,"4 ");
+        fprintf(fp,"4 ");
         FOREACHvertex_ (facet->vertices) {
-          fprintf(out, "%d ", qh_pointid(vertex->point));
+          fprintf(fp, "%d ", qh_pointid(vertex->point));
         }
-        fprintf(out, "\n");
+        fprintf(fp, "\n");
       }
     }
   }
   qh_freeqhull(!qh_ALL);
-  fprintf(out,"\nCELL_TYPES %d\n",l);
+  fprintf(fp,"\nCELL_TYPES %d\n",l);
   for(i=0;i<l;i++){
-    fprintf(out, "10\n");
+    fprintf(fp, "10\n");
   }
-  fprintf(out,"POINT_DATA %d\n",par->ncell);
-  fprintf(out,"SCALARS H2_density float 1\n");
-  fprintf(out,"LOOKUP_TABLE default\n");
+  fprintf(fp,"POINT_DATA %d\n",par->ncell);
+  fprintf(fp,"SCALARS H2_density float 1\n");
+  fprintf(fp,"LOOKUP_TABLE default\n");
   for(i=0;i<par->ncell;i++){
-    fprintf(out, "%e\n", g[i].dens[0]);
+    fprintf(fp, "%e\n", g[i].dens[0]);
   }
-  fprintf(out,"SCALARS Mol_density float 1\n");
-  fprintf(out,"LOOKUP_TABLE default\n");
+  fprintf(fp,"SCALARS Mol_density float 1\n");
+  fprintf(fp,"LOOKUP_TABLE default\n");
   for(i=0;i<par->ncell;i++){
-    fprintf(out, "%e\n", g[i].nmol[0]);
+    fprintf(fp, "%e\n", g[i].nmol[0]);
   }
-  fprintf(out,"SCALARS Gas_temperature float 1\n");
-  fprintf(out,"LOOKUP_TABLE default\n");
+  fprintf(fp,"SCALARS Gas_temperature float 1\n");
+  fprintf(fp,"LOOKUP_TABLE default\n");
   for(i=0;i<par->ncell;i++){
-    fprintf(out, "%e\n", g[i].t[0]);
+    fprintf(fp, "%e\n", g[i].t[0]);
   }
-  fprintf(out,"VECTORS velocity float\n");
+  fprintf(fp,"VECTORS velocity float\n");
   for(i=0;i<par->ncell;i++){
-    fprintf(out, "%e %e %e\n", g[i].vel[0],g[i].vel[1],g[i].vel[2]);
+    fprintf(fp, "%e %e %e\n", g[i].vel[0],g[i].vel[1],g[i].vel[2]);
   }
 
-  fclose(out);
+  fclose(fp);
   free(pt_array);
   qh_freeqhull(!qh_ALL);
 }
@@ -369,7 +373,7 @@ buildGrid(inputPars *par, struct grid *g){
 	double logmin;				/* Logarithm of par->minScale				*/
 	double r,theta,phi,x,y,z;	/* Coordinates								*/
 	double temp,*abun;
-	int k=0,j,i;				/* counters									*/
+	int k=0,i;                  /* counters									*/
 	int flag;
 	
 	gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
@@ -454,8 +458,7 @@ buildGrid(inputPars *par, struct grid *g){
 		density(g[i].x[0],g[i].x[1],g[i].x[2],g[i].dens);
 		temperature(g[i].x[0],g[i].x[1],g[i].x[2],g[i].t);
 		doppler(g[i].x[0],g[i].x[1],g[i].x[2],&g[i].dopb);	
-		abundance(g[i].x[0],g[i].x[1],g[i].x[2],abun);
-		for(j=0;j<par->nSpecies;j++) g[i].nmol[j]=abun[j]*g[i].dens[0];
+		abundance(g[i].x[0],g[i].x[1],g[i].x[2],g[i].abun);
 	}
 
 //	getArea(par,g, ran);

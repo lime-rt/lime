@@ -22,10 +22,10 @@ input(inputPars *par, image *img){
  */
   par->radius			= 2000*AU;
   par->minScale	   		= 0.5*AU;
-  par->pIntensity    	= 3000;
-  par->sinkPoints    	= 4000;
+  par->pIntensity    	= 300;
+  par->sinkPoints    	= 400;
   par->dust				= "jena_thin_e6.tab";
-  par->moldatfile[0] 	= "hco+.dat";
+  par->moldatfile[0] 	= "/Users/christianbrinch/Development/Ratran/molec/co.dat";
   par->outputfile 		= "populations.pop";
   par->gridfile			= "grid.vtk";
 
@@ -61,6 +61,7 @@ density(double x, double y, double z, double *density){
  * (Multiply with 1e6 to go to SI-units)
  */
   density[0] = 1.5e6*pow(r/(300*AU),-1.5)*1e6;
+  //density[1] = 1.5e6*pow(r/(300*AU),-1.5)*1e6;
 }
 
 /******************************************************************************/

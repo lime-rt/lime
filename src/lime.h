@@ -101,7 +101,7 @@ struct grid {
 	double *w;
 	int sink;
 	int nphot;
-	double *dens,t[2],*nmol,dopb,vr,vz,va,mfp,maxalpha;
+	double *dens,t[2],*nmol,*abun,dopb,vr,vz,va,mfp,maxalpha;
 	double *pops,*ds;
 	struct populations { double * pops, *knu, *dust; double dopb, binv; struct rates *partner; } *mol;
 };
@@ -206,5 +206,9 @@ void 	goodnight(int, char *);
 void	quotemass(double);
 void 	warning(char *);
 void	bail_out(char *);
+void    collpartmesg(char *, int);
+void    collpartmesg2(char *, int);
+void    collpartmesg3(int, int); 
+
 
 

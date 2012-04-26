@@ -100,11 +100,12 @@ planckfunc(int iline, double temp, molData *m,int s){
 
 void
 molinit(molData *m, inputPars *par, struct grid *g,int i){
-	int id, ilev, iline, itrans, itemp, *ntemp, tnint=-1, idummy, ipart;
+	int id, ilev, iline, itrans, ispec, itemp, *ntemp, tnint=-1, idummy, ipart, *count,flag=0;
+    char *collpartname[] = {"H2","p-H2","o-H2","electrons","H","He","H+"}; /* definition from LAMDA */
 	double fac, uprate, downrate=0, dummy, amass;
 	struct data { double *colld, *temp; } *part;
 
-	char string[200], specref[90];
+	char string[200], specref[90], partstr[90];
 	FILE *fp;
 	
 	if((fp=fopen(par->moldatfile[i], "r"))==NULL) {
@@ -169,33 +170,34 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
 		g[id].mol[i].binv=1./g[id].mol[i].dopb;
 	}
 
-
 	/* Collision rates below here */
 	if(par->lte_only==0){
-		fgets(string, 80, fp);
-		fscanf(fp,"%d\n", &m[i].npart);
-		/* collision partner sanity check */
-		if(m[i].npart > par->collPart){
-		  m[i].npart = par->collPart;
-		}
-		if(m[i].npart < par->collPart){
-		  if(!silent) bail_out("Error: Too many density profiles defined");
-		  exit(1);
-		}
+      fgets(string, 80, fp);
+      fscanf(fp,"%d\n", &m[i].npart);
+      count=malloc(sizeof(int)*m[i].npart);
+      /* collision partner sanity check */
 
-		m[i].ntrans = malloc(sizeof(int)*m[i].npart);
+      if(m[i].npart > par->collPart) flag=1;
+      if(m[i].npart < par->collPart){
+        if(!silent) bail_out("Error: Too many density profiles defined");
+        exit(1);
+      }
+
+      
+
+        m[i].ntrans = malloc(sizeof(int)*m[i].npart);
 		ntemp = malloc(sizeof(int)*m[i].npart);
 		part = malloc(sizeof(struct data) * m[i].npart);
 	
-	
 		for(ipart=0;ipart<m[i].npart;ipart++){	  
-			fgets(string, 80, fp);
-			fgets(string, 200, fp);
-			fgets(string, 80, fp);
-			fscanf(fp,"%d\n", &m[i].ntrans[ipart]);
-			fgets(string, 80, fp);
-			fscanf(fp,"%d\n", &ntemp[ipart]);
-			fgets(string, 80, fp);
+          fgets(string, 80, fp);      
+          fscanf(fp,"%d\n", &count[ipart]);
+          fgets(string, 80, fp);           
+          fgets(string, 80, fp);           
+          fscanf(fp,"%d\n", &m[i].ntrans[ipart]);
+          fgets(string, 80, fp);          
+          fscanf(fp,"%d\n", &ntemp[ipart]);
+          fgets(string, 80, fp);          
 
 			part[ipart].temp=malloc(sizeof(double)*ntemp[ipart]);	
 		
@@ -203,14 +205,17 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
 				m[i].lcl = malloc(sizeof(int)*m[i].ntrans[ipart]);
 				m[i].lcu = malloc(sizeof(int)*m[i].ntrans[ipart]);
 			}
-	
-			for(itemp=0;itemp<ntemp[ipart];itemp++){
+
+            for(itemp=0;itemp<ntemp[ipart];itemp++){
 				fscanf(fp, "%lf", &part[ipart].temp[itemp]);
 			}
-			fscanf(fp,"\n");
+
+          fscanf(fp,"\n");
 			fgets(string, 80, fp);
+          
 			part[ipart].colld=malloc(sizeof(double)*m[i].ntrans[ipart]*ntemp[ipart]);
-			for(itrans=0;itrans<m[i].ntrans[ipart];itrans++){
+	
+          for(itrans=0;itrans<m[i].ntrans[ipart];itrans++){
 				fscanf(fp, "%d %d %d", &idummy, &m[i].lcu[itrans], &m[i].lcl[itrans]);
 				m[i].lcu[itrans]-=1;
 				m[i].lcl[itrans]-=1;
@@ -263,18 +268,53 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
 		free(part);
 	}
 	/* End of collision rates */
-		
-	/* Allocate space for populations and opacities */
-	for(id=0;id<par->ncell; id++){
-	  g[id].mol[i].pops = malloc(sizeof(double)*m[i].nlev);	  
-	  g[id].mol[i].dust = malloc(sizeof(double)*m[i].nline);
-	  g[id].mol[i].knu  = malloc(sizeof(double)*m[i].nline);
-	  for(ilev=0;ilev<m[i].nlev;ilev++) g[id].mol[i].pops[ilev]=0.0;		  
-	}
 
-	/* Get opacities */
-	kappa(m,g,par,i);
-	
+  
+  /* Print out collision partner information */
+  strcpy(partstr, collpartname[count[0]-1]); 
+  for(ipart=1;ipart<m[i].npart;ipart++){
+    strcat( partstr, ", ");
+    strcat( partstr, collpartname[count[ipart]-1]);
+  }
+  if(!silent) {
+    collpartmesg(specref, m[i].npart);
+    collpartmesg2(partstr, ipart);
+    collpartmesg3(par->collPart, flag);
+  }
+  
+  /* Calculate molecular density */
+  for(id=0;id<par->ncell; id++){
+    for(ispec=0;ispec<par->nSpecies;ispec++){
+      if(m[i].npart == 1 && count[0] == 1){
+        g[id].nmol[ispec]=g[id].abun[ispec]*g[id].dens[0];
+      } else if(m[i].npart == 2 && (count[0] == 2 || count[0] == 3) && (count[1] == 2 || count[1] == 3)){
+        if(!flag){
+          g[id].nmol[ispec]=g[id].abun[ispec]*(g[id].dens[0]+g[id].dens[1]);
+        } else {
+          g[id].nmol[ispec]=g[id].abun[ispec]*g[id].dens[0];
+          if(!silent) warning("Calculating molecular density with respect to first collision partner only");
+        }
+      } else if(m[i].npart > 2 && !flag){
+        g[id].nmol[ispec]=g[id].abun[ispec]*(g[id].dens[0]+g[id].dens[1]);
+        if(!silent) warning("Calculating molecular density with respect first and second collision partner");
+      }
+    }
+  }
+  
+  
+  
+		
+  /* Allocate space for populations and opacities */
+  for(id=0;id<par->ncell; id++){
+    g[id].mol[i].pops = malloc(sizeof(double)*m[i].nlev);	  
+    g[id].mol[i].dust = malloc(sizeof(double)*m[i].nline);
+    g[id].mol[i].knu  = malloc(sizeof(double)*m[i].nline);
+    for(ilev=0;ilev<m[i].nlev;ilev++) g[id].mol[i].pops[ilev]=0.0;		  
+  }
+
+  /* Get dust opacities */
+  kappa(m,g,par,i);
+  free(count);
 }
 
 

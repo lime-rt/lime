@@ -15,16 +15,16 @@
 #include "lime.h"
 
 
-/* Lloyds Algorithm (Lloyd, S. IEEE, 1982) */	
+/* Based on Lloyds Algorithm (Lloyd, S. IEEE, 1982) */	
 void
 smooth(inputPars *par, struct grid *g){
-	double mindist;			/* Distance to closest neighbor				*/
-	int k=0,j,i;				/* counters																*/
-	int sg;							/* counter for smoothing the grid			*/
+	double mindist;		/* Distance to closest neighbor				*/
+	int k=0,j,i;		/* counters									*/
+	int sg;				/* counter for smoothing the grid			*/
 	int cn;
-	int smooth=20;			/* Amount of grid smoothing							*/
-	double move[3];			/* Auxillary array for smoothing the grid	*/
-	double dist;				/* Distance to a neighbor								*/
+	int smooth=20;		/* Amount of grid smoothing					*/
+	double move[3];		/* Auxillary array for smoothing the grid	*/
+	double dist;		/* Distance to a neighbor					*/
 	
 	for(sg=0;sg<smooth;sg++){
 	  for(i=0;i<par->ncell && !g[i].sink;i++){
@@ -72,7 +72,6 @@ smooth(inputPars *par, struct grid *g){
           g[i].x[k] *= dist;
         }	
       }
-		
 		
       qhull(par, g);	
       distCalc(par, g);	    

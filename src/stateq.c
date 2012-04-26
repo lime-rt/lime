@@ -39,7 +39,7 @@ stateq(int id, struct grid *g, molData *m, double *pstate, int ispec, inputPars 
 	gsl_vector_set(oldpop,m[ispec].nlev-1,1.);
 	diff=1;
 	iter=0;
-	
+  
 	while((diff>TOL && iter<MAXITER) || iter<5){
 	    getjbar(id,m,g,par);
 	    getmatrix(id,matrix,m,g,ispec);

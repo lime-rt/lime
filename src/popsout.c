@@ -20,9 +20,11 @@ popsout(inputPars *par, struct grid *g, molData *m){
 	/* int i,mi,c,q=0,best; */
 	/* double vel[3],ra[100],rb[100],za[100],zb[100],min; */
 	
-
-	fp=fopen(par->outputfile,"w");
-	fprintf(fp,"# Column definition: x, y, z, H2 density, kinetic gas temperature, molecular density, pops_0...pops_n\n"); 
+    if((fp=fopen(par->outputfile, "w"))==NULL){
+      if(!silent) bail_out("Error writing output populations file!");
+      exit(1);
+    }
+	fprintf(fp,"# Column definition: x, y, z, H2 density, kinetic gas temperature, molecular abundance, pops_0...pops_n\n"); 
 	for(j=0;j<par->ncell-par->sinkPoints;j++){
 	    dens=0.;
 	 	for(l=0;l<par->collPart;l++) dens+=g[j].dens[l];

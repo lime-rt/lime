@@ -235,7 +235,6 @@ levelPops(molData *m, inputPars *par, struct grid *g){
 	  g[id].mol=malloc(sizeof(struct populations)*par->nSpecies);	
 	} 	
 			
-
 	/* Random number generator */
 	gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	
 	gsl_rng_set(ran,time(0));
@@ -262,16 +261,16 @@ levelPops(molData *m, inputPars *par, struct grid *g){
 		pstate=0.;
 		
 		for(id=0;id<par->ncell && !g[id].sink;id++){
-			if(!silent) progressbar((double)id/par->pIntensity,10);
-				
-			    for(ilev=0;ilev<m[0].nlev;ilev++) {
-				  for(iter=0;iter<4;iter++) stat[id].pop[ilev+m[0].nlev*iter]=stat[id].pop[ilev+m[0].nlev*(iter+1)];
-				  stat[id].pop[ilev+m[0].nlev*4]=g[id].mol[0].pops[ilev];
-				}
-				if(g[id].dens[0] > 0 && g[id].t[0] > 0){
-				  photon(id,g,m,0,ran,par,matrix);
-				  for(ispec=0;ispec<par->nSpecies;ispec++) stateq(id,g,m,&pstate,ispec,par);
-				}
+          if(!silent) progressbar((double)id/par->pIntensity,10);
+            for(ilev=0;ilev<m[0].nlev;ilev++) {
+              for(iter=0;iter<4;iter++) stat[id].pop[ilev+m[0].nlev*iter]=stat[id].pop[ilev+m[0].nlev*(iter+1)];
+              stat[id].pop[ilev+m[0].nlev*4]=g[id].mol[0].pops[ilev];
+            }
+            if(g[id].dens[0] > 0 && g[id].t[0] > 0){
+              photon(id,g,m,0,ran,par,matrix);
+              for(ispec=0;ispec<par->nSpecies;ispec++) stateq(id,g,m,&pstate,ispec,par);
+            }
+          if(!silent) warning("");
 				
 	
 				for(ilev=0;ilev<m[0].nlev;ilev++) {

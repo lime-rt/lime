@@ -156,14 +156,12 @@ velocityspline2(double x[3], double dx[3], double ds, double binv, double deltav
 }
 
 
-double veloproject(double dx[3], double *vel)
-{
+double veloproject(double dx[3], double *vel){
 	return dx[0]*vel[0]+dx[1]*vel[1]+dx[2]*vel[2];
 }
 
 
-double gaussline(double v, double sigma)
-{
+double gaussline(double v, double sigma){
 	int maxgau=101,maxsig=4,ival;
 	double fac,val;
 	
@@ -247,10 +245,19 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
 			if(fabs(alpha)>0.){
 			  snu=(jnu/alpha)*m[0].norminv;
 		  	  dtau=alpha*ds;
+              if(dtau < -30) dtau = -30;
 			}
-		    m[0].phot[iline+iphot*m[0].nline]+=exp(-tau[iline])*(1.-exp(-dtau))*snu;	
+
+            m[0].phot[iline+iphot*m[0].nline]+=exp(-tau[iline])*(1.-exp(-dtau))*snu;
 			tau[iline]+=dtau;
-				
+            if(tau[iline] < -30.){
+              if(!silent) warning("Maser warning: optical depth has dropped below -30");
+              tau[iline]= -30.; 
+            }
+            if(isnan(m[0].phot[iline+iphot*m[0].nline]) >0){
+              printf("Fail: %d %e %e %e %e\n", id, dtau, tau[iline], snu, m[0].phot[iline+iphot*m[0].nline]);
+            }
+            
 			if(par->blend){
 			  jnu=0.;
 			  alpha=0.;
@@ -262,10 +269,14 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
 				  if(fabs(alpha)>0.){
 				    snu=(jnu/alpha)*m[0].norminv;
 				    dtau=alpha*ds;
+                    if(dtau < -30) dtau = -30;
 				  }
 				  m[0].phot[jline+iphot*m[0].nline]+=exp(-tau[jline])*(1.-exp(-dtau))*snu;
 				  tau[jline]+=dtau;
-				  if(tau[jline]<-30) tau[iline]=30;
+                  if(tau[jline] < -30.){
+                    if(!silent) warning("Optical depth has dropped below -30");
+                    tau[jline]= -30.; 
+                  }
 			    }
 			  }
 			}
@@ -280,7 +291,7 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
 		if(m[0].cmb[0]>0.){
 			for(iline=0;iline<nlinetot;iline++){
 			  m[0].phot[iline+iphot*m[0].nline]+=exp(-tau[iline])*m[counta[iline]].cmb[countb[iline]];
-			}
+            }
 		}
 				
 
@@ -315,6 +326,7 @@ void getjbar(int posn, molData *m, struct grid *g, inputPars *par){
 	  	  tau=alpha*m[0].ds[iphot];
 		}
 		m[0].jbar[iline]+=m[0].vfac[iphot]*(exp(-tau)*m[0].phot[iline+iphot*m[0].nline]+(1.-exp(-tau))*snu)*m[0].weight[iphot];
+        
 	  }
 	  vsum+=m[0].vfac[iphot]*m[0].weight[iphot];	
 	}
