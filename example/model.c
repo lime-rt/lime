@@ -3,7 +3,7 @@
  *  LIME, The versatile 3D line modeling tool 
  *
  *  Created by Christian Brinch on 11/05/07.
- *  Copyright 2006-2011, Christian Brinch, 
+ *  Copyright 2006-2012, Christian Brinch, 
  *  <brinch@nbi.dk>
  *  Niels Bohr institutet
  *  University of Copenhagen
@@ -85,14 +85,17 @@ temperature(double x, double y, double z, double *temperature){
 /*
  * Linear interpolation in temperature input
  */
-	if(r > temp[0][0] && r<temp[0][9]){
+  if(r > temp[0][0] && r<temp[0][9]){
     for(i=0;i<9;i++){
       if(r>temp[0][i] && r<temp[0][i+1]) x0=i;
     }
   }
-  if(r<temp[0][0]) temperature[0]=temp[1][0];
-  else if (r>temp[0][9]) temperature[0]=temp[1][9];
-  else temperature[0]=temp[1][x0]+(r-temp[0][x0])*(temp[1][x0+1]-temp[1][x0])/(temp[0][x0+1]-temp[0][x0]);
+  if(r<temp[0][0]) 
+    temperature[0]=temp[1][0];
+  else if (r>temp[0][9]) 
+    temperature[0]=temp[1][9];
+  else 
+    temperature[0]=temp[1][x0]+(r-temp[0][x0])*(temp[1][x0+1]-temp[1][x0])/(temp[0][x0+1]-temp[0][x0]);
 }
 
 /******************************************************************************/
