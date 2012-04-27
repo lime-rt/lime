@@ -39,7 +39,7 @@ ratranInput(char * modelfile, char * variable, double x, double y, double z){
 				if(*p=='z' && *(p+1)=='a') za=count;		
 				if(*p=='z' && *(p+1)=='b') zb=count;		
 				count++;
-				*p+=1;
+				*p++;
 			}
 		}
     }
@@ -70,6 +70,6 @@ ratranInput(char * modelfile, char * variable, double x, double y, double z){
 	}
 	
 	fclose(fp);
-	return 0.;			
+  return 0.;
 }
 
