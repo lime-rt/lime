@@ -31,11 +31,11 @@ int main () {
   struct grid *g;
   image		  *img;
 
-  par.dust  	  = NULL;
+  par.dust  	= NULL;
   par.inputfile = NULL;
   par.outputfile= NULL;
   par.gridfile  = NULL;
-  par.pregrid	  = NULL;
+  par.pregrid	= NULL;
 
   if(!silent) greetings();
   if(!silent) screenInfo();

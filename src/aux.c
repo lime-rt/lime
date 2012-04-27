@@ -19,35 +19,35 @@
 void 
 parseInput(inputPars *par, image **img, molData **m){
   FILE *fp;
-    int i,id;
-	double BB[3];
+  int i,id;
+  double BB[3];
 
-	/* Set default values */
-	par->tcmb = 2.728;
-	par->lte_only=0;
-	par->sampling=0;
-	par->blend=0;
-	par->antialias=1;
-	par->polarization=0;
+  /* Set default values */
+  par->tcmb = 2.728;
+  par->lte_only=0;
+  par->sampling=0;
+  par->blend=0;
+  par->antialias=1;
+  par->polarization=0;
 
-	/* Allocate space for output fits images */
-	(*img)=malloc(sizeof(image)*100);
-	par->moldatfile=malloc(sizeof(char *) * 100);
-	for(id=0;id<100;id++){
-		(*img)[id].filename=NULL;
-		par->moldatfile[id]=NULL;
-	}
-	input(par, *img);
-	id=0;
-	while((*img)[++id].filename!=NULL);
-	par->nImages=id;
-	if(par->nImages==0) {
-		if(!silent) bail_out("Error: no images defined");
-		exit(1);
-	}
+  /* Allocate space for output fits images */
+  (*img)=malloc(sizeof(image)*100);
+  par->moldatfile=malloc(sizeof(char *) * 100);
+  for(id=0;id<100;id++){
+    (*img)[id].filename=NULL;
+    par->moldatfile[id]=NULL;
+  }
+  input(par, *img);
+  id=0;
+  while((*img)[++id].filename!=NULL);
+  par->nImages=id;
+  if(par->nImages==0) {
+    if(!silent) bail_out("Error: no images defined");
+    exit(1);
+  }
 
-	free(*img);
-	*img=malloc(sizeof(image)*par->nImages);
+  free(*img);
+  *img=malloc(sizeof(image)*par->nImages);
 
 	
   
