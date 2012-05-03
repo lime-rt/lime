@@ -22,10 +22,11 @@ input(inputPars *par, image *img){
  */
   par->radius			= 2000*AU;
   par->minScale	   		= 0.5*AU;
-  par->pIntensity    	= 300;
-  par->sinkPoints    	= 400;
+  par->pIntensity    	= 3000;
+  par->sinkPoints    	= 4000;
   par->dust				= "jena_thin_e6.tab";
   par->moldatfile[0] 	= "/Users/christianbrinch/Development/Ratran/molec/co.dat";
+
   par->outputfile 		= "populations.pop";
   par->gridfile			= "grid.vtk";
 
