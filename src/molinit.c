@@ -100,7 +100,7 @@ planckfunc(int iline, double temp, molData *m,int s){
 
 void
 molinit(molData *m, inputPars *par, struct grid *g,int i){
-	int id, ilev, iline, itrans, ispec, itemp, *ntemp, tnint=-1, idummy, ipart, *count,flag=0;
+    int id, ilev, iline, itrans, ispec, itemp, *ntemp, tnint=-1, idummy, ipart, *count,flag=0;
     char *collpartname[] = {"H2","p-H2","o-H2","electrons","H","He","H+"}; /* definition from LAMDA */
 	double fac, uprate, downrate=0, dummy, amass;
 	struct data { double *colld, *temp; } *part;
@@ -182,22 +182,21 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
         if(!silent) bail_out("Error: Too many density profiles defined");
         exit(1);
       }
-
       
 
         m[i].ntrans = malloc(sizeof(int)*m[i].npart);
 		ntemp = malloc(sizeof(int)*m[i].npart);
 		part = malloc(sizeof(struct data) * m[i].npart);
-	
+      
 		for(ipart=0;ipart<m[i].npart;ipart++){	  
           fgets(string, 80, fp);      
           fscanf(fp,"%d\n", &count[ipart]);
-          fgets(string, 80, fp);           
-          fgets(string, 80, fp);           
+          fgets(string, 80, fp);          
+          fgets(string, 80, fp);          
           fscanf(fp,"%d\n", &m[i].ntrans[ipart]);
-          fgets(string, 80, fp);          
+          fgets(string, 80, fp);
           fscanf(fp,"%d\n", &ntemp[ipart]);
-          fgets(string, 80, fp);          
+          fgets(string, 80, fp);
 
 			part[ipart].temp=malloc(sizeof(double)*ntemp[ipart]);	
 		
@@ -214,7 +213,7 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
 			fgets(string, 80, fp);
           
 			part[ipart].colld=malloc(sizeof(double)*m[i].ntrans[ipart]*ntemp[ipart]);
-	
+   
           for(itrans=0;itrans<m[i].ntrans[ipart];itrans++){
 				fscanf(fp, "%d %d %d", &idummy, &m[i].lcu[itrans], &m[i].lcl[itrans]);
 				m[i].lcu[itrans]-=1;
@@ -227,83 +226,78 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
 			}
 		}
 		fclose(fp);
-		
-		for(id=0;id<par->ncell;id++){
-			g[id].mol[i].partner=malloc(sizeof(struct rates)*m[i].npart);
-			for(ipart=0;ipart<m[i].npart;ipart++){
-				g[id].mol[i].partner[ipart].up = malloc(sizeof(double)*m[i].ntrans[ipart]);
-				g[id].mol[i].partner[ipart].down = malloc(sizeof(double)*m[i].ntrans[ipart]);
-			}
-		}
+      
+      /* Print out collision partner information */
+      strcpy(partstr, collpartname[count[0]-1]); 
+      for(ipart=1;ipart<m[i].npart;ipart++){
+        strcat( partstr, ", ");
+        strcat( partstr, collpartname[count[ipart]-1]);
+      }
+      if(!silent) {
+        collpartmesg(specref, m[i].npart);
+        collpartmesg2(partstr, ipart);
+        collpartmesg3(par->collPart, flag);
+      }
+      
+      /* Calculate molecular density */
+      for(id=0;id<par->ncell; id++){
+        for(ispec=0;ispec<par->nSpecies;ispec++){
+          if(m[i].npart == 1 && count[0] == 1){
+            g[id].nmol[ispec]=g[id].abun[ispec]*g[id].dens[0];
+          } else if(m[i].npart == 2 && (count[0] == 2 || count[0] == 3) && (count[1] == 2 || count[1] == 3)){
+            if(!flag){
+              g[id].nmol[ispec]=g[id].abun[ispec]*(g[id].dens[0]+g[id].dens[1]);
+            } else {
+              g[id].nmol[ispec]=g[id].abun[ispec]*g[id].dens[0];
+              if(!silent) warning("Calculating molecular density with respect to first collision partner only");
+            }
+          } else if(m[i].npart > 2 && !flag){
+            g[id].nmol[ispec]=g[id].abun[ispec]*(g[id].dens[0]+g[id].dens[1]);
+            if(!silent) warning("Calculating molecular density with respect first and second collision partner");
+          }
+        }
+      }
 
+      for(id=0;id<par->ncell;id++){
+        g[id].mol[i].partner=malloc(sizeof(struct rates)*m[i].npart);
+        for(ipart=0;ipart<m[i].npart;ipart++){
+          g[id].mol[i].partner[ipart].up = malloc(sizeof(double)*m[i].ntrans[ipart]);
+          g[id].mol[i].partner[ipart].down = malloc(sizeof(double)*m[i].ntrans[ipart]);
+        }
+      }
 
-		for(id=0;id<par->ncell;id++){
-			if(g[id].nmol[i]>eps){
-				for(ipart=0;ipart<m[i].npart;ipart++){
-					for(itrans=0;itrans<m[i].ntrans[ipart];itrans++){
-					 	if((g[id].t[0]>part[ipart].temp[0])&&(g[id].t[0]<part[ipart].temp[ntemp[ipart]-1])){
-							for(itemp=0;itemp<ntemp[ipart]-1;itemp++){
-								if((g[id].t[0]>part[ipart].temp[itemp])&&(g[id].t[0]<=part[ipart].temp[itemp+1])){
-									tnint=itemp;
-								}
-							}
-							fac=(g[id].t[0]-part[ipart].temp[tnint])/(part[ipart].temp[tnint+1]-part[ipart].temp[tnint]);
-							downrate=part[ipart].colld[itrans*ntemp[ipart]+tnint]+fac*(part[ipart].colld[itrans*ntemp[ipart]+tnint+1]-part[ipart].colld[itrans*ntemp[ipart]+tnint]);
-						} else {
-							if(g[id].t[0]<=part[ipart].temp[0]) downrate=part[ipart].colld[itrans*ntemp[ipart]];
-							if(g[id].t[0]>=part[ipart].temp[ntemp[ipart]-1]) downrate=part[ipart].colld[itrans*ntemp[ipart]+ntemp[ipart]-1];
-						}				
-						uprate=m[i].gstat[m[i].lcu[itrans]]/m[i].gstat[m[i].lcl[itrans]]*downrate*exp(-HCKB*(m[i].eterm[m[i].lcu[itrans]]-m[i].eterm[m[i].lcl[itrans]])/g[id].t[0]);
-						g[id].mol[i].partner[ipart].up[itrans]=uprate;
-						g[id].mol[i].partner[ipart].down[itrans]=downrate;
-					}
-				}
-			}
-		}
-		for(ipart=0;ipart<m[i].npart;ipart++){
-		  free(part[ipart].colld);		
-		  free(part[ipart].temp);		
-		}
-        free(ntemp);
-		free(part);
+      for(id=0;id<par->ncell;id++){
+        if(g[id].nmol[i]>eps){
+          for(ipart=0;ipart<m[i].npart;ipart++){
+            for(itrans=0;itrans<m[i].ntrans[ipart];itrans++){
+              if((g[id].t[0]>part[ipart].temp[0])&&(g[id].t[0]<part[ipart].temp[ntemp[ipart]-1])){
+                for(itemp=0;itemp<ntemp[ipart]-1;itemp++){
+                  if((g[id].t[0]>part[ipart].temp[itemp])&&(g[id].t[0]<=part[ipart].temp[itemp+1])){
+                    tnint=itemp;
+                  }
+                }
+                fac=(g[id].t[0]-part[ipart].temp[tnint])/(part[ipart].temp[tnint+1]-part[ipart].temp[tnint]);
+                downrate=part[ipart].colld[itrans*ntemp[ipart]+tnint]+fac*(part[ipart].colld[itrans*ntemp[ipart]+tnint+1]-part[ipart].colld[itrans*ntemp[ipart]+tnint]);
+              } else {
+                if(g[id].t[0]<=part[ipart].temp[0]) downrate=part[ipart].colld[itrans*ntemp[ipart]];
+                if(g[id].t[0]>=part[ipart].temp[ntemp[ipart]-1]) downrate=part[ipart].colld[itrans*ntemp[ipart]+ntemp[ipart]-1];
+              }				
+              uprate=m[i].gstat[m[i].lcu[itrans]]/m[i].gstat[m[i].lcl[itrans]]*downrate*exp(-HCKB*(m[i].eterm[m[i].lcu[itrans]]-m[i].eterm[m[i].lcl[itrans]])/g[id].t[0]);
+              g[id].mol[i].partner[ipart].up[itrans]=uprate;
+              g[id].mol[i].partner[ipart].down[itrans]=downrate;
+            }
+          }
+        }
+      }
+      for(ipart=0;ipart<m[i].npart;ipart++){
+        free(part[ipart].colld);		
+        free(part[ipart].temp);		
+      }
+      free(ntemp);
+      free(part);
 	}
 	/* End of collision rates */
 
-  
-  /* Print out collision partner information */
-  strcpy(partstr, collpartname[count[0]-1]); 
-  for(ipart=1;ipart<m[i].npart;ipart++){
-    strcat( partstr, ", ");
-    strcat( partstr, collpartname[count[ipart]-1]);
-  }
-  if(!silent) {
-    collpartmesg(specref, m[i].npart);
-    collpartmesg2(partstr, ipart);
-    collpartmesg3(par->collPart, flag);
-  }
-  
-  /* Calculate molecular density */
-  for(id=0;id<par->ncell; id++){
-    for(ispec=0;ispec<par->nSpecies;ispec++){
-      if(m[i].npart == 1 && count[0] == 1){
-        g[id].nmol[ispec]=g[id].abun[ispec]*g[id].dens[0];
-      } else if(m[i].npart == 2 && (count[0] == 2 || count[0] == 3) && (count[1] == 2 || count[1] == 3)){
-        if(!flag){
-          g[id].nmol[ispec]=g[id].abun[ispec]*(g[id].dens[0]+g[id].dens[1]);
-        } else {
-          g[id].nmol[ispec]=g[id].abun[ispec]*g[id].dens[0];
-          if(!silent) warning("Calculating molecular density with respect to first collision partner only");
-        }
-      } else if(m[i].npart > 2 && !flag){
-        g[id].nmol[ispec]=g[id].abun[ispec]*(g[id].dens[0]+g[id].dens[1]);
-        if(!silent) warning("Calculating molecular density with respect first and second collision partner");
-      }
-    }
-  }
-  
-  
-  
-		
   /* Allocate space for populations and opacities */
   for(id=0;id<par->ncell; id++){
     g[id].mol[i].pops = malloc(sizeof(double)*m[i].nlev);	  
