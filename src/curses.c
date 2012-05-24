@@ -17,7 +17,7 @@
 void
 greetings(){
 	initscr();
-	printw("*** LIME, The versatile line modeling engine, Ver.1.21 (Devel)\n*** Copyright 2006--2012, Christian Brinch <brinch@nbi.dk>\n");
+	printw("*** LIME, The versatile line modeling engine, Ver.1.2 (Devel)\n*** Copyright 2006--2012, Christian Brinch <brinch@nbi.dk>\n");
 	refresh();	
 }
 
@@ -65,13 +65,23 @@ progressbar(double percent, int line){
 
 void 
 progressbar2(int prog, double percent, double minsnr, double median){
-	move(7,25);		 printw("Min(SNR)    %3.3f", minsnr);
-	move(8,25);		 printw("Median(SNR) %4.3f",median);
-	move(9,25+prog); printw("#");
-	if(percent<100) {
-		move(10,25);	 printw("                         ");
-	}
-	refresh();	
+  move(7,38); printw("                    ");            
+  move(8,38); printw("                    ");
+  if(minsnr<1000){
+    move(7,25); printw("Min(SNR)    %3.3f", minsnr);
+  } else {
+    move(7,25); printw("Min(SNR)    %e", minsnr);
+  }
+  if(median<1000){
+    move(8,25);	printw("Median(SNR) %3.3f", median);
+  } else {
+    move(7,25); printw("Min(SNR)    %e", median);
+  }    
+  move(9,25+prog); printw("#");
+  if(percent<100) {
+    move(10,25);	 printw("                         ");
+  }
+  refresh();	
 }
 
 void 

@@ -118,44 +118,6 @@ velocityspline_lin(struct grid *g, int id, int k, double binv, double deltav, do
 	return;
 }
 
-
-
-void
-velocityspline2(double x[3], double dx[3], double ds, double binv, double deltav, double *vfac){
-	int nspline,ispline,naver,iaver;
-	double v1,v2,s1,s2,sd,v,vfacsub,vel[3];
-	
-	velocity(x[0],x[1],x[2],vel);
-	v1=deltav-veloproject(dx,vel);
-	velocity(x[0]+(dx[0]*ds),x[1]+(dx[1]*ds),x[2]+(dx[2]*ds),vel);
-	v2=deltav-veloproject(dx,vel);
-
-	nspline=(fabs(v1-v2)*binv < 1) ? 1 : (int)(fabs(v1-v2)*binv);
-	*vfac=0.;
-	s2=0;
-	v2=v1;
-	
-	for(ispline=0;ispline<nspline;ispline++){
-		s1=s2;
-		s2=((double)(ispline+1))/(double)nspline;					
-		v1=v2;
-		velocity(x[0]+(s2*dx[0]*ds),x[1]+(s2*dx[1]*ds),x[2]+(s2*dx[2]*ds),vel);
-		v2=deltav-veloproject(dx,vel);
-		naver=(1 > fabs(v1-v2)*binv) ? 1 : (int)(fabs(v1-v2)*binv);
-		for(iaver=0;iaver<naver;iaver++){
-			sd=s1+(s2-s1)*((double)iaver-0.5)/(double)naver;
-			velocity(x[0]+(sd*dx[0]*ds),x[1]+(sd*dx[1]*ds),x[2]+(sd*dx[2]*ds),vel);
-			v=deltav-veloproject(dx,vel);
-			vfacsub=gaussline(v,binv);
-			*vfac+=vfacsub/(double)naver;
-		}
-	}
-	*vfac= *vfac/(double)nspline;
-
-	return;
-}
-
-
 double veloproject(double dx[3], double *vel){
 	return dx[0]*vel[0]+dx[1]*vel[1]+dx[2]*vel[2];
 }
@@ -254,10 +216,8 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
               if(!silent) warning("Maser warning: optical depth has dropped below -30");
               tau[iline]= -30.; 
             }
-            if(isnan(m[0].phot[iline+iphot*m[0].nline]) >0){
-              printf("Fail: %d %e %e %e %e\n", id, dtau, tau[iline], snu, m[0].phot[iline+iphot*m[0].nline]);
-            }
             
+            /* Line blending part */
 			if(par->blend){
 			  jnu=0.;
 			  alpha=0.;
@@ -280,6 +240,8 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
 			    }
 			  }
 			}
+            /* End of line blending part */
+            
 		  }
 			
 	  	  dir=sortangles(inidir,there,g,ran);

@@ -14,30 +14,50 @@
 #include "lime.h"
 
 
+void
+velocityspline2(double x[3], double dx[3], double ds, double binv, double deltav, double *vfac){
+  int i,steps=10;
+  double v,d,val,vel[3];
+  
+  *vfac=0.;
+  for(i=0;i<steps;i++){
+    d=i*ds/steps;
+    velocity(x[0]+(dx[0]*d),x[1]+(dx[1]*d),x[2]+(dx[2]*d),vel);
+    v=deltav-veloproject(dx,vel);
+    val=fabs(v)*binv;
+    if(val <=  2500.){
+      *vfac+= exp(-(val*val));
+    } 
+  }
+  *vfac=*vfac/steps;
+  return;
+}
+
+
 void 
 line_plane_intersect(struct grid *g, double *ds, int posn, int *nposn, double *dx, double *x){
-	double newdist, numerator, denominator ;
-	int i;
-
-	for(i=0;i<g[posn].numNeigh;i++) {
-	  /* Find the shortest distance between (x,y,z) and any of the posn Voronoi faces */
-	  /* ds=(p0-l0) dot n / l dot n */
-      
-	  numerator=((g[posn].x[0]+g[posn].dir[i].x[0]/2. - x[0]) * g[posn].dir[i].x[0]+
-	 	         (g[posn].x[1]+g[posn].dir[i].x[1]/2. - x[1]) * g[posn].dir[i].x[1]+
-		         (g[posn].x[2]+g[posn].dir[i].x[2]/2. - x[2]) * g[posn].dir[i].x[2]);
-		
-	  denominator=(dx[0]*g[posn].dir[i].x[0]+dx[1]*g[posn].dir[i].x[1]+dx[2]*g[posn].dir[i].x[2]);
-	  
-	  if(fabs(denominator) > 0){
-		newdist=numerator/denominator;
-	  	if(newdist<*ds && newdist > 1e4){
-			*ds=newdist;
-			*nposn=g[posn].neigh[i];
-	  	}
-	  }
+  double newdist, numerator, denominator ;
+  int i;
+  
+  for(i=0;i<g[posn].numNeigh;i++) {
+    /* Find the shortest distance between (x,y,z) and any of the posn Voronoi faces */
+    /* ds=(p0-l0) dot n / l dot n */
+    
+    numerator=((g[posn].x[0]+g[posn].dir[i].x[0]/2. - x[0]) * g[posn].dir[i].x[0]+
+               (g[posn].x[1]+g[posn].dir[i].x[1]/2. - x[1]) * g[posn].dir[i].x[1]+
+               (g[posn].x[2]+g[posn].dir[i].x[2]/2. - x[2]) * g[posn].dir[i].x[2]);
+    
+    denominator=(dx[0]*g[posn].dir[i].x[0]+dx[1]*g[posn].dir[i].x[1]+dx[2]*g[posn].dir[i].x[2]);
+    
+    if(fabs(denominator) > 0){
+      newdist=numerator/denominator;
+      if(newdist<*ds && newdist > 1e4){
+        *ds=newdist;
+        *nposn=g[posn].neigh[i];
+      } 
 	}
-}	
+  }
+}
 
 void 
 raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
@@ -131,11 +151,10 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
 		  
 		  col=0;
 		  do{
-  		    ds=2*zp-col;
+            ds=2.*zp-col;
 			line_plane_intersect(g,&ds,posn,&nposn,dx,x);
-		    posn=nposn;
 
-			if(par->polarization){
+            if(par->polarization){
 			  for(ichan=0;ichan<img[im].nchan;ichan++){
 			    sourceFunc_pol(snu_pol,&dtau,ds,m,vfac,g,posn,0,0,img[im].theta);
 			    subintens[ichan]+=exp(-tau[ichan])*(1.-exp(-dtau))*snu_pol[ichan];
@@ -160,7 +179,7 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
 				    else vfac=gaussline(deltav-veloproject(dx,g[posn].vel),g[posn].mol[counta[iline]].binv);			
 				  
 				    sourceFunc_line(&jnu,&alpha,m,vfac,g,posn,counta[iline],countb[iline]);
-			      }
+                  }
 			    }  				  
 			  
 			    if(img[im].doline && img[im].trans > -1) sourceFunc_cont(&jnu,&alpha,g,posn,0,img[im].trans);
@@ -179,15 +198,12 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
 			/* new coordinates */
 			for(i=0;i<3;i++) x[i]+=ds*dx[i];
 			col+=ds;
+            posn=nposn;
 		  } while(col < 2*zp);
-
+          
 		  /* add or subtract cmb */
 		  for(ichan=0;ichan<img[im].nchan;ichan++){
-			if(tau[ichan]<=15) {
-			  subintens[ichan]+=(exp(-tau[ichan])-1.)*m[0].local_cmb[tmptrans];
-			} else {
-			  subintens[ichan]-=m[0].local_cmb[tmptrans];
-			}
+            subintens[ichan]+=(exp(-tau[ichan])-1.)*m[0].local_cmb[tmptrans];
 		  }	
 		  
 		  for(ichan=0;ichan<img[im].nchan;ichan++){

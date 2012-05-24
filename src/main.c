@@ -55,7 +55,7 @@ int main () {
       continuumSetup(i,img,m,&par,g);
     }
 		
-    old_raytrace(i,&par,g,m,img);			  	
+    raytrace(i,&par,g,m,img);			  	
     writefits(i,&par,m,img);
   }
   if(!silent) goodnight(initime,img[0].filename);
