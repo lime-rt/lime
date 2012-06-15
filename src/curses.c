@@ -70,12 +70,12 @@ progressbar2(int prog, double percent, double minsnr, double median){
   if(minsnr<1000){
     move(7,25); printw("Min(SNR)    %3.3f", minsnr);
   } else {
-    move(7,25); printw("Min(SNR)    %e", minsnr);
+    move(7,25); printw("Min(SNR)    %.3e", minsnr);
   }
   if(median<1000){
     move(8,25);	printw("Median(SNR) %3.3f", median);
   } else {
-    move(7,25); printw("Min(SNR)    %e", median);
+    move(8,25); printw("Median(SNR) %.3e", median);
   }    
   move(9,25+prog); printw("#");
   if(percent<100) {

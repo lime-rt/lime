@@ -105,8 +105,8 @@ qhull(inputPars *par, struct grid *g){
     }
     g[i].numNeigh=j;
   }
-  //free(pt_array); this breaks the code for some reason...?
   qh_freeqhull(!qh_ALL);
+  free(pt_array); 
 }
 	
 void
