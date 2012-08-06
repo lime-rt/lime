@@ -30,7 +30,7 @@ SRCS    = src/aux.c src/curses.c src/grid.c src/LTEsolution.c   \
           src/statistics.c src/magfieldfit.c src/stokesangles.c \
 		  src/writefits.c src/weights.c src/velospline.c        \
 		  src/old_raytrace.c src/getclosest.c
-MODELS  = /Users/christianbrinch/Work_projects/Jes/irs43+63/model/lime/irs43_hco+.c
+MODELS  = /Users/christianbrinch/LimePackage/LimePackage/example/model.c
 OBJS    = src/aux.o src/curses.o src/grid.o src/LTEsolution.o   \
 		  src/main.o src/molinit.o src/photon.o src/popsout.o   \
 		  src/predefgrid.o src/raytrace.o src/ratranInput.o     \

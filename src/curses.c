@@ -134,7 +134,7 @@ collpartmesg2(char name[10], int partner){
 }
 
 void
-collpartmesg3(number, flag){
+collpartmesg3(int number, int flag){
   move(10,63); printw("Model provides:");
   move(11,63); printw("%d density profile(s)", number);
   if(flag==1) {
