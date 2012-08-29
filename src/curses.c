@@ -17,11 +17,7 @@
 void
 greetings(){
 	initscr();
-<<<<<<< HEAD
-	printw("*** LIME, The versatile line modeling engine, Ver.1.2\n*** Copyright 2006--2012, Christian Brinch <brinch@nbi.dk>\n");
-=======
-	printw("*** LIME, The versatile line modeling engine, Ver.1.3 (Devel)\n*** Copyright 2006--2012, Christian Brinch <brinch@nbi.dk>\n");
->>>>>>> development
+	printw("*** LIME, The versatile line modeling engine, Ver.1.22\n*** Copyright 2006--2012, Christian Brinch <brinch@nbi.dk>\n");
 	refresh();	
 }
 
