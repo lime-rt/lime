@@ -133,6 +133,7 @@ distCalc(inputPars *par, struct grid *g){
 void
 write_VTK_unstructured_Points(inputPars *par, struct grid *g){
   FILE *fp;
+  double length;
   int i,j,l=0;
   char flags[255];
   boolT ismalloc = False;
@@ -202,7 +203,8 @@ write_VTK_unstructured_Points(inputPars *par, struct grid *g){
   }
   fprintf(fp,"VECTORS velocity float\n");
   for(i=0;i<par->ncell;i++){
-    fprintf(fp, "%e %e %e\n", g[i].vel[0],g[i].vel[1],g[i].vel[2]);
+    length=sqrt(pow(g[i].vel[0],2)+pow(g[i].vel[1],2)+pow(g[i].vel[2],2));
+    fprintf(fp, "%e %e %e\n", g[i].vel[0]/length,g[i].vel[1]/length,g[i].vel[2]/length);
   }
   
   fclose(fp);
@@ -431,22 +433,20 @@ buildGrid(inputPars *par, struct grid *g){
   
   /* Add surface sink particles */
   for(i=0;i<par->sinkPoints;i++){
-    x=2*gsl_rng_uniform(ran)-1.;
-    y=2*gsl_rng_uniform(ran)-1.;
+    theta=gsl_rng_uniform(ran)*2*PI;
     if(DIM==3) z=2*gsl_rng_uniform(ran)-1.;
     else z=0.;
-    if(x*x+y*y+z*z<1){
-      scale=par->radius*sqrt(1/(x*x+y*y+z*z));
-      g[k].id=k;
-      g[k].x[0]=scale*x;
-      g[k].x[1]=scale*y;
-      g[k].x[2]=scale*z;
-      g[k].sink=1;
-      g[k].dens[0]=1e-30;
-      g[k].t[0]=par->tcmb;
-      g[k].t[1]=par->tcmb;
-      g[k++].dopb=0.;
-    } else i--;
+    x=sqrt(1-pow(z,2))*cos(theta);
+    y=sqrt(1-pow(z,2))*sin(theta);;
+    g[k].id=k;
+    g[k].x[0]=par->radius*x;
+    g[k].x[1]=par->radius*y;
+    g[k].x[2]=par->radius*z;
+    g[k].sink=1;
+    g[k].dens[0]=1e-30;
+    g[k].t[0]=par->tcmb;
+    g[k].t[1]=par->tcmb;
+    g[k++].dopb=0.;
   }
   /* end grid allocation */
   

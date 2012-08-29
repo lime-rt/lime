@@ -159,6 +159,7 @@ void    getArea(inputPars *, struct grid *, const gsl_rng *);
 void    getjbar(int, molData *, struct grid *, inputPars *);
 void    getMass(inputPars *, struct grid *, const gsl_rng *);
 void   	getmatrix(int, gsl_matrix *, molData *, struct grid *, int);
+void	getclosest(double, double, double, long *, long *, double *, double *, double *);
 void	getVelosplines(inputPars *, struct grid *);
 void	getVelosplines_lin(inputPars *, struct grid *);
 void	gridAlloc(inputPars *, struct grid **);
@@ -194,8 +195,9 @@ void   	velocityspline2(double *, double *, double, double, double, double*);
 double 	veloproject(double *, double *);
 void	writefits(int, inputPars *, molData *, image *);
 void    write_VTK_unstructured_Points(inputPars *, struct grid *);
-void	getclosest(double, double, double, long *, long *, double *, double *, double *);
 
+
+/* Curses functions */
 
 void 	greetings();
 void	screenInfo();

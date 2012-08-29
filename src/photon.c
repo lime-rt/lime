@@ -139,7 +139,7 @@ void
 photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPars *par,blend *matrix){
 	int iphot,iline,jline,here,there,firststep,dir,np_per_line,ip_at_line,l;
 	int *counta, *countb,nlinetot;
-	double deltav,segment,vblend,snu,dtau,jnu,alpha,ds,vfac[par->nSpecies],pt_theta,pt_phi;
+	double deltav,segment,vblend,snu,dtau,jnu,alpha,ds,vfac[par->nSpecies],pt_theta,pt_z;
 	double *tau,vel[3],x[3], inidir[3];
 				
 	lineCount(par->nSpecies, m, &counta, &countb, &nlinetot);	
@@ -156,12 +156,16 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
 		}
 
 /* Initial velocity, direction and frequency offset  */		
-		pt_theta=gsl_rng_uniform(ran)*2*PI;
+/*		pt_theta=gsl_rng_uniform(ran)*2*PI;
 		pt_phi=gsl_rng_uniform(ran)*PI;
 		inidir[0]=cos(pt_theta)*sin(pt_phi);
 		inidir[1]=sin(pt_theta)*sin(pt_phi);
-		inidir[2]=cos(pt_phi);
-	
+		inidir[2]=cos(pt_phi);*/
+        pt_theta=gsl_rng_uniform(ran)*2*PI;
+        pt_z=2*gsl_rng_uniform(ran)-1;
+        inidir[0]=sqrt(1-pow(pt_z,2))*cos(pt_theta);
+        inidir[1]=sqrt(1-pow(pt_z,2))*sin(pt_theta);
+        inidir[2]=pt_z;
 
 		iter=(int) (gsl_rng_uniform(ran)*3.);
 		np_per_line=(int) g[id].nphot/g[id].numNeigh;
