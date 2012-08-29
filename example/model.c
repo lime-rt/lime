@@ -22,11 +22,12 @@ input(inputPars *par, image *img){
  */
   par->radius			= 2000*AU;
   par->minScale	   		= 0.5*AU;
-  par->pIntensity    	= 8000;
-  par->sinkPoints    	= 4000;
+  par->pIntensity    	= 4000;
+  par->sinkPoints    	= 3000;
   par->dust				= "jena_thin_e6.tab";
   par->moldatfile[0] 	= "hco+.dat";
   par->antialias		= 8;
+  par->sampling			= 0;
 
   par->outputfile 		= "populations.pop";
   par->gridfile			= "grid.vtk";

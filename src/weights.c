@@ -22,7 +22,7 @@ pointEvaluation(inputPars *par,double ran, double x, double y, double z){
   n0=val[0];
   density(x,y,z,val);
   //abundance(x,y,z,val2);
-  weight1=pow(val[0]/n0,0.5);
+  weight1=pow(val[0]/n0,0.2);
 
 
   weight2=0.;
