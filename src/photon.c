@@ -156,11 +156,6 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
 		}
 
 /* Initial velocity, direction and frequency offset  */		
-/*		pt_theta=gsl_rng_uniform(ran)*2*PI;
-		pt_phi=gsl_rng_uniform(ran)*PI;
-		inidir[0]=cos(pt_theta)*sin(pt_phi);
-		inidir[1]=sin(pt_theta)*sin(pt_phi);
-		inidir[2]=cos(pt_phi);*/
         pt_theta=gsl_rng_uniform(ran)*2*PI;
         pt_z=2*gsl_rng_uniform(ran)-1;
         inidir[0]=sqrt(1-pow(pt_z,2))*cos(pt_theta);
@@ -279,7 +274,7 @@ void getjbar(int posn, molData *m, struct grid *g, inputPars *par){
 
   for(iline=0;iline<m[0].nline;iline++) m[0].jbar[iline]=0.;
   for(iphot=0;iphot<g[posn].nphot;iphot++){
-	if(m[0].vfac[iphot]>0){						              
+	if(m[0].vfac[iphot]>0){
 	  for(iline=0;iline<m[0].nline;iline++){						
 		jnu=0.;
 		alpha=0.;
@@ -296,7 +291,21 @@ void getjbar(int posn, molData *m, struct grid *g, inputPars *par){
         
 	  }
 	  vsum+=m[0].vfac[iphot]*m[0].weight[iphot];	
-	}
+	} else {
+	  for(iline=0;iline<m[0].nline;iline++){
+        jnu=0.;
+        alpha=0.;
+        snu=0.;
+        tau=0.;
+      
+        sourceFunc_cont(&jnu,&alpha,g,posn,counta[iline],countb[iline]);
+        if(fabs(alpha)>0.){
+          snu=(jnu/alpha)*m[0].norminv;
+          tau=alpha*m[0].ds[iphot];
+        }
+        m[0].jbar[iline]+=(exp(-tau)*m[0].phot[iline+iphot*m[0].nline]+(1.-exp(-tau))*snu)*m[0].weight[iphot];
+      }
+    }
   } 
   for(iline=0;iline<m[0].nline;iline++) m[0].jbar[iline]=m[0].norm*m[0].jbar[iline]/vsum;
   free(counta);
