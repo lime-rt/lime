@@ -3,7 +3,7 @@
  *  LIME, The versatile 3D line modeling environment
  *
  *  Created by Christian Brinch on 16/11/2006
- *  Copyright 2006-2012, Christian Brinch,
+ *  Copyright 2006-2013, Christian Brinch,
  *  <brinch@nbi.dk>
  *  Niels Bohr institutet
  *  University of Copenhagen

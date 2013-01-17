@@ -2,9 +2,7 @@
 export WORKDIR=$PWD
 
 cd $PATHTOLIME
-perl -i -p -e "s{MODELS  =.*}{MODELS  = $WORKDIR/$1}g" Makefile
-make
-cp lime.x $WORKDIR/
+make MODELS=$WORKDIR/$1 TARGET=$WORKDIR/lime.x
 make clean
 cd $WORKDIR
 ./lime.x

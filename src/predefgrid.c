@@ -3,7 +3,7 @@
  *  LIME, The versatile 3D line modeling environment 
  *
  *  Created by Christian Brinch on 08/26/10.
- *  Copyright 2006-2012, Christian Brinch, 
+ *  Copyright 2006-2013, Christian Brinch, 
  *  <brinch@nbi.dk>
  *  Niels Bohr institutet
  *  University of Copenhagen
@@ -25,9 +25,15 @@ predefinedGrid(inputPars *par, struct grid *g){
   par->ncell=par->pIntensity+par->sinkPoints;
 
   for(i=0;i<par->pIntensity;i++){
-    fscanf(fp,"%d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &g[i].id, &g[i].x[0], &g[i].x[1], &g[i].x[2],  &g[i].dens[0], &g[i].t[0], &abun, &g[i].dopb, &g[i].vel[0], &g[i].vel[1], &g[i].vel[2]);
+//    fscanf(fp,"%d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &g[i].id, &g[i].x[0], &g[i].x[1], &g[i].x[2],  &g[i].dens[0], &g[i].t[0], &abun, &g[i].dopb, &g[i].vel[0], &g[i].vel[1], &g[i].vel[2]);
 //    fscanf(fp,"%d %lf %lf %lf %lf %lf %lf %lf\n", &g[i].id, &g[i].x[0], &g[i].x[1], &g[i].x[2],  &g[i].dens[0], &g[i].t[0], &abun, &g[i].dopb);
-	g[i].sink=0;
+    fscanf(fp,"%lf %lf %lf %lf %lf %lf %lf %lf\n", &g[i].x[0], &g[i].x[1], &g[i].x[2],  &g[i].dens[0], &g[i].t[0], &g[i].vel[0], &g[i].vel[1], &g[i].vel[2]);
+	g[i].id=i;
+    g[i].dopb=200;
+    abun=1e-9;
+    
+    
+    g[i].sink=0;
 	g[i].t[1]=g[i].t[0];
 	g[i].nmol[0]=abun*g[i].dens[0];
 		
@@ -59,7 +65,7 @@ predefinedGrid(inputPars *par, struct grid *g){
   
   qhull(par,g);
   distCalc(par,g);
-  getArea(par,g, ran);
+//  getArea(par,g, ran);
 //  getMass(par,g, ran);
   getVelosplines_lin(par,g);
   if(par->gridfile) write_VTK_unstructured_Points(par, g);
