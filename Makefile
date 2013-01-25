@@ -4,11 +4,14 @@
 PREFIX  =  ${PATHTOLIME}
 LIBS	= -L${PREFIX}/lib \
 		  -L${HOME}/lib \
-          -L/opt/local/lib 
+          -L/opt/local/lib \
+          -L/sw/lib
+
 INCLUDE	= -I${PREFIX}/include \
 		  -I${PREFIX}/src \
 		  -I${HOME}/include \
-		  -I/opt/local/include
+		  -I/opt/local/include \
+		  -I/sw//include
 
 # For qhull version 2011.1 or newer:
 QHULL   = qhullstatic
