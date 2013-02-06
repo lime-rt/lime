@@ -75,9 +75,8 @@ parseInput(inputPars *par, image **img, molData **m){
   /* Check if files exists */
   for(id=0;id<par->nSpecies;id++){
     if((fp=fopen(par->moldatfile[id], "r"))==NULL) {
-      if(!silent) bail_out("Error opening molecular data file");
-      exit(1);
-	} 
+      openSocket(par, id);
+    } 
   }
   if(par->dust != NULL){
     if((fp=fopen(par->dust, "r"))==NULL){
