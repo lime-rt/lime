@@ -25,7 +25,7 @@ input(inputPars *par, image *img){
   par->pIntensity    	= 4000;
   par->sinkPoints    	= 3000;
   par->dust				= "jena_thin_e6.tab";
-  par->moldatfile[0] 	= "c17o";
+  par->moldatfile[0] 	= "hco+";
   par->antialias		= 8;
   par->sampling			= 0;
 
@@ -70,7 +70,7 @@ density(double x, double y, double z, double *density){
 
 void
 temperature(double x, double y, double z, double *temperature){
-  int i,x0;
+  int i,x0=0;
   double r;
 /* 
  * Array containing temperatures as a function of radial 

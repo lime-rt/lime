@@ -17,17 +17,16 @@
 #include <netdb.h>
 
 #define USERAGENT "HTMLGET 1.0"
+int close(int);
 
 void
 openSocket(inputPars *par, int id){
-  struct in_addr **addr_list;
-  struct hostent *hent;
   struct sockaddr_in *remote;
   int tmpres;
   int sock;
   char *get;
-  char *tmp;
-  char buf[1];
+  char *s,*t;
+  char buf[2];
   char *host = "home.strw.leidenuniv.nl";
   char *ip="132.229.214.164";
   char *page = "~moldata/datafiles/";
@@ -37,25 +36,22 @@ openSocket(inputPars *par, int id){
   // Check if moldatfile contains .dat
   if(strstr(par->moldatfile[id], ".dat") == NULL){
     size_t length = strlen(par->moldatfile[id]);
-    char *s = (char*)malloc(sizeof(char) * (length + 5));
+    s = (char*)malloc(sizeof(char) * (length + 5));
     strcpy(s,par->moldatfile[id]);
     strcat(s, ".dat");
     s[length+5]='\0';
     par->moldatfile[id]=s;
-    free(s);
   }
   
   size_t length1 = strlen(page);
   size_t length2 = strlen(par->moldatfile[id]);
-  char *s = (char*)malloc(sizeof(char) * (length1 + length2 + 1));
-  strcpy(s,page);
-  strcat(s, par->moldatfile[id]);
-  s[length1+length2+1]='\0';
-  page=s;
-  free(s);
+  t = (char*)malloc(sizeof(char) * (length1 + length2 + 1));
+  strcpy(t,page);
+  strcat(t, par->moldatfile[id]);
+  t[length1+length2+1]='\0';
+  page=t;
 
-  printf("%s\n", par->moldatfile[0]);
-
+  
   // Create socket (similar to open file)
   if((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0){
     if(!silent) bail_out("Can't create TCP socket");
@@ -87,7 +83,6 @@ openSocket(inputPars *par, int id){
   
   //fprintf(stderr, "Query is:\n<<START>>\n%s<<END>>\n", get);
   
-
   //Send the query to the server
   int sent = 0;
   while(sent < strlen(get))
@@ -99,10 +94,8 @@ openSocket(inputPars *par, int id){
     }
     sent += tmpres;
   }
-
-
-  memset(buf, 0, sizeof(buf));
   
+  memset(buf, 0, sizeof(buf));
   if((fp=fopen(par->moldatfile[id], "w"))==NULL) {
     if(!silent) bail_out("Failed to write moldata!");
     exit(1);
@@ -114,10 +107,8 @@ openSocket(inputPars *par, int id){
     if(flag) fprintf(fp,"%s",buf);
   }
 
-  
   free(get);
   free(remote);
   close(sock);
   fclose(fp);
-exit(0);
 }

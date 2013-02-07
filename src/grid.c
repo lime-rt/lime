@@ -310,8 +310,13 @@ getMass(inputPars *par, struct grid *g, const gsl_rng *ran){
         FOREACHneighbor_(vertex) {
           if (!neighbor->upperdelaunay) pts[i].vps++;
         }
-        pts[i].pt_array=malloc(DIM*sizeof(coordT)*pts[i].vps);
-        pts[i].flag=malloc(DIM*sizeof(int)*pts[i].vps);
+        if(pts[i].vps > 0){
+          pts[i].pt_array=malloc(DIM*sizeof(coordT)*pts[i].vps);
+          pts[i].flag=malloc(DIM*sizeof(int)*pts[i].vps);
+        } else {
+          if(!silent) bail_out("Qhull error");
+          exit(0);
+        }
         k=0;
         FOREACHneighbor_(vertex) {
           if (!neighbor->upperdelaunay) {
@@ -321,6 +326,9 @@ getMass(inputPars *par, struct grid *g, const gsl_rng *ran){
         }
       }
     }
+  } else {
+    if(!silent) bail_out("Qhull error");
+    exit(0);
   }
   qh_freeqhull(!qh_ALL);
   
@@ -369,13 +377,11 @@ getMass(inputPars *par, struct grid *g, const gsl_rng *ran){
 
 void
 buildGrid(inputPars *par, struct grid *g){
-  
-  double scale;				/* Parameter to distribute surface point 	*/
-  double lograd;				/* The logarithm of the model radius		*/
-  double logmin;				/* Logarithm of par->minScale				*/
+  double lograd;		/* The logarithm of the model radius		*/
+  double logmin;	    /* Logarithm of par->minScale				*/
   double r,theta,phi,x,y,z;	/* Coordinates								*/
   double temp,*abun;
-  int k=0,i;                  /* counters									*/
+  int k=0,i;            /* counters									*/
   int flag;
   
   gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */

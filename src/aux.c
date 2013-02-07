@@ -284,7 +284,7 @@ levelPops(molData *m, inputPars *par, struct grid *g){
         }
       }
       
-      median=malloc(sizeof(double)*c);
+      median=malloc(sizeof(double)*gsl_max(c,1));
       c=0;
       for(id=0;id<par->pIntensity;id++){
         for(ilev=0;ilev<m[0].nlev;ilev++){
@@ -304,6 +304,7 @@ levelPops(molData *m, inputPars *par, struct grid *g){
     } while(conv++<NITERATIONS);
   }
   gsl_rng_free(ran);
+  free(stat);
 }
 
 
