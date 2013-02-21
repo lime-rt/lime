@@ -18,7 +18,7 @@
 
 void
 stateq(int id, struct grid *g, molData *m, double *pstate, int ispec, inputPars *par){
-	int t,s,iter;
+	int t,s,iter,i;
 	double *opop, *oopop;
 	double diff;
 
@@ -26,6 +26,9 @@ stateq(int id, struct grid *g, molData *m, double *pstate, int ispec, inputPars 
 	gsl_matrix *reduc  = gsl_matrix_alloc(m[ispec].nlev, m[ispec].nlev);
 	gsl_vector *newpop = gsl_vector_alloc(m[ispec].nlev);
 	gsl_vector *oldpop = gsl_vector_alloc(m[ispec].nlev);
+    gsl_matrix *svv    = gsl_matrix_alloc(m[ispec].nlev, m[ispec].nlev);
+    gsl_vector *svs    = gsl_vector_alloc(m[ispec].nlev);
+    gsl_vector *work   = gsl_vector_alloc(m[ispec].nlev);
 	gsl_permutation *p = gsl_permutation_alloc (m[ispec].nlev);
 
 	opop	 = malloc(sizeof(double)*m[ispec].nlev);	
@@ -51,9 +54,13 @@ stateq(int id, struct grid *g, molData *m, double *pstate, int ispec, inputPars 
 		}
 		
 		gsl_linalg_LU_decomp(reduc,p,&s);
-		gsl_linalg_LU_solve(reduc,p,oldpop,newpop);
-
-		diff=0.;
+		if(gsl_linalg_LU_det(reduc,s) == 0){
+          gsl_linalg_SV_decomp(reduc,svv, svs, work);
+          gsl_linalg_SV_solve(reduc, svv, svs, oldpop, newpop);
+          if(!silent) warning("Matrix is singular. Switching to SVD.");
+        } else gsl_linalg_LU_solve(reduc,p,oldpop,newpop);
+		
+        diff=0.;
 		for(t=0;t<m[ispec].nlev;t++){
 			gsl_vector_set(newpop,t,gsl_max(gsl_vector_get(newpop,t),1e-30));
 			oopop[t]=opop[t];
@@ -77,69 +84,70 @@ stateq(int id, struct grid *g, molData *m, double *pstate, int ispec, inputPars 
 
 
 void 
-getmatrix(int id, gsl_matrix *matrix, molData *m, struct grid *g, int ispec)
-{
-	int p,t,k,l,ipart;
-	struct getmatrix {
-		double *ctot;
-		gsl_matrix * colli;
-	} *partner;	
+getmatrix(int id, gsl_matrix *matrix, molData *m, struct grid *g, int ispec){
+  int p,t,k,l,ipart;
+  struct getmatrix {
+    double *ctot;
+    gsl_matrix * colli;
+  } *partner;
+  
+  partner= malloc(sizeof(struct getmatrix)*m[ispec].npart);
+  
+  /* Initialize matrix with zeros */
+  for(ipart=0;ipart<m[ispec].npart;ipart++){
+    partner[ipart].colli = gsl_matrix_alloc(m[ispec].nlev+1,m[ispec].nlev+1);
+    partner[ipart].ctot  = malloc(sizeof(double)*m[ispec].nlev);
+    for(t=0;t<m[ispec].nlev+1;t++){
+      for(p=0;p<m[ispec].nlev+1;p++){
+        gsl_matrix_set(matrix, t, p, 0.);
+        gsl_matrix_set(partner[ipart].colli, t, p, 0.);
+      }
+    }
+  }
+  
+  /* Populate matrix with radiative transitions */
+  for(t=0;t<m[ispec].nline;t++){
+    k=m[ispec].lau[t];
+    l=m[ispec].lal[t];
+    gsl_matrix_set(matrix, k, k, gsl_matrix_get(matrix, k, k)+m[ispec].beinstu[t]*m[ispec].jbar[t]+m[ispec].aeinst[t]);
+    gsl_matrix_set(matrix, l, l, gsl_matrix_get(matrix, l, l)+m[ispec].beinstl[t]*m[ispec].jbar[t]);
+    gsl_matrix_set(matrix, k, l, gsl_matrix_get(matrix, k, l)-m[ispec].beinstl[t]*m[ispec].jbar[t]);
+    gsl_matrix_set(matrix, l, k, gsl_matrix_get(matrix, l, k)-m[ispec].beinstu[t]*m[ispec].jbar[t]-m[ispec].aeinst[t]);
+  }
+
+  /* Populate matrix with collisional transitions */
+  for(ipart=0;ipart<m[ispec].npart;ipart++){
+    for(t=0;t<m[ispec].ntrans[ipart];t++){
+      gsl_matrix_set(partner[ipart].colli, m[ispec].lcu[t], m[ispec].lcl[t], g[id].mol[ispec].partner[ipart].down[t]);
+      gsl_matrix_set(partner[ipart].colli, m[ispec].lcl[t], m[ispec].lcu[t], g[id].mol[ispec].partner[ipart].up[t]);
+    }
 	
-	partner= malloc(sizeof(struct getmatrix)*m[ispec].npart);
-	
-	
-	for(ipart=0;ipart<m[ispec].npart;ipart++){
-		partner[ipart].colli = gsl_matrix_alloc(m[ispec].nlev+1,m[ispec].nlev+1);
-		partner[ipart].ctot  = malloc(sizeof(double)*m[ispec].nlev);
-		for(t=0;t<m[ispec].nlev+1;t++){
-			for(p=0;p<m[ispec].nlev+1;p++){		
-				gsl_matrix_set(matrix, t, p, 0.); 
-				gsl_matrix_set(partner[ipart].colli, t, p, 0.); 
-			}
-		}
-	}
-	
-	for(t=0;t<m[ispec].nline;t++){
-		k=m[ispec].lau[t];
-		l=m[ispec].lal[t];
-		gsl_matrix_set(matrix, k, k, gsl_matrix_get(matrix, k, k)+m[ispec].beinstu[t]*m[ispec].jbar[t]+m[ispec].aeinst[t]); 
-		gsl_matrix_set(matrix, l, l, gsl_matrix_get(matrix, l, l)+m[ispec].beinstl[t]*m[ispec].jbar[t]); 
-		gsl_matrix_set(matrix, k, l, gsl_matrix_get(matrix, k, l)-m[ispec].beinstl[t]*m[ispec].jbar[t]); 
-		gsl_matrix_set(matrix, l, k, gsl_matrix_get(matrix, l, k)-m[ispec].beinstu[t]*m[ispec].jbar[t]-m[ispec].aeinst[t]); 
-	}
- 
-	for(ipart=0;ipart<m[ispec].npart;ipart++){	
-		for(t=0;t<m[ispec].ntrans[ipart];t++){
-			gsl_matrix_set(partner[ipart].colli, m[ispec].lcu[t], m[ispec].lcl[t], g[id].mol[ispec].partner[ipart].down[t]);
-			gsl_matrix_set(partner[ipart].colli, m[ispec].lcl[t], m[ispec].lcu[t], g[id].mol[ispec].partner[ipart].up[t]);
-		}
-	
-		for(p=0;p<m[ispec].nlev;p++){
-			partner[ipart].ctot[p]=0.;
-			for(t=0;t<m[ispec].nlev;t++) partner[ipart].ctot[p]+=gsl_matrix_get(partner[ipart].colli,p,t);
-		}
-	}
-	
-	for(p=0;p<m[ispec].nlev;p++){
-		for(ipart=0;ipart<m[ispec].npart;ipart++){	
-	  		gsl_matrix_set(matrix,p,p,gsl_matrix_get(matrix,p,p)+g[id].dens[ipart]*partner[ipart].ctot[p]);
-		}
-		for(t=0;t<m[ispec].nlev;t++){
-			if(p!=t){ 
-				for(ipart=0;ipart<m[ispec].npart;ipart++){	
-				  gsl_matrix_set(matrix,p,t,gsl_matrix_get(matrix,p,t)-g[id].dens[ipart]*gsl_matrix_get(partner[ipart].colli,t,p));
-			  	}
-			}	
-		}
-		gsl_matrix_set(matrix, m[ispec].nlev, p, 1.);
-		gsl_matrix_set(matrix, p, m[ispec].nlev, 0.);		
-	}
-	
-	for(ipart=0;ipart<m[ispec].npart;ipart++){
-		gsl_matrix_free(partner[ipart].colli);
-		free(partner[ipart].ctot);
-	}
-	free(partner);
+    for(p=0;p<m[ispec].nlev;p++){
+      partner[ipart].ctot[p]=0.;
+      for(t=0;t<m[ispec].nlev;t++) partner[ipart].ctot[p]+=gsl_matrix_get(partner[ipart].colli,p,t);
+    }
+  }
+
+  for(p=0;p<m[ispec].nlev;p++){
+    for(ipart=0;ipart<m[ispec].npart;ipart++){
+      gsl_matrix_set(matrix,p,p,gsl_matrix_get(matrix,p,p)+g[id].dens[ipart]*partner[ipart].ctot[p]);
+    }
+    for(t=0;t<m[ispec].nlev;t++){
+      if(p!=t){
+        for(ipart=0;ipart<m[ispec].npart;ipart++){
+          gsl_matrix_set(matrix,p,t,gsl_matrix_get(matrix,p,t)-g[id].dens[ipart]*gsl_matrix_get(partner[ipart].colli,t,p));
+        }
+      }
+    }
+    gsl_matrix_set(matrix, m[ispec].nlev, p, 1.);
+    gsl_matrix_set(matrix, p, m[ispec].nlev, 0.);
+  }
+  
+  for(ipart=0;ipart<m[ispec].npart;ipart++){
+    gsl_matrix_free(partner[ipart].colli);
+    free(partner[ipart].ctot);
+  }
+  free(partner);
 }
 
 
