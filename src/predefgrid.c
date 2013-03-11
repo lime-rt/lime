@@ -27,15 +27,15 @@ predefinedGrid(inputPars *par, struct grid *g){
   for(i=0;i<par->pIntensity;i++){
 //    fscanf(fp,"%d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &g[i].id, &g[i].x[0], &g[i].x[1], &g[i].x[2],  &g[i].dens[0], &g[i].t[0], &abun, &g[i].dopb, &g[i].vel[0], &g[i].vel[1], &g[i].vel[2]);
 //    fscanf(fp,"%d %lf %lf %lf %lf %lf %lf %lf\n", &g[i].id, &g[i].x[0], &g[i].x[1], &g[i].x[2],  &g[i].dens[0], &g[i].t[0], &abun, &g[i].dopb);
-    fscanf(fp,"%lf %lf %lf %lf %lf %lf %lf %lf\n", &g[i].x[0], &g[i].x[1], &g[i].x[2],  &g[i].dens[0], &g[i].t[0], &g[i].vel[0], &g[i].vel[1], &g[i].vel[2]);
-	g[i].id=i;
+    fscanf(fp,"%d %lf %lf %lf %lf %lf %lf %lf %lf\n", &g[i].id, &g[i].x[0], &g[i].x[1], &g[i].x[2],  &g[i].dens[0], &g[i].t[0], &g[i].vel[0], &g[i].vel[1], &g[i].vel[2]);
+    
     g[i].dopb=200;
-    abun=1e-9;
+    g[i].abun[0]=1e-9;
     
     
     g[i].sink=0;
 	g[i].t[1]=g[i].t[0];
-	g[i].nmol[0]=abun*g[i].dens[0];
+	g[i].nmol[0]=g[i].abun[0]*g[i].dens[0];
 		
 	/* This next step needs to be done, even though it looks stupid */
 	g[i].dir=malloc(sizeof(point)*1);

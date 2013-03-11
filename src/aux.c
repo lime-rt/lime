@@ -223,8 +223,8 @@ lineBlend(molData *m, inputPars *par, blend **matrix){
 
 void 
 levelPops(molData *m, inputPars *par, struct grid *g){
-  int id,conv=0,iter,ilev,prog=0,ispec,c=0;
-  double percent=0.,pstate,*median,result1=0,result2=0;
+  int id,conv=0,iter,ilev,prog=0,ispec,c=0,n;
+  double percent=0.,pstate,*median,result1=0,result2=0,snr;
   blend *matrix;
   struct statistics { double *pop, *ave, *sigma; } *stat;
   
@@ -254,7 +254,15 @@ levelPops(molData *m, inputPars *par, struct grid *g){
       for(iter=0;iter<5;iter++) stat[id].pop[ilev+m[0].nlev*iter]=g[id].mol[0].pops[ilev];
     }
   }
-  
+
+  if(par->outputfile) popsout(par,g,m);
+
+
+  /* Initialize convergence flag */
+  for(id=0;id<par->ncell;id++){
+    g[id].conv=0;
+  }
+
   if(par->lte_only==0){
     do{	
       if(!silent) progressbar2(prog++, 0, result1, result2);
@@ -272,7 +280,8 @@ levelPops(molData *m, inputPars *par, struct grid *g){
         }
         if(!silent) warning("");
         
-        
+        snr=0;
+        n=0;
         for(ilev=0;ilev<m[0].nlev;ilev++) {
           stat[id].ave[ilev]=0;
           for(iter=0;iter<5;iter++) stat[id].ave[ilev]+=stat[id].pop[ilev+m[0].nlev*iter];
@@ -281,7 +290,16 @@ levelPops(molData *m, inputPars *par, struct grid *g){
           for(iter=0;iter<5;iter++) stat[id].sigma[ilev]+=pow(stat[id].pop[ilev+m[0].nlev*iter]-stat[id].ave[ilev],2);
           stat[id].sigma[ilev]=sqrt(stat[id].sigma[ilev])/5.;
           if(g[id].mol[0].pops[ilev] > 1e-12) c++;
+         
+          if(g[id].mol[0].pops[ilev] > 1e-12 && stat[id].sigma[ilev] > 0.){
+           snr+=g[id].mol[0].pops[ilev]/stat[id].sigma[ilev];
+           n++;
+          } 
         }
+        if(n>0) snr=snr/n;
+        else if(n==0) snr=1e6;
+        if(snr > 3.) g[id].conv=2;
+        if(snr <= 3 && g[id].conv==2) g[id].conv=1;
       }
       
       median=malloc(sizeof(double)*gsl_max(c,1));

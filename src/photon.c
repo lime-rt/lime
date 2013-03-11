@@ -264,49 +264,35 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
 }
 
 
-
-void getjbar(int posn, molData *m, struct grid *g, inputPars *par){
-  int iline,iphot;	      
+void
+getjbar(int posn, molData *m, struct grid *g, inputPars *par){
+  int iline,iphot;
   double tau, snu, vsum=0., jnu, alpha;
   int *counta, *countb,nlinetot;
   
-  lineCount(par->nSpecies, m, &counta, &countb, &nlinetot);	
-
+  lineCount(par->nSpecies, m, &counta, &countb, &nlinetot);
+  
   for(iline=0;iline<m[0].nline;iline++) m[0].jbar[iline]=0.;
   for(iphot=0;iphot<g[posn].nphot;iphot++){
-	if(m[0].vfac[iphot]>0){
-	  for(iline=0;iline<m[0].nline;iline++){						
-		jnu=0.;
-		alpha=0.;
-        snu=0.;
-        tau=0.;
-
-		sourceFunc_line(&jnu,&alpha,m,m[0].vfac[iphot],g,posn,counta[iline],countb[iline]);
-		sourceFunc_cont(&jnu,&alpha,g,posn,counta[iline],countb[iline]);
-		if(fabs(alpha)>0.){
-		  snu=(jnu/alpha)*m[0].norminv;
-	  	  tau=alpha*m[0].ds[iphot];
-		}
-		m[0].jbar[iline]+=m[0].vfac[iphot]*(exp(-tau)*m[0].phot[iline+iphot*m[0].nline]+(1.-exp(-tau))*snu)*m[0].weight[iphot];
-        
-	  }
-	  vsum+=m[0].vfac[iphot]*m[0].weight[iphot];	
-	} else {
-	  for(iline=0;iline<m[0].nline;iline++){
-        jnu=0.;
-        alpha=0.;
-        snu=0.;
-        tau=0.;
+	
+    for(iline=0;iline<m[0].nline;iline++){
+      jnu=0.;
+      alpha=0.;
+      snu=0.;
+      tau=0.;
       
-        sourceFunc_cont(&jnu,&alpha,g,posn,counta[iline],countb[iline]);
-        if(fabs(alpha)>0.){
-          snu=(jnu/alpha)*m[0].norminv;
-          tau=alpha*m[0].ds[iphot];
-        }
-        m[0].jbar[iline]+=(exp(-tau)*m[0].phot[iline+iphot*m[0].nline]+(1.-exp(-tau))*snu)*m[0].weight[iphot];
+      if(m[0].vfac[iphot]>0)	sourceFunc_line(&jnu,&alpha,m,m[0].vfac[iphot],g,posn,counta[iline],countb[iline]);
+      sourceFunc_cont(&jnu,&alpha,g,posn,counta[iline],countb[iline]);
+      if(fabs(alpha)>0.){
+        snu=(jnu/alpha)*m[0].norminv;
+        tau=alpha*m[0].ds[iphot];
+        if(tau < -30) tau=-30;
       }
+      if(m[0].vfac[iphot]>0) m[0].jbar[iline]+=m[0].vfac[iphot]*(exp(-tau)*m[0].phot[iline+iphot*m[0].nline]+(1.-exp(-tau))*snu)*m[0].weight[iphot];
+      else m[0].jbar[iline]+=(exp(-tau)*m[0].phot[iline+iphot*m[0].nline]+(1.-exp(-tau))*snu)*m[0].weight[iphot];
     }
-  } 
+    vsum+=m[0].vfac[iphot]*m[0].weight[iphot];
+  }
   for(iline=0;iline<m[0].nline;iline++) m[0].jbar[iline]=m[0].norm*m[0].jbar[iline]/vsum;
   free(counta);
   free(countb);

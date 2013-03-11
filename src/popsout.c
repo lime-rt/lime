@@ -24,11 +24,11 @@ popsout(inputPars *par, struct grid *g, molData *m){
       if(!silent) bail_out("Error writing output populations file!");
       exit(1);
     }
-	fprintf(fp,"# Column definition: x, y, z, H2 density, kinetic gas temperature, molecular abundance, pops_0...pops_n\n"); 
+	fprintf(fp,"# Column definition: x, y, z, H2 density, kinetic gas temperature, molecular abundance, convergence flag, pops_0...pops_n\n"); 
 	for(j=0;j<par->ncell-par->sinkPoints;j++){
 	    dens=0.;
 	 	for(l=0;l<par->collPart;l++) dens+=g[j].dens[l];
-	    fprintf(fp,"%e %e %e %e %e %e ", g[j].x[0], g[j].x[1], g[j].x[2], dens, g[j].t[0], g[j].nmol[0]/dens);
+	    fprintf(fp,"%e %e %e %e %e %e %d ", g[j].x[0], g[j].x[1], g[j].x[2], dens, g[j].t[0], g[j].nmol[0]/dens, g[j].conv);
 		for(k=0;k<m[0].nlev;k++) fprintf(fp,"%e ",g[j].mol[0].pops[k]);
 		fprintf(fp,"\n");
 	}	

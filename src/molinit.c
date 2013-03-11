@@ -271,25 +271,23 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
     }
     
     for(id=0;id<par->ncell;id++){
-      if(g[id].nmol[i]>eps){
-        for(ipart=0;ipart<m[i].npart;ipart++){
-          for(itrans=0;itrans<m[i].ntrans[ipart];itrans++){
-            if((g[id].t[0]>part[ipart].temp[0])&&(g[id].t[0]<part[ipart].temp[ntemp[ipart]-1])){
-              for(itemp=0;itemp<ntemp[ipart]-1;itemp++){
-                if((g[id].t[0]>part[ipart].temp[itemp])&&(g[id].t[0]<=part[ipart].temp[itemp+1])){
-                  tnint=itemp;
-                }
+      for(ipart=0;ipart<m[i].npart;ipart++){
+        for(itrans=0;itrans<m[i].ntrans[ipart];itrans++){
+          if((g[id].t[0]>part[ipart].temp[0])&&(g[id].t[0]<part[ipart].temp[ntemp[ipart]-1])){
+            for(itemp=0;itemp<ntemp[ipart]-1;itemp++){
+              if((g[id].t[0]>part[ipart].temp[itemp])&&(g[id].t[0]<=part[ipart].temp[itemp+1])){
+                tnint=itemp;
               }
-              fac=(g[id].t[0]-part[ipart].temp[tnint])/(part[ipart].temp[tnint+1]-part[ipart].temp[tnint]);
-              downrate=part[ipart].colld[itrans*ntemp[ipart]+tnint]+fac*(part[ipart].colld[itrans*ntemp[ipart]+tnint+1]-part[ipart].colld[itrans*ntemp[ipart]+tnint]);
-            } else {
-              if(g[id].t[0]<=part[ipart].temp[0]) downrate=part[ipart].colld[itrans*ntemp[ipart]];
-              if(g[id].t[0]>=part[ipart].temp[ntemp[ipart]-1]) downrate=part[ipart].colld[itrans*ntemp[ipart]+ntemp[ipart]-1];
-            }				
-            uprate=m[i].gstat[m[i].lcu[itrans]]/m[i].gstat[m[i].lcl[itrans]]*downrate*exp(-HCKB*(m[i].eterm[m[i].lcu[itrans]]-m[i].eterm[m[i].lcl[itrans]])/g[id].t[0]);
-            g[id].mol[i].partner[ipart].up[itrans]=uprate;
-            g[id].mol[i].partner[ipart].down[itrans]=downrate;
+            }
+            fac=(g[id].t[0]-part[ipart].temp[tnint])/(part[ipart].temp[tnint+1]-part[ipart].temp[tnint]);
+            downrate=part[ipart].colld[itrans*ntemp[ipart]+tnint]+fac*(part[ipart].colld[itrans*ntemp[ipart]+tnint+1]-part[ipart].colld[itrans*ntemp[ipart]+tnint]);
+          } else {
+            if(g[id].t[0]<=part[ipart].temp[0]) downrate=part[ipart].colld[itrans*ntemp[ipart]];
+            if(g[id].t[0]>=part[ipart].temp[ntemp[ipart]-1]) downrate=part[ipart].colld[itrans*ntemp[ipart]+ntemp[ipart]-1];
           }
+          uprate=m[i].gstat[m[i].lcu[itrans]]/m[i].gstat[m[i].lcl[itrans]]*downrate*exp(-HCKB*(m[i].eterm[m[i].lcu[itrans]]-m[i].eterm[m[i].lcl[itrans]])/g[id].t[0]);
+          g[id].mol[i].partner[ipart].up[itrans]=uprate;
+          g[id].mol[i].partner[ipart].down[itrans]=downrate;
         }
       }
     }

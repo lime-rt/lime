@@ -101,6 +101,7 @@ struct grid {
 	double *w;
 	int sink;
 	int nphot;
+    int conv;
 	double *dens,t[2],*nmol,*abun,dopb,vr,vz,va,mfp,maxalpha;
 	double *pops,*ds;
 	struct populations { double * pops, *knu, *dust; double dopb, binv; struct rates *partner; } *mol;
