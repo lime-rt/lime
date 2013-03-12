@@ -89,7 +89,8 @@ getVelosplines_lin(inputPars *par, struct grid *g){
 	  g[i].a1=malloc(g[i].numNeigh*sizeof(double));		
 	  for(k=0;k<g[i].numNeigh;k++){
 		v[0]=veloproject(g[i].dir[k].xn,g[i].vel);
-		v[1]=veloproject(g[i].dir[k].xn,g[g[i].neigh[k]].vel);
+//		v[1]=veloproject(g[i].dir[k].xn,g[g[i].neigh[k]].vel);
+		v[1]=veloproject(g[i].dir[k].xn,g[i].neigh[k]->vel);
 		g[i].a1[k]=(v[0]-v[1])/(0-g[i].ds[k]);
 		g[i].a0[k]=v[0];
 	  }		

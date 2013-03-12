@@ -1,9 +1,9 @@
 /*
  *  lime.h
- *  LIME, The versatile 3D line modeling environment 
+ *  LIME, The versatile 3D line modeling environment
  *
  *  Created by Christian Brinch on 13/11/06.
- *  Copyright 2006-2013, Christian Brinch, 
+ *  Copyright 2006-2013, Christian Brinch,
  *  <brinch@nbi.dk>
  *  Niels Bohr institutet
  *  University of Copenhagen
@@ -12,12 +12,12 @@
  */
 
 #include <stdlib.h>
-#include <stdio.h> 
+#include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include <time.h>
 #include <gsl/gsl_matrix.h>
-#include <gsl/gsl_math.h>  
+#include <gsl/gsl_math.h>
 #include <gsl/gsl_spline.h>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_linalg.h>
@@ -25,7 +25,7 @@
 #define silent 0
 #define DIM 3
 
-/* Physical constants */ 
+/* Physical constants */
 #define PI			3.14159265358979323846
 #define SPI			1.77245385
 #define CLIGHT	    2.997924562e8
@@ -39,7 +39,7 @@
 #define maxp		0.15
 #define OtoP		3.
 #define GRAV		6.67428e-11
-	
+
 /* Other constants */
 #define NITERATIONS 	15
 #define max_phot		10000		/* don't set this value higher unless you have enough memory. */
@@ -50,88 +50,91 @@
 #define MAXITER			50
 #define gasIIdust		100
 #define goal			50
-#define fixset			1e-6 
+#define fixset			1e-6
 #define blendmask		1.e4
 
-	
+
 /* input parameters */
 typedef struct {
-	double radius,minScale,tcmb;
-	int ncell,sinkPoints,pIntensity,nImages,nSpecies,blend;
-	char *outputfile, *inputfile;
-	char *gridfile;
-	char *pregrid;
-	char *dust;
-	int sampling,collPart,lte_only,antialias,polarization;
-	char **moldatfile;
+  double radius,minScale,tcmb;
+  int ncell,sinkPoints,pIntensity,nImages,nSpecies,blend;
+  char *outputfile, *inputfile;
+  char *gridfile;
+  char *pregrid;
+  char *dust;
+  int sampling,collPart,lte_only,antialias,polarization;
+  char **moldatfile;
 } inputPars;
 
 /* Molecular data and radiation field */
 typedef struct {
-	int nlev,nline,*ntrans,npart;
-	int *lal,*lau,*lcl,*lcu;
-    double *aeinst,*freq,*beinstu,*beinstl,*up,*down,*eterm,*gstat;
-	double *jbar,norm,norminv,*cmb,*local_cmb;
-    double *phot, *ds, *vfac, *weight;
+  int nlev,nline,*ntrans,npart;
+  int *lal,*lau,*lcl,*lcu;
+  double *aeinst,*freq,*beinstu,*beinstl,*up,*down,*eterm,*gstat;
+  double *jbar,norm,norminv,*cmb,*local_cmb;
+  double *phot, *ds, *vfac, *weight;
 } molData;
 
-typedef struct { 
-  	double *intensity;
+typedef struct {
+  double *intensity;
 } surfRad;
 
 /* Point coordinate */
 typedef struct {
-	double x[3];
-	double xn[3];
+  double x[3];
+  double xn[3];
 } point;
 
-struct rates { 
-  double *up, *down; 
+struct rates {
+  double *up, *down;
 };
 
 /* Grid proporties */
 struct grid {
-	int id;
-	double x[3];
-	double vel[3];
-    double *a0,*a1,*a2,*a3,*a4;
-	int numNeigh;
-	point *dir;
-	int *neigh;
-	double *w;
-	int sink;
-	int nphot;
-    int conv;
-	double *dens,t[2],*nmol,*abun,dopb,vr,vz,va,mfp,maxalpha;
-	double *pops,*ds;
-	struct populations { double * pops, *knu, *dust; double dopb, binv; struct rates *partner; } *mol;
+  int id;
+  double x[3];
+  double vel[3];
+  double *a0,*a1,*a2,*a3,*a4;
+  int numNeigh;
+  point *dir;
+//  int *neigh;
+  
+  struct grid **neigh;
+  
+  double *w;
+  int sink;
+  int nphot;
+  int conv;
+  double *dens,t[2],*nmol,*abun,dopb,vr,vz,va,mfp,maxalpha;
+  double *pops,*ds;
+  struct populations { double * pops, *knu, *dust; double dopb, binv; struct rates *partner; } *mol;
 };
 
 typedef struct {
-	double *intense;
-	double *tau;
-	double stokes[3];
+  double *intense;
+  double *tau;
+  double stokes[3];
 } spec;
 
 /* Image information */
 typedef struct {
-	int doline;
-	int nchan,trans;
-	spec *pixel;	
-	double velres;
-	double imgres;
-	int pxls;
-	int unit;
-	double freq,bandwidth;
-	char *filename;
-	double source_vel;
-	double theta,phi;
-	double distance;
+  int doline;
+  int nchan,trans;
+  spec *pixel;
+  double velres;
+  double imgres;
+  int pxls;
+  int unit;
+  double freq,bandwidth;
+  char *filename;
+  double source_vel;
+  double theta,phi;
+  double distance;
 } image;
 
 typedef struct {
-  	int line1, line2;
-	double deltav;
+  int line1, line2;
+  double deltav;
 } blend;
 
 
@@ -212,7 +215,7 @@ void 	warning(char *);
 void	bail_out(char *);
 void    collpartmesg(char *, int);
 void    collpartmesg2(char *, int);
-void    collpartmesg3(int, int); 
+void    collpartmesg3(int, int);
 
 
 

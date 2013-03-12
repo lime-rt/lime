@@ -158,9 +158,9 @@ void old_raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img
           
           /* find distance to oposn's neighbors and possibly assign new closest neighbor */
           for(i=0;i<g[oposn].numNeigh;i++){
-            ndist=sqrt(pow(x[0]-g[g[oposn].neigh[i]].x[0],2)+pow(x[1]-g[g[oposn].neigh[i]].x[1],2)+pow(x[2]-g[g[oposn].neigh[i]].x[2],2));
+//            ndist=sqrt(pow(x[0]-g[g[oposn].neigh[i]].x[0],2)+pow(x[1]-g[g[oposn].neigh[i]].x[1],2)+pow(x[2]-g[g[oposn].neigh[i]].x[2],2));
             if (ndist<dist){
-              posn=g[g[oposn].neigh[i]].id;
+//              posn=g[g[oposn].neigh[i]].id;
               dist=ndist;
             }
           }

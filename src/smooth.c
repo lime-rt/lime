@@ -31,8 +31,9 @@ smooth(inputPars *par, struct grid *g){
         mindist=1e30;
         cn=-1;
         for(k=0;k<g[i].numNeigh;k++){
-          if(g[g[i].neigh[k]].sink==0){
-            if(g[i].ds[k]<mindist){
+//          if(g[g[i].neigh[k]].sink==0){
+          if(g[i].neigh[k]->sink==0){
+          if(g[i].ds[k]<mindist){
               mindist=g[i].ds[k];
               cn=k;
             }
@@ -56,14 +57,16 @@ smooth(inputPars *par, struct grid *g){
         mindist=1e30;
         cn=-1;
         for(k=0;k<g[i].numNeigh;k++){	
-          if(g[g[i].neigh[k]].sink==1){
-            if(g[i].ds[k]<mindist){
+//          if(g[g[i].neigh[k]].sink==1){
+          if(g[i].neigh[k]->sink==1){
+          if(g[i].ds[k]<mindist){
               mindist=g[i].ds[k];
               cn=k;
             }
           }
         }
-        j=g[g[i].neigh[cn]].id; 
+//        j=g[g[i].neigh[cn]].id;
+        j=g[i].neigh[cn]->id;
         for(k=0;k<DIM;k++){
           g[i].x[k] = g[i].x[k] - (g[j].x[k]-g[i].x[k]) * 0.15;;
         }			

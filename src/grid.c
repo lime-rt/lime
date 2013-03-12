@@ -68,12 +68,18 @@ qhull(inputPars *par, struct grid *g){
       id=qh_pointid(vertex->point);
 	  g[id].numNeigh=qh_setsize(vertex->neighbors);
 	  free(g[id].neigh);
-	  g[id].neigh=malloc(sizeof(int)*g[id].numNeigh);
+	
+      //linked list change
+//      g[id].neigh=malloc(sizeof(int)*g[id].numNeigh);
+      g[id].neigh=malloc(sizeof(struct grid)*g[id].numNeigh);
+      
 	  memset(g[id].neigh, 0, sizeof(int) * g[id].numNeigh);
 	  for(k=0;k<g[id].numNeigh;k++) {
-        g[id].neigh[k]=-1;
+//        g[id].neigh[k]=-1;
+        g[id].neigh[k]=NULL;
       }
     }
+    
 	/* Identify neighbors */
 	FORALLfacets {
 	  if (!facet->upperdelaunay) {
@@ -83,10 +89,12 @@ qhull(inputPars *par, struct grid *g){
 		  for(j=0;j<DIM+1;j++){
 			k=0;
 			if(i!=j){
-			  while(g[simplex[i]].neigh[k]>-1 && g[simplex[i]].neigh[k] != simplex[j]) {
-				k++;
+//			  while(g[simplex[i]].neigh[k]>-1 && g[simplex[i]].neigh[k] != simplex[j]) {
+			  while(g[simplex[i]].neigh[k] != NULL && g[simplex[i]].neigh[k]->id != g[simplex[j]].id) {
+                k++;
 			  }
-	  		  g[simplex[i]].neigh[k]=simplex[j];
+//	  		  g[simplex[i]].neigh[k]=simplex[j];
+              g[simplex[i]].neigh[k]=&g[simplex[j]];
 			}
 		  }
 		}
@@ -97,16 +105,17 @@ qhull(inputPars *par, struct grid *g){
 	exit(1);
   }
   
-  
   for(i=0;i<par->ncell;i++){
     j=0;
     for(k=0;k<g[i].numNeigh;k++){
-      if(g[i].neigh[k]>-1) j++;
+//      if(g[i].neigh[k]>-1) j++;
+      if(g[i].neigh[k] != NULL) j++;
     }
     g[i].numNeigh=j;
   }
   qh_freeqhull(!qh_ALL);
   free(pt_array);
+  
 }
 
 void
@@ -121,7 +130,8 @@ distCalc(inputPars *par, struct grid *g){
 	memset(g[i].dir, 0., sizeof(point) * g[i].numNeigh);
 	memset(g[i].ds, 0., sizeof(double) * g[i].numNeigh);
 	for(k=0;k<g[i].numNeigh;k++){
-	  for(l=0;l<3;l++) g[i].dir[k].x[l] = g[g[i].neigh[k]].x[l] - g[i].x[l];
+//	  for(l=0;l<3;l++) g[i].dir[k].x[l] = g[g[i].neigh[k]].x[l] - g[i].x[l];
+	  for(l=0;l<3;l++) g[i].dir[k].x[l] = g[i].neigh[k]->x[l] - g[i].x[l];
 	  g[i].ds[k]=sqrt(pow(g[i].dir[k].x[0],2)+pow(g[i].dir[k].x[1],2)+pow(g[i].dir[k].x[2],2));
 	  for(l=0;l<3;l++) g[i].dir[k].xn[l] = g[i].dir[k].x[l]/g[i].ds[k];
 	}
