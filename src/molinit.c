@@ -60,8 +60,8 @@ kappa(molData *m, struct grid *g, inputPars *par, int s){
         kappatab[j]=0.1*pow(10.,kaptab[i-2] + (loglam-lamtab[i-2]) * (kaptab[i-1]-kaptab[i-2])/(lamtab[i-1]-lamtab[i-2]));
       } else kappatab[j]=0.1*pow(10.,gsl_spline_eval(spline,loglam,acc));
     }
+    gsl_spline_free(spline);
     gsl_interp_accel_free(acc);
-    gsl_spline_free(spline);	
     free(kaptab);
     free(lamtab);
   }

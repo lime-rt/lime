@@ -22,7 +22,7 @@
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_linalg.h>
 
-#define silent 0
+#define silent 1
 #define DIM 3
 
 /* Physical constants */
@@ -41,7 +41,7 @@
 #define GRAV		6.67428e-11
 
 /* Other constants */
-#define NITERATIONS 	15
+#define NITERATIONS 	3
 #define max_phot		10000		/* don't set this value higher unless you have enough memory. */
 #define ininphot		9
 #define minpop			1.e-6
@@ -97,10 +97,7 @@ struct grid {
   double *a0,*a1,*a2,*a3,*a4;
   int numNeigh;
   point *dir;
-//  int *neigh;
-  
   struct grid **neigh;
-  
   double *w;
   int sink;
   int nphot;

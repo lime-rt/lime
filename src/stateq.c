@@ -74,10 +74,13 @@ stateq(int id, struct grid *g, molData *m, double *pstate, int ispec, inputPars 
 	}
 	if(diff>TOL) *pstate=diff;
 	gsl_matrix_free(matrix);
-	gsl_matrix_free(reduc);	
+	gsl_matrix_free(reduc);
+    gsl_matrix_free(svv);
 	gsl_vector_free(oldpop);
 	gsl_vector_free(newpop);
-	gsl_permutation_free(p);
+    gsl_vector_free(svs);
+    gsl_vector_free(work);
+    gsl_permutation_free(p);
 	free(opop);
 	free(oopop);
 }

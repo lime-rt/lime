@@ -323,6 +323,7 @@ levelPops(molData *m, inputPars *par, struct grid *g){
   }
   gsl_rng_free(ran);
   free(stat);
+  free(median);
 }
 
 

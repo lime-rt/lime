@@ -40,6 +40,7 @@ int main () {
   if(!silent) greetings();
   if(!silent) screenInfo();
 	
+  printf("hello world\n");
   parseInput(&par,&img,&m);
   gridAlloc(&par,&g);
 

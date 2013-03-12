@@ -53,7 +53,6 @@ line_plane_intersect(struct grid *g, double *ds, int posn, int *nposn, double *d
       newdist=numerator/denominator;
       if(newdist<*ds && newdist > 1e4){
         *ds=newdist;
-//        *nposn=g[posn].neigh[i];
         *nposn=g[posn].neigh[i]->id;
       }
 	}

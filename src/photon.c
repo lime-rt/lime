@@ -59,7 +59,6 @@ velocityspline(struct grid *g, int id, int k, double binv, double deltav, double
   double v1,v2,s1,s2,sd,v,vfacsub,d;
 	
   v1=deltav-veloproject(g[id].dir[k].xn,g[id].vel);
-//  v2=deltav-veloproject(g[id].dir[k].xn,g[g[id].neigh[k]].vel);
   v2=deltav-veloproject(g[id].dir[k].xn,g[id].neigh[k]->vel);
   
   nspline=(fabs(v1-v2)*binv < 1) ? 1 : (int)(fabs(v1-v2)*binv);
@@ -93,7 +92,6 @@ velocityspline_lin(struct grid *g, int id, int k, double binv, double deltav, do
   double v1,v2,s1,s2,sd,v,vfacsub,d;
 	
   v1=deltav-veloproject(g[id].dir[k].xn,g[id].vel);
-//  v2=deltav-veloproject(g[id].dir[k].xn,g[g[id].neigh[k]].vel);
   v2=deltav-veloproject(g[id].dir[k].xn,g[id].neigh[k]->vel);
   
   nspline=(fabs(v1-v2)*binv < 1) ? 1 : (int)(fabs(v1-v2)*binv);
@@ -172,7 +170,6 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
 
 	  	dir=sortangles(inidir,id,g,ran);
 		here=g[id].id;
-//		there=g[g[here].neigh[dir]].id;
 		there=g[here].neigh[dir]->id;
       deltav=segment*4.3*g[id].dopb+veloproject(g[id].dir[dir].xn,vel);
 
@@ -249,7 +246,6 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
 			
 	  	  dir=sortangles(inidir,there,g,ran);
 		  here=there;
-//		  there=g[g[here].neigh[dir]].id;
 		  there=g[here].neigh[dir]->id;
 		} while(!g[there].sink);
 		

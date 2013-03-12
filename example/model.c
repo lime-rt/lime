@@ -24,7 +24,7 @@ input(inputPars *par, image *img){
   par->minScale	   		= 0.5*AU;
   par->pIntensity    	= 4000;
   par->sinkPoints    	= 3000;
-  par->dust				= "jena_thin_e6.tab";
+//  par->dust				= "jena_thin_e6.tab";
   par->moldatfile[0] 	= "hco+@xpol.dat";
   par->antialias		= 8;
   par->sampling			= 0;
