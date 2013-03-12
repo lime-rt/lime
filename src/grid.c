@@ -143,6 +143,7 @@ write_VTK_unstructured_Points(inputPars *par, struct grid *g){
   facetT *facet;
   vertexT *vertex,**vertexp;
   coordT *pt_array;
+  int curlong, totlong;
   
   pt_array=malloc(sizeof(coordT)*DIM*par->ncell);
   
@@ -184,6 +185,7 @@ write_VTK_unstructured_Points(inputPars *par, struct grid *g){
     }
   }
   qh_freeqhull(!qh_ALL);
+  qh_memfreeshort (&curlong, &totlong);
   fprintf(fp,"\nCELL_TYPES %d\n",l);
   for(i=0;i<l;i++){
     fprintf(fp, "10\n");
@@ -212,7 +214,6 @@ write_VTK_unstructured_Points(inputPars *par, struct grid *g){
   
   fclose(fp);
   free(pt_array);
-  qh_freeqhull(!qh_ALL);
 }
 
 void
@@ -294,6 +295,7 @@ getMass(inputPars *par, struct grid *g, const gsl_rng *ran){
   facetT *facet, *neighbor, **neighborp;
   vertexT *vertex;
   coordT *pt_array;
+  int curlong, totlong;
   
   pts=malloc(sizeof(S)*par->pIntensity);
   pt_array=malloc(DIM*sizeof(coordT)*par->ncell);
@@ -334,6 +336,7 @@ getMass(inputPars *par, struct grid *g, const gsl_rng *ran){
     exit(0);
   }
   qh_freeqhull(!qh_ALL);
+  qh_memfreeshort (&curlong, &totlong);
   
   /* Calculate Voronoi volumes */
   sprintf(flags,"qhull ");
@@ -372,6 +375,7 @@ getMass(inputPars *par, struct grid *g, const gsl_rng *ran){
     free(farea);
   }
   qh_freeqhull(!qh_ALL);
+  qh_memfreeshort (&curlong, &totlong);
   free(pts);
   free(pt_array);
   if(!silent) quotemass(mass*2.37*1.67e-27/1.989e30);

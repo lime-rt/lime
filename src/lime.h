@@ -41,7 +41,7 @@
 #define GRAV		6.67428e-11
 
 /* Other constants */
-#define NITERATIONS 	3
+#define NITERATIONS 	15
 #define max_phot		10000		/* don't set this value higher unless you have enough memory. */
 #define ininphot		9
 #define minpop			1.e-6
