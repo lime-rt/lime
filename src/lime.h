@@ -22,7 +22,7 @@
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_linalg.h>
 
-#define silent 1
+#define silent 0
 #define DIM 3
 
 /* Physical constants */
