@@ -22,7 +22,7 @@
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_linalg.h>
 
-#define silent 0
+#define silent 1
 #define DIM 3
 
 /* Physical constants */
@@ -41,7 +41,7 @@
 #define GRAV		6.67428e-11
 
 /* Other constants */
-#define NITERATIONS 	15
+#define NITERATIONS 	3
 #define max_phot		10000		/* don't set this value higher unless you have enough memory. */
 #define ininphot		9
 #define minpop			1.e-6
@@ -61,6 +61,7 @@ typedef struct {
   char *outputfile, *inputfile;
   char *gridfile;
   char *pregrid;
+  char *restart;
   char *dust;
   int sampling,collPart,lte_only,antialias,polarization;
   char **moldatfile;
@@ -102,8 +103,8 @@ struct grid {
   int sink;
   int nphot;
   int conv;
-  double *dens,t[2],*nmol,*abun,dopb,vr,vz,va,mfp,maxalpha;
-  double *pops,*ds;
+  double *dens,t[2],*nmol,*abun, dopb;
+  double *ds;
   struct populations { double * pops, *knu, *dust; double dopb, binv; struct rates *partner; } *mol;
 };
 
@@ -147,6 +148,7 @@ void magfield(double,double,double,double *);
 
 /* More functions */
 
+void   	binpopsout(inputPars *, struct grid *, molData *);
 void   	buildGrid(inputPars *, struct grid *);
 void	continuumSetup(int, image *, molData *, inputPars *, struct grid *);
 void	distCalc(inputPars *, struct grid *);
@@ -177,7 +179,7 @@ void  	photon(int, struct grid *, molData *, int, const gsl_rng *,inputPars *,bl
 void	parseInput(inputPars *, image **, molData **);
 double 	planckfunc(int, double, molData *, int);
 int		pointEvaluation(inputPars *,double, double, double, double);
-void   	popsin(inputPars *, struct grid *, molData *);
+//void   	popsin(inputPars *, struct grid *, molData *, int *);
 void   	popsout(inputPars *, struct grid *, molData *);
 void	predefinedGrid(inputPars *, struct grid *);
 double 	ratranInput(char *, char *, double, double, double);

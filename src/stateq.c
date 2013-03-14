@@ -18,7 +18,7 @@
 
 void
 stateq(int id, struct grid *g, molData *m, double *pstate, int ispec, inputPars *par){
-	int t,s,iter,i;
+	int t,s,iter;
 	double *opop, *oopop;
 	double diff;
 

@@ -115,7 +115,10 @@ needs to be done with the fortran compiler. Modify the Makefile accordingly.
 ******************************************************************************  
 **   4. Changelog                                                           **
 ******************************************************************************
-1.24: LIME can now run multiple instances in the same directory.
+1.3:  LIME can now run multiple instances in the same directory. Grid data
+      structure has changed. A memory leak in qhull call has been closed. 
+      model.c no longer has to contain functions that are not needed.
+      LIME can be restarted from previously calculated populations.
 1.23: Includes a tcp client so that LIME can automatically download LAMDA
       files. Makefile and lime script improved. Semantic updates.
 1.22: Fixed a bug in the vtk output. Fixed a bug in the randomization of 

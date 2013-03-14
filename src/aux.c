@@ -29,6 +29,8 @@ parseInput(inputPars *par, image **img, molData **m){
   par->blend=0;
   par->antialias=1;
   par->polarization=0;
+  par->pIntensity=0;
+  par->sinkPoints=0;
   
   /* Allocate space for output fits images */
   (*img)=malloc(sizeof(image)*100);
@@ -70,13 +72,14 @@ parseInput(inputPars *par, image **img, molData **m){
     (*img)[i].bandwidth=-1.;
   }
   input(par,*img);
+  
   par->ncell=par->pIntensity+par->sinkPoints;
   
   /* Check if files exists */
   for(id=0;id<par->nSpecies;id++){
     if((fp=fopen(par->moldatfile[id], "r"))==NULL) {
       openSocket(par, id);
-    } 
+    }
   }
   if(par->dust != NULL){
     if((fp=fopen(par->dust, "r"))==NULL){
@@ -84,6 +87,7 @@ parseInput(inputPars *par, image **img, molData **m){
       exit(1);
     }
   }
+  
   
   
   
@@ -323,7 +327,6 @@ levelPops(molData *m, inputPars *par, struct grid *g){
   }
   gsl_rng_free(ran);
   free(stat);
-  free(median);
 }
 
 

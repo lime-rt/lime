@@ -13,11 +13,6 @@
 
 #include "lime.h"
 
-void
-magfield(double x, double y, double z, double *B){
-
-}
-
 
 void 
 fit_fi(double theta, double H0, double *val_FI){

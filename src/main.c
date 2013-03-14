@@ -36,27 +36,29 @@ int main () {
   par.outputfile= NULL;
   par.gridfile  = NULL;
   par.pregrid	= NULL;
+  par.restart   = NULL;
 
   if(!silent) greetings();
   if(!silent) screenInfo();
 	
-  printf("hello world\n");
   parseInput(&par,&img,&m);
   gridAlloc(&par,&g);
 
-  if(par.pregrid) predefinedGrid(&par,g); 
+  if(par.pregrid) predefinedGrid(&par,g);
+  else if(par.restart) popsin(&par,&g,&m,&popsdone);
   else buildGrid(&par,g);
-
+  
   for(i=0;i<par.nImages;i++){
     if(img[i].doline==1 && popsdone==0) {
       levelPops(m,&par,g);
+      binpopsout(&par,g,m);
       popsdone=1;
     }
     if(img[i].doline==0) {
       continuumSetup(i,img,m,&par,g);
     }
-		
-    raytrace(i,&par,g,m,img);			  	
+	
+    raytrace(i,&par,g,m,img);
     writefits(i,&par,m,img);
   }
   if(!silent) goodnight(initime,img[0].filename);
