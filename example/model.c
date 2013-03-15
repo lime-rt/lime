@@ -23,10 +23,10 @@ input(inputPars *par, image *img){
   par->radius			= 2000*AU;
   par->minScale	   		= 0.5*AU;
   par->pIntensity    	= 1000;
-  par->sinkPoints    	= 3000;
+  par->sinkPoints    	= 500;
 //  par->dust				= "jena_thin_e6.tab";
   par->moldatfile[0] 	= "hco+@xpol.dat";
-  par->antialias		= 8;
+  par->antialias		= 1;
   par->sampling			= 0;
 
   par->outputfile 		= "populations.pop";
@@ -38,7 +38,7 @@ input(inputPars *par, image *img){
   img[0].nchan			= 60;		  // Number of channels
   img[0].velres			= 500.;       // Channel resolution in m/s
   img[0].trans			= 3;          // zero-indexed J quantum number
-  img[0].pxls			= 101;	      // Pixels per dimension
+  img[0].pxls			= 1;	      // Pixels per dimension
   img[0].imgres			= 0.1;		  // Resolution in arc seconds
   img[0].theta			= 0.0;		  // 0: face-on, pi/2: edge-on
   img[0].distance		= 140*PC;	  // source distance in m

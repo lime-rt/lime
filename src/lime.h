@@ -179,7 +179,7 @@ void  	photon(int, struct grid *, molData *, int, const gsl_rng *,inputPars *,bl
 void	parseInput(inputPars *, image **, molData **);
 double 	planckfunc(int, double, molData *, int);
 int		pointEvaluation(inputPars *,double, double, double, double);
-//void   	popsin(inputPars *, struct grid *, molData *, int *);
+void   	popsin(inputPars *, struct grid **, molData **, int *);
 void   	popsout(inputPars *, struct grid *, molData *);
 void	predefinedGrid(inputPars *, struct grid *);
 double 	ratranInput(char *, char *, double, double, double);

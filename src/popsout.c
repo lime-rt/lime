@@ -59,9 +59,11 @@ binpopsout(inputPars *par, struct grid *g, molData *m){
     fwrite(m[i].lau,    sizeof(int)*m[i].nline,    1,fp);
     fwrite(m[i].aeinst, sizeof(double)*m[i].nline, 1,fp);
     fwrite(m[i].freq,   sizeof(double)*m[i].nline, 1,fp);
-    fwrite(m[i].beinstu,sizeof(double)*m[i].nline, 1,fp);
     fwrite(m[i].beinstl,sizeof(double)*m[i].nline, 1,fp);
+    fwrite(m[i].beinstu,sizeof(double)*m[i].nline, 1,fp);
     fwrite(m[i].local_cmb, sizeof(double)*m[i].nline,1,fp);
+    fwrite(&m[i].norm,  sizeof(double),1,fp);
+    fwrite(&m[i].norminv,sizeof(double),1,fp);
   }
   
   for(i=0;i<par->ncell;i++){

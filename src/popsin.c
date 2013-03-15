@@ -51,6 +51,8 @@ popsin(inputPars *par, struct grid **g, molData **m, int *popsdone){
     for(j=0;j<(*m)[i].nline;j++) fread(&(*m)[i].beinstu[j],sizeof(double), 1,fp);
     (*m)[i].local_cmb = malloc(sizeof(double)*(*m)[i].nline);
     for(j=0;j<(*m)[i].nline;j++) fread(&(*m)[i].local_cmb[j],sizeof(double), 1,fp);
+    fread(&(*m)[i].norm, sizeof(double),      1,fp);
+    fread(&(*m)[i].norminv, sizeof(double),   1,fp);
   }
   
   free(*g);

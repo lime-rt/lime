@@ -179,7 +179,7 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
                   sourceFunc_line(&jnu,&alpha,m,vfac,g,posn,counta[iline],countb[iline]);
                 }
               }
-
+              
               if(img[im].doline && img[im].trans > -1) sourceFunc_cont(&jnu,&alpha,g,posn,0,img[im].trans);
               else if(img[im].doline && img[im].trans == -1) sourceFunc_cont(&jnu,&alpha,g,posn,0,tmptrans);
               else sourceFunc_cont(&jnu,&alpha,g,posn,0,0);
@@ -189,8 +189,8 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
               }
               subintens[ichan]+=exp(-tau[ichan])*(1.-exp(-dtau))*snu;
               tau[ichan]+=dtau;
+
             }
-            
           }
 
           /* new coordinates */
@@ -202,7 +202,7 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
         /* add or subtract cmb */
         for(ichan=0;ichan<img[im].nchan;ichan++){
           subintens[ichan]+=(exp(-tau[ichan])-1.)*m[0].local_cmb[tmptrans];
-        }	
+        }
         
         for(ichan=0;ichan<img[im].nchan;ichan++){
           img[im].pixel[px].intense[ichan]+=subintens[ichan]/(double) par->antialias;
@@ -212,7 +212,7 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
     }
     if(!silent) progressbar((double)(px)/(double)(img[im].pxls*img[im].pxls-1), 13);
   }
-  
+
   img[im].trans=tmptrans;
   free(tau);
   free(subintens);
