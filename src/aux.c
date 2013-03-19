@@ -21,8 +21,16 @@ parseInput(inputPars *par, image **img, molData **m){
   FILE *fp;
   int i,id;
   double BB[3];
-  
-  /* Set default values */
+
+/* Set default values */
+  par->dust  	    = NULL;
+  par->inputfile    = NULL;
+  par->outputfile   = NULL;
+  par->binoutputfile= NULL;
+  par->gridfile     = NULL;
+  par->pregrid	    = NULL;
+  par->restart      = NULL;
+
   par->tcmb = 2.728;
   par->lte_only=0;
   par->sampling=0;
@@ -226,7 +234,7 @@ lineBlend(molData *m, inputPars *par, blend **matrix){
 }
 
 void 
-levelPops(molData *m, inputPars *par, struct grid *g){
+levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
   int id,conv=0,iter,ilev,prog=0,ispec,c=0,n;
   double percent=0.,pstate,*median,result1=0,result2=0,snr;
   blend *matrix;
@@ -327,6 +335,8 @@ levelPops(molData *m, inputPars *par, struct grid *g){
   }
   gsl_rng_free(ran);
   free(stat);
+  *popsdone=1;
+  if(par->binoutputfile) binpopsout(par,g,m);
 }
 
 

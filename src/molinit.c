@@ -18,7 +18,7 @@ kappa(molData *m, struct grid *g, inputPars *par, int s){
   FILE *fp;
   char string[80];
   int i=0,k,j,iline,id;
-  double loglam, *lamtab, *kaptab, *kappatab;
+  double loglam, *lamtab, *kaptab, *kappatab, gtd;
   gsl_spline *spline;
   gsl_interp_accel *acc=gsl_interp_accel_alloc();
   
@@ -67,8 +67,9 @@ kappa(molData *m, struct grid *g, inputPars *par, int s){
   }
   
   for(iline=0;iline<m[s].nline;iline++){
-    for(id=0;id<par->ncell;id++){  	
-      g[id].mol[s].knu[iline]=kappatab[iline]*2.4*AMU/gasIIdust*g[id].dens[0];
+    for(id=0;id<par->ncell;id++){
+      gasIIdust(g[id].x[0],g[id].x[1],g[id].x[2],&gtd);
+      g[id].mol[s].knu[iline]=kappatab[iline]*2.4*AMU/gtd*g[id].dens[0];
       //Check if input model supplies a dust temperature. Otherwise use the kinetic temperature 
       if(g[id].t[1]==-1) {
         g[id].mol[s].dust[iline]=planckfunc(iline,g[id].t[0],m,s);

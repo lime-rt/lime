@@ -30,14 +30,15 @@ int main () {
   inputPars	  par;
   struct grid *g;
   image		  *img;
-
-  par.dust  	= NULL;
-  par.inputfile = NULL;
-  par.outputfile= NULL;
-  par.gridfile  = NULL;
-  par.pregrid	= NULL;
-  par.restart   = NULL;
-
+/*
+  par.dust  	   = NULL;
+  par.inputfile    = NULL;
+  par.outputfile   = NULL;
+  par.binoutputfile= NULL;
+  par.gridfile     = NULL;
+  par.pregrid	   = NULL;
+  par.restart      = NULL;
+*/
   if(!silent) greetings();
   if(!silent) screenInfo();
 	
@@ -50,9 +51,7 @@ int main () {
   
   for(i=0;i<par.nImages;i++){
     if(img[i].doline==1 && popsdone==0) {
-      levelPops(m,&par,g);
-      binpopsout(&par,g,m);
-      popsdone=1;
+      levelPops(m,&par,g,&popsdone);
     }
     if(img[i].doline==0) {
       continuumSetup(i,img,m,&par,g);

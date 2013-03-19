@@ -22,7 +22,7 @@
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_linalg.h>
 
-#define silent 1
+#define silent 0
 #define DIM 3
 
 /* Physical constants */
@@ -41,14 +41,13 @@
 #define GRAV		6.67428e-11
 
 /* Other constants */
-#define NITERATIONS 	3
+#define NITERATIONS 	16
 #define max_phot		10000		/* don't set this value higher unless you have enough memory. */
 #define ininphot		9
 #define minpop			1.e-6
 #define eps				1.0e-30
 #define TOL				1e-6
 #define MAXITER			50
-#define gasIIdust		100
 #define goal			50
 #define fixset			1e-6
 #define blendmask		1.e4
@@ -58,7 +57,7 @@
 typedef struct {
   double radius,minScale,tcmb;
   int ncell,sinkPoints,pIntensity,nImages,nSpecies,blend;
-  char *outputfile, *inputfile;
+  char *outputfile, *binoutputfile, *inputfile;
   char *gridfile;
   char *pregrid;
   char *restart;
@@ -144,7 +143,7 @@ void abundance(double,double,double,double *);
 void doppler(double,double,double, double *);
 void velocity(double,double,double,double *);
 void magfield(double,double,double,double *);
-
+void gasIIdust(double,double,double,double *);
 
 /* More functions */
 
@@ -167,7 +166,7 @@ void	getVelosplines(inputPars *, struct grid *);
 void	getVelosplines_lin(inputPars *, struct grid *);
 void	gridAlloc(inputPars *, struct grid **);
 void   	kappa(molData *, struct grid *, inputPars *,int);
-void	levelPops(molData *, inputPars *, struct grid *);
+void	levelPops(molData *, inputPars *, struct grid *, int *);
 void	line_plane_intersect(struct grid *, double *, int , int *, double *, double *);
 void	lineBlend(molData *, inputPars *, blend **);
 void    lineCount(int,molData *,int **, int **, int *);

@@ -41,7 +41,7 @@ binpopsout(inputPars *par, struct grid *g, molData *m){
   FILE *fp;
   int i,j;
   
-  if((fp=fopen("test", "wb"))==NULL){
+  if((fp=fopen(par->binoutputfile, "wb"))==NULL){
     if(!silent) bail_out("Error writing binary output populations file!");
     exit(1);
   }

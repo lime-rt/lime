@@ -48,3 +48,8 @@ velocity(double x, double y, double z, double *vel){
 void __attribute__((weak))
 magfield(double x, double y, double z, double *B){
 }
+
+void __attribute__((weak))
+gasIIdust(double x, double y, double z, double *gas2dust){
+  *gas2dust=100.;
+}
