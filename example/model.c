@@ -39,7 +39,7 @@ input(inputPars *par, image *img){
   img[0].nchan			= 60;		  // Number of channels
   img[0].velres			= 500.;       // Channel resolution in m/s
   img[0].trans			= 3;          // zero-indexed J quantum number
-  img[0].pxls			= 1;	      // Pixels per dimension
+  img[0].pxls			= 100;	      // Pixels per dimension
   img[0].imgres			= 0.1;		  // Resolution in arc seconds
   img[0].theta			= 0.0;		  // 0: face-on, pi/2: edge-on
   img[0].distance		= 140*PC;	  // source distance in m

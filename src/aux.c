@@ -332,11 +332,11 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
       if(!silent) progressbar2(prog, percent, result1, result2);		
       if(par->outputfile) popsout(par,g,m);
     } while(conv++<NITERATIONS);
+    if(par->binoutputfile) binpopsout(par,g,m);
   }
   gsl_rng_free(ran);
   free(stat);
   *popsdone=1;
-  if(par->binoutputfile) binpopsout(par,g,m);
 }
 
 
