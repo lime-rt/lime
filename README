@@ -49,6 +49,10 @@ MacPorts has been installed, type in a terminal (as root or sudo)
     $> port install cfitsio
     $> port install gsl
 
+Alternatively, the library packages may be installed with Fink
+(http://www.finkproject.org). After Fink has been installed, type:
+
+    $> fink install qhull6.3.1-dev cfitsio gsl
 
 LINUX / UNIX / OSX (alternative)
 Download the sources from the following locations. Make sure to get the latest
