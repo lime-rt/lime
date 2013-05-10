@@ -7,7 +7,7 @@ LIBS	= -L${PREFIX}/lib \
           -L/opt/local/lib \
           -L/sw/lib
 
-INCLUDE	= -I${PREFIX}/include \
+CPPFLAGS	= -I${PREFIX}/include \
 		  -I${PREFIX}/src \
 		  -I${HOME}/include \
 		  -I/opt/local/include \
@@ -17,6 +17,7 @@ INCLUDE	= -I${PREFIX}/include \
 QHULL   = qhullstatic
 # For older qhull versions:
 #QHULL   = qhull
+#CPPFLAGS += -DQHULL_INC_QHULL
 
 
 
@@ -57,10 +58,10 @@ ${TARGET}: ${OBJS} ${MODELO}
 	${CC} -o $@ $^ ${LIBS} ${LDFLAGS}  
 
 ${MODELO}:  
-	${CC} ${CCFLAGS} ${INCLUDE} -o ${MODELO} -c ${MODELS} 
+	${CC} ${CCFLAGS} ${CPPFLAGS} -o ${MODELO} -c ${MODELS}
 
 ${OBJS}: %.o: %.c  
-	${CC} ${CCFLAGS} ${INCLUDE} -o $@ -c $< 
+	${CC} ${CCFLAGS} ${CPPFLAGS} -o $@ -c $<
 
 clean:: 
 	rm -f *~ src/*.o ${TARGET} 
