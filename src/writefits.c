@@ -11,7 +11,7 @@
  *
  */
 
-#include <cfitsio/fitsio.h>
+#include <fitsio.h>
 #include "lime.h"
 
 void 

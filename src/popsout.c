@@ -80,7 +80,10 @@ binpopsout(inputPars *par, struct grid *g, molData *m){
       fwrite(&g[i].mol[j].dopb, sizeof(double),           1, fp);
       fwrite(&g[i].mol[j].binv, sizeof(double),           1, fp);
     }
-  }
+    fwrite(&g[i].dens[0], sizeof(double), 1, fp);
+    fwrite(&g[i].t[0],    sizeof(double), 1, fp);
+    fwrite(&g[i].abun[0], sizeof(double), 1, fp);
+ }
   
   
   fclose(fp);

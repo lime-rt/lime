@@ -18,7 +18,8 @@ void
 popsin(inputPars *par, struct grid **g, molData **m, int *popsdone){
   FILE *fp;
   int i,j,k;
-  
+  double dummy;
+
   if((fp=fopen(par->restart, "rb"))==NULL){
     if(!silent) bail_out("Error writing binary output populations file!");
     exit(1);
@@ -77,6 +78,9 @@ popsin(inputPars *par, struct grid **g, molData **m, int *popsdone){
       fread(&(*g)[i].mol[j].dopb,sizeof(double), 1, fp);
       fread(&(*g)[i].mol[j].binv,sizeof(double), 1, fp);
     }
+    fread(&dummy, sizeof(double), 1, fp);
+    fread(&dummy, sizeof(double), 1, fp);
+    fread(&dummy, sizeof(double), 1, fp);
   }
   fclose(fp);
 
