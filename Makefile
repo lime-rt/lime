@@ -2,10 +2,19 @@
 ## Make sure to put the correct paths.
 ##
 PREFIX  =  ${PATHTOLIME}
-LIBS	= -L${PREFIX}/lib \
-		  -L${HOME}/lib \
-          -L/opt/local/lib \
-          -L/sw/lib
+
+ifneq (,$(wildcard ${PREFIX}/lib/.))
+    LIBS += -L${PREFIX}/lib
+endif
+ifneq (,$(wildcard ${HOME}/lib/.))
+    LIBS += -L${HOME}/lib
+endif
+ifneq (,$(wildcard /opt/local/lib/.))
+    LIBS += -L/opt/local/lib
+endif
+ifneq (,$(wildcard /sw/lib/.))
+    LIBS += -L/sw/lib
+endif
 
 CPPFLAGS	= -I${PREFIX}/include \
 		  -I${PREFIX}/src \
