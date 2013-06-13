@@ -15,6 +15,10 @@ endif
 ifneq (,$(wildcard /sw/lib/.))
     LIBS += -L/sw/lib
 endif
+ifneq (,$(wildcard /usr/local/lib/.))
+    LIBS += -L/usr/local/lib
+endif
+
 
 CPPFLAGS	= -I${PREFIX}/include \
 		  -I${PREFIX}/src \
