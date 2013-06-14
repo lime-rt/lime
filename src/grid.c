@@ -212,7 +212,11 @@ write_VTK_unstructured_Points(inputPars *par, struct grid *g){
   fprintf(fp,"VECTORS velocity float\n");
   for(i=0;i<par->ncell;i++){
     length=sqrt(pow(g[i].vel[0],2)+pow(g[i].vel[1],2)+pow(g[i].vel[2],2));
-    fprintf(fp, "%e %e %e\n", g[i].vel[0]/length,g[i].vel[1]/length,g[i].vel[2]/length);
+    if(length > 0.){
+      fprintf(fp, "%e %e %e\n", g[i].vel[0]/length,g[i].vel[1]/length,g[i].vel[2]/length);
+    } else {
+      fprintf(fp, "%e %e %e\n", g[i].vel[0],g[i].vel[1],g[i].vel[2]);
+    }
   }
   
   fclose(fp);
@@ -403,7 +407,7 @@ buildGrid(inputPars *par, struct grid *g){
   logmin=log10(par->minScale);
   
   /* Sample pIntensity number of points */
-  for(k=0;k<par->pIntensity;k++){
+ for(k=0;k<par->pIntensity;k++){
     temp=gsl_rng_uniform(ran);
     flag=0;
     /* Pick a point and check if we like it or not */
