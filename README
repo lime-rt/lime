@@ -121,6 +121,7 @@ needs to be done with the fortran compiler. Modify the Makefile accordingly.
 ******************************************************************************  
 **   4. Changelog                                                           **
 ******************************************************************************
+1.31: Bug was found and fixed in getJbar()
 1.3:  LIME can now run multiple instances in the same directory. Grid data
       structure has changed. A memory leak in qhull call has been closed. 
       model.c no longer has to contain functions that are not needed.
