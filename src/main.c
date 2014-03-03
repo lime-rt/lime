@@ -3,7 +3,7 @@
  *  LIME, The versatile 3D line modeling environment 
  *
  *  Created by Christian Brinch on 16/11/06.
- *  Copyright 2006-2013, Christian Brinch, 
+ *  Copyright 2006-2014, Christian Brinch, 
  *  <brinch@nbi.dk>
  *  Niels Bohr institutet
  *  University of Copenhagen
@@ -30,15 +30,7 @@ int main () {
   inputPars	  par;
   struct grid *g;
   image		  *img;
-/*
-  par.dust  	   = NULL;
-  par.inputfile    = NULL;
-  par.outputfile   = NULL;
-  par.binoutputfile= NULL;
-  par.gridfile     = NULL;
-  par.pregrid	   = NULL;
-  par.restart      = NULL;
-*/
+
   if(!silent) greetings();
   if(!silent) screenInfo();
 	
