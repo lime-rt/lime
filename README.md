@@ -53,7 +53,7 @@ Download the sources from the following locations. Make sure to get
 the latest versions.
 
 - [qhull](http://www.qhull.org/download/)
-- [cfitsio](ftp://heasarc.gsfc.nasa.gov/software/fitsio/c/)
+- [cfitsio](http://heasarc.gsfc.nasa.gov/fitsio/)
 - [gsl](http://www.gnu.org/software/gsl/)
 
 The GNU scientific library (GSL), is present on most modern Unix and
