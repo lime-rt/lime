@@ -60,7 +60,7 @@ OBJS    = src/aux.o src/curses.o src/grid.o src/LTEsolution.o   \
 MODELO 	= src/model.o
 
 CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing   
-LDFLAGS = -lgsl -lgslcblas -l${QHULL} -lcfitsio -lncurses -lm 
+LDFLAGS = -lgsl -lgslcblas -l${QHULL} -lcfitsio -lncurses -lm -lmatheval
 
 .SILENT:
 

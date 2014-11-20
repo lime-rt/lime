@@ -12,6 +12,7 @@
  */
 
 #include "lime.h"
+#include "matheval.h"
 
 /******************************************************************************/
 
@@ -55,16 +56,46 @@ density(double x, double y, double z, double *density){
 /*
  * Define variable for radial coordinate
  */
-  double r;
+//  double r;
 /* 
  * Calculate radial distance from origin
  */
-  r=sqrt(x*x+y*y+z*z);
+//  r=sqrt(x*x+y*y+z*z);
 /*
  * Calculate a spherical power-law density profile
  * (Multiply with 1e6 to go to SI-units)
  */
-  density[0] = 1.5e6*pow(r/(300*AU),-1.5)*1e6;
+//  density[0] = 1.5e6*pow(r/(300*AU),-1.5)*1e6;
+
+  void* f;
+  char **names;
+  int count;
+  char buffer [256] = "1.5*1e6*( ( sqrt( x^2+y^2+z^2 ) / 300*AU )^(-1.5) )*1e6";
+  f = evaluator_create (buffer);
+  evaluator_get_variables (f, &names, &count);
+  double values[count];
+  int i;
+  for( i = 0; i < count; i++)
+    {
+        if( strcmp( names[i] , "x" ) )
+          {
+            values[i] = x;
+          }
+        if( strcmp( names[i] , "y" ) )
+          {
+            values[i] = y;
+          }
+        if( strcmp( names[i] , "z" ) )
+          {
+            values[i] = z;
+          }
+        if( strcmp( names[i] , "AU" ) )
+          {
+            values[i] = AU;
+          }
+    }
+  density[0] = evaluator_evaluate( f, count, names, values );
+  evaluator_destroy (f);
 }
 
 /******************************************************************************/
