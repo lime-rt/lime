@@ -64,6 +64,7 @@ typedef struct {
   char *dust;
   int sampling,collPart,lte_only,antialias,polarization;
   char **moldatfile;
+  char* density_model_string;
 } inputPars;
 
 /* Molecular data and radiation field */
@@ -135,6 +136,7 @@ typedef struct {
 } blend;
 
 
+extern void* density_eval;
 
 /* Some functions */
 void density(double,double,double,double *);

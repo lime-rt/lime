@@ -21,13 +21,13 @@ input(inputPars *par, image *img){
 /*
  * Basic parameters. See cheat sheet for details.
  */
-  par->radius			= 2000*AU;
+  par->radius			= 1*AU;
   par->minScale	   		= 0.5*AU;
-  par->pIntensity    	= 4000;
-  par->sinkPoints    	= 3000;
-  par->dust				= "jena_thin_e6.tab";
+  par->pIntensity    	= 300;
+  par->sinkPoints    	= 200;
+  par->dust				= "../data/jena_thin_e6.tab";
   par->moldatfile[0] 	= "hco+@xpol.dat";
-  par->antialias		= 4;
+  par->antialias		= 0;
   par->sampling			= 0;
 
   par->outputfile 		= "populations.pop";
