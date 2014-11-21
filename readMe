@@ -1,0 +1,23 @@
+=== dependencies ===
+libgsl
+libm
+libcfitsio
+libcblas
+libcurses
+libqhull
+libmatheval
+cmake
+
+=== Input ===
+For now
+change ./src/model.c
+also   ./data/jena_thin_e6.tab is used in current model.c
+
+==== Compilation ===
+cd build
+cmake ../
+make
+
+=== Execution ===
+./lime
+
