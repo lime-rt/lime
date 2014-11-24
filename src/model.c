@@ -1,9 +1,9 @@
 /*
  *  model.c
- *  LIME, The versatile 3D line modeling tool 
+ *  LIME, The versatile 3D line modeling tool
  *
  *  Created by Christian Brinch on 11/05/07.
- *  Copyright 2006-2013, Christian Brinch, 
+ *  Copyright 2006-2013, Christian Brinch,
  *  <brinch@nbi.dk>
  *  Niels Bohr institutet
  *  University of Copenhagen
@@ -16,86 +16,217 @@
 
 /******************************************************************************/
 
-void
-input(inputPars *par, image *img){
-/*
- * Basic parameters. See cheat sheet for details.
- */
-  par->radius			= 1*AU;
-  par->minScale	   		= 0.5*AU;
-  par->pIntensity    	= 300;
-  par->sinkPoints    	= 200;
-  par->dust				= "../data/jena_thin_e6.tab";
-  par->moldatfile[0] 	= "hco+@xpol.dat";
-  par->antialias		= 0;
-  par->sampling			= 0;
+void* density_evaluator = NULL;
+void* velocity_evaluator = NULL;
+void* doppler_evaluator = NULL;
+void* abundance_evaluator = NULL;
 
-  par->outputfile 		= "populations.pop";
-  par->binoutputfile 	= "restart.pop";
-  par->gridfile			= "grid.vtk";
+int
+input(char* input_file, inputPars *par, image *img){
 
-/* 
- * Definitions for image #0. Add blocks for additional images.
- */
-  img[0].nchan			= 60;		  // Number of channels
-  img[0].velres			= 500.;       // Channel resolution in m/s
-  img[0].trans			= 3;          // zero-indexed J quantum number
-  img[0].pxls			= 100;	      // Pixels per dimension
-  img[0].imgres			= 0.1;		  // Resolution in arc seconds
-  img[0].theta			= 0.0;		  // 0: face-on, pi/2: edge-on
-  img[0].distance		= 140*PC;	  // source distance in m
-  img[0].source_vel		= 0;          // source velocity in m/s
-  img[0].unit			= 0;		  // 0:Kelvin 1:Jansky/pixel 2:SI 3:Lsun/pixel 4:tau
-  img[0].filename		= "image0.fits";	// Output filename
+  FILE *f;
+  char line[MAX_LINE];
+  char keyword[MAX_LINE];
+  char parameter[MAX_LINE];
+  char value[MAX_LINE];
+  int line_number = 0;
+  int i = 0, j = 0;
+  errno = 0;
+
+  /* Open the input file or exit if we can't open it. */
+  f = fopen (input_file, "r");
+  if (!f)
+    {
+      fprintf (stderr, "astrochem: error: Can't open %s: %s\n", input_file,
+               strerror (errno));
+      return EXIT_FAILURE;
+    }
+
+  /* Loop over the lines, and look for keywords (between brackets) and
+     parameters/values (separated by "="). */
+
+  while (fgets (line, MAX_LINE, f) != NULL)
+    {
+      line_number++;
+      if (line[0] == '#')
+        continue;               /* Skip comments */
+      if (sscanf (line, "[ %512[a-zA-Z] ]", keyword) == 1)
+        ;
+      else if (sscanf (line, "%s = %s", parameter, value) == 2)
+        {
+          if (strcmp (keyword, "input") == 0)
+            {
+              if (strcmp (parameter, "radius") == 0)
+                par->radius = strtof(value, NULL )*AU;
+              else if (strcmp (parameter, "minScale") == 0)
+                par->minScale = strtof(value, NULL)*AU;
+              else if (strcmp (parameter, "pIntensity") == 0)
+                par->pIntensity = strtol(value, NULL, 10 );
+              else if (strcmp (parameter, "sinkPoints") == 0)
+                par->sinkPoints = strtol(value, NULL, 10);
+              else if (strcmp (parameter, "tcmb") == 0)
+                par->tcmb = strtof(value, NULL);
+              else if (strcmp (parameter, "dust") == 0)
+                strcpy (par->dust, value);
+              else if (strcmp (parameter, "moldatfile") == 0)
+                strcpy (par->moldatfile[0], value);
+              else if (strcmp (parameter, "pregrid") == 0)
+                strcpy (par->pregrid, value);
+              else if (strcmp (parameter, "lte_only") == 0)
+                par->lte_only = strtol(value, NULL, 10);
+              else if (strcmp (parameter, "blend") == 0)
+                par->blend = strtol(value, NULL, 10);
+              else if (strcmp (parameter, "antialias") == 0)
+                par->antialias = strtol(value, NULL, 10);
+              else if (strcmp (parameter, "polarization") == 0)
+                par->polarization = strtol(value, NULL, 10);
+              else if (strcmp (parameter, "sampling") == 0)
+                par->sampling = strtol(value, NULL, 10);
+              else
+                {//TODO curses ?
+                  fprintf (stderr, "lime: error: incorrect input in %s line %i : unknow parameter %s\n",
+                           input_file, line_number, parameter );
+                  return EXIT_FAILURE;
+                }
+            }
+          else if (strcmp (keyword, "output") == 0)
+            {
+              if (strcmp (parameter, "outputfile") == 0)
+                strcpy (par->outputfile, value);
+              else if (strcmp (parameter, "binoutputfile") == 0)
+                strcpy (par->binoutputfile, value);
+              else if (strcmp (parameter, "gridfile") == 0)
+                strcpy (par->gridfile, value);
+              else
+                { //TODO Curses
+                  fprintf (stderr, "lime: error: incorrect input in %s line %i : unknow parameter %s\n",
+                           input_file, line_number, parameter );
+                  return EXIT_FAILURE;
+                }
+            }
+          else if (strcmp (keyword, "image") == 0)
+            {
+              if (strcmp (parameter, "nchan") == 0)
+                img[0].nchan = strtol( value , NULL, 10);
+              else if (strcmp (parameter, "phi") == 0)
+                img[0].phi = strtof( value, NULL );
+              else if (strcmp (parameter, "source_vel") == 0)
+                img[0].source_vel = strtof( value, NULL );
+              else if (strcmp (parameter, "freq") == 0)
+                img[0].freq = strtof( value, NULL );
+              else if (strcmp (parameter, "bandwidth") == 0)
+                img[0].bandwidth = strtof( value, NULL );
+              else if (strcmp (parameter, "velres") == 0)
+                img[0].velres = strtof( value, NULL );
+              else if (strcmp (parameter, "trans") == 0)
+                img[0].trans = strtol( value , NULL, 10);
+              else if (strcmp (parameter, "pxls") == 0)
+                img[0].pxls = strtol( value , NULL, 10);
+              else if (strcmp (parameter, "imgres") == 0)
+                img[0].imgres = strtof( value, NULL );
+              else if (strcmp (parameter, "theta") == 0)
+                img[0].theta = strtof( value, NULL );
+              else if (strcmp (parameter, "distance") == 0)
+                img[0].distance = strtof( value, NULL )*PC;
+              else if (strcmp (parameter, "unit") == 0)
+                img[0].unit = strtol( value , NULL, 10);
+              else if (strcmp (parameter, "filename") == 0)
+                strcpy (img[0].filename, value);
+              else
+                { //TODO Curses
+                  fprintf (stderr, "lime: error: incorrect input in %s line %i : unknow parameter %s\n",
+                           input_file, line_number, parameter );
+                  return EXIT_FAILURE;
+                }
+            }
+          else if (strcmp (keyword, "model") == 0)
+            {
+              if (strcmp (parameter, "density") == 0)
+                {
+                  if( density_evaluator != NULL )
+                    {
+                        evaluator_destroy ( density_evaluator );
+                    }
+                  density_evaluator = evaluator_create (value);
+                }
+              else if (strcmp (parameter, "doppler") == 0)
+                {
+                  if( doppler_evaluator != NULL )
+                    {
+                        evaluator_destroy ( doppler_evaluator );
+                    }
+                  doppler_evaluator = evaluator_create (value);
+                }
+              else if (strcmp (parameter, "abundance") == 0)
+                {
+                  if( abundance_evaluator != NULL )
+                    {
+                        evaluator_destroy ( abundance_evaluator );
+                    }
+                  abundance_evaluator = evaluator_create (value);
+                }
+              else if (strcmp (parameter, "velocity") == 0)
+                {
+                  if( velocity_evaluator != NULL )
+                    {
+                        evaluator_destroy ( velocity_evaluator );
+                    }
+                  velocity_evaluator = evaluator_create (value);
+                }
+
+
+              else
+                { //TODO Curses
+                  fprintf (stderr, "lime: error: incorrect input in %s line %i : unknow parameter %s\n",
+                           input_file, line_number, parameter );
+                  return EXIT_FAILURE;
+                }
+            }
+
+          /* Unknown or unspecified keyword */
+          else
+            {
+              fprintf (stderr, "lime: error: incorrect input in %s line %i : unknow keyword %s\n",
+                       input_file, line_number, keyword);
+              return EXIT_FAILURE;
+            }
+        }
+
+      /* Error while reading a parameter/values */
+
+      else
+        {
+          fprintf (stderr, "lime: error: incorrect input in %s line %i: Error while reading param = value \n",
+                   input_file, line_number);
+          return EXIT_FAILURE;
+        }
+    }
+
+  /* Close the file */
+
+  fclose (f);
 }
 
 /******************************************************************************/
 
-void
-density(double x, double y, double z, double *density){	
-/*
- * Define variable for radial coordinate
- */
-//  double r;
-/* 
- * Calculate radial distance from origin
- */
-//  r=sqrt(x*x+y*y+z*z);
-/*
- * Calculate a spherical power-law density profile
- * (Multiply with 1e6 to go to SI-units)
- */
-//  density[0] = 1.5e6*pow(r/(300*AU),-1.5)*1e6;
-
-  void* f;
-  char **names;
-  int count;
-  char buffer [256] = "1.5*1e6*( ( sqrt( x^2+y^2+z^2 ) / 300*AU )^(-1.5) )*1e6";
-  f = evaluator_create (buffer);
-  evaluator_get_variables (f, &names, &count);
-  double values[count];
-  int i;
-  for( i = 0; i < count; i++)
+void destroy_model_evaluator()
+{
+  if( density_evaluator != NULL )
     {
-        if( strcmp( names[i] , "x" ) )
-          {
-            values[i] = x;
-          }
-        if( strcmp( names[i] , "y" ) )
-          {
-            values[i] = y;
-          }
-        if( strcmp( names[i] , "z" ) )
-          {
-            values[i] = z;
-          }
-        if( strcmp( names[i] , "AU" ) )
-          {
-            values[i] = AU;
-          }
+      evaluator_destroy ( density_evaluator );
     }
-  density[0] = evaluator_evaluate( f, count, names, values );
-  evaluator_destroy (f);
+}
+
+void
+density(double x, double y, double z, double *density){
+  if( density_evaluator == NULL )
+    {
+      if(!silent) bail_out("Density is not defined in model.c but is needed by LIME!");
+    }
+  else
+    {
+      density[0]= evaluator_evaluate_x_y_z( density_evaluator, x, y, z);
+    }
 }
 
 /******************************************************************************/
@@ -104,31 +235,31 @@ void
 temperature(double x, double y, double z, double *temperature){
   int i,x0=0;
   double r;
-/* 
- * Array containing temperatures as a function of radial 
- * distance from origin (this is an example of a tabulated model)
- */
+  /*
+   * Array containing temperatures as a function of radial
+   * distance from origin (this is an example of a tabulated model)
+   */
   double temp[2][10] = {
-    {2.0e13, 5.0e13, 8.0e13, 1.1e14, 1.4e14, 1.7e14, 2.0e14, 2.3e14, 2.6e14, 2.9e14},
-	{44.777, 31.037, 25.718, 22.642, 20.560, 19.023, 17.826, 16.857, 16.050, 15.364}
+      {2.0e13, 5.0e13, 8.0e13, 1.1e14, 1.4e14, 1.7e14, 2.0e14, 2.3e14, 2.6e14, 2.9e14},
+      {44.777, 31.037, 25.718, 22.642, 20.560, 19.023, 17.826, 16.857, 16.050, 15.364}
   };
-/*
- * Calculate coordinate distance from origin
- */
+  /*
+   * Calculate coordinate distance from origin
+   */
   r=sqrt(x*x+y*y+z*z);
-/*
- * Linear interpolation in temperature input
- */
+  /*
+   * Linear interpolation in temperature input
+   */
   if(r > temp[0][0] && r<temp[0][9]){
     for(i=0;i<9;i++){
       if(r>temp[0][i] && r<temp[0][i+1]) x0=i;
     }
   }
-  if(r<temp[0][0]) 
+  if(r<temp[0][0])
     temperature[0]=temp[1][0];
-  else if (r>temp[0][9]) 
+  else if (r>temp[0][9])
     temperature[0]=temp[1][9];
-  else 
+  else
     temperature[0]=temp[1][x0]+(r-temp[0][x0])*(temp[1][x0+1]-temp[1][x0])/(temp[0][x0+1]-temp[0][x0]);
 }
 
@@ -136,48 +267,57 @@ temperature(double x, double y, double z, double *temperature){
 
 void
 abundance(double x, double y, double z, double *abundance){
-/* 
- * Here we use a constant abundance. Could be a 
- * function of (x,y,z).
- */
-  abundance[0] = 1.e-9;
+  if( abundance_evaluator == NULL )
+    {
+      if(!silent) bail_out("abundance is not defined in model.c but is needed by LIME!");
+    }
+  else
+    {
+      abundance[0]= evaluator_evaluate_x_y_z( abundance_evaluator, x, y, z);
+    }
 }
 
 /******************************************************************************/
 
 void
 doppler(double x, double y, double z, double *doppler){
-/* 
- * 200 m/s as the doppler b-parameter. This
- * can be a function of (x,y,z) as well.
- * Note that *doppler is a pointer, not an array. 
- * Remember the * in front of doppler.
- */
-  *doppler = 200.;
+  if( doppler_evaluator == NULL )
+    {
+      if(!silent) bail_out("doppler is not defined in model.c but is needed by LIME!");
+    }
+  else
+    {
+      *doppler= evaluator_evaluate_x_y_z( doppler_evaluator, x, y, z);
+    }
 }
 
 /******************************************************************************/
 
 void
 velocity(double x, double y, double z, double *vel){
-/*
- * Variables for spherical coordinates
- */
+  if( velocity_evaluator == NULL )
+    {
+      if(!silent) bail_out("velocity is not defined in model.c but is needed by LIME!");
+    }
+
+  /*
+   * Variables for spherical coordinates
+   */
   double R, phi,r,theta;
-/*
- * Transform Cartesian coordinates into spherical coordinates
- */
+  /*
+   * Transform Cartesian coordinates into spherical coordinates
+   */
   R=sqrt(x*x+y*y+z*z);
   theta=atan2(sqrt(x*x+y*y),z);
   phi=atan2(y,x);
-/*
- * Free-fall velocity in the radial direction onto a central 
- * mass of 1.0 solar mass
- */  
-  r=-sqrt(2*6.67e-11*1.989e30/R);
-/*
- * Vector transformation back into Cartesian basis
- */
+  /*
+   * Free-fall velocity in the radial direction onto a central
+   * mass of 1.0 solar mass
+   */
+   r= evaluator_evaluate_x( velocity_evaluator, R);
+  /*
+   * Vector transformation back into Cartesian basis
+   */
   vel[0]=r*sin(theta)*cos(phi);
   vel[1]=r*sin(theta)*sin(phi);
   vel[2]=r*cos(theta);

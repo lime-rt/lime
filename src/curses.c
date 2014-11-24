@@ -19,7 +19,9 @@ greetings(){
 #ifndef DEBUG
 	initscr();
 	printw("*** LIME, The versatile line modeling engine, Ver.1.31\n*** Copyright 2006--2014, Christian Brinch <brinch@nbi.dk>\n");
-	refresh();	
+	refresh();
+#else
+	printf("*** LIME, The versatile line modeling engine, Ver.1.31\n*** Copyright 2006--2014, Christian Brinch <brinch@nbi.dk>\n");
 #endif
 }
 
@@ -56,6 +58,8 @@ done(int line){
 #ifndef DEBUG
 	move(line,52); printw(" [ok]");
     refresh();
+#else
+    printf("[ok]");
 #endif
 }
 
@@ -68,6 +72,8 @@ progressbar(double percent, int line){
     printw("#");
   }
   refresh();
+#else
+//  printf("Doing stuff n° %i\n", line );
 #endif
 }
 

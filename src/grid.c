@@ -90,6 +90,15 @@ qhull(inputPars *par, struct grid *g){
             k=0;
             if(i!=j){
               while(g[simplex[i]].neigh[k] != NULL && g[simplex[i]].neigh[k]->id != g[simplex[j]].id) {
+/*                printf("%i %i\n", i, k+1 );
+                printf("%i \n", simplex[i] );
+                printf("%i \n", g[simplex[i]].numNeigh );
+                if( g[simplex[i]].neigh[k+1] != NULL )
+                    {
+                printf("n %f\n", g[simplex[i]].neigh[k+1] );
+                printf("n %f\n", g[simplex[i]].neigh[k+1]->id );
+                printf("n %f\n", g[simplex[j]].id );
+                }*/
                 k++;
               }
               g[simplex[i]].neigh[k]=&g[simplex[j]];
@@ -474,7 +483,7 @@ buildGrid(inputPars *par, struct grid *g){
   distCalc(par, g);
   smooth(par,g);
 
-  for(i=0;i<par->pIntensity;i++){
+  for(i=0;i<par->pIntensity + par->sinkPoints ;i++){ //TODO IS IT CORRECT ?
     density(g[i].x[0],g[i].x[1],g[i].x[2],g[i].dens);
     temperature(g[i].x[0],g[i].x[1],g[i].x[2],g[i].t);
     doppler(g[i].x[0],g[i].x[1],g[i].x[2],&g[i].dopb);	

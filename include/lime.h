@@ -52,19 +52,23 @@
 #define fixset			1e-6
 #define blendmask		1.e4
 
+#define MAX_LINE 512      /*!< Maximum number of characters in each input file line */
+
+typedef char filename_t [MAX_LINE];
 
 /* input parameters */
 typedef struct {
   double radius,minScale,tcmb;
   int ncell,sinkPoints,pIntensity,nImages,nSpecies,blend;
-  char *outputfile, *binoutputfile, *inputfile;
-  char *gridfile;
-  char *pregrid;
+  filename_t outputfile;
+  filename_t binoutputfile;
+  filename_t inputfile;
+  filename_t gridfile;
+  filename_t pregrid;
   char *restart;
-  char *dust;
+  filename_t dust;
   int sampling,collPart,lte_only,antialias,polarization;
-  char **moldatfile;
-  char* density_model_string;
+  filename_t* moldatfile;
 } inputPars;
 
 /* Molecular data and radiation field */
@@ -124,7 +128,7 @@ typedef struct {
   int pxls;
   int unit;
   double freq,bandwidth;
-  char *filename;
+  filename_t filename;
   double source_vel;
   double theta,phi;
   double distance;
@@ -152,11 +156,12 @@ void gasIIdust(double,double,double,double *);
 void   	binpopsout(inputPars *, struct grid *, molData *);
 void   	buildGrid(inputPars *, struct grid *);
 void	continuumSetup(int, image *, molData *, inputPars *, struct grid *);
+void    destroy_model_evaluator();
 void	distCalc(inputPars *, struct grid *);
 void	fit_d1fi(double, double, double*);
 void    fit_fi(double, double, double*);
 void    fit_rr(double, double, double*);
-void   	input(inputPars *, image *);
+int   	input(char* input_file, inputPars *, image *);
 float  	invSqrt(float);
 double 	gaussline(double, double);
 void    getArea(inputPars *, struct grid *, const gsl_rng *);

@@ -23,13 +23,15 @@ parseInput(inputPars *par, image **img, molData **m){
   double BB[3];
 
 /* Set default values */
-  par->dust  	    = NULL;
+/*  par->dust  	    = NULL;
   par->inputfile    = NULL;
   par->outputfile   = NULL;
   par->binoutputfile= NULL;
   par->gridfile     = NULL;
-  par->pregrid	    = NULL;
+  par->pregrid	    = NULL;*/
   par->restart      = NULL;
+
+  par->pregrid[0] = '\0';
 
   par->tcmb = 2.728;
   par->lte_only=0;
@@ -42,14 +44,14 @@ parseInput(inputPars *par, image **img, molData **m){
   
   /* Allocate space for output fits images */
   (*img)=malloc(sizeof(image)*100);
-  par->moldatfile=malloc(sizeof(char *) * 100);
+  par->moldatfile=malloc(sizeof( filename_t ) * 100);
   for(id=0;id<100;id++){
-    (*img)[id].filename=NULL;
-    par->moldatfile[id]=NULL;
+    (*img)[id].filename[0] = '\0';
+    par->moldatfile[id][0] = '\0';
   }
-  input(par, *img);
+  input("../doc/example/input.ini", par, *img);
   id=0;
-  while((*img)[++id].filename!=NULL);
+  while(strlen( (*img)[++id].filename ) != 0 );
   par->nImages=id;
   if(par->nImages==0) {
     if(!silent) bail_out("Error: no images defined");
@@ -62,11 +64,11 @@ parseInput(inputPars *par, image **img, molData **m){
   
   
   id=-1;
-  while(par->moldatfile[++id]!=NULL);
+  while( strlen( par->moldatfile[++id] ) != 0);
   par->nSpecies=id;
   
   free(par->moldatfile);
-  par->moldatfile=malloc(sizeof(char *)*par->nSpecies);
+  par->moldatfile=malloc(sizeof(filename_t)*par->nSpecies);
   
   
   /* Set defaults and read inputPars and img[] */
@@ -79,7 +81,7 @@ parseInput(inputPars *par, image **img, molData **m){
     (*img)[i].freq=-1.;
     (*img)[i].bandwidth=-1.;
   }
-  input(par,*img);
+  input("../doc/example/input.ini", par,*img);
   
   par->ncell=par->pIntensity+par->sinkPoints;
   

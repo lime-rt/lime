@@ -37,7 +37,7 @@ int main () {
   parseInput(&par,&img,&m);
   gridAlloc(&par,&g);
 
-  if(par.pregrid) predefinedGrid(&par,g);
+  if( strlen( par.pregrid ) != 0 ) predefinedGrid(&par,g);
   else if(par.restart) popsin(&par,&g,&m,&popsdone);
   else buildGrid(&par,g);
   
@@ -53,5 +53,6 @@ int main () {
     writefits(i,&par,m,img);
   }
   if(!silent) goodnight(initime,img[0].filename);
+  destroy_model_evaluator();
   return 0;
 }
