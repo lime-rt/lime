@@ -215,6 +215,18 @@ void destroy_model_evaluator()
     {
       evaluator_destroy ( density_evaluator );
     }
+  if( abundance_evaluator != NULL )
+    {
+      evaluator_destroy ( abundance_evaluator );
+    }
+  if( doppler_evaluator != NULL )
+    {
+      evaluator_destroy ( doppler_evaluator );
+    }
+  if( velocity_evaluator != NULL )
+    {
+      evaluator_destroy ( velocity_evaluator );
+    }
 }
 
 void
