@@ -34,7 +34,7 @@ stateq(int id, struct grid *g, molData *m, double *pstate, int ispec, inputPars 
 	opop	 = malloc(sizeof(double)*m[ispec].nlev);	
 	oopop	 = malloc(sizeof(double)*m[ispec].nlev);
 
-	for(t=0;t<m[ispec].nlev-1;t++){
+	for(t=0;t<m[ispec].nlev;t++){
 		opop[t]=0.;
 		oopop[t]=0.;
 		gsl_vector_set(oldpop,t,0.);

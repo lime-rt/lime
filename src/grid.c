@@ -474,7 +474,7 @@ buildGrid(inputPars *par, struct grid *g){
   distCalc(par, g);
   smooth(par,g);
   
-  for(i=0;i<par->pIntensity;i++){
+  for(i=0;i<par->pIntensity + par->sinkPoints;i++){
     density(g[i].x[0],g[i].x[1],g[i].x[2],g[i].dens);
     temperature(g[i].x[0],g[i].x[1],g[i].x[2],g[i].t);
     doppler(g[i].x[0],g[i].x[1],g[i].x[2],&g[i].dopb);	
