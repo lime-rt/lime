@@ -336,6 +336,11 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
     if(par->binoutputfile) binpopsout(par,g,m);
   }
   gsl_rng_free(ran);
+  for(id=0;id<par->pIntensity;id++){
+    free(stat[id].pop);
+    free(stat[id].ave);
+    free(stat[id].sigma);
+  }
   free(stat);
   *popsdone=1;
 }
