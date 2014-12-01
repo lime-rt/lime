@@ -156,6 +156,7 @@ void    fit_fi(double, double, double*);
 void    fit_rr(double, double, double*);
 void   	input(inputPars *, image *);
 float  	invSqrt(float);
+void    freeInput(inputPars *);
 double 	gaussline(double, double);
 void    getArea(inputPars *, struct grid *, const gsl_rng *);
 void    getjbar(int, molData *, struct grid *, inputPars *);

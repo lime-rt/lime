@@ -140,8 +140,14 @@ parseInput(inputPars *par, image **img, molData **m){
   /* Allocate moldata array */
   if(par->nSpecies > 1) (*m)=malloc(sizeof(molData)*par->nSpecies);
   else (*m)=malloc(sizeof(molData)*1);
-
 }
+
+void
+freeInput( inputPars *par )
+{
+  free(par->moldatfile);
+}
+
 
 
 float 
