@@ -56,10 +56,7 @@ parseInput(inputPars *par, image **img, molData **m){
     exit(1);
   }
   
-  free(*img);
-  *img=malloc(sizeof(image)*par->nImages);
-  
-  
+  *img=realloc(*img, sizeof(image)*par->nImages);
   
   id=-1;
   while(par->moldatfile[++id]!=NULL);
@@ -144,7 +141,7 @@ parseInput(inputPars *par, image **img, molData **m){
   /* Allocate moldata array */
   if(par->nSpecies > 1) (*m)=malloc(sizeof(molData)*par->nSpecies);
   else (*m)=malloc(sizeof(molData)*1);
-  
+
 }
 
 
