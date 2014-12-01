@@ -62,7 +62,7 @@ parseInput(inputPars *par, image **img, molData **m){
   while(par->moldatfile[++id]!=NULL);
   par->nSpecies=id;
   
-  par->moldatfile=realloc(sizeof(char *)*par->nSpecies);
+  par->moldatfile=realloc(par->moldatfile, sizeof(char *)*par->nSpecies);
   
   
   /* Set defaults and read inputPars and img[] */
