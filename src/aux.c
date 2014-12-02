@@ -89,11 +89,17 @@ parseInput(inputPars *par, image **img, molData **m){
     if((fp=fopen(par->moldatfile[id], "r"))==NULL) {
       openSocket(par, id);
     }
+    else {
+    fclose(fp);
+    }
   }
   if(par->dust != NULL){
     if((fp=fopen(par->dust, "r"))==NULL){
       if(!silent) bail_out("Error opening dust opacity data file!");
       exit(1);
+    }
+    else  {
+      fclose(fp);
     }
   }
   
