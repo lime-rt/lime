@@ -89,6 +89,13 @@ struct rates {
   double *up, *down;
 };
 
+  
+struct populations { 
+  double * pops, *knu, *dust; 
+  double dopb, binv; 
+  struct rates *partner; 
+};
+
 /* Grid proporties */
 struct grid {
   int id;
@@ -104,7 +111,7 @@ struct grid {
   int conv;
   double *dens,t[2],*nmol,*abun, dopb;
   double *ds;
-  struct populations { double * pops, *knu, *dust; double dopb, binv; struct rates *partner; } *mol;
+  struct populations* mol;
 };
 
 typedef struct {
@@ -157,6 +164,8 @@ void    fit_rr(double, double, double*);
 void   	input(inputPars *, image *);
 float  	invSqrt(float);
 void    freeInput(inputPars *, image* );
+void   	freeGrid(const inputPars * par, const molData* m, struct grid * g);
+void   	freePopulation(const inputPars * par, const molData* m, struct populations * pop);
 double 	gaussline(double, double);
 void    getArea(inputPars *, struct grid *, const gsl_rng *);
 void    getjbar(int, molData *, struct grid *, inputPars *);

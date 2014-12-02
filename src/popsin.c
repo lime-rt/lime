@@ -56,10 +56,22 @@ popsin(inputPars *par, struct grid **g, molData **m, int *popsdone){
     fread(&(*m)[i].norminv, sizeof(double),   1,fp);
   }
   
-  free(*g);
+  freeGrid(par, *m, *g);
   *g=malloc(sizeof(struct grid)*par->ncell);
   
   for(i=0;i<par->ncell;i++){
+    (*g)[i].a0 = NULL;
+    (*g)[i].a1 = NULL;
+    (*g)[i].a2 = NULL;
+    (*g)[i].a3 = NULL;
+    (*g)[i].a4 = NULL;
+    (*g)[i].dens = NULL;
+    (*g)[i].abun = NULL;
+    (*g)[i].nmol = NULL;
+    (*g)[i].dir = NULL;
+    (*g)[i].neigh = NULL;
+    (*g)[i].w = NULL;
+    (*g)[i].ds = NULL;
     fread(&(*g)[i].id, sizeof (*g)[i].id, 1, fp);
     fread(&(*g)[i].x, sizeof (*g)[i].x, 1, fp);
     fread(&(*g)[i].vel, sizeof (*g)[i].vel, 1, fp);
@@ -77,6 +89,7 @@ popsin(inputPars *par, struct grid **g, molData **m, int *popsdone){
       for(k=0;k<(*m)[j].nline;k++) fread(&(*g)[i].mol[j].dust[k],sizeof(double), 1, fp);
       fread(&(*g)[i].mol[j].dopb,sizeof(double), 1, fp);
       fread(&(*g)[i].mol[j].binv,sizeof(double), 1, fp);
+      (*g)[i].mol[j].partner=NULL;
     }
     fread(&dummy, sizeof(double), 1, fp);
     fread(&dummy, sizeof(double), 1, fp);

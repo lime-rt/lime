@@ -179,9 +179,12 @@ continuumSetup(int im, image *img, molData *m, inputPars *par, struct grid *g){
   m[0].freq= malloc(sizeof(double));
   m[0].freq[0]=img[im].freq;
   for(id=0;id<par->ncell;id++) {
+    freePopulation( par, m, g[id].mol );
     g[id].mol=malloc(sizeof(struct populations)*1);	
     g[id].mol[0].dust = malloc(sizeof(double)*m[0].nline);
     g[id].mol[0].knu  = malloc(sizeof(double)*m[0].nline);
+    g[id].mol[0].pops = NULL;
+    g[id].mol[0].partner = NULL;
   } 
   if(par->outputfile) popsout(par,g,m);
   kappa(m,g,par,0);
@@ -254,7 +257,16 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
   stat=malloc(sizeof(struct statistics)*par->pIntensity);
   
   for(id=0;id<par->ncell;id++) {
-    g[id].mol=malloc(sizeof(struct populations)*par->nSpecies);	
+    freePopulation( par, m, g[id].mol );
+    g[id].mol=malloc(sizeof(struct populations)*par->nSpecies);
+    int i;
+    for( i=0; i<par->nSpecies; i++ )
+      {
+        g[id].mol[i].dust = NULL;
+        g[id].mol[i].knu  = NULL;
+        g[id].mol[i].pops = NULL;
+        g[id].mol[i].partner = NULL;
+      }
   } 	
   
   /* Random number generator */
