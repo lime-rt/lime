@@ -52,7 +52,7 @@ int main () {
     raytrace(i,&par,g,m,img);
     writefits(i,&par,m,img);
   }
-  freeInput(&par);
+  freeInput(&par, img);
 
   if(!silent) goodnight(initime,img[0].filename);
   return 0;
