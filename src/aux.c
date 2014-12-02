@@ -313,6 +313,7 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
           photon(id,g,m,0,ran,par,matrix);
           for(ispec=0;ispec<par->nSpecies;ispec++) stateq(id,g,m,&pstate,ispec,par);
         }
+        if(!silent) warning("");
         
         snr=0;
         n=0;
