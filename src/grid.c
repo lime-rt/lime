@@ -577,6 +577,7 @@ buildGrid(inputPars *par, struct grid *g){
     g[k].x[1]=par->radius*y;
     g[k].x[2]=par->radius*z;
     g[k].sink=1;
+    g[k].abun[0]=0;
     g[k].dens[0]=1e-30;
     g[k].t[0]=par->tcmb;
     g[k].t[1]=par->tcmb;
@@ -588,7 +589,7 @@ buildGrid(inputPars *par, struct grid *g){
   distCalc(par, g);
   smooth(par,g);
   
-  for(i=0;i<par->pIntensity + par->sinkPoints;i++){
+  for(i=0;i<par->pIntensity;i++){
     density(g[i].x[0],g[i].x[1],g[i].x[2],g[i].dens);
     temperature(g[i].x[0],g[i].x[1],g[i].x[2],g[i].t);
     doppler(g[i].x[0],g[i].x[1],g[i].x[2],&g[i].dopb);	
