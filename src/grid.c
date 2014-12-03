@@ -181,7 +181,10 @@ qhull(inputPars *par, struct grid *g){
     FORALLvertices {
       id=qh_pointid(vertex->point);
 	  g[id].numNeigh=qh_setsize(vertex->neighbors);
-	  free(g[id].neigh);
+          if(  g[id].neigh != NULL )
+            {
+              free( g[id].neigh );
+            }
       g[id].neigh=malloc(sizeof(struct grid)*g[id].numNeigh);
 	  memset(g[id].neigh, 0, sizeof(int) * g[id].numNeigh);
 	  for(k=0;k<g[id].numNeigh;k++) {
@@ -229,8 +232,14 @@ distCalc(inputPars *par, struct grid *g){
   int i,k,l;
   
   for(i=0;i<par->ncell;i++){
-    free(g[i].dir);
-	free(g[i].ds);
+        if( g[i].dir != NULL )
+          {
+            free( g[i].dir );
+          }
+        if( g[i].ds != NULL )
+          {
+            free( g[i].ds );
+          }
 	g[i].dir=malloc(sizeof(point)*g[i].numNeigh);
 	g[i].ds =malloc(sizeof(double)*g[i].numNeigh);
 	memset(g[i].dir, 0., sizeof(point) * g[i].numNeigh);
@@ -551,10 +560,6 @@ buildGrid(inputPars *par, struct grid *g){
     else g[k].x[2]=0.;
     
     g[k].sink=0;
-    /* This next step needs to be done, even though it looks stupid */
-    g[k].dir=malloc(sizeof(point)*1);
-    g[k].ds =malloc(sizeof(point)*1);
-    g[k].neigh =malloc(sizeof(int)*1);
     if(!silent) progressbar((double) k/((double)par->pIntensity-1), 4);
   }
   /* end model grid point assignment */
