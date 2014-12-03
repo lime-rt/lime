@@ -41,9 +41,9 @@ parseInput(inputPars *par, image **img, molData **m){
   par->sinkPoints=0;
   
   /* Allocate space for output fits images */
-  (*img)=malloc(sizeof(image)*100);
-  par->moldatfile=malloc(sizeof(char *) * 100);
-  for(id=0;id<100;id++){
+  (*img)=malloc(sizeof(image)*MAX_NSPECIES);
+  par->moldatfile=malloc(sizeof(char *) * MAX_NSPECIES);
+  for(id=0;id<MAX_NSPECIES;id++){
     (*img)[id].filename=NULL;
     par->moldatfile[id]=NULL;
   }
