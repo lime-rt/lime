@@ -18,7 +18,7 @@ predefinedGrid(inputPars *par, struct grid *g){
   FILE *fp;
   int i;
   double x,y,z,scale,abun;
-  const gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);
+  gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);
   gsl_rng_set(ran,time(0));
 	
   fp=fopen(par->pregrid,"r");
@@ -28,7 +28,7 @@ predefinedGrid(inputPars *par, struct grid *g){
 //    fscanf(fp,"%d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &g[i].id, &g[i].x[0], &g[i].x[1], &g[i].x[2],  &g[i].dens[0], &g[i].t[0], &abun, &g[i].dopb, &g[i].vel[0], &g[i].vel[1], &g[i].vel[2]);
 //    fscanf(fp,"%d %lf %lf %lf %lf %lf %lf %lf\n", &g[i].id, &g[i].x[0], &g[i].x[1], &g[i].x[2],  &g[i].dens[0], &g[i].t[0], &abun, &g[i].dopb);
       int nRead = fscanf(fp,"%d %lf %lf %lf %lf %lf %lf %lf %lf\n", &g[i].id, &g[i].x[0], &g[i].x[1], &g[i].x[2],  &g[i].dens[0], &g[i].t[0], &g[i].vel[0], &g[i].vel[1], &g[i].vel[2]);
-      if( nRead != 9 )
+      if( nRead != 9 || g[i].id < 0 || g[i].id > par->ncell)
       {
           if(!silent) bail_out("Reading Grid File error");
           exit(0);
@@ -71,4 +71,5 @@ predefinedGrid(inputPars *par, struct grid *g){
 //  getMass(par,g, ran);
   getVelosplines_lin(par,g);
   if(par->gridfile) write_VTK_unstructured_Points(par, g);
+  gsl_rng_free(ran);
 }
