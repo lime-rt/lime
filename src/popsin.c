@@ -25,6 +25,7 @@ popsin(inputPars *par, struct grid **g, molData **m, int *popsdone){
     exit(1);
   }
 
+  par->collPart=1;
   fread(&par->radius,   sizeof(double), 1, fp);
   fread(&par->ncell,    sizeof(int), 1, fp);
   fread(&par->nSpecies, sizeof(int), 1, fp);
@@ -76,7 +77,6 @@ popsin(inputPars *par, struct grid **g, molData **m, int *popsdone){
     fread(&(*m)[i].norminv, sizeof(double),   1,fp);
   }
 
-  freeGrid(par, *m, *g);
   *g=malloc(sizeof(struct grid)*par->ncell);
 
   for(i=0;i<par->ncell;i++){

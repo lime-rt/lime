@@ -99,61 +99,64 @@ freePopulation(const inputPars *par, const molData* m, struct populations* pop )
 void
 freeGrid(const inputPars *par, const molData* m ,struct grid* g){
   int i,j;
-  for(i=0;i<(par->pIntensity+par->sinkPoints); i++){
-    if(g[i].a0 != NULL)
-      {
-        free(g[i].a0);
+  if( g != NULL )
+    {
+      for(i=0;i<(par->pIntensity+par->sinkPoints); i++){
+        if(g[i].a0 != NULL)
+          {
+            free(g[i].a0);
+          }
+        if(g[i].a1 != NULL)
+          {
+            free(g[i].a1);
+          }
+        if(g[i].a2 != NULL)
+          {
+            free(g[i].a2);
+          }
+        if(g[i].a3 != NULL)
+          {
+            free(g[i].a3);
+          }
+        if(g[i].a4 != NULL)
+          {
+            free(g[i].a4);
+          }
+        if(g[i].dir != NULL)
+          {
+            free(g[i].dir);
+          }
+        if(g[i].neigh != NULL)
+          {
+            free(g[i].neigh);
+          }
+        if(g[i].w != NULL)
+          {
+            free(g[i].w);
+          }
+        if(g[i].dens != NULL)
+          {
+            free(g[i].dens);
+          }
+        if(g[i].nmol != NULL)
+          {
+            free(g[i].nmol);
+          }
+        if(g[i].abun != NULL)
+          {
+            free(g[i].abun);
+          }
+        if(g[i].ds != NULL)
+          {
+            free(g[i].ds);
+          }
+        if(g[i].mol != NULL)
+          {
+            freePopulation( par, m, g[i].mol );
+          }
       }
-    if(g[i].a1 != NULL)
-      {
-        free(g[i].a1);
-      }
-    if(g[i].a2 != NULL)
-      {
-        free(g[i].a2);
-      }
-    if(g[i].a3 != NULL)
-      {
-        free(g[i].a3);
-      }
-    if(g[i].a4 != NULL)
-      {
-        free(g[i].a4);
-      }
-    if(g[i].dir != NULL)
-      {
-        free(g[i].dir);
-      }
-    if(g[i].neigh != NULL)
-      {
-        free(g[i].neigh);
-      }
-    if(g[i].w != NULL)
-      {
-        free(g[i].w);
-      }
-    if(g[i].dens != NULL)
-      {
-        free(g[i].dens);
-      }
-    if(g[i].nmol != NULL)
-      {
-        free(g[i].nmol);
-      }
-    if(g[i].abun != NULL)
-      {
-        free(g[i].abun);
-      }
-    if(g[i].ds != NULL)
-      {
-        free(g[i].ds);
-      }
-    if(g[i].mol != NULL)
-      {
-        freePopulation( par, m, g[i].mol );
-      }
-  }
-  free(g);
+      free(g);
+    }
 }
 
 void

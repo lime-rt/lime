@@ -26,19 +26,19 @@ int main () {
   int i;
   int initime=time(0);
   int popsdone=0;
-  molData	  *m;
-  inputPars	  par;
-  struct grid *g;
-  image		  *img;
+  molData*     m = NULL;
+  inputPars    par;
+  struct grid* g = NULL;
+  image*       img = NULL;
 
   if(!silent) greetings();
   if(!silent) screenInfo();
 
   parseInput(&par,&img,&m);
-  gridAlloc(&par,&g);
 
   if(par.pregrid)
     {
+      gridAlloc(&par,&g);
       predefinedGrid(&par,g);
     }
   else if(par.restart)
@@ -47,6 +47,7 @@ int main () {
     }
   else
     {
+      gridAlloc(&par,&g);
       buildGrid(&par,g);
     }
 
