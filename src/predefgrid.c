@@ -27,7 +27,12 @@ predefinedGrid(inputPars *par, struct grid *g){
   for(i=0;i<par->pIntensity;i++){
 //    fscanf(fp,"%d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &g[i].id, &g[i].x[0], &g[i].x[1], &g[i].x[2],  &g[i].dens[0], &g[i].t[0], &abun, &g[i].dopb, &g[i].vel[0], &g[i].vel[1], &g[i].vel[2]);
 //    fscanf(fp,"%d %lf %lf %lf %lf %lf %lf %lf\n", &g[i].id, &g[i].x[0], &g[i].x[1], &g[i].x[2],  &g[i].dens[0], &g[i].t[0], &abun, &g[i].dopb);
-    fscanf(fp,"%d %lf %lf %lf %lf %lf %lf %lf %lf\n", &g[i].id, &g[i].x[0], &g[i].x[1], &g[i].x[2],  &g[i].dens[0], &g[i].t[0], &g[i].vel[0], &g[i].vel[1], &g[i].vel[2]);
+      int nRead = fscanf(fp,"%d %lf %lf %lf %lf %lf %lf %lf %lf\n", &g[i].id, &g[i].x[0], &g[i].x[1], &g[i].x[2],  &g[i].dens[0], &g[i].t[0], &g[i].vel[0], &g[i].vel[1], &g[i].vel[2]);
+      if( nRead != 9 )
+      {
+          if(!silent) bail_out("Reading Grid File error");
+          exit(0);
+      }
     
     g[i].dopb=200;
     g[i].abun[0]=1e-9;
@@ -51,6 +56,7 @@ predefinedGrid(inputPars *par, struct grid *g){
 	  g[i].x[1]=scale*y;
 	  g[i].x[2]=scale*z;			
 	  g[i].sink=1;
+	  g[i].abun[0]=0;
 	  g[i].dens[0]=1e-30;
 	  g[i].t[0]=par->tcmb;
 	  g[i].t[1]=par->tcmb;
