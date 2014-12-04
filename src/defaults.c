@@ -16,40 +16,40 @@
 
 
 void __attribute__((weak))
-density(double x, double y, double z, double *density){
-  if(!silent) bail_out("Density is not defined in model.c but is needed by LIME!");
-  exit(1);
-}
+    density(double x, double y, double z, double *density){
+      if(!silent) bail_out("Density is not defined in model.c but is needed by LIME!");
+      exit(1);
+    }
 
 void __attribute__((weak))
-temperature(double x, double y, double z, double *temperature){
-  if(!silent) bail_out("Temperature is not defined in model.c but is needed by LIME!");
-  exit(1);
-}
+    temperature(double x, double y, double z, double *temperature){
+      if(!silent) bail_out("Temperature is not defined in model.c but is needed by LIME!");
+      exit(1);
+    }
 
 void __attribute__((weak))
-abundance(double x, double y, double z, double *abundance){
-  if(!silent) bail_out("Abundance is not defined in model.c but is needed by LIME!");
-  exit(1);
-}
+    abundance(double x, double y, double z, double *abundance){
+      if(!silent) bail_out("Abundance is not defined in model.c but is needed by LIME!");
+      exit(1);
+    }
 
 void __attribute__((weak))
-doppler(double x, double y, double z, double *doppler){
-  if(!silent) bail_out("Doppler velocity is not defined in model.c but is needed by LIME!");
-  exit(1);
-}
+    doppler(double x, double y, double z, double *doppler){
+      if(!silent) bail_out("Doppler velocity is not defined in model.c but is needed by LIME!");
+      exit(1);
+    }
 
 void __attribute__((weak))
-velocity(double x, double y, double z, double *vel){
-  if(!silent) bail_out("Velocity field is not defined in model.c but is needed by LIME!");
-  exit(1);
-}
+    velocity(double x, double y, double z, double *vel){
+      if(!silent) bail_out("Velocity field is not defined in model.c but is needed by LIME!");
+      exit(1);
+    }
 
 void __attribute__((weak))
-magfield(double x, double y, double z, double *B){
-}
+    magfield(double x, double y, double z, double *B){
+    }
 
 void __attribute__((weak))
-gasIIdust(double x, double y, double z, double *gas2dust){
-  *gas2dust=100.;
-}
+    gasIIdust(double x, double y, double z, double *gas2dust){
+      *gas2dust=100.;
+    }

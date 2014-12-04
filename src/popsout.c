@@ -31,6 +31,7 @@ popsout(inputPars *par, struct grid *g, molData *m){
     fprintf(fp,"%e %e %e %e %e %e %d ", g[j].x[0], g[j].x[1], g[j].x[2], dens, g[j].t[0], g[j].nmol[0]/dens, g[j].conv);
     for(k=0;k<m[0].nlev;k++) fprintf(fp,"%e ",g[j].mol[0].pops[k]);
     fprintf(fp,"\n");
+    //fprintf(fp,"%i %lf %lf %lf %lf %lf %lf %lf %lf\n", g[j].id, g[j].x[0], g[j].x[1], g[j].x[2],  g[j].dens[0], g[j].t[0], g[j].vel[0], g[j].vel[1], g[j].vel[2]);
   }
   fclose(fp);
 }
