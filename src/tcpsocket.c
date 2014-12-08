@@ -48,7 +48,6 @@ openSocket(inputPars *par, int id){
   t = (char*)malloc(sizeof(char) * (length1 + length2 + 1));
   strcpy(t,page);
   strcat(t, par->moldatfile[id]);
-  t[length1+length2+1]='\0';
   page=t;
 
 
@@ -108,6 +107,7 @@ openSocket(inputPars *par, int id){
     }
 
     free(get);
+    free(t);
     free(remote);
     close(sock);
     fclose(fp);
