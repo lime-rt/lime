@@ -20,7 +20,6 @@ kappa(molData *m, struct grid *g, inputPars *par, int s){
   int i=0,k,j,iline,id;
   double loglam, *lamtab, *kaptab, *kappatab, gtd;
   gsl_spline *spline;
-  gsl_interp_accel *acc=gsl_interp_accel_alloc();
 
   kappatab   	 = malloc(sizeof(double)*m[s].nline);
   m[s].cmb	     = malloc(sizeof(double)*m[s].nline);
@@ -29,6 +28,7 @@ kappa(molData *m, struct grid *g, inputPars *par, int s){
   if(par->dust == NULL){
     for(i=0;i<m[s].nline;i++) kappatab[i]=0.;
   } else {
+    gsl_interp_accel *acc=gsl_interp_accel_alloc();
     if((fp=fopen(par->dust, "r"))==NULL){
       if(!silent) bail_out("Error opening dust opacity data file!");
       exit(1);
