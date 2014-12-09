@@ -66,6 +66,8 @@ input(char* input_file, inputPars *par, image *img){
                 strcpy (par->moldatfile[0], value);
               else if (strcmp (parameter, "pregrid") == 0)
                 strcpy (par->pregrid, value);
+              else if (strcmp (parameter, "restart") == 0)
+                strcpy (par->restart, value);
               else if (strcmp (parameter, "lte_only") == 0)
                 par->lte_only = strtol(value, NULL, 10);
               else if (strcmp (parameter, "blend") == 0)

@@ -28,7 +28,6 @@ parseInput(inputPars *par, image **img, molData **m){
   par->gridfile[0]      = '\0';
   par->binoutputfile[0] = '\0';
   par->outputfile[0]    = '\0';
-  par->inputfile[0]     = '\0';
   par->dust[0]          = '\0';
 
   par->tcmb = 2.728;
@@ -56,7 +55,11 @@ parseInput(inputPars *par, image **img, molData **m){
     (*img)[id].bandwidth=-1.;
   }
 
-  input("../doc/example/input.ini", par, *img);
+  if( input("../doc/example/input.ini", par, *img) != EXIT_SUCCESS )
+    {
+      if(!silent) bail_out("Error: Cannot Read input file");
+      exit(1);
+    }
   id=0;
   while(strlen( (*img)[++id].filename ) != 0 );
   par->nImages=id;

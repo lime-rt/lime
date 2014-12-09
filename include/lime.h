@@ -68,7 +68,6 @@ typedef struct {
   int ncell,sinkPoints,pIntensity,nImages,nSpecies,blend;
   filename_t outputfile;
   filename_t binoutputfile;
-  filename_t inputfile;
   filename_t gridfile;
   filename_t pregrid;
   filename_t restart;
