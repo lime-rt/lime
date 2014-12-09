@@ -25,7 +25,7 @@ openSocket(inputPars *par, int id){
   int tmpres;
   int sock;
   char *get;
-  char *s,*t;
+  char *t;
   char buf[2];
   char *host = "home.strw.leidenuniv.nl";
   char *ip="132.229.214.164";
