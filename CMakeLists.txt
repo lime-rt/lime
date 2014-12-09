@@ -9,6 +9,6 @@ file(GLOB limeSRC
 
 include_directories(include)
 add_executable( lime ${limeSRC} )
-target_link_libraries( lime -lgsl -lm -lcfitsio -lcblas -lcurses -lqhull -lmatheval )
+target_link_libraries( lime -lgsl -lm -lcfitsio -lcblas -lcurses -lqhull )
 
 

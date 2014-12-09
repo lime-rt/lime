@@ -65,8 +65,6 @@ int main () {
 
   if(!silent) goodnight(initime,img[0].filename);
   
-  destroy_model_evaluator();
-
   freeGrid( &par, m, g);
   freeInput(&par, img, m);
   return 0;

@@ -12,14 +12,8 @@
  */
 
 #include "lime.h"
-#include "matheval.h"
 
 /******************************************************************************/
-
-void* density_evaluator = NULL;
-void* velocity_evaluator = NULL;
-void* doppler_evaluator = NULL;
-void* abundance_evaluator = NULL;
 
 int
 input(char* input_file, inputPars *par, image *img){
@@ -139,106 +133,46 @@ input(char* input_file, inputPars *par, image *img){
                   return EXIT_FAILURE;
                 }
             }
-          else if (strcmp (keyword, "model") == 0)
-            {
-              if (strcmp (parameter, "density") == 0)
-                {
-                  if( density_evaluator != NULL )
-                    {
-                        evaluator_destroy ( density_evaluator );
-                    }
-                  density_evaluator = evaluator_create (value);
-                }
-              else if (strcmp (parameter, "doppler") == 0)
-                {
-                  if( doppler_evaluator != NULL )
-                    {
-                        evaluator_destroy ( doppler_evaluator );
-                    }
-                  doppler_evaluator = evaluator_create (value);
-                }
-              else if (strcmp (parameter, "abundance") == 0)
-                {
-                  if( abundance_evaluator != NULL )
-                    {
-                        evaluator_destroy ( abundance_evaluator );
-                    }
-                  abundance_evaluator = evaluator_create (value);
-                }
-              else if (strcmp (parameter, "velocity") == 0)
-                {
-                  if( velocity_evaluator != NULL )
-                    {
-                        evaluator_destroy ( velocity_evaluator );
-                    }
-                  velocity_evaluator = evaluator_create (value);
-                }
-
-
-              else
-                { //TODO Curses
-                  fprintf (stderr, "lime: error: incorrect input in %s line %i : unknow parameter %s\n",
-                           input_file, line_number, parameter );
-                  return EXIT_FAILURE;
-                }
-            }
-
-          /* Unknown or unspecified keyword */
-          else
-            {
-              fprintf (stderr, "lime: error: incorrect input in %s line %i : unknow keyword %s\n",
-                       input_file, line_number, keyword);
-              return EXIT_FAILURE;
-            }
-        }
-
-      /* Error while reading a parameter/values */
-
+      /* Unknown or unspecified keyword */
       else
         {
-          fprintf (stderr, "lime: error: incorrect input in %s line %i: Error while reading param = value \n",
-                   input_file, line_number);
+          fprintf (stderr, "lime: error: incorrect input in %s line %i : unknow keyword %s\n",
+                   input_file, line_number, keyword);
           return EXIT_FAILURE;
         }
     }
 
-  /* Close the file */
+  /* Error while reading a parameter/values */
 
-  fclose (f);
+  else
+    {
+      fprintf (stderr, "lime: error: incorrect input in %s line %i: Error while reading param = value \n",
+               input_file, line_number);
+      return EXIT_FAILURE;
+    }
 }
 
-/******************************************************************************/
+/* Close the file */
 
-void destroy_model_evaluator()
-{
-  if( density_evaluator != NULL )
-    {
-      evaluator_destroy ( density_evaluator );
-    }
-  if( abundance_evaluator != NULL )
-    {
-      evaluator_destroy ( abundance_evaluator );
-    }
-  if( doppler_evaluator != NULL )
-    {
-      evaluator_destroy ( doppler_evaluator );
-    }
-  if( velocity_evaluator != NULL )
-    {
-      evaluator_destroy ( velocity_evaluator );
-    }
+fclose (f);
 }
+
 
 void
 density(double x, double y, double z, double *density){
-  if( density_evaluator == NULL )
-    {
-      if(!silent) bail_out("Density is not defined in model.c but is needed by LIME!");
-    }
-  else
-    {
-      density[0]= evaluator_evaluate_x_y_z( density_evaluator, x, y, z);
-    }
+  /*
+   * Define variable for radial coordinate
+   */
+  double r;
+  /*
+   * Calculate radial distance from origin
+   */
+  r=sqrt(x*x+y*y+z*z);
+  /*
+   * Calculate a spherical power-law density profile
+   * (Multiply with 1e6 to go to SI-units)
+   */
+  density[0] = 1.5e6*pow(r/(300*AU),-1.5)*1e6;
 }
 
 /******************************************************************************/
@@ -279,39 +213,30 @@ temperature(double x, double y, double z, double *temperature){
 
 void
 abundance(double x, double y, double z, double *abundance){
-  if( abundance_evaluator == NULL )
-    {
-      if(!silent) bail_out("abundance is not defined in model.c but is needed by LIME!");
-    }
-  else
-    {
-      abundance[0]= evaluator_evaluate_x_y_z( abundance_evaluator, x, y, z);
-    }
+  /*
+   * Here we use a constant abundance. Could be a
+   * function of (x,y,z).
+   */
+  abundance[0] = 1.e-9;
 }
 
 /******************************************************************************/
 
 void
 doppler(double x, double y, double z, double *doppler){
-  if( doppler_evaluator == NULL )
-    {
-      if(!silent) bail_out("doppler is not defined in model.c but is needed by LIME!");
-    }
-  else
-    {
-      *doppler= evaluator_evaluate_x_y_z( doppler_evaluator, x, y, z);
-    }
+  /*
+   * 200 m/s as the doppler b-parameter. This
+   * can be a function of (x,y,z) as well.
+   * Note that *doppler is a pointer, not an array.
+   * Remember the * in front of doppler.
+   */
+  *doppler = 200.;
 }
 
 /******************************************************************************/
 
 void
 velocity(double x, double y, double z, double *vel){
-  if( velocity_evaluator == NULL )
-    {
-      if(!silent) bail_out("velocity is not defined in model.c but is needed by LIME!");
-    }
-
   /*
    * Variables for spherical coordinates
    */
@@ -326,7 +251,7 @@ velocity(double x, double y, double z, double *vel){
    * Free-fall velocity in the radial direction onto a central
    * mass of 1.0 solar mass
    */
-   r= evaluator_evaluate_x( velocity_evaluator, R);
+  r=-sqrt(2*6.67e-11*1.989e30/R);
   /*
    * Vector transformation back into Cartesian basis
    */

@@ -12,16 +12,17 @@
  */
 
 #include <curses.h>
+#include <string.h>
 #include <time.h>
 
 void
 greetings(){
 #ifndef DEBUG
-	initscr();
-	printw("*** LIME, The versatile line modeling engine, Ver.1.31\n*** Copyright 2006--2014, Christian Brinch <brinch@nbi.dk>\n");
-	refresh();
+  initscr();
+  printw("*** LIME, The versatile line modeling engine, Ver.1.31\n*** Copyright 2006--2014, Christian Brinch <brinch@nbi.dk>\n");
+  refresh();
 #else
-	printf("*** LIME, The versatile line modeling engine, Ver.1.31\n*** Copyright 2006--2014, Christian Brinch <brinch@nbi.dk>\n");
+  printf("*** LIME, The versatile line modeling engine, Ver.1.31\n*** Copyright 2006--2014, Christian Brinch <brinch@nbi.dk>\n");
 #endif
 }
 
@@ -56,10 +57,10 @@ screenInfo(){
 void
 done(int line){
 #ifndef DEBUG
-	move(line,52); printw(" [ok]");
-    refresh();
+  move(line,52); printw(" [ok]");
+  refresh();
 #else
-    printf("[ok]\n");
+  printf("[ok]\n");
 #endif
 }
 
@@ -73,7 +74,7 @@ progressbar(double percent, int line){
   }
   refresh();
 #else
-//  printf("Doing stuff n° %i\n", line );
+  //  printf("Doing stuff n° %i\n", line );
 #endif
 }
 
@@ -103,14 +104,14 @@ progressbar2(int prog, double percent, double minsnr, double median){
 void
 goodnight(int initime, char filename[80]){
 #ifndef DEBUG
-	int runtime=time(0)-initime;
-	move(14,4); printw("Output written to %s", filename);
-	move(22,0); printw("*** Program ended succesfully               ");
-	move(22,58); printw("runtime: %3dh %2dm %2ds", runtime/3600, runtime/60%60, runtime%60);
-	move(23,0); printw("*** [Press any key to quit]");
-    refresh();
-	getch();
-	endwin();
+  int runtime=time(0)-initime;
+  move(14,4); printw("Output written to %s", filename);
+  move(22,0); printw("*** Program ended succesfully               ");
+  move(22,58); printw("runtime: %3dh %2dm %2ds", runtime/3600, runtime/60%60, runtime%60);
+  move(23,0); printw("*** [Press any key to quit]");
+  refresh();
+  getch();
+  endwin();
 #endif
 }
 
@@ -127,23 +128,26 @@ quotemass(double mass){
 void
 warning(char message[80]){
 #ifndef DEBUG
-	move(22,0); printw("*** %s\n",message);
-	refresh();
+  move(22,0); printw("*** %s\n",message);
+  refresh();
 #else
-        printf("Warning : %s\n", message );
+  if(strlen(message)>0)
+    {
+      printf("Warning : %s\n", message );
+    }
 #endif
 }
 
 void
 bail_out(char message[80]){
 #ifndef DEBUG
-	move(22,0); printw("*** %s",message);
-	move(23,0); printw("*** [Press any key to quit]");
-    refresh();
-	getch();
-	endwin();
+  move(22,0); printw("*** %s",message);
+  move(23,0); printw("*** [Press any key to quit]");
+  refresh();
+  getch();
+  endwin();
 #else
-        printf("Error : %s\n", message );
+  printf("Error : %s\n", message );
 #endif
 }
 

@@ -41,7 +41,12 @@
 #define GRAV		6.67428e-11
 
 /* Other constants */
+#ifndef DEBUG
 #define NITERATIONS 	16
+#else
+#define NITERATIONS 	2
+#endif
+
 #define max_phot		10000		/* don't set this value higher unless you have enough memory. */
 #define ininphot		9
 #define minpop			1.e-6
@@ -164,7 +169,6 @@ void gasIIdust(double,double,double,double *);
 void   	binpopsout(inputPars *, struct grid *, molData *);
 void   	buildGrid(inputPars *, struct grid *);
 void	continuumSetup(int, image *, molData *, inputPars *, struct grid *);
-void    destroy_model_evaluator();
 void	distCalc(inputPars *, struct grid *);
 void	fit_d1fi(double, double, double*);
 void    fit_fi(double, double, double*);
