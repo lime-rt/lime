@@ -51,6 +51,7 @@
 #define goal			50
 #define fixset			1e-6
 #define blendmask		1.e4
+#define MAX_NSPECIES            100
 
 #define MAX_LINE 512      /*!< Maximum number of characters in each input file line */
 
@@ -94,6 +95,13 @@ struct rates {
   double *up, *down;
 };
 
+
+struct populations {
+  double * pops, *knu, *dust;
+  double dopb, binv;
+  struct rates *partner;
+};
+
 /* Grid proporties */
 struct grid {
   int id;
@@ -109,7 +117,7 @@ struct grid {
   int conv;
   double *dens,t[2],*nmol,*abun, dopb;
   double *ds;
-  struct populations { double * pops, *knu, *dust; double dopb, binv; struct rates *partner; } *mol;
+  struct populations* mol;
 };
 
 typedef struct {
@@ -163,6 +171,9 @@ void    fit_fi(double, double, double*);
 void    fit_rr(double, double, double*);
 int   	input(char* input_file, inputPars *, image *);
 float  	invSqrt(float);
+void    freeInput(inputPars *, image*, molData* m );
+void   	freeGrid(const inputPars * par, const molData* m, struct grid * g);
+void   	freePopulation(const inputPars * par, const molData* m, struct populations * pop);
 double 	gaussline(double, double);
 void    getArea(inputPars *, struct grid *, const gsl_rng *);
 void    getjbar(int, molData *, struct grid *, inputPars *);

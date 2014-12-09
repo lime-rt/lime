@@ -34,7 +34,7 @@ stateq(int id, struct grid *g, molData *m, double *pstate, int ispec, inputPars 
   opop	 = malloc(sizeof(double)*m[ispec].nlev);
   oopop	 = malloc(sizeof(double)*m[ispec].nlev);
 
-  for(t=0;t<m[ispec].nlev;t++){ //WTF -1? Removed
+  for(t=0;t<m[ispec].nlev;t++){
     opop[t]=0.;
     oopop[t]=0.;
     gsl_vector_set(oldpop,t,0.);
@@ -66,24 +66,7 @@ stateq(int id, struct grid *g, molData *m, double *pstate, int ispec, inputPars 
       oopop[t]=opop[t];
       opop[t]=g[id].mol[ispec].pops[t];
       g[id].mol[ispec].pops[t]=gsl_vector_get(newpop,t);
-      if( g[id].mol[ispec].pops[t] > minpop)
-        {
-          int a=1;
-        }
-      if( opop[t] > minpop)
-        {
-          int a=1;
-        }
-      if( oopop[t] > minpop)
-        {
-          int a=1;
-        }
-
-/*
-      printf("%d \n", opop[t]);
-      printf("%d \n", oopop[t]);*/
-
-      if( gsl_min( g[id].mol[ispec].pops[t], gsl_min(opop[t],oopop[t] ) )>minpop){
+      if(gsl_min(g[id].mol[ispec].pops[t],gsl_min(opop[t],oopop[t]))>minpop){
         diff=gsl_max(fabs(g[id].mol[ispec].pops[t]-opop[t])/g[id].mol[ispec].pops[t],gsl_max(fabs(g[id].mol[ispec].pops[t]-oopop[t])/g[id].mol[ispec].pops[t],diff));
       }
     }

@@ -1,9 +1,9 @@
 /*
  *  curses.c
- *  LIME, The versatile 3D line modeling environment 
+ *  LIME, The versatile 3D line modeling environment
  *
  *  Created by Christian Brinch on 29/10/08.
- *  Copyright 2006-2014, Christian Brinch, 
+ *  Copyright 2006-2014, Christian Brinch,
  *  <brinch@nbi.dk>
  *  Niels Bohr institutet
  *  University of Copenhagen
@@ -33,14 +33,14 @@ screenInfo(){
   move(5,4);  printw("Smoothing grid     :");
   move(5,51); printw("|");
   move(7,4);  printw("Statistics         :");
-  move(9,4);  printw("Iterations         :"); 
+  move(9,4);  printw("Iterations         :");
   move(10,4); printw("Propagating photons:");
   move(10,51);printw("|");
   move(13,4); printw("Ray-tracing model  :");
   move(13,51);printw("|");
   move(4,60); printw("|      Molecular data");
   move(5,60); printw("|");
-  move(6,60); printw("|");  
+  move(6,60); printw("|");
   move(7,60); printw("|");
   move(8,60); printw("|");
   move(9,60); printw("|");
@@ -77,7 +77,7 @@ progressbar(double percent, int line){
 #endif
 }
 
-void 
+void
 progressbar2(int prog, double percent, double minsnr, double median){
 #ifndef DEBUG
   move(7,38); printw("                    ");            
@@ -91,7 +91,7 @@ progressbar2(int prog, double percent, double minsnr, double median){
     move(8,25);	printw("Median(SNR) %3.3f", median);
   } else {
     move(8,25); printw("Median(SNR) %.3e", median);
-  }    
+  }
   move(9,25+prog); printw("#");
   if(percent<100) {
     move(10,25);	 printw("                         ");
@@ -100,7 +100,7 @@ progressbar2(int prog, double percent, double minsnr, double median){
 #endif
 }
 
-void 
+void
 goodnight(int initime, char filename[80]){
 #ifndef DEBUG
 	int runtime=time(0)-initime;
@@ -124,15 +124,17 @@ quotemass(double mass){
 
 
 
-void 
+void
 warning(char message[80]){
 #ifndef DEBUG
 	move(22,0); printw("*** %s\n",message);
 	refresh();
+#else
+        printf("Warning : %s\n", message );
 #endif
 }
 
-void 
+void
 bail_out(char message[80]){
 #ifndef DEBUG
 	move(22,0); printw("*** %s",message);
@@ -140,6 +142,8 @@ bail_out(char message[80]){
     refresh();
 	getch();
 	endwin();
+#else
+        printf("Error : %s\n", message );
 #endif
 }
 
@@ -167,8 +171,8 @@ collpartmesg3(int number, int flag){
   move(10,63); printw("Model provides:");
   move(11,63); printw("%d density profile(s)", number);
   if(flag==1) {
-    move(13,63); printw("*** Warning! ***");  
-    move(14,63); printw("Too few density profiles");  
+    move(13,63); printw("*** Warning! ***");
+    move(14,63); printw("Too few density profiles");
   }
   refresh();
 #endif

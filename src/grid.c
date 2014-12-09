@@ -37,6 +37,16 @@ gridAlloc(inputPars *par, struct grid **g){
   }
 
   for(i=0;i<(par->pIntensity+par->sinkPoints); i++){
+    (*g)[i].a0 = NULL;
+    (*g)[i].a1 = NULL;
+    (*g)[i].a2 = NULL;
+    (*g)[i].a3 = NULL;
+    (*g)[i].a4 = NULL;
+    (*g)[i].mol = NULL;
+    (*g)[i].dir = NULL;
+    (*g)[i].neigh = NULL;
+    (*g)[i].w = NULL;
+    (*g)[i].ds = NULL;
     (*g)[i].dens=malloc(sizeof(double)*par->collPart);
     (*g)[i].abun=malloc(sizeof(double)*par->nSpecies);
     (*g)[i].nmol=malloc(sizeof(double)*par->nSpecies);
@@ -45,7 +55,109 @@ gridAlloc(inputPars *par, struct grid **g){
   }
 }
 
-
+void
+freePopulation(const inputPars *par, const molData* m, struct populations* pop ) {
+  if( pop !=NULL )
+    {
+      int j,k;
+      for( j=0; j<par->nSpecies; j++ )
+        {
+          if( pop[j].pops != NULL )
+            {
+              free( pop[j].pops );
+            }
+          if( pop[j].knu != NULL )
+            {
+              free( pop[j].knu );
+            }
+          if( pop[j].dust != NULL )
+            {
+              free( pop[j].dust );
+            }
+          if( pop[j].partner != NULL )
+            {
+              if( m != NULL )
+                {
+                  for(k=0; k<m[j].npart; k++)
+                    {
+                      if( pop[j].partner[k].up != NULL )
+                        {
+                          free(pop[j].partner[k].up);
+                        }
+                      if( pop[j].partner[k].down != NULL )
+                        {
+                          free(pop[j].partner[k].down);
+                        }
+                    }
+                }
+              free( pop[j].partner );
+            }
+        }
+      free(pop);
+    }
+}
+void
+freeGrid(const inputPars *par, const molData* m ,struct grid* g){
+  int i,j;
+  if( g != NULL )
+    {
+      for(i=0;i<(par->pIntensity+par->sinkPoints); i++){
+        if(g[i].a0 != NULL)
+          {
+            free(g[i].a0);
+          }
+        if(g[i].a1 != NULL)
+          {
+            free(g[i].a1);
+          }
+        if(g[i].a2 != NULL)
+          {
+            free(g[i].a2);
+          }
+        if(g[i].a3 != NULL)
+          {
+            free(g[i].a3);
+          }
+        if(g[i].a4 != NULL)
+          {
+            free(g[i].a4);
+          }
+        if(g[i].dir != NULL)
+          {
+            free(g[i].dir);
+          }
+        if(g[i].neigh != NULL)
+          {
+            free(g[i].neigh);
+          }
+        if(g[i].w != NULL)
+          {
+            free(g[i].w);
+          }
+        if(g[i].dens != NULL)
+          {
+            free(g[i].dens);
+          }
+        if(g[i].nmol != NULL)
+          {
+            free(g[i].nmol);
+          }
+        if(g[i].abun != NULL)
+          {
+            free(g[i].abun);
+          }
+        if(g[i].ds != NULL)
+          {
+            free(g[i].ds);
+          }
+        if(g[i].mol != NULL)
+          {
+            freePopulation( par, m, g[i].mol );
+          }
+      }
+      free(g);
+    }
+}
 
 void
 qhull(inputPars *par, struct grid *g){
@@ -72,9 +184,11 @@ qhull(inputPars *par, struct grid *g){
     FORALLvertices {
       id=qh_pointid(vertex->point);
       g[id].numNeigh=qh_setsize(vertex->neighbors);
-      free(g[id].neigh);
+      if(  g[id].neigh != NULL )
+        {
+          free( g[id].neigh );
+        }
       g[id].neigh=malloc(sizeof(struct grid)*g[id].numNeigh);
-      memset(g[id].neigh, 0, sizeof(int) * g[id].numNeigh);
       for(k=0;k<g[id].numNeigh;k++) {
         g[id].neigh[k]=NULL;
       }
@@ -90,15 +204,6 @@ qhull(inputPars *par, struct grid *g){
             k=0;
             if(i!=j){
               while(g[simplex[i]].neigh[k] != NULL && g[simplex[i]].neigh[k]->id != g[simplex[j]].id) {
-/*                printf("%i %i\n", i, k+1 );
-                printf("%i \n", simplex[i] );
-                printf("%i \n", g[simplex[i]].numNeigh );
-                if( g[simplex[i]].neigh[k+1] != NULL )
-                    {
-                printf("n %f\n", g[simplex[i]].neigh[k+1] );
-                printf("n %f\n", g[simplex[i]].neigh[k+1]->id );
-                printf("n %f\n", g[simplex[j]].id );
-                }*/
                 k++;
               }
               g[simplex[i]].neigh[k]=&g[simplex[j]];
@@ -115,12 +220,15 @@ qhull(inputPars *par, struct grid *g){
   for(i=0;i<par->ncell;i++){
     j=0;
     for(k=0;k<g[i].numNeigh;k++){
-      if(g[i].neigh[k] != NULL) j++;
+      if(g[i].neigh[k] != NULL)
+        {
+          j++;
+        }
     }
     g[i].numNeigh=j;
   }
   qh_freeqhull(!qh_ALL);
-  qh_memfreeshort (&curlong, &totlong);  
+  qh_memfreeshort (&curlong, &totlong);
   free(pt_array);
 }
 
@@ -129,8 +237,14 @@ distCalc(inputPars *par, struct grid *g){
   int i,k,l;
 
   for(i=0;i<par->ncell;i++){
-    free(g[i].dir);
-    free(g[i].ds);
+    if( g[i].dir != NULL )
+      {
+        free( g[i].dir );
+      }
+    if( g[i].ds != NULL )
+      {
+        free( g[i].ds );
+      }
     g[i].dir=malloc(sizeof(point)*g[i].numNeigh);
     g[i].ds =malloc(sizeof(double)*g[i].numNeigh);
     memset(g[i].dir, 0., sizeof(point) * g[i].numNeigh);
@@ -451,10 +565,6 @@ buildGrid(inputPars *par, struct grid *g){
     else g[k].x[2]=0.;
 
     g[k].sink=0;
-    /* This next step needs to be done, even though it looks stupid */
-    g[k].dir=malloc(sizeof(point)*1);
-    g[k].ds =malloc(sizeof(point)*1);
-    g[k].neigh =malloc(sizeof(int)*1);
     if(!silent) progressbar((double) k/((double)par->pIntensity-1), 4);
   }
   /* end model grid point assignment */
@@ -472,6 +582,7 @@ buildGrid(inputPars *par, struct grid *g){
     g[k].x[1]=par->radius*y;
     g[k].x[2]=par->radius*z;
     g[k].sink=1;
+    g[k].abun[0]=0;
     g[k].dens[0]=1e-30;
     g[k].t[0]=par->tcmb;
     g[k].t[1]=par->tcmb;
@@ -483,10 +594,10 @@ buildGrid(inputPars *par, struct grid *g){
   distCalc(par, g);
   smooth(par,g);
 
-  for(i=0;i<par->pIntensity + par->sinkPoints ;i++){ //TODO IS IT CORRECT ?
+  for(i=0;i<par->pIntensity;i++){
     density(g[i].x[0],g[i].x[1],g[i].x[2],g[i].dens);
     temperature(g[i].x[0],g[i].x[1],g[i].x[2],g[i].t);
-    doppler(g[i].x[0],g[i].x[1],g[i].x[2],&g[i].dopb);	
+    doppler(g[i].x[0],g[i].x[1],g[i].x[2],&g[i].dopb);
     abundance(g[i].x[0],g[i].x[1],g[i].x[2],g[i].abun);
   }
 
