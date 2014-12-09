@@ -61,6 +61,7 @@
 #define MAX_LINE 512      /*!< Maximum number of characters in each input file line */
 
 typedef char filename_t [MAX_LINE];
+typedef char pythonname_t [MAX_LINE];
 
 /* input parameters */
 typedef struct {
@@ -74,6 +75,13 @@ typedef struct {
   filename_t dust;
   int sampling,collPart,lte_only,antialias,polarization;
   filename_t* moldatfile;
+  pythonname_t python_module_name;
+  filename_t   python_module_path;
+  pythonname_t density_func_name;
+  pythonname_t velocity_func_name;
+  pythonname_t temperature_func_name;
+  pythonname_t doppler_func_name;
+  pythonname_t abundance_func_name;
 } inputPars;
 
 /* Molecular data and radiation field */
@@ -202,6 +210,8 @@ int		pointEvaluation(inputPars *,double, double, double, double);
 void   	popsin(inputPars *, struct grid **, molData **, int *);
 void   	popsout(inputPars *, struct grid *, molData *);
 void	predefinedGrid(inputPars *, struct grid *);
+int     python_call_initialize( const inputPars *par );
+void    python_call_finalize();
 double 	ratranInput(char *, char *, double, double, double);
 void   	raytrace(int, inputPars *, struct grid *, molData *, image *);
 void	report(int, inputPars *, struct grid *);

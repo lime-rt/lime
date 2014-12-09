@@ -39,6 +39,14 @@ parseInput(inputPars *par, image **img, molData **m){
   par->pIntensity=0;
   par->sinkPoints=0;
 
+  strcpy(par->python_module_name, "model");
+  strcpy(par->python_module_path, "./");
+  strcpy(par->density_func_name, "density");
+  strcpy(par->velocity_func_name, "velocity");
+  strcpy(par->temperature_func_name, "temperature");
+  strcpy(par->doppler_func_name, "doppler");
+  strcpy(par->abundance_func_name, "abundance");
+
   /* Allocate space for output fits images */
   (*img)=malloc(sizeof(image)*MAX_NSPECIES);
   par->moldatfile=malloc(sizeof( filename_t ) * MAX_NSPECIES);
@@ -60,6 +68,13 @@ parseInput(inputPars *par, image **img, molData **m){
       if(!silent) bail_out("Error: Cannot Read input file");
       exit(1);
     }
+
+  if( python_call_initialize( par ) != EXIT_SUCCESS )
+    {
+      if(!silent) bail_out("Error: Cannot initialize python");
+      exit(1);
+    }
+
   id=0;
   while(strlen( (*img)[++id].filename ) != 0 );
   par->nImages=id;
@@ -179,6 +194,8 @@ parseInput(inputPars *par, image **img, molData **m){
 void
 freeInput( inputPars *par, image* img, molData* mol )
 {
+  python_call_finalize();
+
   int i,id;
   if( mol!= 0 )
     {
