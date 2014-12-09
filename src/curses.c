@@ -59,7 +59,7 @@ done(int line){
 	move(line,52); printw(" [ok]");
     refresh();
 #else
-    printf("[ok]");
+    printf("[ok]\n");
 #endif
 }
 

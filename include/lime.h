@@ -66,7 +66,7 @@ typedef struct {
   filename_t inputfile;
   filename_t gridfile;
   filename_t pregrid;
-  char *restart;
+  filename_t restart;
   filename_t dust;
   int sampling,collPart,lte_only,antialias,polarization;
   filename_t* moldatfile;

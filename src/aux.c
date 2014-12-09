@@ -23,15 +23,13 @@ parseInput(inputPars *par, image **img, molData **m){
   double BB[3];
 
   /* Set default values */
-  par->dust  	    = NULL;
-  par->inputfile    = NULL;
-  par->outputfile   = NULL;
-  par->binoutputfile= NULL;
-  par->gridfile     = NULL;
-  par->pregrid	    = NULL;
-  par->restart      = NULL;
-
-  par->pregrid[0] = '\0';
+  par->restart[0]       = '\0';;
+  par->pregrid[0]       = '\0';
+  par->gridfile[0]      = '\0';
+  par->binoutputfile[0] = '\0';
+  par->outputfile[0]    = '\0';
+  par->inputfile[0]     = '\0';
+  par->dust[0]          = '\0';
 
   par->tcmb = 2.728;
   par->lte_only=0;
@@ -44,11 +42,20 @@ parseInput(inputPars *par, image **img, molData **m){
 
   /* Allocate space for output fits images */
   (*img)=malloc(sizeof(image)*MAX_NSPECIES);
-  par->moldatfile=malloc(sizeof(char *) * MAX_NSPECIES);
+  par->moldatfile=malloc(sizeof( filename_t ) * MAX_NSPECIES);
   for(id=0;id<MAX_NSPECIES;id++){
-    (*img)[id].filename=NULL;
-    par->moldatfile[id]=NULL;
+    (*img)[id].filename[0]='\0';
+    par->moldatfile[id][0]='\0';
+
+    (*img)[id].source_vel=0.0;
+    (*img)[id].phi=0.0;
+    (*img)[id].nchan=0;
+    (*img)[id].velres=-1.;
+    (*img)[id].trans=-1;
+    (*img)[id].freq=-1.;
+    (*img)[id].bandwidth=-1.;
   }
+
   input("../doc/example/input.ini", par, *img);
   id=0;
   while(strlen( (*img)[++id].filename ) != 0 );
@@ -69,21 +76,9 @@ parseInput(inputPars *par, image **img, molData **m){
       exit(1);
     }
 
-  par->moldatfile=realloc(par->moldatfile, sizeof(char *)*par->nSpecies);
+  par->moldatfile=realloc(par->moldatfile, sizeof( filename_t )*par->nSpecies);
 
 
-  /* Set defaults and read inputPars and img[] */
-  for(i=0;i<par->nImages;i++) {
-    (*img)[i].source_vel=0.0;
-    (*img)[i].phi=0.0;
-    (*img)[i].nchan=0;
-    (*img)[i].velres=-1.;
-    (*img)[i].trans=-1;
-    (*img)[i].freq=-1.;
-    (*img)[i].bandwidth=-1.;
-  }
-  input("../doc/example/input.ini", par,*img);
-  
   par->ncell=par->pIntensity+par->sinkPoints;
 
   /* Check if files exists */

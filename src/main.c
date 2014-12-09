@@ -36,12 +36,12 @@ int main () {
 
   parseInput(&par,&img,&m);
 
-  if(par.pregrid)
+  if( strlen(par.pregrid) > 0 )
     {
       gridAlloc(&par,&g);
       predefinedGrid(&par,g);
     }
-  else if(par.restart)
+  else if( strlen(par.restart) > 0 )
     {
       popsin(&par,&g,&m,&popsdone);
     }
