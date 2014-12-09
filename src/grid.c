@@ -98,7 +98,7 @@ freePopulation(const inputPars *par, const molData* m, struct populations* pop )
 }
 void
 freeGrid(const inputPars *par, const molData* m ,struct grid* g){
-  int i,j;
+  int i;
   if( g != NULL )
     {
       for(i=0;i<(par->pIntensity+par->sinkPoints); i++){

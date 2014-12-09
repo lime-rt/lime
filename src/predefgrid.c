@@ -17,7 +17,7 @@ void
 predefinedGrid(inputPars *par, struct grid *g){
   FILE *fp;
   int i;
-  double x,y,z,scale,abun;
+  double x,y,z,scale;
   gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);
   gsl_rng_set(ran,time(0));
 
