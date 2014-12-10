@@ -14,12 +14,13 @@
 #include "Python.h"
 #include "lime.h"
 
-PyObject* density_py;
-PyObject* velocity_py;
-PyObject* temperature_py;
-PyObject* doppler_py;
-PyObject* abundance_py;
-PyObject* py_module;
+PyObject* density_py = NULL;
+PyObject* velocity_py = NULL;
+PyObject* temperature_py = NULL;
+PyObject* doppler_py = NULL;
+PyObject* abundance_py = NULL;
+PyObject* py_module = NULL;
+PyObject* math_module = NULL;
 
 /******************************************************************************/
 
@@ -191,19 +192,54 @@ input(char* input_file, inputPars *par, image *img){
 
 void
 density(double x, double y, double z, double *density){
-  /*
-   * Define variable for radial coordinate
-   */
-  double r;
-  /*
-   * Calculate radial distance from origin
-   */
-  r=sqrt(x*x+y*y+z*z);
-  /*
-   * Calculate a spherical power-law density profile
-   * (Multiply with 1e6 to go to SI-units)
-   */
-  density[0] = 1.5e6*pow(r/(300*AU),-1.5)*1e6;
+ if( density_py == NULL )
+    {
+      fprintf (stderr, "lime: error: density if not defined in model\n");
+    }
+  else
+    {
+      PyObject* pArgs = PyTuple_New(3);
+      PyObject* pValue;
+      pValue = PyFloat_FromDouble( x );
+      if( !pValue )
+        {
+          Py_DECREF(pArgs);
+          fprintf(stderr, "Cannot convert density argument\n");
+          return;
+        }
+      PyTuple_SetItem(pArgs, 0, pValue );
+
+      pValue = PyFloat_FromDouble( y );
+      if( !pValue )
+        {
+          Py_DECREF(pArgs);
+          fprintf(stderr, "Cannot convert density argument\n");
+          return;
+        }
+      PyTuple_SetItem(pArgs, 1, pValue );
+
+      pValue = PyFloat_FromDouble( z );
+      if( !pValue )
+        {
+          Py_DECREF(pArgs);
+          fprintf(stderr, "Cannot convert density argument\n");
+          return;
+        }
+      PyTuple_SetItem(pArgs, 2, pValue );
+
+      pValue = PyObject_CallObject( density_py, pArgs);
+      Py_DECREF(pArgs);
+      if (pValue != NULL)
+        {
+          density[0] = PyFloat_AsDouble(pValue);
+          Py_DECREF(pValue);
+        }
+      else
+        {
+          PyErr_Print();
+          fprintf(stderr, "Cannot compute density\n");
+        }
+    }
 }
 
 /******************************************************************************/
@@ -298,20 +334,28 @@ int python_call_initialize( const inputPars *par )
 {
   Py_Initialize();
   PyObject* pName = PyString_FromString( par->python_module_name );
+  PyObject* pNameMath = PyString_FromString( "math" );
 
   PyObject* sysPath = PySys_GetObject((char*)"path");
-//  PyObject* modulePath = PyString_FromString( par->python_module_path );
-  PyObject* modulePath = PyString_FromString( "./" );
+  PyObject* modulePath = PyString_FromString( par->python_module_path );
   PyList_Append(sysPath, modulePath );
   Py_DECREF( modulePath );
 
   py_module = PyImport_Import(pName);
+  math_module = PyImport_Import(pNameMath);
   Py_DECREF(pName);
+  Py_DECREF(pNameMath);
 
   if (py_module == NULL )
     {
       PyErr_Print();
       fprintf(stderr, "Failed to import \"%s\"\n", par->python_module_name );
+      return EXIT_FAILURE;
+    }
+  if (math_module == NULL )
+    {
+      PyErr_Print();
+      fprintf(stderr, "Failed to import math" );
       return EXIT_FAILURE;
     }
 
@@ -325,6 +369,7 @@ int python_call_initialize( const inputPars *par )
       fprintf(stderr, "Cannot find density function \"%s\"\n", par->density_func_name );
       Py_XDECREF(density_py);
       Py_DECREF(py_module);
+      Py_DECREF(math_module);
       return EXIT_FAILURE;
     }
 
@@ -339,6 +384,7 @@ int python_call_initialize( const inputPars *par )
       Py_XDECREF(velocity_py);
       Py_DECREF( density_py );
       Py_DECREF(py_module);
+      Py_DECREF(math_module);
       return EXIT_FAILURE;
     }
 
@@ -354,6 +400,7 @@ int python_call_initialize( const inputPars *par )
       Py_DECREF( velocity_py );
       Py_DECREF( density_py );
       Py_DECREF(py_module);
+      Py_DECREF(math_module);
       return EXIT_FAILURE;
     }
 
@@ -370,6 +417,7 @@ int python_call_initialize( const inputPars *par )
       Py_DECREF( temperature_py );
       Py_DECREF( density_py );
       Py_DECREF(py_module);
+      Py_DECREF(math_module);
       return EXIT_FAILURE;
     }
 
@@ -387,9 +435,10 @@ int python_call_initialize( const inputPars *par )
       Py_DECREF( temperature_py );
       Py_DECREF( density_py );
       Py_DECREF( py_module );
+      Py_DECREF(math_module);
       return EXIT_FAILURE;
     }
-  Py_DECREF( sysPath ); //CHECK TODO
+  Py_DECREF( sysPath );
   return EXIT_SUCCESS;
 }
 
@@ -401,5 +450,13 @@ void python_call_finalize()
   Py_CLEAR( doppler_py );
   Py_CLEAR( density_py );
   Py_CLEAR( py_module );
+  Py_CLEAR( math_module );
   Py_Finalize();
+  abundance_py = NULL;
+  velocity_py = NULL;
+  temperature_py = NULL;
+  doppler_py = NULL;
+  density_py = NULL;
+  py_module = NULL;
+  math_module = NULL;
 }
