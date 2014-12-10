@@ -20,9 +20,13 @@
  *
  */
 
+#include <getopt.h>
 #include "lime.h"
 
-int main () {
+void usage (void);
+void version (void);
+
+int main ( int argc, char** argv) {
   int i;
   int initime=time(0);
   int popsdone=0;
@@ -31,10 +35,56 @@ int main () {
   struct grid* g = NULL;
   image*       img = NULL;
 
+  char *input_file;
+
+  silent = 0;
+  /* Parse options and command line arguments. Diplay help
+     message if no (or more than one) argument is given. */
+
+  {
+    int opt;
+
+    static struct option longopts[] = {
+      {"help", no_argument, NULL, 'h'},
+      {"version", no_argument, NULL, 'V'},
+      {"quiet", no_argument, NULL, 'q'},
+      {0, 0, 0, 0}
+    };
+
+    while ((opt = getopt_long (argc, argv, "hVvq", longopts, NULL)) != -1)
+      {
+        switch (opt)
+          {
+          case 'h':
+            usage ();
+            exit (0);
+            break;
+          case 'V':
+            version ();
+            exit (0);
+            break;
+          case 'q':
+            silent = 1;
+            break;
+          default:
+            usage ();
+            exit (1);
+          }
+      };
+    argc -= optind;
+    argv += optind;
+    if (argc != 1)
+      {
+        usage ();
+        exit (1);
+      }
+    input_file = argv[0];
+  }
+
   if(!silent) greetings();
   if(!silent) screenInfo();
 
-  parseInput(&par,&img,&m);
+  parseInput( input_file ,&par,&img,&m);
 
   if( strlen(par.pregrid) > 0 )
     {
@@ -64,8 +114,38 @@ int main () {
   }
 
   if(!silent) goodnight(initime,img[0].filename);
-  
+
   freeGrid( &par, m, g);
   freeInput(&par, img, m);
   return 0;
+}
+
+/*
+   Display help message.
+ */
+
+void
+usage (void)
+{
+  fprintf (stdout, "Usage: lime [option...] [file]\n\n");
+  fprintf (stdout, "Options:\n");
+  fprintf (stdout, "   -h, --help         Display this help\n");
+  fprintf (stdout, "   -V, --version      Print program version\n");
+  fprintf (stdout, "   -q, --quiet        Suppress all messages\n");
+  fprintf (stdout, "\n");
+}
+
+/*
+   Display version.
+ */
+
+void
+version (void)
+{
+  fprintf (stdout, "This is lime, version %s\n", VERSION );
+  fprintf (stdout,
+           "This is free software. You may redistribute copies of it under the terms\n");
+  fprintf (stdout,
+           "of the GNU General Public License. There is NO WARRANTY, to the extent\n");
+  fprintf (stdout, "permitted by law.\n");
 }

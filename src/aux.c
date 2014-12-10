@@ -17,7 +17,7 @@
 
 
 void
-parseInput(inputPars *par, image **img, molData **m){
+parseInput( char* input_file, inputPars *par, image **img, molData **m){
   FILE *fp;
   int i,id;
   double BB[3];
@@ -63,7 +63,7 @@ parseInput(inputPars *par, image **img, molData **m){
     (*img)[id].bandwidth=-1.;
   }
 
-  if( input("../doc/example/input.ini", par, *img) != EXIT_SUCCESS )
+  if( input( input_file, par, *img) != EXIT_SUCCESS )
     {
       if(!silent) bail_out("Error: Cannot Read input file");
       exit(1);

@@ -22,8 +22,8 @@
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_linalg.h>
 
-#define silent 0
 #define DIM 3
+#define VERSION "0.1"
 
 /* Physical constants */
 #define PI			3.14159265358979323846
@@ -60,6 +60,7 @@
 
 #define MAX_LINE 512      /*!< Maximum number of characters in each input file line */
 
+int silent;
 typedef char filename_t [MAX_LINE];
 typedef char pythonname_t [MAX_LINE];
 
@@ -204,7 +205,7 @@ void   	molinit(molData *, inputPars *, struct grid *,int);
 void    openSocket(inputPars *par, int);
 void	qhull(inputPars *, struct grid *);
 void  	photon(int, struct grid *, molData *, int, const gsl_rng *,inputPars *,blend *);
-void	parseInput(inputPars *, image **, molData **);
+void	parseInput(char* input_file, inputPars *, image **, molData **);
 double 	planckfunc(int, double, molData *, int);
 int		pointEvaluation(inputPars *,double, double, double, double);
 void   	popsin(inputPars *, struct grid **, molData **, int *);
