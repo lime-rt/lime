@@ -3,12 +3,15 @@ project ( lime )
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -DDEBUG -Wall ")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 
+
 find_package(PythonLibs 2.7 REQUIRED)
 find_package(GSL REQUIRED)
 find_package(M REQUIRED)
 find_package(CFITSIO REQUIRED)
 find_package(CBLAS REQUIRED)
 find_package(Curses REQUIRED)
+
+set(QHULL_USE_STATIC "YES")
 find_package(Qhull REQUIRED)
 
 file(GLOB limeSRC

@@ -23,7 +23,6 @@ def temperature(x,y,z):
         return (temp[1][x0]+(r-temp[0][x0])*(temp[1][x0+1]-temp[1][x0])/(temp[0][x0+1]-temp[0][x0]))
 
 def velocity(x,y,z):
-    import numpy
     import math
     R = math.sqrt(x*x+y*y+z*z)
     theta = math.atan2(math.sqrt(x*x+y*y), z)
