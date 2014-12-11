@@ -76,7 +76,7 @@ parseInput( char* input_file, inputPars *par, image **img, molData **m){
     }
 
   id=-1;
-  while((*img)[++id].filename!=NULL);
+  while( strlen((*img)[++id].filename) != 0 );
   par->nImages=id;
   if(par->nImages==0) {
     if(!silent) bail_out("Error: no images defined");
@@ -96,7 +96,7 @@ parseInput( char* input_file, inputPars *par, image **img, molData **m){
     }
   else
     {
-      par->moldatfile=realloc(par->moldatfile, sizeof(char *)*par->nSpecies);
+      par->moldatfile=realloc(par->moldatfile, sizeof(filename_t )*par->nSpecies);
       /* Check if files exists */
       for(id=0;id<par->nSpecies;id++){
         if((fp=fopen(par->moldatfile[id], "r"))==NULL) {
