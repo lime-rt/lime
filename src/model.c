@@ -21,8 +21,10 @@ PyObject* doppler_py = NULL;
 PyObject* abundance_py = NULL;
 PyObject* py_module = NULL;
 PyObject* math_module = NULL;
+PyObject* numpy_module = NULL;
 
 /******************************************************************************/
+void    python_call( PyObject* func_py, double x, double y, double z, double *output);
 
 int
 input(char* input_file, inputPars *par, image *img){
@@ -192,139 +194,35 @@ input(char* input_file, inputPars *par, image *img){
 
 void
 density(double x, double y, double z, double *density){
- if( density_py == NULL )
-    {
-      fprintf (stderr, "lime: error: density if not defined in model\n");
-    }
-  else
-    {
-      PyObject* pArgs = PyTuple_New(3);
-      PyObject* pValue;
-      pValue = PyFloat_FromDouble( x );
-      if( !pValue )
-        {
-          Py_DECREF(pArgs);
-          fprintf(stderr, "Cannot convert density argument\n");
-          return;
-        }
-      PyTuple_SetItem(pArgs, 0, pValue );
-
-      pValue = PyFloat_FromDouble( y );
-      if( !pValue )
-        {
-          Py_DECREF(pArgs);
-          fprintf(stderr, "Cannot convert density argument\n");
-          return;
-        }
-      PyTuple_SetItem(pArgs, 1, pValue );
-
-      pValue = PyFloat_FromDouble( z );
-      if( !pValue )
-        {
-          Py_DECREF(pArgs);
-          fprintf(stderr, "Cannot convert density argument\n");
-          return;
-        }
-      PyTuple_SetItem(pArgs, 2, pValue );
-
-      pValue = PyObject_CallObject( density_py, pArgs);
-      Py_DECREF(pArgs);
-      if (pValue != NULL)
-        {
-          density[0] = PyFloat_AsDouble(pValue);
-          Py_DECREF(pValue);
-        }
-      else
-        {
-          PyErr_Print();
-          fprintf(stderr, "Cannot compute density\n");
-        }
-    }
+  python_call( density_py, x, y, z, density );
 }
 
 /******************************************************************************/
 
 void
 temperature(double x, double y, double z, double *temperature){
-  int i,x0=0;
-  double r;
-  /*
-   * Array containing temperatures as a function of radial
-   * distance from origin (this is an example of a tabulated model)
-   */
-  double temp[2][10] = {
-      {2.0e13, 5.0e13, 8.0e13, 1.1e14, 1.4e14, 1.7e14, 2.0e14, 2.3e14, 2.6e14, 2.9e14},
-      {44.777, 31.037, 25.718, 22.642, 20.560, 19.023, 17.826, 16.857, 16.050, 15.364}
-  };
-  /*
-   * Calculate coordinate distance from origin
-   */
-  r=sqrt(x*x+y*y+z*z);
-  /*
-   * Linear interpolation in temperature input
-   */
-  if(r > temp[0][0] && r<temp[0][9]){
-    for(i=0;i<9;i++){
-      if(r>temp[0][i] && r<temp[0][i+1]) x0=i;
-    }
-  }
-  if(r<temp[0][0])
-    temperature[0]=temp[1][0];
-  else if (r>temp[0][9])
-    temperature[0]=temp[1][9];
-  else
-    temperature[0]=temp[1][x0]+(r-temp[0][x0])*(temp[1][x0+1]-temp[1][x0])/(temp[0][x0+1]-temp[0][x0]);
+  python_call( temperature_py, x, y, z, temperature );
 }
 
 /******************************************************************************/
 
 void
 abundance(double x, double y, double z, double *abundance){
-  /*
-   * Here we use a constant abundance. Could be a
-   * function of (x,y,z).
-   */
-  abundance[0] = 1.e-9;
+  python_call( abundance_py, x, y, z, abundance );
 }
 
 /******************************************************************************/
 
 void
 doppler(double x, double y, double z, double *doppler){
-  /*
-   * 200 m/s as the doppler b-parameter. This
-   * can be a function of (x,y,z) as well.
-   * Note that *doppler is a pointer, not an array.
-   * Remember the * in front of doppler.
-   */
-  *doppler = 200.;
+  python_call( doppler_py, x, y, z, doppler );
 }
 
 /******************************************************************************/
 
 void
 velocity(double x, double y, double z, double *vel){
-  /*
-   * Variables for spherical coordinates
-   */
-  double R, phi,r,theta;
-  /*
-   * Transform Cartesian coordinates into spherical coordinates
-   */
-  R=sqrt(x*x+y*y+z*z);
-  theta=atan2(sqrt(x*x+y*y),z);
-  phi=atan2(y,x);
-  /*
-   * Free-fall velocity in the radial direction onto a central
-   * mass of 1.0 solar mass
-   */
-  r=-sqrt(2*6.67e-11*1.989e30/R);
-  /*
-   * Vector transformation back into Cartesian basis
-   */
-  vel[0]=r*sin(theta)*cos(phi);
-  vel[1]=r*sin(theta)*sin(phi);
-  vel[2]=r*cos(theta);
+  python_call( velocity_py, x, y, z, vel );
 }
 
 /******************************************************************************/
@@ -335,6 +233,7 @@ int python_call_initialize( const inputPars *par )
   Py_Initialize();
   PyObject* pName = PyString_FromString( par->python_module_name );
   PyObject* pNameMath = PyString_FromString( "math" );
+  PyObject* pNameNumpy = PyString_FromString( "numpy" );
 
   PyObject* sysPath = PySys_GetObject((char*)"path");
   PyObject* modulePath = PyString_FromString( par->python_module_path );
@@ -343,8 +242,10 @@ int python_call_initialize( const inputPars *par )
 
   py_module = PyImport_Import(pName);
   math_module = PyImport_Import(pNameMath);
+  numpy_module = PyImport_Import(pNameNumpy);
   Py_DECREF(pName);
   Py_DECREF(pNameMath);
+  Py_DECREF(pNameNumpy);
 
   if (py_module == NULL )
     {
@@ -358,6 +259,11 @@ int python_call_initialize( const inputPars *par )
       fprintf(stderr, "Failed to import math" );
       return EXIT_FAILURE;
     }
+  if (numpy_module == NULL )
+    {
+      PyErr_Print();
+      fprintf(stderr, "Failed to import numpy, cannot use numpy in model" );
+    }
 
   density_py = PyObject_GetAttrString(py_module, par->density_func_name);
   if( density_py == NULL || !PyCallable_Check( density_py ) )
@@ -370,6 +276,7 @@ int python_call_initialize( const inputPars *par )
       Py_XDECREF(density_py);
       Py_DECREF(py_module);
       Py_DECREF(math_module);
+      Py_DECREF(numpy_module);
       return EXIT_FAILURE;
     }
 
@@ -385,6 +292,7 @@ int python_call_initialize( const inputPars *par )
       Py_DECREF( density_py );
       Py_DECREF(py_module);
       Py_DECREF(math_module);
+      Py_DECREF(numpy_module);
       return EXIT_FAILURE;
     }
 
@@ -401,6 +309,7 @@ int python_call_initialize( const inputPars *par )
       Py_DECREF( density_py );
       Py_DECREF(py_module);
       Py_DECREF(math_module);
+      Py_DECREF(numpy_module);
       return EXIT_FAILURE;
     }
 
@@ -418,6 +327,7 @@ int python_call_initialize( const inputPars *par )
       Py_DECREF( density_py );
       Py_DECREF(py_module);
       Py_DECREF(math_module);
+      Py_DECREF(numpy_module);
       return EXIT_FAILURE;
     }
 
@@ -436,6 +346,7 @@ int python_call_initialize( const inputPars *par )
       Py_DECREF( density_py );
       Py_DECREF( py_module );
       Py_DECREF(math_module);
+      Py_DECREF(numpy_module);
       return EXIT_FAILURE;
     }
   Py_DECREF( sysPath );
@@ -451,6 +362,7 @@ void python_call_finalize()
   Py_CLEAR( density_py );
   Py_CLEAR( py_module );
   Py_CLEAR( math_module );
+  Py_CLEAR( numpy_module );
   Py_Finalize();
   abundance_py = NULL;
   velocity_py = NULL;
@@ -459,4 +371,94 @@ void python_call_finalize()
   density_py = NULL;
   py_module = NULL;
   math_module = NULL;
+  numpy_module = NULL;
+}
+
+void
+python_call( PyObject* func_py, double x, double y, double z, double *output){
+  if( func_py == NULL )
+    {
+      fprintf (stderr, "lime: error: func if not defined in model\n");
+    }
+  else
+    {
+      PyObject* pArgs = PyTuple_New(3);
+      PyObject* pValue;
+      pValue = PyFloat_FromDouble( x );
+      if( !pValue )
+        {
+          Py_DECREF(pArgs);
+          fprintf(stderr, "Cannot convert python func argument\n");
+          return;
+        }
+      PyTuple_SetItem(pArgs, 0, pValue );
+
+      pValue = PyFloat_FromDouble( y );
+      if( !pValue )
+        {
+          Py_DECREF(pArgs);
+          fprintf(stderr, "Cannot convert python func argument\n");
+          return;
+        }
+      PyTuple_SetItem(pArgs, 1, pValue );
+
+      pValue = PyFloat_FromDouble( z );
+      if( !pValue )
+        {
+          Py_DECREF(pArgs);
+          fprintf(stderr, "Cannot convert python func argument\n");
+          return;
+        }
+      PyTuple_SetItem(pArgs, 2, pValue );
+
+      pValue = PyObject_CallObject( func_py, pArgs);
+      Py_DECREF(pArgs);
+      if (pValue != NULL)
+        {
+          if( PyTuple_Check( pValue ) )
+            {
+              Py_ssize_t tuple_size = PyTuple_GET_SIZE( pValue );
+              Py_ssize_t i;
+              PyObject* tupleValue;
+              for( i = 0; i<tuple_size; i++ )
+                {
+                  tupleValue = PyTuple_GET_ITEM( pValue, i );
+                  if( PyFloat_Check( tupleValue ) )
+                    {
+                      output[i] = PyFloat_AsDouble(tupleValue);
+                    }
+                  else if( PyInt_Check( tupleValue ) )
+                    {
+                      output[i] = PyInt_AsLong( tupleValue );
+                    }
+                  else
+                    {
+                      fprintf(stderr, "Cannot convert returned tuple value\n");
+                    }
+                  Py_DECREF(tupleValue);
+                }
+            }
+          else
+            {
+              if( PyFloat_Check( pValue ) )
+                {
+                  output[0] = PyFloat_AsDouble(pValue);
+                }
+              else if( PyInt_Check( pValue ) )
+                {
+                  output[0] = PyInt_AsLong( pValue );
+                }
+              else
+                {
+                  fprintf(stderr, "Cannot convert returned value\n");
+                }
+            }
+          Py_DECREF(pValue);
+        }
+      else
+        {
+          PyErr_Print();
+          fprintf(stderr, "Cannot compute python func\n");
+        }
+    }
 }
