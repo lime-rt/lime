@@ -73,7 +73,7 @@ typedef struct {
   int *lal,*lau,*lcl,*lcu;
   double *aeinst,*freq,*beinstu,*beinstl,*up,*down,*eterm,*gstat;
   double *jbar,norm,norminv,*cmb,*local_cmb;
-  double *phot, *ds, *vfac, *weight;
+  double *phot, *ds, *vfac;
 } molData;
 
 typedef struct {

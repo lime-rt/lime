@@ -47,13 +47,11 @@ popsin(inputPars *par, struct grid **g, molData **m, int *popsdone){
     (*m)[i].jbar = NULL;
     (*m)[i].ds = NULL;
     (*m)[i].vfac = NULL;
-    (*m)[i].weight = NULL;
     (*m)[i].jbar = NULL;
     (*m)[i].cmb = NULL;
     (*m)[i].phot = NULL;
     (*m)[i].ds = NULL;
     (*m)[i].vfac = NULL;
-    (*m)[i].weight = NULL;
     fread(&(*m)[i].nlev,  sizeof(int),        1,fp);
     fread(&(*m)[i].nline, sizeof(int),        1,fp);
     fread(&(*m)[i].npart, sizeof(int),        1,fp);

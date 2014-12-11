@@ -172,7 +172,6 @@ parseInput(inputPars *par, image **img, molData **m){
       (*m)[i].phot = NULL;
       (*m)[i].ds = NULL;
       (*m)[i].vfac = NULL;
-      (*m)[i].weight = NULL;
     }
 }
 
@@ -259,10 +258,6 @@ freeInput( inputPars *par, image* img, molData* mol )
           if( mol[i].vfac != NULL )
             {
               free(mol[i].vfac);
-            }
-          if( mol[i].weight != NULL )
-            {
-              free(mol[i].weight);
             }
         }
       free(mol);
