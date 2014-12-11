@@ -5,7 +5,7 @@ libcfitsio
 libcblas
 libcurses
 libqhull
-libmatheval
+python2.7
 cmake
 
 
