@@ -48,7 +48,7 @@ parseInput(inputPars *par, image **img, molData **m){
     par->moldatfile[id]=NULL;
   }
   input(par, *img);
-  id=0;
+  id=-1;
   while((*img)[++id].filename!=NULL);
   par->nImages=id;
   if(par->nImages==0) {
@@ -61,13 +61,25 @@ parseInput(inputPars *par, image **img, molData **m){
   id=-1;
   while(par->moldatfile[++id]!=NULL);
   par->nSpecies=id;
-  if( par->nSpecies <= 0 )
+  if( par->nSpecies == 0 )
     {
-      if(!silent) bail_out("Error: no moldatfile provided");
-      exit(1);
+      par->nSpecies = 1;
+      free(par->moldatfile);
+      par->moldatfile = NULL;
     }
-
-  par->moldatfile=realloc(par->moldatfile, sizeof(char *)*par->nSpecies);
+  else
+    {
+      par->moldatfile=realloc(par->moldatfile, sizeof(char *)*par->nSpecies);
+      /* Check if files exists */
+      for(id=0;id<par->nSpecies;id++){
+        if((fp=fopen(par->moldatfile[id], "r"))==NULL) {
+          openSocket(par, id);
+        }
+        else {
+          fclose(fp);
+        }
+      }
+    }
 
 
   /* Set defaults and read inputPars and img[] */
@@ -84,15 +96,6 @@ parseInput(inputPars *par, image **img, molData **m){
 
   par->ncell=par->pIntensity+par->sinkPoints;
 
-  /* Check if files exists */
-  for(id=0;id<par->nSpecies;id++){
-    if((fp=fopen(par->moldatfile[id], "r"))==NULL) {
-      openSocket(par, id);
-    }
-    else {
-      fclose(fp);
-    }
-  }
   if(par->dust != NULL){
     if((fp=fopen(par->dust, "r"))==NULL){
       if(!silent) bail_out("Error opening dust opacity data file!");
@@ -269,8 +272,14 @@ freeInput( inputPars *par, image* img, molData* mol )
     }
     free(img[i].pixel);
   }
-  free(img);
-  free(par->moldatfile);
+  if( img != NULL )
+    {
+      free(img);
+    }
+  if( par->moldatfile != NULL )
+    {
+      free(par->moldatfile);
+    }
 }
 
 
