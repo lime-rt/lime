@@ -8,16 +8,22 @@ libqhull
 libmatheval
 cmake
 
-=== Input ===
-For now
-change ./src/model.c
-also   ./data/jena_thin_e6.tab is used in current model.c
 
 ==== Compilation ===
+
+osx only :
+export CC=/opt/local/bin/gcc-mp-5.8
+
 cd build
 cmake ../
 make
 
+
+=== Input ( default provided ) ===
+build/doc/example/input.ini
+doc/example/model.py
+data/jena_thin_e6.tab is used in current input.ini
+
 === Execution ===
-./lime
+./lime build/doc/example/input.ini
 
