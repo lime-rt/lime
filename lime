@@ -2,7 +2,7 @@
 export WORKDIR=$PWD
 
 cd $PATHTOLIME
-make MODELS=$WORKDIR/$1 TARGET=$WORKDIR/lime_$$.x
+make MODELS=$WORKDIR/$1 TARGET=$WORKDIR/lime.x
 make clean
 cd $WORKDIR
 ./lime_$$.x
