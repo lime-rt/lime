@@ -1,0 +1,4 @@
+language: c
+before_install: sudo apt-get update
+install: sudo apt-get install libgsl0-dev libcfitsio3-dev libatlas-dev libncurses5-dev libqhull-dev python-numpy cmake
+script: mkdir build && cd build && cmake ../ && make
