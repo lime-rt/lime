@@ -25,7 +25,7 @@ openSocket(inputPars *par, int id){
   int tmpres;
   int sock;
   char *get;
-  char *s,*t;
+  char *t;
   char buf[2];
   char *host = "home.strw.leidenuniv.nl";
   char *ip="132.229.214.164";
@@ -35,12 +35,7 @@ openSocket(inputPars *par, int id){
 
   // Check if moldatfile contains .dat
   if(strstr(par->moldatfile[id], ".dat") == NULL){
-    size_t length = strlen(par->moldatfile[id]);
-    s = (char*)malloc(sizeof(char) * (length + 5));
-    strcpy(s,par->moldatfile[id]);
-    strcat(s, ".dat");
-    s[length+5]='\0';
-    par->moldatfile[id]=s;
+    strcat( par->moldatfile[id],  ".dat" );
   }
 
   size_t length1 = strlen(page);

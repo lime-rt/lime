@@ -22,8 +22,8 @@
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_linalg.h>
 
-#define silent 0
 #define DIM 3
+#define VERSION "0.1"
 
 /* Physical constants */
 #define PI			3.14159265358979323846
@@ -41,7 +41,12 @@
 #define GRAV		6.67428e-11
 
 /* Other constants */
+#ifndef DEBUG
 #define NITERATIONS 	16
+#else
+#define NITERATIONS 	2
+#endif
+
 #define max_phot		10000		/* don't set this value higher unless you have enough memory. */
 #define ininphot		9
 #define minpop			1.e-6
@@ -53,18 +58,31 @@
 #define blendmask		1.e4
 #define MAX_NSPECIES            100
 
+#define MAX_LINE 512      /*!< Maximum number of characters in each input file line */
+
+int silent;
+typedef char filename_t [MAX_LINE];
+typedef char pythonname_t [MAX_LINE];
 
 /* input parameters */
 typedef struct {
   double radius,minScale,tcmb;
   int ncell,sinkPoints,pIntensity,nImages,nSpecies,blend;
-  char *outputfile, *binoutputfile, *inputfile;
-  char *gridfile;
-  char *pregrid;
-  char *restart;
-  char *dust;
+  filename_t outputfile;
+  filename_t binoutputfile;
+  filename_t gridfile;
+  filename_t pregrid;
+  filename_t restart;
+  filename_t dust;
   int sampling,collPart,lte_only,antialias,polarization;
-  char **moldatfile;
+  filename_t* moldatfile;
+  pythonname_t python_module_name;
+  filename_t   python_module_path;
+  pythonname_t density_func_name;
+  pythonname_t velocity_func_name;
+  pythonname_t temperature_func_name;
+  pythonname_t doppler_func_name;
+  pythonname_t abundance_func_name;
 } inputPars;
 
 /* Molecular data and radiation field */
@@ -131,7 +149,7 @@ typedef struct {
   int pxls;
   int unit;
   double freq,bandwidth;
-  char *filename;
+  filename_t filename;
   double source_vel;
   double theta,phi;
   double distance;
@@ -143,6 +161,7 @@ typedef struct {
 } blend;
 
 
+extern void* density_eval;
 
 /* Some functions */
 void density(double,double,double,double *);
@@ -162,7 +181,7 @@ void	distCalc(inputPars *, struct grid *);
 void	fit_d1fi(double, double, double*);
 void    fit_fi(double, double, double*);
 void    fit_rr(double, double, double*);
-void   	input(inputPars *, image *);
+int   	input(char* input_file, inputPars *, image *);
 float  	invSqrt(float);
 void    freeInput(inputPars *, image*, molData* m );
 void   	freeGrid(const inputPars * par, const molData* m, struct grid * g);
@@ -186,12 +205,14 @@ void   	molinit(molData *, inputPars *, struct grid *,int);
 void    openSocket(inputPars *par, int);
 void	qhull(inputPars *, struct grid *);
 void  	photon(int, struct grid *, molData *, int, const gsl_rng *,inputPars *,blend *);
-void	parseInput(inputPars *, image **, molData **);
+void	parseInput(char* input_file, inputPars *, image **, molData **);
 double 	planckfunc(int, double, molData *, int);
 int		pointEvaluation(inputPars *,double, double, double, double);
 void   	popsin(inputPars *, struct grid **, molData **, int *);
 void   	popsout(inputPars *, struct grid *, molData *);
 void	predefinedGrid(inputPars *, struct grid *);
+int     python_call_initialize( const inputPars *par );
+void    python_call_finalize();
 double 	ratranInput(char *, char *, double, double, double);
 void   	raytrace(int, inputPars *, struct grid *, molData *, image *);
 void	report(int, inputPars *, struct grid *);

@@ -166,11 +166,16 @@ qhull(inputPars *par, struct grid *g){
   boolT ismalloc = False;
   facetT *facet;
   vertexT *vertex,**vertexp;
-  coordT *pt_array;
+  coordT *pt_array = NULL;
   int simplex[DIM];
   int curlong, totlong;
 
   pt_array=malloc(DIM*sizeof(coordT)*par->ncell);
+  if( pt_array == NULL )
+    {
+      if(!silent) bail_out("Fail to allocate in qhull");
+      exit(1);
+    }
 
   for(i=0;i<par->ncell;i++) {
     for(j=0;j<DIM;j++) {
@@ -229,7 +234,10 @@ qhull(inputPars *par, struct grid *g){
   }
   qh_freeqhull(!qh_ALL);
   qh_memfreeshort (&curlong, &totlong);
-  free(pt_array);
+  if( pt_array != NULL )
+    {
+      free(pt_array);
+    }
 }
 
 void
