@@ -3,7 +3,7 @@ branches:
       - python
 language: c
 before_install: sudo apt-get update
-install: sudo apt-get install libgsl0-dev libcfitsio3-dev libatlas-base-dev libncurses5-dev libqhull-dev qhull-bin libqhull6 python-numpy cmake
+install: sudo apt-get install libgsl0-dev libcfitsio3-dev libatlas-base-dev libncurses5-dev libqhull-dev libqhull5 python-numpy cmake
 script: mkdir build && cd build && CMAKE_INCLUDE_PATH=/usr/include/atlas CMAKE_LIBRARY_PATH=/usr/lib/atlas-base cmake ../ && make
 
 
