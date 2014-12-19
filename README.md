@@ -70,6 +70,6 @@ The ```input.ini``` file contains the code input parameters. The
 physical parameters (density, temperature, velocity, abundances) are
 read from a Python file. See the ```model.py``` file for more details.
 
-[![Build Status](https://travis-ci.org/smaret/lime.svg)]
-(https://travis-ci.org/smaret/lime)
+[![Build Status](https://travis-ci.org/smaret/lime.svg?branch=python)](https://travis-ci.org/smaret/lime)
+
 
