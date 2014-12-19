@@ -63,7 +63,7 @@ Running the code
 The code runs simply by typing:
 
 ```
-$ ./lime build/doc/example/input.ini
+$ ./lime doc/example/input.ini
 ```
 
 The ```input.ini``` file contains the code input parameters. The
