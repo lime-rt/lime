@@ -171,3 +171,5 @@ Changelog
 - 1.01: First full public release
 
 
+[![Documentation Status](https://readthedocs.org/projects/lime/badge/?version=doc)](https://readthedocs.org/projects/lime/?badge=doc)
+
