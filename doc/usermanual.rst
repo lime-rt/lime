@@ -1050,7 +1050,8 @@ particularly interesting property to plot is the excitation temperature
 
 .. math::
 
-    \frac{n_u}{n_l} = \frac{g_u}{g_l} \, \mathrm{exp} \left( - \frac{Delta E}{k_B \, T_{ex}} \right)
+    \frac{n_u}{n_l} = \frac{g_u}{g_l} \, \mathrm{exp} \left( -
+    \frac{\Delta E}{k_B \, T_{ex}} \right)
 
 which is obtained from the level populations. u and l refers to the
 upper and lower level and g are the statistical weights. Calculating the
