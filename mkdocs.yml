@@ -1,0 +1,6 @@
+site_name: LIME
+docs_dir: doc
+pages:
+- ['index.md', 'Welcome to LIME documentation']
+- ['usermanual.md', 'User manual']
+theme: readthedocs
