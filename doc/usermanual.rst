@@ -1048,9 +1048,9 @@ the best way to directly compare the LIME model and the result of the
 excitation calculation with the results obtained by other codes. One
 particularly interesting property to plot is the excitation temperature
 
-.. code:: latex
+.. math::
 
-    $\frac{n_u}{n_l} = \frac{g_u}{g_l} \, \mathrm{exp} \left( - \frac{Delta E}{k_B \, T_{ex}} \right)$
+    \frac{n_u}{n_l} = \frac{g_u}{g_l} \, \mathrm{exp} \left( - \frac{Delta E}{k_B \, T_{ex}} \right)
 
 which is obtained from the level populations. u and l refers to the
 upper and lower level and g are the statistical weights. Calculating the
@@ -1136,10 +1136,10 @@ frequencies. This results in, what is know as, moment maps. These can be
 made to any order, but zero and first moments are most often used. The
 nth moment is defined as
 
-.. code:: latex
+.. math::
 
-    $\mu_n \left( x , y \right) = \int_{-\infty}^{\infty} \left( v -
-    v_\mathrm{source} \right)^n \, I \left( x , y , z \right) \, dv$
+    \mu_n \left( x , y \right) = \int_{-\infty}^{\infty} \left( v -
+    v_\mathrm{source} \right)^n \, I \left( x , y , z \right) \, dv
 
 Sometimes the first moment (and also higher order moments) is normalized
 by the zero moment.
