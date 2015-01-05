@@ -1,8 +1,6 @@
 LIME user manual
 ================
 
-Version 1.3, March 2013
-
 Christian Brinch, Niels Bohr Institutet, University of Copenhagen brinch@nbi.dk, http://www.nbi.dk/~brinch/lime.php
 
 Introduction
@@ -11,19 +9,17 @@ Introduction
 The LIME code
 ~~~~~~~~~~~~~
 
-LIME (Line Modeling Engine) is an excitation and radiation transfer code
-that can be used to predict line and continuum radiation from an
-astronomical source model. The code uses unstructured 3D Delaunay grids
-for photon transport and accelerated Lambda Iteration for population
-calculations. The LIME code was written by Christian Brinch between 2006
-and 2010, with version 1.0 appearing in early 2010. The current version
-is 1.23 which was released in February 2013. This manual refers to the
-version 1.23 and may not be accurate for earlier or later versions. LIME
-derives from the radiation transfer code RATRAN developed by Michiel R.
-Hogerheijde and Floris van der Tak (Hogerhijde & van der Tak, 2000),
-although after several rewrites, the shared codebase is very small. The
-photon transport method is a direct implementation of the SimpleX
-algorithm (Ritzerveld & Icke, 2006).
+LIME (Line Modeling Engine) is an excitation and radiation transfer
+code that can be used to predict line and continuum radiation from an
+astronomical source model. The code uses unstructured 3D Delaunay
+grids for photon transport and accelerated Lambda Iteration for
+population calculations. The LIME code was written by Christian Brinch
+between 2006 and 2010, with version 1.0 appearing in early 2010. LIME
+derives from the radiation transfer code RATRAN developed by
+Michiel R.  Hogerheijde and Floris van der Tak (Hogerhijde & van der
+Tak, 2000), although after several rewrites, the shared codebase is
+very small. The photon transport method is a direct implementation of
+the SimpleX algorithm (Ritzerveld & Icke, 2006).
 
 LIME was developed for the purpose of predicting the emission signature
 of low-mass young stellar objects, including molecular envelopes and
