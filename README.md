@@ -18,8 +18,7 @@ user-supplied physical model.  Details on the method can be found in
 Any scientific publication making use of the LIME code should also
 reference this publication.
 
-A comprehensive user manual is available online at the [LIME
-website](http://www.nbi.dk/~brinch/lime.html).
+A comprehensive user manual is available [online](http://lime.readthedocs.org/en/doc/).
 
 Installation notes
 ------------------
@@ -171,4 +170,6 @@ Changelog
 
 - 1.01: First full public release
 
+
+[![Documentation Status](https://readthedocs.org/projects/lime/badge/?version=doc)](https://readthedocs.org/projects/lime/?badge=doc)
 
