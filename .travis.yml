@@ -1,0 +1,9 @@
+branches:
+  only:
+      - python
+language: c
+before_install: sudo apt-get update
+install: sudo apt-get install libgsl0-dev libcfitsio3-dev libatlas-base-dev libncurses5-dev libqhull-dev libqhull5 python-numpy cmake
+script: sudo ln -s /usr/lib/libqhull.a /usr/lib/libqhullstatic.a && sudo ln -s /usr/include/qhull /usr/include/libqhull && mkdir build && cd build && CMAKE_INCLUDE_PATH=/usr/include/atlas CMAKE_LIBRARY_PATH=/usr/lib/atlas-base cmake ../ && make && ./lime -q doc/example/input.ini
+
+

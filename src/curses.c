@@ -12,17 +12,23 @@
  */
 
 #include <curses.h>
+#include <string.h>
 #include <time.h>
 
 void
 greetings(){
+#ifndef DEBUG
   initscr();
   printw("*** LIME, The versatile line modeling engine, Ver.1.31\n*** Copyright 2006--2014, Christian Brinch <brinch@nbi.dk>\n");
   refresh();
+#else
+  printf("*** LIME, The versatile line modeling engine, Ver.1.31\n*** Copyright 2006--2014, Christian Brinch <brinch@nbi.dk>\n");
+#endif
 }
 
 void
 screenInfo(){
+#ifndef DEBUG
   move(4,4);  printw("Building grid      :");
   move(4,51); printw("|");
   move(5,4);  printw("Smoothing grid     :");
@@ -44,28 +50,38 @@ screenInfo(){
   move(12,60); printw("|");
   move(13,60); printw("|");
   move(14,60); printw("|");
-  refresh();
+  refresh();	
+#endif
 }
 
 void
 done(int line){
+#ifndef DEBUG
   move(line,52); printw(" [ok]");
   refresh();
+#else
+  printf("[ok]\n");
+#endif
 }
 
 void
 progressbar(double percent, int line){
+#ifndef DEBUG
   int i;
   for(i=0;i<(int)(percent*25.);i++){
     move(line,25+i);
     printw("#");
   }
   refresh();
+#else
+  //  printf("Doing stuff n° %i\n", line );
+#endif
 }
 
 void
 progressbar2(int prog, double percent, double minsnr, double median){
-  move(7,38); printw("                    ");
+#ifndef DEBUG
+  move(7,38); printw("                    ");            
   move(8,38); printw("                    ");
   if(minsnr<1000){
     move(7,25); printw("Min(SNR)    %3.3f", minsnr);
@@ -81,11 +97,13 @@ progressbar2(int prog, double percent, double minsnr, double median){
   if(percent<100) {
     move(10,25);	 printw("                         ");
   }
-  refresh();
+  refresh();	
+#endif
 }
 
 void
 goodnight(int initime, char filename[80]){
+#ifndef DEBUG
   int runtime=time(0)-initime;
   move(14,4); printw("Output written to %s", filename);
   move(22,0); printw("*** Program ended succesfully               ");
@@ -94,47 +112,66 @@ goodnight(int initime, char filename[80]){
   refresh();
   getch();
   endwin();
+#endif
 }
 
 void
 quotemass(double mass){
+#ifndef DEBUG
   move(21,6); printw("Total mass contained in model: %3.2e solar masses", mass);
   refresh();
+#endif
 }
 
 
 
 void
 warning(char message[80]){
+#ifndef DEBUG
   move(22,0); printw("*** %s\n",message);
   refresh();
+#else
+  if(strlen(message)>0)
+    {
+      printf("Warning : %s\n", message );
+    }
+#endif
 }
 
 void
 bail_out(char message[80]){
+#ifndef DEBUG
   move(22,0); printw("*** %s",message);
   move(23,0); printw("*** [Press any key to quit]");
   refresh();
   getch();
   endwin();
+#else
+  printf("Error : %s\n", message );
+#endif
 }
 
 void
 collpartmesg(char molecule[90], int partners, int specnumber){
+#ifndef DEBUG
   move(6,63); printw("%.25s", molecule);
   move(7,63); printw("%d collision partner(s):", partners);
 
   refresh();
+#endif
 }
 
 void
 collpartmesg2(char name[10], int partner){
+#ifndef DEBUG
   move(8,63); printw("%s ",name);
   refresh();
+#endif
 }
 
 void
 collpartmesg3(int number, int flag){
+#ifndef DEBUG
   move(10,63); printw("Model provides:");
   move(11,63); printw("%d density profile(s)", number);
   if(flag==1) {
@@ -142,4 +179,5 @@ collpartmesg3(int number, int flag){
     move(14,63); printw("Too few density profiles");
   }
   refresh();
+#endif
 }

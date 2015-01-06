@@ -17,19 +17,18 @@
 
 
 void
-parseInput(inputPars *par, image **img, molData **m){
+parseInput( char* input_file, inputPars *par, image **img, molData **m){
   FILE *fp;
   int i,id;
   double BB[3];
 
   /* Set default values */
-  par->dust  	    = NULL;
-  par->inputfile    = NULL;
-  par->outputfile   = NULL;
-  par->binoutputfile= NULL;
-  par->gridfile     = NULL;
-  par->pregrid	    = NULL;
-  par->restart      = NULL;
+  par->restart[0]       = '\0';;
+  par->pregrid[0]       = '\0';
+  par->gridfile[0]      = '\0';
+  par->binoutputfile[0] = '\0';
+  par->outputfile[0]    = '\0';
+  par->dust[0]          = '\0';
 
   par->tcmb = 2.728;
   par->lte_only=0;
@@ -40,16 +39,44 @@ parseInput(inputPars *par, image **img, molData **m){
   par->pIntensity=0;
   par->sinkPoints=0;
 
+  strcpy(par->python_module_name, "model");
+  strcpy(par->python_module_path, "./");
+  strcpy(par->density_func_name, "density");
+  strcpy(par->velocity_func_name, "velocity");
+  strcpy(par->temperature_func_name, "temperature");
+  strcpy(par->doppler_func_name, "doppler");
+  strcpy(par->abundance_func_name, "abundance");
+
   /* Allocate space for output fits images */
   (*img)=malloc(sizeof(image)*MAX_NSPECIES);
-  par->moldatfile=malloc(sizeof(char *) * MAX_NSPECIES);
+  par->moldatfile=malloc(sizeof( filename_t ) * MAX_NSPECIES);
   for(id=0;id<MAX_NSPECIES;id++){
-    (*img)[id].filename=NULL;
-    par->moldatfile[id]=NULL;
+    (*img)[id].filename[0]='\0';
+    par->moldatfile[id][0]='\0';
+
+    (*img)[id].source_vel=0.0;
+    (*img)[id].phi=0.0;
+    (*img)[id].nchan=0;
+    (*img)[id].velres=-1.;
+    (*img)[id].trans=-1;
+    (*img)[id].freq=-1.;
+    (*img)[id].bandwidth=-1.;
   }
-  input(par, *img);
+
+  if( input( input_file, par, *img) != EXIT_SUCCESS )
+    {
+      if(!silent) bail_out("Error: Cannot Read input file");
+      exit(1);
+    }
+
+  if( python_call_initialize( par ) != EXIT_SUCCESS )
+    {
+      if(!silent) bail_out("Error: Cannot initialize python");
+      exit(1);
+    }
+
   id=-1;
-  while((*img)[++id].filename!=NULL);
+  while( strlen((*img)[++id].filename) != 0 );
   par->nImages=id;
   if(par->nImages==0) {
     if(!silent) bail_out("Error: no images defined");
@@ -59,7 +86,7 @@ parseInput(inputPars *par, image **img, molData **m){
   *img=realloc(*img, sizeof(image)*par->nImages);
 
   id=-1;
-  while(par->moldatfile[++id]!=NULL);
+  while( strlen( par->moldatfile[++id] ) != 0);
   par->nSpecies=id;
   if( par->nSpecies == 0 )
     {
@@ -69,7 +96,7 @@ parseInput(inputPars *par, image **img, molData **m){
     }
   else
     {
-      par->moldatfile=realloc(par->moldatfile, sizeof(char *)*par->nSpecies);
+      par->moldatfile=realloc(par->moldatfile, sizeof(filename_t )*par->nSpecies);
       /* Check if files exists */
       for(id=0;id<par->nSpecies;id++){
         if((fp=fopen(par->moldatfile[id], "r"))==NULL) {
@@ -80,19 +107,6 @@ parseInput(inputPars *par, image **img, molData **m){
         }
       }
     }
-
-
-  /* Set defaults and read inputPars and img[] */
-  for(i=0;i<par->nImages;i++) {
-    (*img)[i].source_vel=0.0;
-    (*img)[i].phi=0.0;
-    (*img)[i].nchan=0;
-    (*img)[i].velres=-1.;
-    (*img)[i].trans=-1;
-    (*img)[i].freq=-1.;
-    (*img)[i].bandwidth=-1.;
-  }
-  input(par,*img);
 
   par->ncell=par->pIntensity+par->sinkPoints;
 
@@ -181,6 +195,8 @@ parseInput(inputPars *par, image **img, molData **m){
 void
 freeInput( inputPars *par, image* img, molData* mol )
 {
+  python_call_finalize();
+
   int i,id;
   if( mol!= 0 )
     {
