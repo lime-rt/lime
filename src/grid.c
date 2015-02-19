@@ -11,11 +11,7 @@
  *
  */
 
-#ifdef QHULL_INC_QHULL
-#include <qhull/qhull_a.h>
-#else
-#include <libqhull/qhull_a.h>
-#endif
+#include <qhull_a.h>
 #include "lime.h"
 
 

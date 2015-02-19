@@ -33,14 +33,13 @@ CPPFLAGS	= -I${PREFIX}/include \
 ##CPPFLAGS += -DQHULL_INC_QHULL
 ifdef ALLEGRO
 	QHULL   = qhull
-	CPPFLAGS += -DQHULL_INC_QHULL
 	INCLUDEDIR_FITSIO = /usr/include/cfitsio
+	INCLUDEDIR_QHULL  = /usr/include/qhull
 else
 	QHULL   = qhullstatic
 	INCLUDEDIR_FITSIO = /usr/include
+	INCLUDEDIR_QHULL  = /usr/include/libqhull
 endif
-
-
 
 ##
 ## Do not change anything below unless you know what you are doing! 
@@ -68,7 +67,7 @@ OBJS    = src/aux.o src/curses.o src/grid.o src/LTEsolution.o   \
 MODELO 	= src/model.o
 
 #CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing   
-CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing -I${INCLUDEDIR_FITSIO} 
+CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing -I${INCLUDEDIR_FITSIO} -I${INCLUDEDIR_QHULL} 
 LDFLAGS = -lgsl -lgslcblas -l${QHULL} -lcfitsio -lncurses -lm 
 
 .SILENT:
