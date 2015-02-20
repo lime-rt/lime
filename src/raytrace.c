@@ -67,7 +67,11 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
   double vfac=0.,x[3],dx[3];
   double deltav,ds,dist,ndist,size,xp,yp,zp,col,shift,minfreq,jnu,alpha,snu,dtau,snu_pol[3];
   const gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
+#ifdef TEST
+  gsl_rng_set(ran,178490);
+#else
   gsl_rng_set(ran,time(0));
+#endif
   
   /* Determine whether there are blended lines or not */
   lineCount(par->nSpecies, m, &counta, &countb, &nlinetot);

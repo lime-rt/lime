@@ -67,7 +67,7 @@ OBJS    = src/aux.o src/curses.o src/grid.o src/LTEsolution.o   \
 MODELO 	= src/model.o
 
 #CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing   
-CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing -I${INCLUDEDIR_FITSIO} -I${INCLUDEDIR_QHULL} 
+CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing -DTEST -I${INCLUDEDIR_FITSIO} -I${INCLUDEDIR_QHULL} 
 LDFLAGS = -lgsl -lgslcblas -l${QHULL} -lcfitsio -lncurses -lm 
 
 .SILENT:

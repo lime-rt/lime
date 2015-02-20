@@ -395,7 +395,11 @@ buildGrid(inputPars *par, struct grid *g){
   int flag;
   
   gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
+#ifdef TEST
+  gsl_rng_set(ran,342971);
+#else
   gsl_rng_set(ran,time(0));
+#endif  
   
   abun=malloc(sizeof(double)*par->nSpecies);
   

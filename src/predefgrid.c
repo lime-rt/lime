@@ -19,7 +19,11 @@ predefinedGrid(inputPars *par, struct grid *g){
   int i;
   double x,y,z,scale,abun;
   const gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);
+#ifdef TEST
+  gsl_rng_set(ran,6611304);
+#else
   gsl_rng_set(ran,time(0));
+#endif
 	
   fp=fopen(par->pregrid,"r");
   par->ncell=par->pIntensity+par->sinkPoints;

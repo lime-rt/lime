@@ -248,7 +248,11 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
   
   /* Random number generator */
   gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	
+#ifdef TEST
+  gsl_rng_set(ran, 1237106) ;
+#else 
   gsl_rng_set(ran,time(0));
+#endif
   
   /* Read in all molecular data */
   for(id=0;id<par->nSpecies;id++) molinit(m,par,g,id);
