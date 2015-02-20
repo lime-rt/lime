@@ -71,12 +71,14 @@ velocityspline(struct grid *g, int id, int k, double binv, double deltav, double
     s2=((double)(ispline+1))/(double)nspline;					
     v1=v2;
     d=s2*g[id].ds[k];
-    v2=deltav-(g[id].a4[k]*pow(d,4)+g[id].a3[k]*pow(d,3)+g[id].a2[k]*pow(d,2)+g[id].a1[k]*d+g[id].a0[k]);
+    //v2=deltav-(g[id].a4[k]*pow(d,4)+g[id].a3[k]*pow(d,3)+g[id].a2[k]*pow(d,2)+g[id].a1[k]*d+g[id].a0[k]);
+    v2=deltav-((((g[id].a4[k]*d+g[id].a3[k])*d+g[id].a2[k])*d+g[id].a1[k])*d+g[id].a0[k]);
     naver=(1 > fabs(v1-v2)*binv) ? 1 : (int)(fabs(v1-v2)*binv);
     for(iaver=0;iaver<naver;iaver++){
       sd=s1+(s2-s1)*((double)iaver-0.5)/(double)naver;
       d=sd*g[id].ds[k];
-      v=deltav-(g[id].a4[k]*pow(d,4)+g[id].a3[k]*pow(d,3)+g[id].a2[k]*pow(d,2)+g[id].a1[k]*d+g[id].a0[k]);
+      //v=deltav-(g[id].a4[k]*pow(d,4)+g[id].a3[k]*pow(d,3)+g[id].a2[k]*pow(d,2)+g[id].a1[k]*d+g[id].a0[k]);
+      v=deltav-((((g[id].a4[k]*d+g[id].a3[k])*d+g[id].a2[k])*d+g[id].a1[k])*d+g[id].a0[k]);
       vfacsub=gaussline(v,binv);
       *vfac+=vfacsub/(double)naver;
     }
@@ -139,7 +141,7 @@ void
 photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPars *par,blend *matrix){
 	int iphot,iline,jline,here,there,firststep,dir,np_per_line,ip_at_line,l;
 	int *counta, *countb,nlinetot;
-	double deltav,segment,vblend,snu,dtau,jnu,alpha,ds,vfac[par->nSpecies],pt_theta,pt_z;
+	double deltav,segment,vblend,snu,dtau,jnu,alpha,ds,vfac[par->nSpecies],pt_theta,pt_z,semiradius;
 	double *tau,vel[3],x[3], inidir[3];
 				
 	lineCount(par->nSpecies, m, &counta, &countb, &nlinetot);	
@@ -158,8 +160,11 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
 /* Initial velocity, direction and frequency offset  */		
         pt_theta=gsl_rng_uniform(ran)*2*PI;
         pt_z=2*gsl_rng_uniform(ran)-1;
-        inidir[0]=sqrt(1-pow(pt_z,2))*cos(pt_theta);
-        inidir[1]=sqrt(1-pow(pt_z,2))*sin(pt_theta);
+        //inidir[0]=sqrt(1-pow(pt_z,2))*cos(pt_theta);
+        //inidir[1]=sqrt(1-pow(pt_z,2))*sin(pt_theta);
+        semiradius = sqrt(1.-pt_z*pt_z);
+        inidir[0]=semiradius*cos(pt_theta);
+        inidir[1]=semiradius*sin(pt_theta);
         inidir[2]=pt_z;
 
 		iter=(int) (gsl_rng_uniform(ran)*3.);

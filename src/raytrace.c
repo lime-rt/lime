@@ -65,7 +65,8 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
   int ichan, posn,nposn,i,px,iline,tmptrans;
   double *tau, *subintens;
   double vfac=0.,x[3],dx[3];
-  double deltav,ds,dist,ndist,size,xp,yp,zp,col,shift,minfreq,jnu,alpha,snu,dtau,snu_pol[3];
+  //double deltav,ds,dist,ndist,size,xp,yp,zp,col,shift,minfreq,jnu,alpha,snu,dtau,snu_pol[3];
+  double deltav,ds,dist2,ndist2,size,xp,yp,zp,col,shift,minfreq,jnu,alpha,snu,dtau,snu_pol[3];
   const gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
 #ifdef TEST
   gsl_rng_set(ran,178490);
@@ -142,13 +143,23 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
         dx[1]=-sin(img[im].theta)*cos(img[im].phi);
         dx[2]=-cos(img[im].theta)*cos(img[im].phi);
         
-        dist=1e60;
-        posn=-1;
-        for(i=0;i<par->ncell;i++){
-          ndist=sqrt(pow(x[0]-g[i].x[0],2)+pow(x[1]-g[i].x[1],2)+pow(x[2]-g[i].x[2],2));
-          if(ndist<dist){
+        //dist=1e60;
+        //posn=-1;
+        //for(i=0;i<par->ncell;i++){
+        //  ndist=sqrt(pow(x[0]-g[i].x[0],2)+pow(x[1]-g[i].x[1],2)+pow(x[2]-g[i].x[2],2));
+        //  if(ndist<dist){
+        //    posn=i;
+        //    dist=ndist;
+        //  }
+        //}
+        i=0;
+        dist2=(x[0]-g[i].x[0])*(x[0]-g[i].x[0]) + (x[1]-g[i].x[1])*(x[1]-g[i].x[1]) + (x[2]-g[i].x[2])*(x[2]-g[i].x[2]);
+        posn=i;
+        for(i=1;i<par->ncell;i++){
+          ndist2=(x[0]-g[i].x[0])*(x[0]-g[i].x[0]) + (x[1]-g[i].x[1])*(x[1]-g[i].x[1]) + (x[2]-g[i].x[2])*(x[2]-g[i].x[2]);
+          if(ndist2<dist2){
             posn=i;
-            dist=ndist;
+            dist2=ndist2;
           }
         }
 

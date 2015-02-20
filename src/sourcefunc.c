@@ -84,10 +84,13 @@ sourceFunc_pol(double *snu, double *dtau, double ds, molData *m,double vfac,stru
   /* Emission */
   /* Continuum part:	j_nu = rho_dust * kappa_nu */
   dSigma	 = g[pos].mol[ispec].dust[iline]*g[pos].mol[ispec].knu[iline];
-  dSigma2	 = maxp*g[pos].mol[ispec].dust[iline]*g[pos].mol[ispec].knu[iline]*(0.5*pow(angle[2],2.)-1./3.);
+  // dSigma2	 = maxp*g[pos].mol[ispec].dust[iline]*g[pos].mol[ispec].knu[iline]*(0.5*pow(angle[2],2.)-1./3.);
+  dSigma2	 = maxp*g[pos].mol[ispec].dust[iline]*g[pos].mol[ispec].knu[iline]*(0.5*angle[2]*angle[2]-1./3.);
   dI	     = dSigma - dSigma2;
-  dQ		 = maxp*g[pos].mol[ispec].dust[iline]*g[pos].mol[ispec].knu[iline]*(2.*pow(angle[0],2.)-1.)*pow(angle[2],2.);
-  dU		 = maxp*g[pos].mol[ispec].dust[iline]*g[pos].mol[ispec].knu[iline]*(2.*angle[0]*angle[1]*pow(angle[2],2.));
+  // dQ		 = maxp*g[pos].mol[ispec].dust[iline]*g[pos].mol[ispec].knu[iline]*(2.*pow(angle[0],2.)-1.)*pow(angle[2],2.);
+  dQ		 = maxp*g[pos].mol[ispec].dust[iline]*g[pos].mol[ispec].knu[iline]*(2.*angle[0]*angle[0]-1.)*angle[2]*angle[2];
+  // dU		 = maxp*g[pos].mol[ispec].dust[iline]*g[pos].mol[ispec].knu[iline]*(2.*angle[0]*angle[1]*pow(angle[2],2.));
+  dU		 = maxp*g[pos].mol[ispec].dust[iline]*g[pos].mol[ispec].knu[iline]*(2.*angle[0]*angle[1]*angle[2]*angle[2]);
   
   /* Absorption */
   /* Continuum part: Dust opacity */

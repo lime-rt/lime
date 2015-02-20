@@ -124,7 +124,8 @@ distCalc(inputPars *par, struct grid *g){
 	memset(g[i].ds, 0., sizeof(double) * g[i].numNeigh);
 	for(k=0;k<g[i].numNeigh;k++){
 	  for(l=0;l<3;l++) g[i].dir[k].x[l] = g[i].neigh[k]->x[l] - g[i].x[l];
-	  g[i].ds[k]=sqrt(pow(g[i].dir[k].x[0],2)+pow(g[i].dir[k].x[1],2)+pow(g[i].dir[k].x[2],2));
+	  //g[i].ds[k]=sqrt(pow(g[i].dir[k].x[0],2)+pow(g[i].dir[k].x[1],2)+pow(g[i].dir[k].x[2],2));
+	  g[i].ds[k]=sqrt(g[i].dir[k].x[0]*g[i].dir[k].x[0]+g[i].dir[k].x[1]*g[i].dir[k].x[1]+g[i].dir[k].x[2]*g[i].dir[k].x[2]);
 	  for(l=0;l<3;l++) g[i].dir[k].xn[l] = g[i].dir[k].x[l]/g[i].ds[k];
 	}
 	g[i].nphot=ininphot*g[i].numNeigh;
@@ -207,7 +208,8 @@ write_VTK_unstructured_Points(inputPars *par, struct grid *g){
   }
   fprintf(fp,"VECTORS velocity float\n");
   for(i=0;i<par->ncell;i++){
-    length=sqrt(pow(g[i].vel[0],2)+pow(g[i].vel[1],2)+pow(g[i].vel[2],2));
+    //length=sqrt(pow(g[i].vel[0],2)+pow(g[i].vel[1],2)+pow(g[i].vel[2],2));
+    length=sqrt(g[i].vel[0]*g[i].vel[0]+g[i].vel[1]*g[i].vel[1]+g[i].vel[2]*g[i].vel[2]);
     if(length > 0.){
       fprintf(fp, "%e %e %e\n", g[i].vel[0]/length,g[i].vel[1]/length,g[i].vel[2]/length);
     } else {
@@ -389,7 +391,7 @@ void
 buildGrid(inputPars *par, struct grid *g){
   double lograd;		/* The logarithm of the model radius		*/
   double logmin;	    /* Logarithm of par->minScale				*/
-  double r,theta,phi,x,y,z;	/* Coordinates								*/
+  double r,theta,phi,x,y,z,semiradius;	/* Coordinates								*/
   double temp,*abun;
   int k=0,i;            /* counters									*/
   int flag;
@@ -456,8 +458,11 @@ buildGrid(inputPars *par, struct grid *g){
     theta=gsl_rng_uniform(ran)*2*PI;
     if(DIM==3) z=2*gsl_rng_uniform(ran)-1.;
     else z=0.;
-    x=sqrt(1-pow(z,2))*cos(theta);
-    y=sqrt(1-pow(z,2))*sin(theta);;
+    //x=sqrt(1-pow(z,2))*cos(theta);
+    //y=sqrt(1-pow(z,2))*sin(theta);;
+    semiradius=sqrt(1.-z*z);
+    x=semiradius*cos(theta);
+    y=semiradius*sin(theta);;
     g[k].id=k;
     g[k].x[0]=par->radius*x;
     g[k].x[1]=par->radius*y;
