@@ -182,8 +182,13 @@ lineCount(int n,molData *m,int **counta,int **countb,int *nlinetot){
   
   *nlinetot=0;
   for(ispec=0;ispec<n;ispec++) *nlinetot+=m[ispec].nline;
-  *counta=malloc(sizeof(int)* *nlinetot);
-  *countb=malloc(sizeof(int)* *nlinetot);
+  if(*nlinetot > 0){
+    *counta=malloc(sizeof(int)* *nlinetot);
+    *countb=malloc(sizeof(int)* *nlinetot);
+  } else {
+    if(!silent) bail_out("Error: Line count finds no lines");
+    exit(0);
+  }
   count=0;
   for(ispec=0;ispec<n;ispec++) {
     for(iline=0;iline<m[ispec].nline;iline++){
@@ -233,7 +238,7 @@ lineBlend(molData *m, inputPars *par, blend **matrix){
   
 }
 
-void 
+void
 levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
   int id,conv=0,iter,ilev,prog=0,ispec,c=0,n;
   double percent=0.,pstate,*median,result1=0,result2=0,snr,delta_pop;
@@ -244,10 +249,10 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
   
   for(id=0;id<par->ncell;id++) {
     g[id].mol=malloc(sizeof(struct populations)*par->nSpecies);	
-  } 	
+  }
   
   /* Random number generator */
-  gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	
+  gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);
 #ifdef TEST
   gsl_rng_set(ran, 1237106) ;
 #else 
@@ -280,7 +285,7 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
   }
 
   if(par->lte_only==0){
-    do{	
+    do{
       if(!silent) progressbar2(prog++, 0, result1, result2);
       pstate=0.;
       
@@ -337,7 +342,7 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
       }
       free(median);
       
-      if(!silent) progressbar2(prog, percent, result1, result2);		
+      if(!silent) progressbar2(prog, percent, result1, result2);
       if(par->outputfile) popsout(par,g,m);
     } while(conv++<NITERATIONS);
     if(par->binoutputfile) binpopsout(par,g,m);

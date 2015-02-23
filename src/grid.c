@@ -64,39 +64,39 @@ qhull(inputPars *par, struct grid *g){
   
   sprintf(flags,"qhull d Qbb");
   if (!qh_new_qhull(DIM, par->ncell, pt_array, ismalloc, flags, NULL, NULL)) {
-	/* Identify points */
+    /* Identify points */
     FORALLvertices {
       id=qh_pointid(vertex->point);
-	  g[id].numNeigh=qh_setsize(vertex->neighbors);
-	  free(g[id].neigh);
-      g[id].neigh=malloc(sizeof(struct grid)*g[id].numNeigh);
-	  memset(g[id].neigh, 0, sizeof(int) * g[id].numNeigh);
-	  for(k=0;k<g[id].numNeigh;k++) {
+      g[id].numNeigh=qh_setsize(vertex->neighbors);
+      free(g[id].neigh);
+      g[id].neigh=malloc(sizeof(struct grid *)*g[id].numNeigh);
+      memset(g[id].neigh, 0, sizeof(int) * g[id].numNeigh);
+      for(k=0;k<g[id].numNeigh;k++) {
         g[id].neigh[k]=NULL;
       }
     }
     
-	/* Identify neighbors */
-	FORALLfacets {
-	  if (!facet->upperdelaunay) {
-		j=0;
-		FOREACHvertex_ (facet->vertices) simplex[j++]=qh_pointid(vertex->point);
-		for(i=0;i<DIM+1;i++){
-		  for(j=0;j<DIM+1;j++){
-			k=0;
-			if(i!=j){
-			  while(g[simplex[i]].neigh[k] != NULL && g[simplex[i]].neigh[k]->id != g[simplex[j]].id) {
+    /* Identify neighbors */
+    FORALLfacets {
+      if (!facet->upperdelaunay) {
+        j=0;
+        FOREACHvertex_ (facet->vertices) simplex[j++]=qh_pointid(vertex->point);
+        for(i=0;i<DIM+1;i++){
+          for(j=0;j<DIM+1;j++){
+            k=0;
+            if(i!=j){
+              while(g[simplex[i]].neigh[k] != NULL && g[simplex[i]].neigh[k]->id != g[simplex[j]].id) {
                 k++;
-			  }
+              }
               g[simplex[i]].neigh[k]=&g[simplex[j]];
-			}
-		  }
-		}
-	  }
+            }
+          }
+        }
+      }
     }
   } else {
-	if(!silent) bail_out("Qhull failed to triangulate");
-	exit(1);
+    if(!silent) bail_out("Qhull failed to triangulate");
+    exit(1);
   }
   
   for(i=0;i<par->ncell;i++){
@@ -303,6 +303,9 @@ getMass(inputPars *par, struct grid *g, const gsl_rng *ran){
   int curlong, totlong;
   
   pts=malloc(sizeof(S)*par->pIntensity);
+  for(i=0;i<par->pIntensity;i++){
+    pts[i].vps=0;
+  }
   pt_array=malloc(DIM*sizeof(coordT)*par->ncell);
   for(i=0;i<par->ncell;i++) {
     for(j=0;j<DIM;j++) {
@@ -349,7 +352,13 @@ getMass(inputPars *par, struct grid *g, const gsl_rng *ran){
     g[i].w=malloc(sizeof(double)*g[i].numNeigh);
     vol=0.;
     suma=0.;
-    farea=malloc(sizeof(double)*pts[i].vps);
+    // farea=malloc(sizeof(double)*pts[i].vps);
+    if(pts[i].vps>0){
+      farea=malloc(sizeof(double)*pts[i].vps);
+    } else {
+      if(!silent) bail_out("Qhull error");
+      exit(0);
+    }
     if (!qh_new_qhull(DIM, pts[i].vps, pts[i].pt_array, ismalloc, flags, NULL, NULL)) {
       FORALLfacets {
         dpbest=0.;
@@ -446,8 +455,10 @@ buildGrid(inputPars *par, struct grid *g){
     g[k].sink=0;
     /* This next step needs to be done, even though it looks stupid */
     g[k].dir=malloc(sizeof(point)*1);
-    g[k].ds =malloc(sizeof(point)*1);
-    g[k].neigh =malloc(sizeof(int)*1);
+    // g[k].ds =malloc(sizeof(point)*1);
+    // g[k].neigh =malloc(sizeof(int)*1);
+    g[k].ds =malloc(sizeof(double)*1);
+    g[k].neigh =malloc(sizeof(struct grid *)*1);
     if(!silent) progressbar((double) k/((double)par->pIntensity-1), 4);
   }
   /* end model grid point assignment */
