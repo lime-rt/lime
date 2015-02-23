@@ -22,7 +22,7 @@ report(int i, inputPars *par, struct grid *g){
 	int j,k,p,q;
 	const int bins = 100;
 	// double x,min_l=1e30,max_l=0.,min_p=1e30,max_p=0,r;
-	double x,min_l=1e30,max_l=0.,min_p,max_p,min_p2,max_p2,r2;
+	double x,min_l,max_l,min_p,max_p,min_p2,max_p2,r2;
 	size_t n=bins;
 	double hx[bins],hy[bins],hw[bins]; 
 	double c0, c1, cov00, cov01, cov11, chisq1,b0, b1, chisq2; 
