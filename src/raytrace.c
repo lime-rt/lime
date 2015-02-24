@@ -67,6 +67,7 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
   double vfac=0.,x[3],dx[3];
   //double deltav,ds,dist,ndist,size,xp,yp,zp,col,shift,minfreq,jnu,alpha,snu,dtau,snu_pol[3];
   double deltav,ds,dist2,ndist2,size,xp,yp,zp,col,shift,minfreq,jnu,alpha,snu,dtau,snu_pol[3];
+  double cosPhi,sinPhi,cosTheta,sinTheta;
   const gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
 #ifdef TEST
   gsl_rng_set(ran,178490);
@@ -132,16 +133,28 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
        |cos(a)sin(b)   -sin(a)  cos(a)cos(b)|
        
        */
-      if(sqrt(xp*xp+yp*yp)/par->radius <= 1 ) {
-        zp=par->radius*cos(asin(sqrt(xp*xp+yp*yp)/par->radius));
+      // if(sqrt(xp*xp+yp*yp)/par->radius <= 1 ) {
+      if((xp*xp+yp*yp)/par->radiusSqu <= 1 ) {
+        // zp=par->radius*cos(asin(sqrt(xp*xp+yp*yp)/par->radius));
+        zp=sqrt(par->radiusSqu-(xp*xp+yp*yp));
         
-        x[0]=xp*cos(img[im].phi)                   +yp*0.                -zp*sin(img[im].phi);
-        x[1]=xp*sin(img[im].theta)*sin(img[im].phi)+yp*cos(img[im].theta)+zp*sin(img[im].theta)*cos(img[im].phi);
-        x[2]=xp*cos(img[im].theta)*sin(img[im].phi)-yp*sin(img[im].theta)+zp*cos(img[im].theta)*cos(img[im].phi);
+        cosPhi   = cos(img[im].phi);
+        sinPhi   = sin(img[im].phi);
+        cosTheta = cos(img[im].theta);
+        sinTheta = sin(img[im].theta);
+        // x[0]=xp*cos(img[im].phi)                   +yp*0.                -zp*sin(img[im].phi);
+        // x[1]=xp*sin(img[im].theta)*sin(img[im].phi)+yp*cos(img[im].theta)+zp*sin(img[im].theta)*cos(img[im].phi);
+        // x[2]=xp*cos(img[im].theta)*sin(img[im].phi)-yp*sin(img[im].theta)+zp*cos(img[im].theta)*cos(img[im].phi);
+        x[0]=xp         *cosPhi+yp*0.      -zp         *sinPhi;
+        x[1]=xp*sinTheta*sinPhi+yp*cosTheta+zp*sinTheta*cosPhi;
+        x[2]=xp*cosTheta*sinPhi-yp*sinTheta+zp*cosTheta*cosPhi;
         
-        dx[0]= sin(img[im].phi);
-        dx[1]=-sin(img[im].theta)*cos(img[im].phi);
-        dx[2]=-cos(img[im].theta)*cos(img[im].phi);
+        // dx[0]= sin(img[im].phi);
+        // dx[1]=-sin(img[im].theta)*cos(img[im].phi);
+        // dx[2]=-cos(img[im].theta)*cos(img[im].phi);
+        dx[0]=          sinPhi;
+        dx[1]=-sinTheta*cosPhi;
+        dx[2]=-cosTheta*cosPhi;
         
         //dist=1e60;
         //posn=-1;

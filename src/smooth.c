@@ -46,8 +46,10 @@ smooth(inputPars *par, struct grid *g){
           for(k=0;k<DIM;k++){
             move[k] = g[i].x[k] - g[i].dir[cn].x[k]*0.20;
           }			  
-          if(sqrt(move[0]*move[0]+move[1]*move[1]+move[2]*move[2])<par->radius &&
-             sqrt(move[0]*move[0]+move[1]*move[1]+move[2]*move[2])>par->minScale){
+          // if(sqrt(move[0]*move[0]+move[1]*move[1]+move[2]*move[2])<par->radius &&
+          //    sqrt(move[0]*move[0]+move[1]*move[1]+move[2]*move[2])>par->minScale){
+          if((move[0]*move[0]+move[1]*move[1]+move[2]*move[2])<par->radiusSqu &&
+             (move[0]*move[0]+move[1]*move[1]+move[2]*move[2])>par->minScaleSqu){
             for(k=0;k<DIM;k++) g[i].x[k]=move[k];
           }
         }

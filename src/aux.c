@@ -82,6 +82,8 @@ parseInput(inputPars *par, image **img, molData **m){
   input(par,*img);
   
   par->ncell=par->pIntensity+par->sinkPoints;
+  par->radiusSqu=par->radius*par->radius;
+  par->minScaleSqu=par->minScale*par->minScale;
   
   /* Check if files exists */
   for(id=0;id<par->nSpecies;id++){

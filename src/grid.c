@@ -231,7 +231,7 @@ getArea(inputPars *par, struct grid *g, const gsl_rng *ran){
   int i,j,k,b=-1;
   double *angle,best;
   /*	double wsum; */
-  double x,y,z,pt_phi,pt_theta;
+  double x,y,z,pt_phi,sinPtPhi,pt_theta;
   /* Lots of circles approach -- badly broken, needs to be fixed  */
   /*
    for(i=0;i<par->pIntensity;i++){
@@ -264,8 +264,9 @@ getArea(inputPars *par, struct grid *g, const gsl_rng *ran){
     for(k=0;k<1000;k++){
       pt_theta=gsl_rng_uniform(ran)*2*PI;
       pt_phi=gsl_rng_uniform(ran)*PI;
-      x=cos(pt_theta)*sin(pt_phi);
-      y=sin(pt_theta)*sin(pt_phi);
+      sinPtPhi=sin(pt_phi);
+      x=cos(pt_theta)*sinPtPhi;
+      y=sin(pt_theta)*sinPtPhi;
       z=cos(pt_phi);
       best=-1;
       for(j=0;j<g[i].numNeigh;j++){
@@ -400,7 +401,7 @@ void
 buildGrid(inputPars *par, struct grid *g){
   double lograd;		/* The logarithm of the model radius		*/
   double logmin;	    /* Logarithm of par->minScale				*/
-  double r,theta,phi,x,y,z,semiradius;	/* Coordinates								*/
+  double r,theta,phi,sinPhi,x,y,z,semiradius;	/* Coordinates								*/
   double temp,*abun;
   int k=0,i;            /* counters									*/
   int flag;
@@ -418,7 +419,7 @@ buildGrid(inputPars *par, struct grid *g){
   logmin=log10(par->minScale);
   
   /* Sample pIntensity number of points */
- for(k=0;k<par->pIntensity;k++){
+  for(k=0;k<par->pIntensity;k++){
     temp=gsl_rng_uniform(ran);
     flag=0;
     /* Pick a point and check if we like it or not */
@@ -427,8 +428,9 @@ buildGrid(inputPars *par, struct grid *g){
         r=pow(10,logmin+gsl_rng_uniform(ran)*(lograd-logmin));
         theta=2.*PI*gsl_rng_uniform(ran);
         phi=PI*gsl_rng_uniform(ran);
-        x=r*cos(theta)*sin(phi);
-        y=r*sin(theta)*sin(phi);
+        sinPhi=sin(phi);
+        x=r*cos(theta)*sinPhi;
+        y=r*sin(theta)*sinPhi;
         if(DIM==3) z=r*cos(phi);
         else z=0.;
       } else if(par->sampling==1){
@@ -440,7 +442,8 @@ buildGrid(inputPars *par, struct grid *g){
         if(!silent) bail_out("Don't know how to sample model");
         exit(1);
       }
-      if(sqrt(x*x+y*y+z*z)<par->radius) flag=pointEvaluation(par,temp,x,y,z);
+      // if(sqrt(x*x+y*y+z*z)<par->radius) flag=pointEvaluation(par,temp,x,y,z);
+      if((x*x+y*y+z*z)<par->radiusSqu) flag=pointEvaluation(par,temp,x,y,z);
     } while(!flag);
     /* Now pointEvaluation has decided that we like the point */
     
