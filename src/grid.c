@@ -228,7 +228,7 @@ dumpGrid(inputPars *par, struct grid *g){
 
 void
 getArea(inputPars *par, struct grid *g, const gsl_rng *ran){
-  int i,j,k,b=-1;
+  int i,j,k,b;//=-1;
   double *angle,best;
   /*	double wsum; */
   double x,y,z,pt_phi,sinPtPhi,pt_theta;
@@ -268,8 +268,14 @@ getArea(inputPars *par, struct grid *g, const gsl_rng *ran){
       x=cos(pt_theta)*sinPtPhi;
       y=sin(pt_theta)*sinPtPhi;
       z=cos(pt_phi);
-      best=-1;
-      for(j=0;j<g[i].numNeigh;j++){
+      //best=-1;
+      //for(j=0;j<g[i].numNeigh;j++){
+      j=0;
+      best=( x*g[i].dir[j].xn[0]
+            +y*g[i].dir[j].xn[1]
+            +z*g[i].dir[j].xn[2]);
+      b=j;
+      for(j=1;j<g[i].numNeigh;j++){
         angle[j]=( x*g[i].dir[j].xn[0]
                   +y*g[i].dir[j].xn[1]
                   +z*g[i].dir[j].xn[2]);
@@ -278,11 +284,11 @@ getArea(inputPars *par, struct grid *g, const gsl_rng *ran){
           b=j;
         }
       }
-      if(b<0) {printf("not supposed to happen\n");
-        exit(0);
-      }
+      //if(b<0) {printf("not supposed to happen\n");
+      //  exit(0);
+      //}
       g[i].w[b]+=0.001;
-      b=-1;
+      //b=-1;
     }
     free(angle);
   }
@@ -364,8 +370,9 @@ getMass(inputPars *par, struct grid *g, const gsl_rng *ran){
       FORALLfacets {
         dpbest=0.;
         for(j=0;j<g[i].numNeigh;j++){
-          dp=facet->normal[0]*g[i].dir[j].xn[0]+facet->normal[1]*g[i].dir[j].xn[1]+
-          facet->normal[2]*g[i].dir[j].xn[2];
+          dp=facet->normal[0]*g[i].dir[j].xn[0]
+            +facet->normal[1]*g[i].dir[j].xn[1]
+            +facet->normal[2]*g[i].dir[j].xn[2];
           if(fabs(dp)>dpbest){
             dpbest=fabs(dp);
             best=j;
@@ -494,10 +501,10 @@ buildGrid(inputPars *par, struct grid *g){
   smooth(par,g);
   
   for(i=0;i<par->pIntensity;i++){
-    density(g[i].x[0],g[i].x[1],g[i].x[2],g[i].dens);
-    temperature(g[i].x[0],g[i].x[1],g[i].x[2],g[i].t);
-    doppler(g[i].x[0],g[i].x[1],g[i].x[2],&g[i].dopb);	
-    abundance(g[i].x[0],g[i].x[1],g[i].x[2],g[i].abun);
+    density(    g[i].x[0],g[i].x[1],g[i].x[2], g[i].dens);
+    temperature(g[i].x[0],g[i].x[1],g[i].x[2], g[i].t);
+    doppler(    g[i].x[0],g[i].x[1],g[i].x[2],&g[i].dopb);	
+    abundance(  g[i].x[0],g[i].x[1],g[i].x[2], g[i].abun);
   }
   
   //	getArea(par,g, ran);

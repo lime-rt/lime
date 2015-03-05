@@ -89,7 +89,7 @@ struct rates {
   double *up, *down;
 };
 
-/* Grid proporties */
+/* Grid properties */
 struct grid {
   int id;
   double x[3];

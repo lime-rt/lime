@@ -1,5 +1,5 @@
 /*
- *  fit.c
+ *  magfieldfit.c
  *  LIME, The versatile 3D line modeling environment 
  *
  *  Created by Marco Padovani on 06/04/10.

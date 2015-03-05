@@ -127,29 +127,51 @@ doppler(double x, double y, double z, double *doppler){
 
 /******************************************************************************/
 
-void
-velocity(double x, double y, double z, double *vel){
+//void
+//velocity(double x, double y, double z, double *vel){
 /*
  * Variables for spherical coordinates
  */
-  double R, phi,r,theta;
+//  double R, phi,r,theta;
 /*
  * Transform Cartesian coordinates into spherical coordinates
  */
-  R=sqrt(x*x+y*y+z*z);
-  theta=atan2(sqrt(x*x+y*y),z);
-  phi=atan2(y,x);
+//  R=sqrt(x*x+y*y+z*z);
+//  theta=atan2(sqrt(x*x+y*y),z);
+//  phi=atan2(y,x);
 /*
  * Free-fall velocity in the radial direction onto a central 
  * mass of 1.0 solar mass
  */  
-  r=-sqrt(2*6.67e-11*1.989e30/R);
+//  r=-sqrt(2*6.67e-11*1.989e30/R);
 /*
  * Vector transformation back into Cartesian basis
  */
-  vel[0]=r*sin(theta)*cos(phi);
-  vel[1]=r*sin(theta)*sin(phi);
-  vel[2]=r*cos(theta);
+//  vel[0]=r*sin(theta)*cos(phi);
+//  vel[1]=r*sin(theta)*sin(phi);
+//  vel[2]=r*cos(theta);
+//}
+
+void
+velocity(double x, double y, double z, double *vel){
+  double R, r;
+
+  R=sqrt(x*x+y*y+z*z);
+  if (R>0.){
+/*
+ * Free-fall velocity in the radial direction onto a central 
+ * mass of 1.0 solar mass
+ */  
+    r=-sqrt(2*6.67e-11*1.989e30/R);
+
+    vel[0]=x*r/R;
+    vel[1]=y*r/R;
+    vel[2]=z*r/R;
+  } else {
+    vel[0]=0.0;
+    vel[1]=0.0;
+    vel[2]=0.0;
+  }
 }
 
 /******************************************************************************/

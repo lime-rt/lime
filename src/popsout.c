@@ -1,5 +1,5 @@
 /*
- *  blowpops.c
+ *  popsout.c
  *  LIME, The versatile 3D line modeling environment
  *
  *  Created by Christian Brinch on 14/11/07.
