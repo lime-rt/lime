@@ -409,7 +409,7 @@ buildGrid(inputPars *par, struct grid *g){
   double lograd;		/* The logarithm of the model radius		*/
   double logmin;	    /* Logarithm of par->minScale				*/
   double r,theta,phi,sinPhi,x,y,z,semiradius;	/* Coordinates								*/
-  double temp,*abun;
+  double temp;//,*abun;
   int k=0,i;            /* counters									*/
   int flag;
   
@@ -420,7 +420,7 @@ buildGrid(inputPars *par, struct grid *g){
   gsl_rng_set(ran,time(0));
 #endif  
   
-  abun=malloc(sizeof(double)*par->nSpecies);
+  //abun=malloc(sizeof(double)*par->nSpecies);
   
   lograd=log10(par->radius);
   logmin=log10(par->minScale);
@@ -513,7 +513,7 @@ buildGrid(inputPars *par, struct grid *g){
   dumpGrid(par,g);
   
   gsl_rng_free(ran);
-  free(abun);
+  //free(abun);
   if(!silent) done(5);
 }
 

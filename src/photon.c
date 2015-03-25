@@ -141,11 +141,12 @@ void
 photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPars *par,blend *matrix){
   int iphot,iline,jline,here,there,firststep,dir,np_per_line,ip_at_line,l;
   int *counta, *countb,nlinetot;
-  double deltav,segment,vblend,snu,dtau,jnu,alpha,ds,vfac[par->nSpecies],pt_theta,pt_z,semiradius;
-  double *tau,vel[3],x[3], inidir[3];
+  double deltav,segment,vblend,snu,dtau,expDTau,jnu,alpha,ds,vfac[par->nSpecies],pt_theta,pt_z,semiradius;
+  double *tau,*expTau,vel[3],x[3], inidir[3];
   
   lineCount(par->nSpecies, m, &counta, &countb, &nlinetot);
   tau=malloc(sizeof(double)*nlinetot);
+  expTau=malloc(sizeof(double)*nlinetot);
   velocity(g[id].x[0],g[id].x[1],g[id].x[2],vel);
   
   for(iphot=0;iphot<g[id].nphot;iphot++){
@@ -153,6 +154,7 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
     for(iline=0;iline<nlinetot;iline++){
       m[0].phot[iline+iphot*m[0].nline]=0.;
       tau[iline]=0.;
+      expTau[iline]=1.;
     }
     
     /* Initial velocity, direction and frequency offset  */		
@@ -212,11 +214,15 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
           if(dtau < -30) dtau = -30;
         }
         
-        m[0].phot[iline+iphot*m[0].nline]+=exp(-tau[iline])*(1.-exp(-dtau))*snu;
+        // m[0].phot[iline+iphot*m[0].nline]+=exp(-tau[iline])*(1.-exp(-dtau))*snu;
+        expDTau = exp(-dtau);
+        m[0].phot[iline+iphot*m[0].nline]+=expTau[iline]*(1.-expDTau)*snu;
         tau[iline]+=dtau;
+        expTau[iline]*=expDTau;
         if(tau[iline] < -30.){
           if(!silent) warning("Maser warning: optical depth has dropped below -30");
           tau[iline]= -30.; 
+          expTau[iline]=exp(-tau[iline]);
         }
         
         /* Line blending part */
@@ -233,11 +239,15 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
                 dtau=alpha*ds;
                 if(dtau < -30) dtau = -30;
               }
-              m[0].phot[jline+iphot*m[0].nline]+=exp(-tau[jline])*(1.-exp(-dtau))*snu;
+              // m[0].phot[jline+iphot*m[0].nline]+=exp(-tau[jline])*(1.-exp(-dtau))*snu;
+              expDTau = exp(-dtau);
+              m[0].phot[jline+iphot*m[0].nline]+=expTau[jline]*(1.-expDTau)*snu;
               tau[jline]+=dtau;
+              expTau[jline]*=expDTau;
               if(tau[jline] < -30.){
                 if(!silent) warning("Optical depth has dropped below -30");
                 tau[jline]= -30.; 
+                expTau[jline]=exp(-tau[jline]);
               }
             }
           }
@@ -253,7 +263,8 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
     /* Add cmb contribution */
     if(m[0].cmb[0]>0.){
       for(iline=0;iline<nlinetot;iline++){
-        m[0].phot[iline+iphot*m[0].nline]+=exp(-tau[iline])*m[counta[iline]].cmb[countb[iline]];
+        // m[0].phot[iline+iphot*m[0].nline]+=exp(-tau[iline])*m[counta[iline]].cmb[countb[iline]];
+        m[0].phot[iline+iphot*m[0].nline]+=expTau[iline]*m[counta[iline]].cmb[countb[iline]];
       }
     }
   }
@@ -265,7 +276,7 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
 void
 getjbar(int posn, molData *m, struct grid *g, inputPars *par){
   int iline,iphot;
-  double tau, snu, vsum=0., jnu, alpha;
+  double tau, expTau, snu, vsum=0., jnu, alpha;
   int *counta, *countb,nlinetot;
   
   lineCount(par->nSpecies, m, &counta, &countb, &nlinetot);
@@ -285,7 +296,9 @@ getjbar(int posn, molData *m, struct grid *g, inputPars *par){
           snu=(jnu/alpha)*m[0].norminv;
           tau=alpha*m[0].ds[iphot];
         }
-        m[0].jbar[iline]+=m[0].vfac[iphot]*(exp(-tau)*m[0].phot[iline+iphot*m[0].nline]+(1.-exp(-tau))*snu);
+        // m[0].jbar[iline]+=m[0].vfac[iphot]*(exp(-tau)*m[0].phot[iline+iphot*m[0].nline]+(1.-exp(-tau))*snu);
+        expTau = exp(-tau);
+        m[0].jbar[iline]+=m[0].vfac[iphot]*(expTau*m[0].phot[iline+iphot*m[0].nline]+(1.-expTau)*snu);
       }
       vsum+=m[0].vfac[iphot];
     }
