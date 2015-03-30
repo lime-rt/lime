@@ -92,13 +92,16 @@ kappa(molData *m, struct grid *g, inputPars *par, int s){
 
 double
 planckfunc(int iline, double temp, molData *m,int s){
-  double bb=10.;
+  double bb=10.,wn;
   if(temp<eps) bb = 0.0;
   else {
+    wn=m[s].freq[iline]/CLIGHT;
     if (HPLANCK*m[s].freq[iline]>100.*KBOLTZ*temp) 
-      bb=2.*HPLANCK*pow((m[s].freq[iline]/CLIGHT),2)*m[s].freq[iline]*exp(-HPLANCK*m[s].freq[iline]/KBOLTZ/temp);
+      //bb=2.*HPLANCK*pow((m[s].freq[iline]/CLIGHT),2)*m[s].freq[iline]*exp(-HPLANCK*m[s].freq[iline]/KBOLTZ/temp);
+      bb=2.*HPLANCK*wn*wn*m[s].freq[iline]*exp(-HPLANCK*m[s].freq[iline]/KBOLTZ/temp);
     else 
-      bb=2.*HPLANCK*pow((m[s].freq[iline]/CLIGHT),2)*m[s].freq[iline]/(exp(HPLANCK*m[s].freq[iline]/KBOLTZ/temp)-1);
+      //bb=2.*HPLANCK*pow((m[s].freq[iline]/CLIGHT),2)*m[s].freq[iline]/(exp(HPLANCK*m[s].freq[iline]/KBOLTZ/temp)-1);
+      bb=2.*HPLANCK*wn*wn*m[s].freq[iline]/(exp(HPLANCK*m[s].freq[iline]/KBOLTZ/temp)-1);
   }
   return bb;
 }
@@ -141,10 +144,10 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
   fscanf(fp, "%d\n", &m[i].nline);	
   fgets(string, 80, fp);
   
-  m[i].lal		= malloc(sizeof(int)*m[i].nline);
-  m[i].lau		= malloc(sizeof(int)*m[i].nline);
+  m[i].lal	= malloc(sizeof(int)*m[i].nline);
+  m[i].lau	= malloc(sizeof(int)*m[i].nline);
   m[i].aeinst	= malloc(sizeof(double)*m[i].nline);
-  m[i].freq		= malloc(sizeof(double)*m[i].nline);
+  m[i].freq	= malloc(sizeof(double)*m[i].nline);
   m[i].beinstu	= malloc(sizeof(double)*m[i].nline);
   m[i].beinstl	= malloc(sizeof(double)*m[i].nline);
   m[i].phot     = malloc(sizeof(double)*m->nline*max_phot);

@@ -11,6 +11,7 @@
  *
  */
 
+#include "lime.h"
 #include <curses.h>
 #include <time.h>
 
@@ -120,7 +121,7 @@ bail_out(char message[80]){
 }
 
 void
-collpartmesg(char molecule[90], int partners, int specnumber){
+collpartmesg(char molecule[90], int partners){//, int specnumber){
   move(6,63); printw("%.25s", molecule);
   move(7,63); printw("%d collision partner(s):", partners);
 

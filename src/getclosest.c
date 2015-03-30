@@ -17,9 +17,11 @@ void
 getclosest(double x, double y, double z, long *best, long *size, double *rx, double *ry, double *rz){
 
 	long i, AA=0, BB=0;
-	double dist=1e30;
+	//double dist=1e30;
+	// double distSquared=1e60, trialD2;
+	double distSquared, trialD2;
 	
-	*best = -1;
+	//*best = -1;
 	
 	if (x>=0 && y>=0 && z>=0)	{ AA=0; BB=size[0]; }
 	if (x>=0 && y>=0 && z< 0)	{ AA=size[0]; BB=size[1]; }
@@ -30,16 +32,23 @@ getclosest(double x, double y, double z, long *best, long *size, double *rx, dou
 	if (x< 0 && y< 0 && z>=0)	{ AA=size[5]; BB=size[6]; }
 	if (x< 0 && y< 0 && z< 0)	{ AA=size[6]; BB=size[7]; }
 	
-	for(i=AA;i<BB;i++){
-		if(sqrt(pow(rx[i]-x,2)+pow(ry[i]-y,2)+pow(rz[i]-z,2)) <= dist){
-			dist=sqrt(pow(rx[i]-x,2)+pow(ry[i]-y,2)+pow(rz[i]-z,2));
+	// for(i=AA;i<BB;i++){
+	i=AA;
+        distSquared = (rx[i]-x)*(rx[i]-x)+(ry[i]-y)*(ry[i]-y)+(rz[i]-z)*(rz[i]-z);
+	*best = i;
+	for(i=AA+1;i<BB;i++){
+                trialD2 = (rx[i]-x)*(rx[i]-x)+(ry[i]-y)*(ry[i]-y)+(rz[i]-z)*(rz[i]-z);
+		//if(sqrt(pow(rx[i]-x,2)+pow(ry[i]-y,2)+pow(rz[i]-z,2)) <= dist){
+		//	dist=sqrt(pow(rx[i]-x,2)+pow(ry[i]-y,2)+pow(rz[i]-z,2));
+		if(trialD2 <= distSquared){
+			distSquared=trialD2;
 			*best=i;
 		}
 	}
 
-	if (*best == -1) {
-	  if(!silent) bail_out("Error in getclosest routine");
-	  exit(1);
-	}
+	//if (*best == -1) {
+	//  if(!silent) bail_out("Error in getclosest routine");
+	//  exit(1);
+	//}
 
 }	

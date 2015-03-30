@@ -26,13 +26,20 @@ CPPFLAGS	= -I${PREFIX}/include \
 		  -I/opt/local/include \
 		  -I/sw//include
 
-# For qhull version 2011.1 or newer:
-QHULL   = qhullstatic
-# For older qhull versions:
-#QHULL   = qhull
-#CPPFLAGS += -DQHULL_INC_QHULL
-
-
+## For qhull version 2011.1 or newer:
+#QHULL   = qhullstatic
+## For older qhull versions:
+##QHULL   = qhull
+##CPPFLAGS += -DQHULL_INC_QHULL
+ifdef ALLEGRO
+	QHULL   = qhull
+	INCLUDEDIR_FITSIO = /usr/include/cfitsio
+	INCLUDEDIR_QHULL  = /usr/include/qhull
+else
+	QHULL   = qhullstatic
+	INCLUDEDIR_FITSIO = /usr/include
+	INCLUDEDIR_QHULL  = /usr/include/libqhull
+endif
 
 ##
 ## Do not change anything below unless you know what you are doing! 
@@ -46,7 +53,7 @@ SRCS    = src/aux.c src/curses.c src/grid.c src/LTEsolution.c   \
           src/raytrace.c src/smooth.c src/sourcefunc.c          \
 		  src/stateq.c src/statistics.c src/magfieldfit.c       \
 		  src/stokesangles.c src/writefits.c src/weights.c      \
-		  src/velospline.c src/old_raytrace.c src/getclosest.c  \
+		  src/velospline.c src/getclosest.c  \
 		  src/tcpsocket.c src/defaults.c
 MODELS  = model.c
 OBJS    = src/aux.o src/curses.o src/grid.o src/LTEsolution.o   \
@@ -55,11 +62,12 @@ OBJS    = src/aux.o src/curses.o src/grid.o src/LTEsolution.o   \
 		  src/ratranInput.o src/smooth.o src/sourcefunc.o       \
 		  src/stateq.o src/statistics.o src/magfieldfit.o       \
 		  src/stokesangles.o src/writefits.o src/weights.o      \
-		  src/velospline.o src/old_raytrace.o src/getclosest.o  \
+		  src/velospline.o src/getclosest.o  \
 		  src/tcpsocket.o src/defaults.o
 MODELO 	= src/model.o
 
-CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing   
+#CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing   
+CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing -DTEST -I${INCLUDEDIR_FITSIO} -I${INCLUDEDIR_QHULL} 
 LDFLAGS = -lgsl -lgslcblas -l${QHULL} -lcfitsio -lncurses -lm 
 
 .SILENT:

@@ -1,5 +1,5 @@
 /*
- *  fit.c
+ *  stokesangles.c
  *  LIME, The versatile 3D line modeling environment 
  *
  *  Created by Marco Padovani on 06/04/10.
@@ -18,14 +18,15 @@ stokesangles(double x, double y, double z, double incl, double *angle){
 
 	double B[3],Bp[3];
 	double sPsi, cPsi;
-	double cGam;
+	double cGam,cosIncl,sinIncl;
 	
 	magfield(x,y,z,B);
 
-
+        cosIncl=cos(incl);
+        sinIncl=sin(incl);
 	Bp[0] =  B[0];
-	Bp[1] =  B[1]*cos(incl) - B[2]*sin(incl);
-	Bp[2] =  B[1]*sin(incl) + B[2]*cos(incl);
+	Bp[1] =  B[1]*cosIncl - B[2]*sinIncl;
+	Bp[2] =  B[1]*sinIncl + B[2]*cosIncl;
 	
 	if (!(Bp[0]*Bp[0]+Bp[1]*Bp[1])==0) {
 		cPsi = Bp[1]/sqrt(Bp[0]*Bp[0]+Bp[1]*Bp[1]);
@@ -40,7 +41,8 @@ stokesangles(double x, double y, double z, double incl, double *angle){
 	}
 	
 	if (!(Bp[0]*Bp[0]+Bp[1]*Bp[1]+Bp[2]*Bp[2])==0) {
-		cGam = sqrt(Bp[0]*Bp[0]+Bp[1]*Bp[1])/sqrt(Bp[0]*Bp[0]+Bp[1]*Bp[1]+Bp[2]*Bp[2]);
+		// cGam = sqrt(Bp[0]*Bp[0]+Bp[1]*Bp[1])/sqrt(Bp[0]*Bp[0]+Bp[1]*Bp[1]+Bp[2]*Bp[2]);
+		cGam = sqrt((Bp[0]*Bp[0]+Bp[1]*Bp[1])/(Bp[0]*Bp[0]+Bp[1]*Bp[1]+Bp[2]*Bp[2]));
 	}
 	else {
 		cGam = 0.;

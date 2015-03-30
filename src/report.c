@@ -21,7 +21,8 @@ report(int i, inputPars *par, struct grid *g){
 	FILE *fp;
 	int j,k,p,q;
 	const int bins = 100;
-	double x,min_l=1e30,max_l=0.,min_p=1e30,max_p=0,r;
+	// double x,min_l=1e30,max_l=0.,min_p=1e30,max_p=0,r;
+	double x,min_l,max_l,min_p,max_p,min_p2,max_p2,r2;
 	size_t n=bins;
 	double hx[bins],hy[bins],hw[bins]; 
 	double c0, c1, cov00, cov01, cov11, chisq1,b0, b1, chisq2; 
@@ -35,19 +36,45 @@ report(int i, inputPars *par, struct grid *g){
 		fprintf(fp,"*** LIME report\n***\n");
 		fprintf(fp,"*** Grid statistics\n\n");
 
-		q=0;
-		p=0;
-		for(j=0;j<par->ncell;j++) {
+		// q=0;
+		// p=0;
+		// for(j=0;j<par->ncell;j++) {
+		// 	p+=g[j].numNeigh;
+		// 	q+=g[j].nphot;
+		// 	r=sqrt(pow(g[j].x[0],2)+pow(g[j].x[1],2)+pow(g[j].x[2],2));
+		// 	if(r<min_p) min_p=r;
+		// 	if(r>max_p) max_p=r;
+		// 	for(k=0;k<g[j].numNeigh;k++){
+		// 		if(g[j].ds[k]<min_l) min_l=g[j].ds[k];
+		// 		if(g[j].ds[k]>max_l) max_l=g[j].ds[k];
+		// 	}
+		// }
+		j=0;
+		p=g[j].numNeigh;
+		q=g[j].nphot;
+		r2=g[j].x[0]*g[j].x[0]+g[j].x[1]*g[j].x[1]+g[j].x[2]*g[j].x[2];
+		min_p2=r2;
+		max_p2=r2;
+		k=0;
+		min_l=g[j].ds[k];
+		max_l=g[j].ds[k];
+		for(k=1;k<g[j].numNeigh;k++){
+			if(g[j].ds[k]<min_l) min_l=g[j].ds[k];
+			if(g[j].ds[k]>max_l) max_l=g[j].ds[k];
+		}
+		for(j=1;j<par->ncell;j++) {
 			p+=g[j].numNeigh;
 			q+=g[j].nphot;
-			r=sqrt(pow(g[j].x[0],2)+pow(g[j].x[1],2)+pow(g[j].x[2],2));
-			if(r<min_p) min_p=r;
-			if(r>max_p) max_p=r;
+			r2=g[j].x[0]*g[j].x[0]+g[j].x[1]*g[j].x[1]+g[j].x[2]*g[j].x[2];
+			if(r2<min_p2) min_p2=r2;
+			if(r2>max_p2) max_p2=r2;
 			for(k=0;k<g[j].numNeigh;k++){
 				if(g[j].ds[k]<min_l) min_l=g[j].ds[k];
 				if(g[j].ds[k]>max_l) max_l=g[j].ds[k];
 			}
 		}
+		min_p=sqrt(min_p2);
+		max_p=sqrt(max_p2);
 		x=(double) p/par->ncell;
 		p=p/2;
 
@@ -55,7 +82,8 @@ report(int i, inputPars *par, struct grid *g){
 		gsl_histogram_set_ranges_uniform (f, min_l, max_l); 
 		
 		for(j=0;j<par->ncell-par->sinkPoints;j++) {
-			gsl_histogram_increment (h, sqrt(pow(g[j].x[0],2)+pow(g[j].x[1],2)+pow(g[j].x[2],2))); 
+			// gsl_histogram_increment (h, sqrt(pow(g[j].x[0],2)+pow(g[j].x[1],2)+pow(g[j].x[2],2))); 
+			gsl_histogram_increment (h, sqrt(g[j].x[0]*g[j].x[0]+g[j].x[1]*g[j].x[1]+g[j].x[2]*g[j].x[2])); 
 			for(k=0;k<g[j].numNeigh;k++){
 				gsl_histogram_increment (f, g[j].ds[k]); 
 			}

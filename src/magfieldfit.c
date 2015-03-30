@@ -1,5 +1,5 @@
 /*
- *  fit.c
+ *  magfieldfit.c
  *  LIME, The versatile 3D line modeling environment 
  *
  *  Created by Marco Padovani on 06/04/10.
@@ -172,8 +172,10 @@ fit_fi(double theta, double H0, double *val_FI){
 		par=theta;
 	}	
 	
-	*val_FI = pow(10.,a0+a1*par+a2*pow(par,2.)+a3*pow(par,3.)+a4*pow(par,4.)+a5*pow(par,5.)
-			  +a6*pow(par,6.)+a7*pow(par,7.)+a8*pow(par,8.)+a9*pow(par,9.)+a10*pow(par,10.));
+	// *val_FI = pow(10.,a0+a1*par+a2*pow(par,2.)+a3*pow(par,3.)+a4*pow(par,4.)+a5*pow(par,5.)
+	//		  +a6*pow(par,6.)+a7*pow(par,7.)+a8*pow(par,8.)+a9*pow(par,9.)+a10*pow(par,10.));
+
+	*val_FI = pow(10.,a0+par*(a1+par*(a2+par*(a3+par*(a4+par*(a5+par*(a6+par*(a7+par*(a8+par*(a9+par*a10)))))))))) ;
 
 	if (par<1.57080e-6) {
 		*val_FI = 0;
@@ -337,12 +339,16 @@ fit_d1fi(double theta, double H0, double *val_D1FI){
 		par=theta;
 	}
 	if (par<=(2./180.*PI)) {
-		*val_D1FI = pow(10.,b0+b1*par+b2*pow(par,2.)+b3*pow(par,3.)+b4*pow(par,4.)+b5*pow(par,5.)
-						+b6*pow(par,6.)+b7*pow(par,7.)+b8*pow(par,8.)+b9*pow(par,9.)+b10*pow(par,10.));
+		//*val_D1FI = pow(10.,b0+b1*par+b2*pow(par,2.)+b3*pow(par,3.)+b4*pow(par,4.)+b5*pow(par,5.)
+		//				+b6*pow(par,6.)+b7*pow(par,7.)+b8*pow(par,8.)+b9*pow(par,9.)+b10*pow(par,10.));
+
+		*val_D1FI = pow(10.,b0+par*(b1+par*(b2+par*(b3+par*(b4+par*(b5+par*(b6+par*(b7+par*(b8+par*(b9+par*b10))))))))));
 	}
 	else {
-		*val_D1FI = b0+b1*par+b2*pow(par,2.)+b3*pow(par,3.)+b4*pow(par,4.)+b5*pow(par,5.)
-		+b6*pow(par,6.)+b7*pow(par,7.)+b8*pow(par,8.)+b9*pow(par,9.)+b10*pow(par,10.);
+		*val_D1FI = b0+par*(b1+par*(b2+par*(b3+par*(b4+par*(b5+par*(b6+par*(b7+par*(b8+par*(b9+par*b10)))))))));
+
+		//*val_D1FI = b0+b1*par+b2*pow(par,2.)+b3*pow(par,3.)+b4*pow(par,4.)+b5*pow(par,5.)
+		//+b6*pow(par,6.)+b7*pow(par,7.)+b8*pow(par,8.)+b9*pow(par,9.)+b10*pow(par,10.);
 	}
 	
 	if (theta > (PI/2.)) {
@@ -511,8 +517,10 @@ fit_rr(double theta, double H0, double *val_RR){
 		par=theta;
 	}
 
-	*val_RR = pow(10.,c0+c1*par+c2*pow(par,2.)+c3*pow(par,3.)+c4*pow(par,4.)+c5*pow(par,5.)
-			  +c6*pow(par,6.)+c7*pow(par,7.)+c8*pow(par,8.)+c9*pow(par,9.)+c10*pow(par,10.));
+	//*val_RR = pow(10.,c0+c1*par+c2*pow(par,2.)+c3*pow(par,3.)+c4*pow(par,4.)+c5*pow(par,5.)
+	//		  +c6*pow(par,6.)+c7*pow(par,7.)+c8*pow(par,8.)+c9*pow(par,9.)+c10*pow(par,10.));
+	
+        *val_RR = pow(10.,c0+par*(c1+par*(c2+par*(c3+par*(c4+par*(c5+par*(c6+par*(c7+par*(c8+par*(c9+par*c10))))))))));
 	
 	
 	if (par<1.57080e-6) {

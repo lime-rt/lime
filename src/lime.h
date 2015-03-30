@@ -55,7 +55,7 @@
 
 /* input parameters */
 typedef struct {
-  double radius,minScale,tcmb;
+  double radius,radiusSqu,minScale,minScaleSqu,tcmb;
   int ncell,sinkPoints,pIntensity,nImages,nSpecies,blend;
   char *outputfile, *binoutputfile, *inputfile;
   char *gridfile;
@@ -89,7 +89,7 @@ struct rates {
   double *up, *down;
 };
 
-/* Grid proporties */
+/* Grid properties */
 struct grid {
   int id;
   double x[3];

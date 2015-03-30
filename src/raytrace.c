@@ -48,14 +48,14 @@ line_plane_intersect(struct grid *g, double *ds, int posn, int *nposn, double *d
                (g[posn].x[2]+g[posn].dir[i].x[2]/2. - x[2]) * g[posn].dir[i].x[2]);
     
     denominator=(dx[0]*g[posn].dir[i].x[0]+dx[1]*g[posn].dir[i].x[1]+dx[2]*g[posn].dir[i].x[2]);
-
+    
     if(fabs(denominator) > 0){
       newdist=numerator/denominator;
       if(newdist<*ds && newdist > 1e4){
         *ds=newdist;
         *nposn=g[posn].neigh[i]->id;
       }
-	}
+    }
   }
 }
 
@@ -65,9 +65,15 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
   int ichan, posn,nposn,i,px,iline,tmptrans;
   double *tau, *subintens;
   double vfac=0.,x[3],dx[3];
-  double deltav,ds,dist,ndist,size,xp,yp,zp,col,shift,minfreq,jnu,alpha,snu,dtau,snu_pol[3];
+  //double deltav,ds,dist,ndist,size,xp,yp,zp,col,shift,minfreq,jnu,alpha,snu,dtau,snu_pol[3];
+  double deltav,ds,dist2,ndist2,size,xp,yp,zp,col,shift,minfreq,absDeltaFreq,jnu,alpha,snu,dtau,snu_pol[3];
+  double cosPhi,sinPhi,cosTheta,sinTheta;
   const gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
+#ifdef TEST
+  gsl_rng_set(ran,178490);
+#else
   gsl_rng_set(ran,time(0));
+#endif
   
   /* Determine whether there are blended lines or not */
   lineCount(par->nSpecies, m, &counta, &countb, &nlinetot);
@@ -82,11 +88,13 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
   } else img[im].bandwidth = img[im].nchan*img[im].velres/CLIGHT * img[im].freq;
 
   if(img[im].trans<0){
-    minfreq=1e30;
-    tmptrans=-1;
-    for(iline=0;iline<m[0].nline;iline++){
-      if(fabs(img[im].freq-m[0].freq[iline])<minfreq){
-        minfreq=fabs(img[im].freq-m[0].freq[iline]);
+    iline=0;
+    minfreq=fabs(img[im].freq-m[0].freq[iline]);
+    tmptrans=iline;
+    for(iline=1;iline<m[0].nline;iline++){
+      absDeltaFreq=fabs(img[im].freq-m[0].freq[iline]);
+      if(absDeltaFreq<minfreq){
+        minfreq=absDeltaFreq;
         tmptrans=iline;
       }
     }
@@ -96,6 +104,11 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
   tau = malloc(sizeof(double)*img[im].nchan);
   subintens = malloc(sizeof(double)*img[im].nchan);
   
+  cosPhi   = cos(img[im].phi);
+  sinPhi   = sin(img[im].phi);
+  cosTheta = cos(img[im].theta);
+  sinTheta = sin(img[im].theta);
+
   /* Main loop through pixel grid */
   for(px=0;px<(img[im].pxls*img[im].pxls);px++){
     for(ichan=0;ichan<img[im].nchan;ichan++){
@@ -114,37 +127,59 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
       
       /* Rotation matrix
        
-       |1	  0		    0   |
-       R_x(a)=|0	cos(a)	sin(a)	|
-       |0 -sin(a)	cos(a)	|
+              |1          0           0   |
+       R_x(a)=|0        cos(a)      sin(a)|
+              |0       -sin(a)	    cos(a)|
        
-       |cos(b)	0	-sin(b) |
-       R_y(b)=|  0		1	   0	|
-       |sin(b)	0	 cos(b) |
+              |cos(b)     0       -sin(b)|
+       R_y(b)=|  0        1          0	 |
+              |sin(b)     0        cos(b)|
        
-       |cos(b)  		    0 	   sin(b)   |
-       Rot =  |sin(a)sin(b)	cos(a)	sin(a)cos(b)|
-       |cos(a)sin(b)   -sin(a)  cos(a)cos(b)|
+              |      cos(b)       0           sin(b)|
+       Rot =  |sin(a)sin(b)     cos(a)  sin(a)cos(b)|
+              |cos(a)sin(b)    -sin(a)  cos(a)cos(b)|
        
        */
-      if(sqrt(xp*xp+yp*yp)/par->radius <= 1 ) {
-        zp=par->radius*cos(asin(sqrt(xp*xp+yp*yp)/par->radius));
+      // if(sqrt(xp*xp+yp*yp)/par->radius <= 1 ) {
+      if((xp*xp+yp*yp)/par->radiusSqu <= 1 ) {
+        // zp=par->radius*cos(asin(sqrt(xp*xp+yp*yp)/par->radius));
+        zp=sqrt(par->radiusSqu-(xp*xp+yp*yp));
         
-        x[0]=xp*cos(img[im].phi)                   +yp*0.                -zp*sin(img[im].phi);
-        x[1]=xp*sin(img[im].theta)*sin(img[im].phi)+yp*cos(img[im].theta)+zp*sin(img[im].theta)*cos(img[im].phi);
-        x[2]=xp*cos(img[im].theta)*sin(img[im].phi)-yp*sin(img[im].theta)+zp*cos(img[im].theta)*cos(img[im].phi);
+        //cosPhi   = cos(img[im].phi);
+        //sinPhi   = sin(img[im].phi);
+        //cosTheta = cos(img[im].theta);
+        //sinTheta = sin(img[im].theta);
+        // x[0]=xp*cos(img[im].phi)                   +yp*0.                -zp*sin(img[im].phi);
+        // x[1]=xp*sin(img[im].theta)*sin(img[im].phi)+yp*cos(img[im].theta)+zp*sin(img[im].theta)*cos(img[im].phi);
+        // x[2]=xp*cos(img[im].theta)*sin(img[im].phi)-yp*sin(img[im].theta)+zp*cos(img[im].theta)*cos(img[im].phi);
+        x[0]=xp         *cosPhi+yp*0.      -zp         *sinPhi;
+        x[1]=xp*sinTheta*sinPhi+yp*cosTheta+zp*sinTheta*cosPhi;
+        x[2]=xp*cosTheta*sinPhi-yp*sinTheta+zp*cosTheta*cosPhi;
         
-        dx[0]= sin(img[im].phi);
-        dx[1]=-sin(img[im].theta)*cos(img[im].phi);
-        dx[2]=-cos(img[im].theta)*cos(img[im].phi);
+        // dx[0]= sin(img[im].phi);
+        // dx[1]=-sin(img[im].theta)*cos(img[im].phi);
+        // dx[2]=-cos(img[im].theta)*cos(img[im].phi);
+        dx[0]=          sinPhi;
+        dx[1]=-sinTheta*cosPhi;
+        dx[2]=-cosTheta*cosPhi;
         
-        dist=1e60;
-        posn=-1;
-        for(i=0;i<par->ncell;i++){
-          ndist=sqrt(pow(x[0]-g[i].x[0],2)+pow(x[1]-g[i].x[1],2)+pow(x[2]-g[i].x[2],2));
-          if(ndist<dist){
+        //dist=1e60;
+        //posn=-1;
+        //for(i=0;i<par->ncell;i++){
+        //  ndist=sqrt(pow(x[0]-g[i].x[0],2)+pow(x[1]-g[i].x[1],2)+pow(x[2]-g[i].x[2],2));
+        //  if(ndist<dist){
+        //    posn=i;
+        //    dist=ndist;
+        //  }
+        //}
+        i=0;
+        dist2=(x[0]-g[i].x[0])*(x[0]-g[i].x[0]) + (x[1]-g[i].x[1])*(x[1]-g[i].x[1]) + (x[2]-g[i].x[2])*(x[2]-g[i].x[2]);
+        posn=i;
+        for(i=1;i<par->ncell;i++){
+          ndist2=(x[0]-g[i].x[0])*(x[0]-g[i].x[0]) + (x[1]-g[i].x[1])*(x[1]-g[i].x[1]) + (x[2]-g[i].x[2])*(x[2]-g[i].x[2]);
+          if(ndist2<dist2){
             posn=i;
-            dist=ndist;
+            dist2=ndist2;
           }
         }
 
