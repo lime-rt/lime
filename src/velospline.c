@@ -39,9 +39,6 @@ getVelosplines(inputPars *par, struct grid *g){
       }
       for(j=0;j<5;j++){
         d=g[i].ds[k]/4*j;
-        // gsl_matrix_set(matrix,j,0,pow(d,4));		
-        // gsl_matrix_set(matrix,j,1,pow(d,3));		
-        // gsl_matrix_set(matrix,j,2,pow(d,2));		
         gsl_matrix_set(matrix,j,0,d*d*d*d);		
         gsl_matrix_set(matrix,j,1,d*d*d);		
         gsl_matrix_set(matrix,j,2,d*d);		

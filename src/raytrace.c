@@ -65,7 +65,6 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
   int ichan, posn,nposn,i,px,iline,tmptrans;
   double *tau, *subintens;
   double vfac=0.,x[3],dx[3];
-  //double deltav,ds,dist,ndist,size,xp,yp,zp,col,shift,minfreq,jnu,alpha,snu,dtau,snu_pol[3];
   double deltav,ds,dist2,ndist2,size,xp,yp,zp,col,shift,minfreq,absDeltaFreq,jnu,alpha,snu,dtau,snu_pol[3];
   double cosPhi,sinPhi,cosTheta,sinTheta;
   const gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
@@ -140,38 +139,16 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
               |cos(a)sin(b)    -sin(a)  cos(a)cos(b)|
        
        */
-      // if(sqrt(xp*xp+yp*yp)/par->radius <= 1 ) {
       if((xp*xp+yp*yp)/par->radiusSqu <= 1 ) {
-        // zp=par->radius*cos(asin(sqrt(xp*xp+yp*yp)/par->radius));
         zp=sqrt(par->radiusSqu-(xp*xp+yp*yp));
-        
-        //cosPhi   = cos(img[im].phi);
-        //sinPhi   = sin(img[im].phi);
-        //cosTheta = cos(img[im].theta);
-        //sinTheta = sin(img[im].theta);
-        // x[0]=xp*cos(img[im].phi)                   +yp*0.                -zp*sin(img[im].phi);
-        // x[1]=xp*sin(img[im].theta)*sin(img[im].phi)+yp*cos(img[im].theta)+zp*sin(img[im].theta)*cos(img[im].phi);
-        // x[2]=xp*cos(img[im].theta)*sin(img[im].phi)-yp*sin(img[im].theta)+zp*cos(img[im].theta)*cos(img[im].phi);
         x[0]=xp         *cosPhi+yp*0.      -zp         *sinPhi;
         x[1]=xp*sinTheta*sinPhi+yp*cosTheta+zp*sinTheta*cosPhi;
         x[2]=xp*cosTheta*sinPhi-yp*sinTheta+zp*cosTheta*cosPhi;
         
-        // dx[0]= sin(img[im].phi);
-        // dx[1]=-sin(img[im].theta)*cos(img[im].phi);
-        // dx[2]=-cos(img[im].theta)*cos(img[im].phi);
         dx[0]=          sinPhi;
         dx[1]=-sinTheta*cosPhi;
         dx[2]=-cosTheta*cosPhi;
         
-        //dist=1e60;
-        //posn=-1;
-        //for(i=0;i<par->ncell;i++){
-        //  ndist=sqrt(pow(x[0]-g[i].x[0],2)+pow(x[1]-g[i].x[1],2)+pow(x[2]-g[i].x[2],2));
-        //  if(ndist<dist){
-        //    posn=i;
-        //    dist=ndist;
-        //  }
-        //}
         i=0;
         dist2=(x[0]-g[i].x[0])*(x[0]-g[i].x[0]) + (x[1]-g[i].x[1])*(x[1]-g[i].x[1]) + (x[2]-g[i].x[2])*(x[2]-g[i].x[2]);
         posn=i;

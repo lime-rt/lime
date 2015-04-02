@@ -41,7 +41,6 @@ stokesangles(double x, double y, double z, double incl, double *angle){
 	}
 	
 	if (!(Bp[0]*Bp[0]+Bp[1]*Bp[1]+Bp[2]*Bp[2])==0) {
-		// cGam = sqrt(Bp[0]*Bp[0]+Bp[1]*Bp[1])/sqrt(Bp[0]*Bp[0]+Bp[1]*Bp[1]+Bp[2]*Bp[2]);
 		cGam = sqrt((Bp[0]*Bp[0]+Bp[1]*Bp[1])/(Bp[0]*Bp[0]+Bp[1]*Bp[1]+Bp[2]*Bp[2]));
 	}
 	else {
