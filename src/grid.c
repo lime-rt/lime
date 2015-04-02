@@ -11,7 +11,6 @@
  *
  */
 
-#include <qhull_a.h>
 #include "lime.h"
 
 

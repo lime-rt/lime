@@ -26,19 +26,15 @@ CPPFLAGS	= -I${PREFIX}/include \
 		  -I/opt/local/include \
 		  -I/sw//include
 
-## For qhull version 2011.1 or newer:
-#QHULL   = qhullstatic
-## For older qhull versions:
-##QHULL   = qhull
-##CPPFLAGS += -DQHULL_INC_QHULL
-ifdef ALLEGRO
+ifdef OLD_QHULL
 	QHULL   = qhull
-	INCLUDEDIR_FITSIO = /usr/include/cfitsio
-	INCLUDEDIR_QHULL  = /usr/include/qhull
+	CPPFLAGS += -DOLD_QHULL
 else
 	QHULL   = qhullstatic
-	INCLUDEDIR_FITSIO = /usr/include
-	INCLUDEDIR_QHULL  = /usr/include/libqhull
+endif
+
+ifdef OLD_FITSIO
+	CPPFLAGS += -DOLD_FITSIO
 endif
 
 ##
@@ -66,8 +62,7 @@ OBJS    = src/aux.o src/curses.o src/grid.o src/LTEsolution.o   \
 		  src/tcpsocket.o src/defaults.o
 MODELO 	= src/model.o
 
-#CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing   
-CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing -DTEST -I${INCLUDEDIR_FITSIO} -I${INCLUDEDIR_QHULL} 
+CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing -DTEST
 LDFLAGS = -lgsl -lgslcblas -l${QHULL} -lcfitsio -lncurses -lm 
 
 .SILENT:

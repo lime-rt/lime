@@ -11,7 +11,6 @@
  *
  */
 
-#include <fitsio.h>
 #include "lime.h"
 
 void 
