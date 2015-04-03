@@ -18,9 +18,13 @@ predefinedGrid(inputPars *par, struct grid *g){
   FILE *fp;
   int i;
   double x,y,z,scale;
-  gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);
+  const gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);
+#ifdef TEST
+  gsl_rng_set(ran,6611304);
+#else
   gsl_rng_set(ran,time(0));
-
+#endif
+	
   fp=fopen(par->pregrid,"r");
   par->ncell=par->pIntensity+par->sinkPoints;
 
@@ -39,10 +43,15 @@ predefinedGrid(inputPars *par, struct grid *g){
 
 
     g[i].sink=0;
-    g[i].t[1]=g[i].t[0];
-    g[i].nmol[0]=g[i].abun[0]*g[i].dens[0];
-
-    if(!silent) progressbar((double) i/((double)par->pIntensity-1), 4);
+	g[i].t[1]=g[i].t[0];
+	g[i].nmol[0]=g[i].abun[0]*g[i].dens[0];
+		
+	/* This next step needs to be done, even though it looks stupid */
+	g[i].dir=malloc(sizeof(point)*1);
+	g[i].ds =malloc(sizeof(double)*1);
+	// g[i].neigh =malloc(sizeof(int)*1);
+	g[i].neigh =malloc(sizeof(struct grid *)*1);
+	if(!silent) progressbar((double) i/((double)par->pIntensity-1), 4);	
   }
 
   for(i=par->pIntensity;i<par->ncell;i++){

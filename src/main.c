@@ -12,7 +12,7 @@
  *  LIME is derived from RATRAN by Michiel Hogerheijde and Floris van der Tak,
  *  Copyright 2000, Hogerheijde and van der Tak, A&A, 362, 697, 2000.
  *
- *  DISCLAIMER: LIME is provided as is and the author does not resume any
+ *  DISCLAIMER: LIME is provided as is and the author does not accept any 
  *  responsibility for erroneous results due to bugs in the code.
  *
  *  Any publication with results obtain using LIME should refer to

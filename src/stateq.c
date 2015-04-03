@@ -99,7 +99,12 @@ getmatrix(int id, gsl_matrix *matrix, molData *m, struct grid *g, int ispec){
   /* Initialize matrix with zeros */
   for(ipart=0;ipart<m[ispec].npart;ipart++){
     partner[ipart].colli = gsl_matrix_alloc(m[ispec].nlev+1,m[ispec].nlev+1);
-    partner[ipart].ctot  = malloc(sizeof(double)*m[ispec].nlev);
+    // partner[ipart].ctot  = malloc(sizeof(double)*m[ispec].nlev);
+    if(m[ispec].nlev>0) partner[ipart].ctot  = malloc(sizeof(double)*m[ispec].nlev);
+    else {
+      if(!silent)bail_out("Matrix initialization error in stateq");
+      exit(0);
+    }
     for(t=0;t<m[ispec].nlev+1;t++){
       for(p=0;p<m[ispec].nlev+1;p++){
         gsl_matrix_set(matrix, t, p, 0.);

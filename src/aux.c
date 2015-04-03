@@ -95,6 +95,8 @@ parseInput(inputPars *par, image **img, molData **m){
   input(par,*img);
 
   par->ncell=par->pIntensity+par->sinkPoints;
+  par->radiusSqu=par->radius*par->radius;
+  par->minScaleSqu=par->minScale*par->minScale;
 
   if(par->dust != NULL){
     if((fp=fopen(par->dust, "r"))==NULL){
@@ -321,8 +323,13 @@ lineCount(int n,molData *m,int **counta,int **countb,int *nlinetot){
 
   *nlinetot=0;
   for(ispec=0;ispec<n;ispec++) *nlinetot+=m[ispec].nline;
+  if(*nlinetot > 0){
   *counta=malloc(sizeof(int)* *nlinetot);
   *countb=malloc(sizeof(int)* *nlinetot);
+  } else {
+    if(!silent) bail_out("Error: Line count finds no lines");
+    exit(0);
+  }
   count=0;
   for(ispec=0;ispec<n;ispec++) {
     for(iline=0;iline<m[ispec].nline;iline++){
@@ -375,7 +382,7 @@ lineBlend(molData *m, inputPars *par, blend **matrix){
 void
 levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
   int id,conv=0,iter,ilev,prog=0,ispec,c=0,n;
-  double percent=0.,pstate,*median,result1=0,result2=0,snr;
+  double percent=0.,pstate,*median,result1=0,result2=0,snr,delta_pop;
   blend *matrix;
   struct statistics { double *pop, *ave, *sigma; } *stat;
 
@@ -396,7 +403,11 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
 
   /* Random number generator */
   gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);
+#ifdef TEST
+  gsl_rng_set(ran, 1237106) ;
+#else 
   gsl_rng_set(ran,time(0));
+#endif
 
   /* Read in all molecular data */
   for(id=0;id<par->nSpecies;id++) molinit(m,par,g,id);
@@ -447,7 +458,11 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
           for(iter=0;iter<5;iter++) stat[id].ave[ilev]+=stat[id].pop[ilev+m[0].nlev*iter];
           stat[id].ave[ilev]=stat[id].ave[ilev]/5.;
           stat[id].sigma[ilev]=0;
-          for(iter=0;iter<5;iter++) stat[id].sigma[ilev]+=pow(stat[id].pop[ilev+m[0].nlev*iter]-stat[id].ave[ilev],2);
+//          for(iter=0;iter<5;iter++) stat[id].sigma[ilev]+=pow(stat[id].pop[ilev+m[0].nlev*iter]-stat[id].ave[ilev],2);
+          for(iter=0;iter<5;iter++) {
+            delta_pop = stat[id].pop[ilev+m[0].nlev*iter]-stat[id].ave[ilev];
+            stat[id].sigma[ilev]+=delta_pop*delta_pop;
+          }
           stat[id].sigma[ilev]=sqrt(stat[id].sigma[ilev])/5.;
           if(g[id].mol[0].pops[ilev] > 1e-12) c++;
 
