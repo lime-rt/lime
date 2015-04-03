@@ -19,10 +19,10 @@ void
 gridAlloc(inputPars *par, struct grid **g){
   int i;
   double temp[99];
-  
+
   *g=malloc(sizeof(struct grid)*(par->pIntensity+par->sinkPoints));
   memset(*g, 0., sizeof(struct grid) * (par->pIntensity+par->sinkPoints));
-  
+
   if(par->pregrid || par->restart) par->collPart=1;
   else{
     for(i=0;i<99;i++) temp[i]=-1;
@@ -31,8 +31,18 @@ gridAlloc(inputPars *par, struct grid **g){
     par->collPart=0;
     while(temp[i++]>-1) par->collPart++;
   }
-  
+
   for(i=0;i<(par->pIntensity+par->sinkPoints); i++){
+    (*g)[i].a0 = NULL;
+    (*g)[i].a1 = NULL;
+    (*g)[i].a2 = NULL;
+    (*g)[i].a3 = NULL;
+    (*g)[i].a4 = NULL;
+    (*g)[i].mol = NULL;
+    (*g)[i].dir = NULL;
+    (*g)[i].neigh = NULL;
+    (*g)[i].w = NULL;
+    (*g)[i].ds = NULL;
     (*g)[i].dens=malloc(sizeof(double)*par->collPart);
     (*g)[i].abun=malloc(sizeof(double)*par->nSpecies);
     (*g)[i].nmol=malloc(sizeof(double)*par->nSpecies);
@@ -41,7 +51,109 @@ gridAlloc(inputPars *par, struct grid **g){
   }
 }
 
-
+void
+freePopulation(const inputPars *par, const molData* m, struct populations* pop ) {
+  if( pop !=NULL )
+    {
+      int j,k;
+      for( j=0; j<par->nSpecies; j++ )
+        {
+          if( pop[j].pops != NULL )
+            {
+              free( pop[j].pops );
+            }
+          if( pop[j].knu != NULL )
+            {
+              free( pop[j].knu );
+            }
+          if( pop[j].dust != NULL )
+            {
+              free( pop[j].dust );
+            }
+          if( pop[j].partner != NULL )
+            {
+              if( m != NULL )
+                {
+                  for(k=0; k<m[j].npart; k++)
+                    {
+                      if( pop[j].partner[k].up != NULL )
+                        {
+                          free(pop[j].partner[k].up);
+                        }
+                      if( pop[j].partner[k].down != NULL )
+                        {
+                          free(pop[j].partner[k].down);
+                        }
+                    }
+                }
+              free( pop[j].partner );
+            }
+        }
+      free(pop);
+    }
+}
+void
+freeGrid(const inputPars *par, const molData* m ,struct grid* g){
+  int i;
+  if( g != NULL )
+    {
+      for(i=0;i<(par->pIntensity+par->sinkPoints); i++){
+        if(g[i].a0 != NULL)
+          {
+            free(g[i].a0);
+          }
+        if(g[i].a1 != NULL)
+          {
+            free(g[i].a1);
+          }
+        if(g[i].a2 != NULL)
+          {
+            free(g[i].a2);
+          }
+        if(g[i].a3 != NULL)
+          {
+            free(g[i].a3);
+          }
+        if(g[i].a4 != NULL)
+          {
+            free(g[i].a4);
+          }
+        if(g[i].dir != NULL)
+          {
+            free(g[i].dir);
+          }
+        if(g[i].neigh != NULL)
+          {
+            free(g[i].neigh);
+          }
+        if(g[i].w != NULL)
+          {
+            free(g[i].w);
+          }
+        if(g[i].dens != NULL)
+          {
+            free(g[i].dens);
+          }
+        if(g[i].nmol != NULL)
+          {
+            free(g[i].nmol);
+          }
+        if(g[i].abun != NULL)
+          {
+            free(g[i].abun);
+          }
+        if(g[i].ds != NULL)
+          {
+            free(g[i].ds);
+          }
+        if(g[i].mol != NULL)
+          {
+            freePopulation( par, m, g[i].mol );
+          }
+      }
+      free(g);
+    }
+}
 
 void
 qhull(inputPars *par, struct grid *g){
@@ -53,24 +165,26 @@ qhull(inputPars *par, struct grid *g){
   coordT *pt_array;
   int simplex[DIM];
   int curlong, totlong;
-  
+
   pt_array=malloc(DIM*sizeof(coordT)*par->ncell);
-  
+
   for(i=0;i<par->ncell;i++) {
     for(j=0;j<DIM;j++) {
-	  pt_array[i*DIM+j]=g[i].x[j];
-	}
+      pt_array[i*DIM+j]=g[i].x[j];
+    }
   }
-  
+
   sprintf(flags,"qhull d Qbb");
   if (!qh_new_qhull(DIM, par->ncell, pt_array, ismalloc, flags, NULL, NULL)) {
     /* Identify points */
     FORALLvertices {
       id=qh_pointid(vertex->point);
       g[id].numNeigh=qh_setsize(vertex->neighbors);
-      free(g[id].neigh);
-      g[id].neigh=malloc(sizeof(struct grid *)*g[id].numNeigh);
-      memset(g[id].neigh, 0, sizeof(int) * g[id].numNeigh);
+      if(  g[id].neigh != NULL )
+        {
+          free( g[id].neigh );
+        }
+      g[id].neigh=malloc(sizeof(struct grid)*g[id].numNeigh);
       for(k=0;k<g[id].numNeigh;k++) {
         g[id].neigh[k]=NULL;
       }
@@ -98,37 +212,47 @@ qhull(inputPars *par, struct grid *g){
     if(!silent) bail_out("Qhull failed to triangulate");
     exit(1);
   }
-  
+
   for(i=0;i<par->ncell;i++){
     j=0;
     for(k=0;k<g[i].numNeigh;k++){
-      if(g[i].neigh[k] != NULL) j++;
+      if(g[i].neigh[k] != NULL)
+        {
+          j++;
+        }
     }
     g[i].numNeigh=j;
   }
   qh_freeqhull(!qh_ALL);
-  qh_memfreeshort (&curlong, &totlong);  
+  qh_memfreeshort (&curlong, &totlong);
   free(pt_array);
 }
 
 void
 distCalc(inputPars *par, struct grid *g){
   int i,k,l;
-  
+
   for(i=0;i<par->ncell;i++){
-    free(g[i].dir);
-	free(g[i].ds);
-	g[i].dir=malloc(sizeof(point)*g[i].numNeigh);
-	g[i].ds =malloc(sizeof(double)*g[i].numNeigh);
-	memset(g[i].dir, 0., sizeof(point) * g[i].numNeigh);
-	memset(g[i].ds, 0., sizeof(double) * g[i].numNeigh);
-	for(k=0;k<g[i].numNeigh;k++){
-	  for(l=0;l<3;l++) g[i].dir[k].x[l] = g[i].neigh[k]->x[l] - g[i].x[l];
-	  //g[i].ds[k]=sqrt(pow(g[i].dir[k].x[0],2)+pow(g[i].dir[k].x[1],2)+pow(g[i].dir[k].x[2],2));
-	  g[i].ds[k]=sqrt(g[i].dir[k].x[0]*g[i].dir[k].x[0]+g[i].dir[k].x[1]*g[i].dir[k].x[1]+g[i].dir[k].x[2]*g[i].dir[k].x[2]);
-	  for(l=0;l<3;l++) g[i].dir[k].xn[l] = g[i].dir[k].x[l]/g[i].ds[k];
-	}
-	g[i].nphot=ininphot*g[i].numNeigh;
+    if( g[i].dir != NULL )
+      {
+        free( g[i].dir );
+      }
+    if( g[i].ds != NULL )
+      {
+        free( g[i].ds );
+      }
+    g[i].dir=malloc(sizeof(point)*g[i].numNeigh);
+    g[i].ds =malloc(sizeof(double)*g[i].numNeigh);
+    memset(g[i].dir, 0., sizeof(point) * g[i].numNeigh);
+    memset(g[i].ds, 0., sizeof(double) * g[i].numNeigh);
+    for(k=0;k<g[i].numNeigh;k++){
+      for(l=0;l<3;l++) g[i].dir[k].x[l] = g[i].neigh[k]->x[l] - g[i].x[l];
+      g[i].ds[k]=sqrt(pow(g[i].dir[k].x[0],2)+pow(g[i].dir[k].x[1],2)+pow(g[i].dir[k].x[2],2));
+      //g[i].ds[k]=sqrt(pow(g[i].dir[k].x[0],2)+pow(g[i].dir[k].x[1],2)+pow(g[i].dir[k].x[2],2));
+      g[i].ds[k]=sqrt(g[i].dir[k].x[0]*g[i].dir[k].x[0]+g[i].dir[k].x[1]*g[i].dir[k].x[1]+g[i].dir[k].x[2]*g[i].dir[k].x[2]);
+      for(l=0;l<3;l++) g[i].dir[k].xn[l] = g[i].dir[k].x[l]/g[i].ds[k];
+    }
+    g[i].nphot=ininphot*g[i].numNeigh;
   }
 }
 
@@ -144,15 +268,15 @@ write_VTK_unstructured_Points(inputPars *par, struct grid *g){
   vertexT *vertex,**vertexp;
   coordT *pt_array;
   int curlong, totlong;
-  
+
   pt_array=malloc(sizeof(coordT)*DIM*par->ncell);
-  
+
   for(i=0;i<par->ncell;i++) {
     for(j=0;j<DIM;j++) {
       pt_array[i*DIM+j]=g[i].x[j];
     }
   }
-  
+
   if((fp=fopen(par->gridfile, "w"))==NULL){
     if(!silent) bail_out("Error writing grid file!");
     exit(1);
@@ -166,9 +290,9 @@ write_VTK_unstructured_Points(inputPars *par, struct grid *g){
     fprintf(fp,"%e %e %e\n", g[i].x[0], g[i].x[1], g[i].x[2]);
   }
   fprintf(fp, "\n");
-  
+
   sprintf(flags,"qhull d Qbb T0");
-  
+
   if (!qh_new_qhull(DIM, par->ncell, pt_array, ismalloc, flags, NULL, NULL)) {
     FORALLfacets {
       if (!facet->upperdelaunay) l++;
@@ -216,7 +340,7 @@ write_VTK_unstructured_Points(inputPars *par, struct grid *g){
       fprintf(fp, "%e %e %e\n", g[i].vel[0],g[i].vel[1],g[i].vel[2]);
     }
   }
-  
+
   fclose(fp);
   free(pt_array);
 }
@@ -234,29 +358,29 @@ getArea(inputPars *par, struct grid *g, const gsl_rng *ran){
   double x,y,z,pt_phi,sinPtPhi,pt_theta;
   /* Lots of circles approach -- badly broken, needs to be fixed  */
   /*
-   for(i=0;i<par->pIntensity;i++){
-   angle=malloc(sizeof(double)*g[i].numNeigh);
-   g[i].w=malloc(sizeof(double)*g[i].numNeigh);
-   for(k=0;k<g[i].numNeigh;k++){
-   best=0;
-   for(j=0;j<g[i].numNeigh;j++){
-   angle[j]=( g[i].dir[k].xn[0]*g[i].dir[j].xn[0]
-   +g[i].dir[k].xn[1]*g[i].dir[j].xn[1]
-   +g[i].dir[k].xn[2]*g[i].dir[j].xn[2]);
-   if(angle[j]>best && angle[j]<1){
-   best=angle[j];
-   b=j;
-   }
-   }
-   g[i].w[k]=PI*pow(tan(acos(best)),2);
-   wsum+=g[i].w[k];
-   }
-   for(k=0;k<g[i].numNeigh;k++) g[i].w[k]=g[i].w[k]/wsum;
-   free(angle);
-   }
-   */
-  
-  
+     for(i=0;i<par->pIntensity;i++){
+     angle=malloc(sizeof(double)*g[i].numNeigh);
+     g[i].w=malloc(sizeof(double)*g[i].numNeigh);
+     for(k=0;k<g[i].numNeigh;k++){
+     best=0;
+     for(j=0;j<g[i].numNeigh;j++){
+     angle[j]=( g[i].dir[k].xn[0]*g[i].dir[j].xn[0]
+     +g[i].dir[k].xn[1]*g[i].dir[j].xn[1]
+     +g[i].dir[k].xn[2]*g[i].dir[j].xn[2]);
+     if(angle[j]>best && angle[j]<1){
+     best=angle[j];
+     b=j;
+     }
+     }
+     g[i].w[k]=PI*pow(tan(acos(best)),2);
+     wsum+=g[i].w[k];
+     }
+     for(k=0;k<g[i].numNeigh;k++) g[i].w[k]=g[i].w[k]/wsum;
+     free(angle);
+     }
+     */
+
+
   for(i=0;i<par->pIntensity;i++){
     angle=malloc(sizeof(double)*g[i].numNeigh);
     g[i].w=malloc(sizeof(double)*g[i].numNeigh);
@@ -277,8 +401,8 @@ getArea(inputPars *par, struct grid *g, const gsl_rng *ran){
       b=j;
       for(j=1;j<g[i].numNeigh;j++){
         angle[j]=( x*g[i].dir[j].xn[0]
-                  +y*g[i].dir[j].xn[1]
-                  +z*g[i].dir[j].xn[2]);
+                   +y*g[i].dir[j].xn[1]
+                   +z*g[i].dir[j].xn[2]);
         if(angle[j]>best){
           best=angle[j];
           b=j;
@@ -308,7 +432,7 @@ getMass(inputPars *par, struct grid *g, const gsl_rng *ran){
   vertexT *vertex;
   coordT *pt_array;
   int curlong, totlong;
-  
+
   pts=malloc(sizeof(S)*par->pIntensity);
   for(i=0;i<par->pIntensity;i++){
     pts[i].vps=0;
@@ -319,7 +443,7 @@ getMass(inputPars *par, struct grid *g, const gsl_rng *ran){
       pt_array[i*DIM+j]=g[i].x[j];
     }
   }
-  
+
   sprintf(flags,"qhull v Qbb");
   if (!qh_new_qhull(DIM, par->ncell, pt_array, ismalloc, flags, NULL, NULL)) {
     qh_setvoronoi_all();
@@ -352,7 +476,7 @@ getMass(inputPars *par, struct grid *g, const gsl_rng *ran){
   }
   qh_freeqhull(!qh_ALL);
   qh_memfreeshort (&curlong, &totlong);
-  
+
   /* Calculate Voronoi volumes */
   sprintf(flags,"qhull ");
   for(i=0;i<par->pIntensity;i++){
@@ -412,7 +536,7 @@ buildGrid(inputPars *par, struct grid *g){
   double temp;//,*abun;
   int k=0,i;            /* counters									*/
   int flag;
-  
+
   gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
 #ifdef TEST
   gsl_rng_set(ran,342971);
@@ -424,7 +548,7 @@ buildGrid(inputPars *par, struct grid *g){
   
   lograd=log10(par->radius);
   logmin=log10(par->minScale);
-  
+
   /* Sample pIntensity number of points */
   for(k=0;k<par->pIntensity;k++){
     temp=gsl_rng_uniform(ran);
@@ -453,7 +577,7 @@ buildGrid(inputPars *par, struct grid *g){
       if((x*x+y*y+z*z)<par->radiusSqu) flag=pointEvaluation(par,temp,x,y,z);
     } while(!flag);
     /* Now pointEvaluation has decided that we like the point */
-    
+
     /* Assign values to the k'th grid point */
     /* I don't think we actually need to do this here... */
     g[k].id=k;
@@ -461,7 +585,7 @@ buildGrid(inputPars *par, struct grid *g){
     g[k].x[1]=y;
     if(DIM==3) g[k].x[2]=z;
     else g[k].x[2]=0.;
-    
+
     g[k].sink=0;
     /* This next step needs to be done, even though it looks stupid */
     g[k].dir=malloc(sizeof(point)*1);
@@ -472,8 +596,8 @@ buildGrid(inputPars *par, struct grid *g){
     if(!silent) progressbar((double) k/((double)par->pIntensity-1), 4);
   }
   /* end model grid point assignment */
-  
-  
+
+
   /* Add surface sink particles */
   for(i=0;i<par->sinkPoints;i++){
     theta=gsl_rng_uniform(ran)*2*PI;
@@ -489,29 +613,30 @@ buildGrid(inputPars *par, struct grid *g){
     g[k].x[1]=par->radius*y;
     g[k].x[2]=par->radius*z;
     g[k].sink=1;
+    g[k].abun[0]=0;
     g[k].dens[0]=1e-30;
     g[k].t[0]=par->tcmb;
     g[k].t[1]=par->tcmb;
     g[k++].dopb=0.;
   }
   /* end grid allocation */
-  
+
   qhull(par, g);
   distCalc(par, g);
   smooth(par,g);
-  
+
   for(i=0;i<par->pIntensity;i++){
     density(    g[i].x[0],g[i].x[1],g[i].x[2], g[i].dens);
     temperature(g[i].x[0],g[i].x[1],g[i].x[2], g[i].t);
     doppler(    g[i].x[0],g[i].x[1],g[i].x[2],&g[i].dopb);	
     abundance(  g[i].x[0],g[i].x[1],g[i].x[2], g[i].abun);
   }
-  
+
   //	getArea(par,g, ran);
   //	getMass(par,g, ran);
   getVelosplines(par,g);
   dumpGrid(par,g);
-  
+
   gsl_rng_free(ran);
   //free(abun);
   if(!silent) done(5);
