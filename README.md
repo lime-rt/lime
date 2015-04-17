@@ -171,4 +171,4 @@ Changelog
 
 - 1.01: First full public release
 
-[![Documentation Status](https://readthedocs.org/projects/lime/badge/?version=dev)](https://readthedocs.org/projects/lime/?badge=dev)
+[![Build Status](https://travis-ci.org/smaret/lime.svg?branch=travis)](https://travis-ci.org/smaret/lime) [![Documentation Status](https://readthedocs.org/projects/lime/badge/?version=dev)](https://readthedocs.org/projects/lime/?badge=dev)
