@@ -458,7 +458,6 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
           for(iter=0;iter<5;iter++) stat[id].ave[ilev]+=stat[id].pop[ilev+m[0].nlev*iter];
           stat[id].ave[ilev]=stat[id].ave[ilev]/5.;
           stat[id].sigma[ilev]=0;
-//          for(iter=0;iter<5;iter++) stat[id].sigma[ilev]+=pow(stat[id].pop[ilev+m[0].nlev*iter]-stat[id].ave[ilev],2);
           for(iter=0;iter<5;iter++) {
             delta_pop = stat[id].pop[ilev+m[0].nlev*iter]-stat[id].ave[ilev];
             stat[id].sigma[ilev]+=delta_pop*delta_pop;

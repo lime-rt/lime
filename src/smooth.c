@@ -11,7 +11,6 @@
  *
  */
 
-#include <qhull_a.h>
 #include "lime.h"
 
 
@@ -39,15 +38,12 @@ smooth(inputPars *par, struct grid *g){
         }
       }
 
-      // if(par->radius-sqrt(pow(g[i].x[0],2)+pow(g[i].x[1],2)+pow(g[i].x[2],2))<mindist) cn=-1;
       if(par->radius-sqrt(g[i].x[0]*g[i].x[0] + g[i].x[1]*g[i].x[1] + g[i].x[2]*g[i].x[2])<mindist) cn=-1;
       			
       if(cn>-1) {
         for(k=0;k<DIM;k++){
           move[k] = g[i].x[k] - g[i].dir[cn].x[k]*0.20;
         }			  
-        // if(sqrt(move[0]*move[0]+move[1]*move[1]+move[2]*move[2])<par->radius &&
-        //    sqrt(move[0]*move[0]+move[1]*move[1]+move[2]*move[2])>par->minScale){
         if((move[0]*move[0]+move[1]*move[1]+move[2]*move[2])<par->radiusSqu &&
            (move[0]*move[0]+move[1]*move[1]+move[2]*move[2])>par->minScaleSqu){
           for(k=0;k<DIM;k++) g[i].x[k]=move[k];
@@ -70,7 +66,6 @@ smooth(inputPars *par, struct grid *g){
       for(k=0;k<DIM;k++){
         g[i].x[k] = g[i].x[k] - (g[j].x[k]-g[i].x[k]) * 0.15;
       }			
-      // dist=par->radius/sqrt(pow(g[i].x[0],2)+pow(g[i].x[1],2)+pow(g[i].x[2],2));	
       dist=par->radius/sqrt(g[i].x[0]*g[i].x[0] + g[i].x[1]*g[i].x[1] + g[i].x[2]*g[i].x[2]);	
       for(k=0;k<DIM;k++){
         g[i].x[k] *= dist;

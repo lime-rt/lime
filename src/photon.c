@@ -71,13 +71,11 @@ velocityspline(struct grid *g, int id, int k, double binv, double deltav, double
     s2=((double)(ispline+1))/(double)nspline;
     v1=v2;
     d=s2*g[id].ds[k];
-    // v2=deltav-(g[id].a4[k]*pow(d,4)+g[id].a3[k]*pow(d,3)+g[id].a2[k]*pow(d,2)+g[id].a1[k]*d+g[id].a0[k]);
     v2=deltav-((((g[id].a4[k]*d+g[id].a3[k])*d+g[id].a2[k])*d+g[id].a1[k])*d+g[id].a0[k]);
     naver=(1 > fabs(v1-v2)*binv) ? 1 : (int)(fabs(v1-v2)*binv);
     for(iaver=0;iaver<naver;iaver++){
       sd=s1+(s2-s1)*((double)iaver-0.5)/(double)naver;
       d=sd*g[id].ds[k];
-      // v=deltav-(g[id].a4[k]*pow(d,4)+g[id].a3[k]*pow(d,3)+g[id].a2[k]*pow(d,2)+g[id].a1[k]*d+g[id].a0[k]);
       v=deltav-((((g[id].a4[k]*d+g[id].a3[k])*d+g[id].a2[k])*d+g[id].a1[k])*d+g[id].a0[k]);
       vfacsub=gaussline(v,binv);
       *vfac+=vfacsub/(double)naver;
@@ -160,8 +158,6 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
     /* Initial velocity, direction and frequency offset  */		
     pt_theta=gsl_rng_uniform(ran)*2*PI;
     pt_z=2*gsl_rng_uniform(ran)-1;
-    //inidir[0]=sqrt(1-pow(pt_z,2))*cos(pt_theta);
-    //inidir[1]=sqrt(1-pow(pt_z,2))*sin(pt_theta);
     semiradius = sqrt(1.-pt_z*pt_z);
     inidir[0]=semiradius*cos(pt_theta);
     inidir[1]=semiradius*sin(pt_theta);
@@ -187,7 +183,6 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
           else velocityspline_lin(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
           m[l].vfac[iphot]=vfac[0];
           m[l].ds[iphot]=ds;
-          m[l].weight[iphot]=1; //g[here].w[inidir];	
         }
         for(l=0;l<3;l++) x[l]=g[here].x[l]+(g[here].dir[dir].xn[l] * g[id].ds[dir]/2.);
       } else {
@@ -214,7 +209,6 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
           if(dtau < -30) dtau = -30;
         }
         
-        // m[0].phot[iline+iphot*m[0].nline]+=exp(-tau[iline])*(1.-exp(-dtau))*snu;
         expDTau = exp(-dtau);
         m[0].phot[iline+iphot*m[0].nline]+=expTau[iline]*(1.-expDTau)*snu;
         tau[iline]+=dtau;
@@ -239,7 +233,6 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
                 dtau=alpha*ds;
                 if(dtau < -30) dtau = -30;
               }
-              // m[0].phot[jline+iphot*m[0].nline]+=exp(-tau[jline])*(1.-exp(-dtau))*snu;
               expDTau = exp(-dtau);
               m[0].phot[jline+iphot*m[0].nline]+=expTau[jline]*(1.-expDTau)*snu;
               tau[jline]+=dtau;
@@ -263,7 +256,6 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
     /* Add cmb contribution */
     if(m[0].cmb[0]>0.){
       for(iline=0;iline<nlinetot;iline++){
-        // m[0].phot[iline+iphot*m[0].nline]+=exp(-tau[iline])*m[counta[iline]].cmb[countb[iline]];
         m[0].phot[iline+iphot*m[0].nline]+=expTau[iline]*m[counta[iline]].cmb[countb[iline]];
       }
     }
@@ -296,7 +288,6 @@ getjbar(int posn, molData *m, struct grid *g, inputPars *par){
           snu=(jnu/alpha)*m[0].norminv;
           tau=alpha*m[0].ds[iphot];
         }
-        // m[0].jbar[iline]+=m[0].vfac[iphot]*(exp(-tau)*m[0].phot[iline+iphot*m[0].nline]+(1.-exp(-tau))*snu);
         expTau = exp(-tau);
         m[0].jbar[iline]+=m[0].vfac[iphot]*(expTau*m[0].phot[iline+iphot*m[0].nline]+(1.-expTau)*snu);
       }

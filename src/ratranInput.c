@@ -58,13 +58,11 @@ ratranInput(char * modelfile, char * variable, double x, double y, double z){
     else fscanf(fp,"%d %lf %lf %lf %lf %lf %lf %lf %lf %lf\n",
                 &dummy, &model[0], &model[1], &model[2], &model[3], &model[4],
                 &model[5], &model[6], &model[7], &model[8]);
-
-    // if(twode && sqrt(x*x+y*y)>model[ra] && sqrt(x*x+y*y)<model[rb] && fabs(z)>model[za] && fabs(z)<model[zb]){
+    
     if(twode && (x*x+y*y)>model[ra]*model[ra] && (x*x+y*y)<model[rb]*model[rb] && fabs(z)>model[za] && fabs(z)<model[zb]){
       fclose(fp);
       return model[i];
     }
-    // if(!twode && sqrt(x*x+z*z+y*y)>model[ra] && sqrt(x*x+z*z+y*y)<model[rb]){
     if(!twode && (x*x+z*z+y*y)>model[ra]*model[ra] && (x*x+z*z+y*y)<model[rb]*model[rb]){
       fclose(fp);
       return model[i];

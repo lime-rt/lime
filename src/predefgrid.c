@@ -49,7 +49,6 @@ predefinedGrid(inputPars *par, struct grid *g){
 	/* This next step needs to be done, even though it looks stupid */
 	g[i].dir=malloc(sizeof(point)*1);
 	g[i].ds =malloc(sizeof(double)*1);
-	// g[i].neigh =malloc(sizeof(int)*1);
 	g[i].neigh =malloc(sizeof(struct grid *)*1);
 	if(!silent) progressbar((double) i/((double)par->pIntensity-1), 4);	
   }

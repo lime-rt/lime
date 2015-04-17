@@ -96,11 +96,9 @@ planckfunc(int iline, double temp, molData *m,int s){
   if(temp<eps) bb = 0.0;
   else {
     wn=m[s].freq[iline]/CLIGHT;
-    if (HPLANCK*m[s].freq[iline]>100.*KBOLTZ*temp)
-      //bb=2.*HPLANCK*pow((m[s].freq[iline]/CLIGHT),2)*m[s].freq[iline]*exp(-HPLANCK*m[s].freq[iline]/KBOLTZ/temp);
+    if (HPLANCK*m[s].freq[iline]>100.*KBOLTZ*temp) 
       bb=2.*HPLANCK*wn*wn*m[s].freq[iline]*exp(-HPLANCK*m[s].freq[iline]/KBOLTZ/temp);
-    else
-      //bb=2.*HPLANCK*pow((m[s].freq[iline]/CLIGHT),2)*m[s].freq[iline]/(exp(HPLANCK*m[s].freq[iline]/KBOLTZ/temp)-1);
+    else 
       bb=2.*HPLANCK*wn*wn*m[s].freq[iline]/(exp(HPLANCK*m[s].freq[iline]/KBOLTZ/temp)-1);
   }
   return bb;

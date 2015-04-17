@@ -22,6 +22,18 @@
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_linalg.h>
 
+#ifdef OLD_QHULL
+#include <qhull/qhull_a.h>
+#else
+#include <libqhull/qhull_a.h>
+#endif
+
+#ifdef OLD_FITSIO
+#include <cfitsio/fitsio.h>
+#else
+#include <fitsio.h>
+#endif
+
 #define silent 0
 #define DIM 3
 

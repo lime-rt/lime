@@ -11,7 +11,6 @@
  *
  */
 
-#include <qhull_a.h>
 #include "lime.h"
 
 
@@ -248,7 +247,6 @@ distCalc(inputPars *par, struct grid *g){
     for(k=0;k<g[i].numNeigh;k++){
       for(l=0;l<3;l++) g[i].dir[k].x[l] = g[i].neigh[k]->x[l] - g[i].x[l];
       g[i].ds[k]=sqrt(pow(g[i].dir[k].x[0],2)+pow(g[i].dir[k].x[1],2)+pow(g[i].dir[k].x[2],2));
-      //g[i].ds[k]=sqrt(pow(g[i].dir[k].x[0],2)+pow(g[i].dir[k].x[1],2)+pow(g[i].dir[k].x[2],2));
       g[i].ds[k]=sqrt(g[i].dir[k].x[0]*g[i].dir[k].x[0]+g[i].dir[k].x[1]*g[i].dir[k].x[1]+g[i].dir[k].x[2]*g[i].dir[k].x[2]);
       for(l=0;l<3;l++) g[i].dir[k].xn[l] = g[i].dir[k].x[l]/g[i].ds[k];
     }
@@ -332,7 +330,6 @@ write_VTK_unstructured_Points(inputPars *par, struct grid *g){
   }
   fprintf(fp,"VECTORS velocity float\n");
   for(i=0;i<par->ncell;i++){
-    //length=sqrt(pow(g[i].vel[0],2)+pow(g[i].vel[1],2)+pow(g[i].vel[2],2));
     length=sqrt(g[i].vel[0]*g[i].vel[0]+g[i].vel[1]*g[i].vel[1]+g[i].vel[2]*g[i].vel[2]);
     if(length > 0.){
       fprintf(fp, "%e %e %e\n", g[i].vel[0]/length,g[i].vel[1]/length,g[i].vel[2]/length);
@@ -392,8 +389,6 @@ getArea(inputPars *par, struct grid *g, const gsl_rng *ran){
       x=cos(pt_theta)*sinPtPhi;
       y=sin(pt_theta)*sinPtPhi;
       z=cos(pt_phi);
-      //best=-1;
-      //for(j=0;j<g[i].numNeigh;j++){
       j=0;
       best=( x*g[i].dir[j].xn[0]
             +y*g[i].dir[j].xn[1]
@@ -408,11 +403,7 @@ getArea(inputPars *par, struct grid *g, const gsl_rng *ran){
           b=j;
         }
       }
-      //if(b<0) {printf("not supposed to happen\n");
-      //  exit(0);
-      //}
       g[i].w[b]+=0.001;
-      //b=-1;
     }
     free(angle);
   }
@@ -533,7 +524,7 @@ buildGrid(inputPars *par, struct grid *g){
   double lograd;		/* The logarithm of the model radius		*/
   double logmin;	    /* Logarithm of par->minScale				*/
   double r,theta,phi,sinPhi,x,y,z,semiradius;	/* Coordinates								*/
-  double temp;//,*abun;
+  double temp;
   int k=0,i;            /* counters									*/
   int flag;
 
@@ -543,8 +534,6 @@ buildGrid(inputPars *par, struct grid *g){
 #else
   gsl_rng_set(ran,time(0));
 #endif  
-  
-  //abun=malloc(sizeof(double)*par->nSpecies);
   
   lograd=log10(par->radius);
   logmin=log10(par->minScale);
@@ -573,7 +562,6 @@ buildGrid(inputPars *par, struct grid *g){
         if(!silent) bail_out("Don't know how to sample model");
         exit(1);
       }
-      // if(sqrt(x*x+y*y+z*z)<par->radius) flag=pointEvaluation(par,temp,x,y,z);
       if((x*x+y*y+z*z)<par->radiusSqu) flag=pointEvaluation(par,temp,x,y,z);
     } while(!flag);
     /* Now pointEvaluation has decided that we like the point */
@@ -589,8 +577,6 @@ buildGrid(inputPars *par, struct grid *g){
     g[k].sink=0;
     /* This next step needs to be done, even though it looks stupid */
     g[k].dir=malloc(sizeof(point)*1);
-    // g[k].ds =malloc(sizeof(point)*1);
-    // g[k].neigh =malloc(sizeof(int)*1);
     g[k].ds =malloc(sizeof(double)*1);
     g[k].neigh =malloc(sizeof(struct grid *)*1);
     if(!silent) progressbar((double) k/((double)par->pIntensity-1), 4);
@@ -603,8 +589,6 @@ buildGrid(inputPars *par, struct grid *g){
     theta=gsl_rng_uniform(ran)*2*PI;
     if(DIM==3) z=2*gsl_rng_uniform(ran)-1.;
     else z=0.;
-    //x=sqrt(1-pow(z,2))*cos(theta);
-    //y=sqrt(1-pow(z,2))*sin(theta);;
     semiradius=sqrt(1.-z*z);
     x=semiradius*cos(theta);
     y=semiradius*sin(theta);;
@@ -638,7 +622,6 @@ buildGrid(inputPars *par, struct grid *g){
   dumpGrid(par,g);
 
   gsl_rng_free(ran);
-  //free(abun);
   if(!silent) done(5);
 }
 
