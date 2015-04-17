@@ -67,7 +67,7 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
   double vfac=0.,x[3],dx[3];
   double deltav,ds,dist2,ndist2,size,xp,yp,zp,col,shift,minfreq,absDeltaFreq,jnu,alpha,snu,dtau,snu_pol[3];
   double cosPhi,sinPhi,cosTheta,sinTheta;
-  const gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
+  gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
 #ifdef TEST
   gsl_rng_set(ran,178490);
 #else
