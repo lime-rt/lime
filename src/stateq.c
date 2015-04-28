@@ -1,9 +1,9 @@
 /*
  *  stateq.c
- *  LIME, The versatile 3D line modeling environment 
+ *  LIME, The versatile 3D line modeling environment
  *
  *  Created by Christian Brinch on 15/11/06.
- *  Copyright 2006-2014, Christian Brinch, 
+ *  Copyright 2006-2014, Christian Brinch,
  *  <brinch@nbi.dk>
  *  Niels Bohr institutet
  *  University of Copenhagen
@@ -21,7 +21,7 @@ stateq(int id, struct grid *g, molData *m, double *pstate, int ispec, inputPars 
   int t,s,iter;
   double *opop, *oopop;
   double diff;
-  
+
   gsl_matrix *matrix = gsl_matrix_alloc(m[ispec].nlev+1, m[ispec].nlev+1);
   gsl_matrix *reduc  = gsl_matrix_alloc(m[ispec].nlev, m[ispec].nlev);
   gsl_vector *newpop = gsl_vector_alloc(m[ispec].nlev);
@@ -30,11 +30,11 @@ stateq(int id, struct grid *g, molData *m, double *pstate, int ispec, inputPars 
   gsl_vector *svs    = gsl_vector_alloc(m[ispec].nlev);
   gsl_vector *work   = gsl_vector_alloc(m[ispec].nlev);
   gsl_permutation *p = gsl_permutation_alloc (m[ispec].nlev);
-  
-  opop	 = malloc(sizeof(double)*m[ispec].nlev);	
+
+  opop	 = malloc(sizeof(double)*m[ispec].nlev);
   oopop	 = malloc(sizeof(double)*m[ispec].nlev);
-  
-  for(t=0;t<m[ispec].nlev-1;t++){
+
+  for(t=0;t<m[ispec].nlev;t++){
     opop[t]=0.;
     oopop[t]=0.;
     gsl_vector_set(oldpop,t,0.);
@@ -42,7 +42,7 @@ stateq(int id, struct grid *g, molData *m, double *pstate, int ispec, inputPars 
   gsl_vector_set(oldpop,m[ispec].nlev-1,1.);
   diff=1;
   iter=0;
-  
+
   while((diff>TOL && iter<MAXITER) || iter<5){
     getjbar(id,m,g,par);
     getmatrix(id,matrix,m,g,ispec);
@@ -52,14 +52,14 @@ stateq(int id, struct grid *g, molData *m, double *pstate, int ispec, inputPars 
       }
       gsl_matrix_set(reduc,m[ispec].nlev-1,s,1.);
     }
-    
+
     gsl_linalg_LU_decomp(reduc,p,&s);
     if(gsl_linalg_LU_det(reduc,s) == 0){
       gsl_linalg_SV_decomp(reduc,svv, svs, work);
       gsl_linalg_SV_solve(reduc, svv, svs, oldpop, newpop);
       if(!silent) warning("Matrix is singular. Switching to SVD.");
     } else gsl_linalg_LU_solve(reduc,p,oldpop,newpop);
-    
+
     diff=0.;
     for(t=0;t<m[ispec].nlev;t++){
       gsl_vector_set(newpop,t,gsl_max(gsl_vector_get(newpop,t),1e-30));
@@ -93,9 +93,9 @@ getmatrix(int id, gsl_matrix *matrix, molData *m, struct grid *g, int ispec){
     double *ctot;
     gsl_matrix * colli;
   } *partner;
-  
+
   partner= malloc(sizeof(struct getmatrix)*m[ispec].npart);
-  
+
   /* Initialize matrix with zeros */
   for(ipart=0;ipart<m[ispec].npart;ipart++){
     partner[ipart].colli = gsl_matrix_alloc(m[ispec].nlev+1,m[ispec].nlev+1);
@@ -111,7 +111,7 @@ getmatrix(int id, gsl_matrix *matrix, molData *m, struct grid *g, int ispec){
       }
     }
   }
-  
+
   /* Populate matrix with radiative transitions */
   for(t=0;t<m[ispec].nline;t++){
     k=m[ispec].lau[t];
@@ -128,7 +128,7 @@ getmatrix(int id, gsl_matrix *matrix, molData *m, struct grid *g, int ispec){
       gsl_matrix_set(partner[ipart].colli, m[ispec].lcu[t], m[ispec].lcl[t], g[id].mol[ispec].partner[ipart].down[t]);
       gsl_matrix_set(partner[ipart].colli, m[ispec].lcl[t], m[ispec].lcu[t], g[id].mol[ispec].partner[ipart].up[t]);
     }
-	
+
     for(p=0;p<m[ispec].nlev;p++){
       partner[ipart].ctot[p]=0.;
       for(t=0;t<m[ispec].nlev;t++) partner[ipart].ctot[p]+=gsl_matrix_get(partner[ipart].colli,p,t);
@@ -149,7 +149,7 @@ getmatrix(int id, gsl_matrix *matrix, molData *m, struct grid *g, int ispec){
     gsl_matrix_set(matrix, m[ispec].nlev, p, 1.);
     gsl_matrix_set(matrix, p, m[ispec].nlev, 0.);
   }
-  
+
   for(ipart=0;ipart<m[ispec].npart;ipart++){
     gsl_matrix_free(partner[ipart].colli);
     free(partner[ipart].ctot);

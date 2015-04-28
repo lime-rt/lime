@@ -1,9 +1,9 @@
 /*
  *  photon.c
- *  LIME, The versatile 3D line modeling environment 
+ *  LIME, The versatile 3D line modeling environment
  *
  *  Created by Christian Brinch on 15/11/06.
- *  Copyright 2006-2014, Christian Brinch, 
+ *  Copyright 2006-2014, Christian Brinch,
  *  <brinch@nbi.dk>
  *  Niels Bohr institutet
  *  University of Copenhagen
@@ -60,7 +60,7 @@ velocityspline(struct grid *g, int id, int k, double binv, double deltav, double
   
   v1=deltav-veloproject(g[id].dir[k].xn,g[id].vel);
   v2=deltav-veloproject(g[id].dir[k].xn,g[id].neigh[k]->vel);
-  
+
   nspline=(fabs(v1-v2)*binv < 1) ? 1 : (int)(fabs(v1-v2)*binv);
   *vfac=0.;
   s2=0;
@@ -93,7 +93,7 @@ velocityspline_lin(struct grid *g, int id, int k, double binv, double deltav, do
   
   v1=deltav-veloproject(g[id].dir[k].xn,g[id].vel);
   v2=deltav-veloproject(g[id].dir[k].xn,g[id].neigh[k]->vel);
-  
+
   nspline=(fabs(v1-v2)*binv < 1) ? 1 : (int)(fabs(v1-v2)*binv);
   *vfac=0.;
   s2=0;
@@ -124,14 +124,14 @@ double veloproject(double dx[3], double *vel){
 
 
 double gaussline(double v, double sigma){
-	int maxgau=101,maxsig=4,ival;
-	double fac,val;
-	
-	fac=(maxgau-1)/maxsig;
-	ival=(int)(fac*(fabs(v)*sigma))+1;
-	if((ival-1)>=maxgau) return 0.;
-	val=(ival*ival)/(fac*fac);
-	return exp(-val);
+  int maxgau=101,maxsig=4,ival;
+  double fac,val;
+
+  fac=(maxgau-1)/maxsig;
+  ival=(int)(fac*(fabs(v)*sigma))+1;
+  if((ival-1)>=maxgau) return 0.;
+  val=(ival*ival)/(fac*fac);
+  return exp(-val);
 }
 
 
@@ -183,7 +183,6 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
           else velocityspline_lin(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
           m[l].vfac[iphot]=vfac[0];
           m[l].ds[iphot]=ds;
-          m[l].weight[iphot]=1; //g[here].w[inidir];	
         }
         for(l=0;l<3;l++) x[l]=g[here].x[l]+(g[here].dir[dir].xn[l] * g[id].ds[dir]/2.);
       } else {

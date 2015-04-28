@@ -18,7 +18,7 @@ void
 velocityspline2(double x[3], double dx[3], double ds, double binv, double deltav, double *vfac){
   int i,steps=10;
   double v,d,val,vel[3];
-  
+
   *vfac=0.;
   for(i=0;i<steps;i++){
     d=i*ds/steps;
@@ -38,15 +38,15 @@ void
 line_plane_intersect(struct grid *g, double *ds, int posn, int *nposn, double *dx, double *x){
   double newdist, numerator, denominator ;
   int i;
-  
+
   for(i=0;i<g[posn].numNeigh;i++) {
     /* Find the shortest distance between (x,y,z) and any of the posn Voronoi faces */
     /* ds=(p0-l0) dot n / l dot n */
-    
+
     numerator=((g[posn].x[0]+g[posn].dir[i].x[0]/2. - x[0]) * g[posn].dir[i].x[0]+
                (g[posn].x[1]+g[posn].dir[i].x[1]/2. - x[1]) * g[posn].dir[i].x[1]+
                (g[posn].x[2]+g[posn].dir[i].x[2]/2. - x[2]) * g[posn].dir[i].x[2]);
-    
+
     denominator=(dx[0]*g[posn].dir[i].x[0]+dx[1]*g[posn].dir[i].x[1]+dx[2]*g[posn].dir[i].x[2]);
     
     if(fabs(denominator) > 0){
@@ -67,7 +67,7 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
   double vfac=0.,x[3],dx[3];
   double deltav,ds,dist2,ndist2,size,xp,yp,zp,col,shift,minfreq,absDeltaFreq,jnu,alpha,snu,dtau,snu_pol[3];
   double cosPhi,sinPhi,cosTheta,sinTheta;
-  const gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
+  gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
 #ifdef TEST
   gsl_rng_set(ran,178490);
 #else
@@ -120,10 +120,10 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
         subintens[ichan]=0.0;
       }
       size=img[im].distance*img[im].imgres;
-      
+
       xp=size*(gsl_rng_uniform(ran)+px%img[im].pxls)-size*img[im].pxls/2.;
       yp=size*(gsl_rng_uniform(ran)+px/img[im].pxls)-size*img[im].pxls/2.;
-      
+
       /* Rotation matrix
        
               |1          0           0   |
@@ -184,14 +184,14 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
                     shift=(m[counta[iline]].freq[countb[iline]]-img[im].freq)/img[im].freq*CLIGHT;
                   }
                   deltav=(ichan-(int)(img[im].nchan/2.))*img[im].velres-img[im].source_vel + shift;
-                  
+
                   if(!par->pregrid) velocityspline2(x,dx,ds,g[posn].mol[counta[iline]].binv,deltav,&vfac);
                   else vfac=gaussline(deltav-veloproject(dx,g[posn].vel),g[posn].mol[counta[iline]].binv);
-				  
+
                   sourceFunc_line(&jnu,&alpha,m,vfac,g,posn,counta[iline],countb[iline]);
                 }
               }
-              
+
               if(img[im].doline && img[im].trans > -1) sourceFunc_cont(&jnu,&alpha,g,posn,0,img[im].trans);
               else if(img[im].doline && img[im].trans == -1) sourceFunc_cont(&jnu,&alpha,g,posn,0,tmptrans);
               else sourceFunc_cont(&jnu,&alpha,g,posn,0,0);
@@ -210,17 +210,17 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
           col+=ds;
           posn=nposn;
         } while(col < 2*zp);
-        
+
         /* add or subtract cmb */
         for(ichan=0;ichan<img[im].nchan;ichan++){
           subintens[ichan]+=(exp(-tau[ichan])-1.)*m[0].local_cmb[tmptrans];
         }
-        
+
         for(ichan=0;ichan<img[im].nchan;ichan++){
           img[im].pixel[px].intense[ichan]+=subintens[ichan]/(double) par->antialias;
           img[im].pixel[px].tau[ichan]+=tau[ichan]/(double) par->antialias;
         }
-      }	
+      }
     }
     if(!silent) progressbar((double)(px)/(double)(img[im].pxls*img[im].pxls-1), 13);
   }
@@ -230,6 +230,7 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
   free(subintens);
   free(counta);
   free(countb);
+  gsl_rng_free(ran);
 }
 
 

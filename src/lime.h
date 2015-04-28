@@ -63,6 +63,7 @@
 #define goal			50
 #define fixset			1e-6
 #define blendmask		1.e4
+#define MAX_NSPECIES            100
 
 
 /* input parameters */
@@ -84,7 +85,7 @@ typedef struct {
   int *lal,*lau,*lcl,*lcu;
   double *aeinst,*freq,*beinstu,*beinstl,*up,*down,*eterm,*gstat;
   double *jbar,norm,norminv,*cmb,*local_cmb;
-  double *phot, *ds, *vfac, *weight;
+  double *phot, *ds, *vfac;
 } molData;
 
 typedef struct {
@@ -99,6 +100,13 @@ typedef struct {
 
 struct rates {
   double *up, *down;
+};
+
+
+struct populations {
+  double * pops, *knu, *dust;
+  double dopb, binv;
+  struct rates *partner;
 };
 
 /* Grid properties */
@@ -116,7 +124,7 @@ struct grid {
   int conv;
   double *dens,t[2],*nmol,*abun, dopb;
   double *ds;
-  struct populations { double * pops, *knu, *dust; double dopb, binv; struct rates *partner; } *mol;
+  struct populations* mol;
 };
 
 typedef struct {
@@ -168,6 +176,9 @@ void    fit_fi(double, double, double*);
 void    fit_rr(double, double, double*);
 void   	input(inputPars *, image *);
 float  	invSqrt(float);
+void    freeInput(inputPars *, image*, molData* m );
+void   	freeGrid(const inputPars * par, const molData* m, struct grid * g);
+void   	freePopulation(const inputPars * par, const molData* m, struct populations * pop);
 double 	gaussline(double, double);
 void    getArea(inputPars *, struct grid *, const gsl_rng *);
 void    getjbar(int, molData *, struct grid *, inputPars *);
