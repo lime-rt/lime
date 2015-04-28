@@ -183,7 +183,7 @@ qhull(inputPars *par, struct grid *g){
         {
           free( g[id].neigh );
         }
-      g[id].neigh=malloc(sizeof(struct grid)*g[id].numNeigh);
+      g[id].neigh=malloc(sizeof(struct grid *)*g[id].numNeigh);
       for(k=0;k<g[id].numNeigh;k++) {
         g[id].neigh[k]=NULL;
       }
