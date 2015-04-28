@@ -183,7 +183,7 @@ qhull(inputPars *par, struct grid *g){
         {
           free( g[id].neigh );
         }
-      g[id].neigh=malloc(sizeof(struct grid)*g[id].numNeigh);
+      g[id].neigh=malloc(sizeof(struct grid *)*g[id].numNeigh);
       for(k=0;k<g[id].numNeigh;k++) {
         g[id].neigh[k]=NULL;
       }
@@ -246,7 +246,6 @@ distCalc(inputPars *par, struct grid *g){
     memset(g[i].ds, 0., sizeof(double) * g[i].numNeigh);
     for(k=0;k<g[i].numNeigh;k++){
       for(l=0;l<3;l++) g[i].dir[k].x[l] = g[i].neigh[k]->x[l] - g[i].x[l];
-      g[i].ds[k]=sqrt(pow(g[i].dir[k].x[0],2)+pow(g[i].dir[k].x[1],2)+pow(g[i].dir[k].x[2],2));
       g[i].ds[k]=sqrt(g[i].dir[k].x[0]*g[i].dir[k].x[0]+g[i].dir[k].x[1]*g[i].dir[k].x[1]+g[i].dir[k].x[2]*g[i].dir[k].x[2]);
       for(l=0;l<3;l++) g[i].dir[k].xn[l] = g[i].dir[k].x[l]/g[i].ds[k];
     }
@@ -396,8 +395,8 @@ getArea(inputPars *par, struct grid *g, const gsl_rng *ran){
       b=j;
       for(j=1;j<g[i].numNeigh;j++){
         angle[j]=( x*g[i].dir[j].xn[0]
-                   +y*g[i].dir[j].xn[1]
-                   +z*g[i].dir[j].xn[2]);
+                  +y*g[i].dir[j].xn[1]
+                  +z*g[i].dir[j].xn[2]);
         if(angle[j]>best){
           best=angle[j];
           b=j;
