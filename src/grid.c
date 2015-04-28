@@ -395,8 +395,8 @@ getArea(inputPars *par, struct grid *g, const gsl_rng *ran){
       b=j;
       for(j=1;j<g[i].numNeigh;j++){
         angle[j]=( x*g[i].dir[j].xn[0]
-                   +y*g[i].dir[j].xn[1]
-                   +z*g[i].dir[j].xn[2]);
+                  +y*g[i].dir[j].xn[1]
+                  +z*g[i].dir[j].xn[2]);
         if(angle[j]>best){
           best=angle[j];
           b=j;
