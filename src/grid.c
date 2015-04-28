@@ -246,7 +246,6 @@ distCalc(inputPars *par, struct grid *g){
     memset(g[i].ds, 0., sizeof(double) * g[i].numNeigh);
     for(k=0;k<g[i].numNeigh;k++){
       for(l=0;l<3;l++) g[i].dir[k].x[l] = g[i].neigh[k]->x[l] - g[i].x[l];
-      g[i].ds[k]=sqrt(pow(g[i].dir[k].x[0],2)+pow(g[i].dir[k].x[1],2)+pow(g[i].dir[k].x[2],2));
       g[i].ds[k]=sqrt(g[i].dir[k].x[0]*g[i].dir[k].x[0]+g[i].dir[k].x[1]*g[i].dir[k].x[1]+g[i].dir[k].x[2]*g[i].dir[k].x[2]);
       for(l=0;l<3;l++) g[i].dir[k].xn[l] = g[i].dir[k].x[l]/g[i].ds[k];
     }
