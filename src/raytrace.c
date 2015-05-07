@@ -66,7 +66,6 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
   double *tau, *subintens;
   double vfac=0.,x[3],dx[3];
   double deltav,ds,dist2,ndist2,size,xp,yp,zp,col,shift,minfreq,absDeltaFreq,jnu,alpha,snu,dtau,snu_pol[3];
-  double cosPhi,sinPhi,cosTheta,sinTheta;
   gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
 #ifdef TEST
   gsl_rng_set(ran,178490);
@@ -103,11 +102,6 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
   tau = malloc(sizeof(double)*img[im].nchan);
   subintens = malloc(sizeof(double)*img[im].nchan);
   
-  cosPhi   = cos(img[im].phi);
-  sinPhi   = sin(img[im].phi);
-  cosTheta = cos(img[im].theta);
-  sinTheta = sin(img[im].theta);
-
   /* Main loop through pixel grid */
   for(px=0;px<(img[im].pxls*img[im].pxls);px++){
     for(ichan=0;ichan<img[im].nchan;ichan++){
@@ -124,30 +118,16 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
       xp=size*(gsl_rng_uniform(ran)+px%img[im].pxls)-size*img[im].pxls/2.;
       yp=size*(gsl_rng_uniform(ran)+px/img[im].pxls)-size*img[im].pxls/2.;
 
-      /* Rotation matrix
-       
-              |1          0           0   |
-       R_x(a)=|0        cos(a)      sin(a)|
-              |0       -sin(a)	    cos(a)|
-       
-              |cos(b)     0       -sin(b)|
-       R_y(b)=|  0        1          0	 |
-              |sin(b)     0        cos(b)|
-       
-              |      cos(b)       0           sin(b)|
-       Rot =  |sin(a)sin(b)     cos(a)  sin(a)cos(b)|
-              |cos(a)sin(b)    -sin(a)  cos(a)cos(b)|
-       
-       */
       if((xp*xp+yp*yp)/par->radiusSqu <= 1 ) {
         zp=sqrt(par->radiusSqu-(xp*xp+yp*yp));
-        x[0]=xp         *cosPhi+yp*0.      -zp         *sinPhi;
-        x[1]=xp*sinTheta*sinPhi+yp*cosTheta+zp*sinTheta*cosPhi;
-        x[2]=xp*cosTheta*sinPhi-yp*sinTheta+zp*cosTheta*cosPhi;
-        
-        dx[0]=          sinPhi;
-        dx[1]=-sinTheta*cosPhi;
-        dx[2]=-cosTheta*cosPhi;
+
+        x[0]=xp*img[im].rotMat[0][0] + yp*img[im].rotMat[0][1] + zp*img[im].rotMat[0][2];
+        x[1]=xp*img[im].rotMat[1][0] + yp*img[im].rotMat[1][1] + zp*img[im].rotMat[1][2];
+        x[2]=xp*img[im].rotMat[2][0] + yp*img[im].rotMat[2][1] + zp*img[im].rotMat[2][2];
+
+        dx[0]= -img[im].rotMat[0][2];
+        dx[1]= -img[im].rotMat[1][2];
+        dx[2]= -img[im].rotMat[2][2];
         
         i=0;
         dist2=(x[0]-g[i].x[0])*(x[0]-g[i].x[0]) + (x[1]-g[i].x[1])*(x[1]-g[i].x[1]) + (x[2]-g[i].x[2])*(x[2]-g[i].x[2]);
