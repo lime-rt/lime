@@ -182,7 +182,6 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
               }
               subintens[ichan]+=exp(-tau[ichan])*(1.-exp(-dtau))*snu;
               tau[ichan]+=dtau;
-
             }
           }
 

@@ -17,9 +17,13 @@
 
 void
 greetings(){
-	initscr();
-	printw("*** LIME, The versatile line modeling engine, Ver.1.31\n*** Copyright 2006--2014, Christian Brinch <brinch@nbi.dk>\n");
-	refresh();	
+  initscr();
+#ifdef TEST
+  printw("*** LIME, The versatile line modeling engine, Ver.1.31\n*** Copyright 2006--2014, Christian Brinch <brinch@nbi.dk>\n>>> NOTE! Test flag is set in the Makefile. <<<\n");
+#else
+  printw("*** LIME, The versatile line modeling engine, Ver.1.31\n*** Copyright 2006--2014, Christian Brinch <brinch@nbi.dk>\n");
+#endif
+  refresh();	
 }
 
 void
