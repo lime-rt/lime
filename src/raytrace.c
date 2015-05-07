@@ -13,6 +13,8 @@
 
 #include "lime.h"
 
+typedef struct {double x,y, *intensity, *tau;} rayData;
+
 
 void
 velocityspline2(double x[3], double dx[3], double ds, double binv, double deltav, double *vfac){
@@ -57,15 +59,129 @@ line_plane_intersect(struct grid *g, double *ds, int posn, int *nposn, double *d
       }
     }
   }
+  if(*nposn==-1) *nposn=posn;
 }
+
+
+void
+traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molData *m, image *img, int nlinetot, int *counta, int *countb){
+  int ichan,posn,nposn,i,iline;
+//  double *tau, *subintens;
+  double vfac=0.,x[3],dx[3];
+  double deltav,ds,dist2,ndist2,xp,yp,zp,col,shift,jnu,alpha,snu,dtau,snu_pol[3];
+
+//  tau = malloc(sizeof(double)*img[im].nchan);
+//  subintens = malloc(sizeof(double)*img[im].nchan);
+  for(ichan=0;ichan<img[im].nchan;ichan++){
+//    tau[ichan]=0.0;
+//    subintens[ichan]=0.0;
+    ray.tau[ichan]=0.0;
+    ray.intensity[ichan]=0.0;
+  }
+
+  xp=ray.x;
+  yp=ray.y;
+
+  if((xp*xp+yp*yp)/par->radiusSqu <= 1 ) {
+    zp=sqrt(par->radiusSqu-(xp*xp+yp*yp));
+
+    x[0]=xp*img[im].rotMat[0][0] + yp*img[im].rotMat[0][1] + zp*img[im].rotMat[0][2];
+    x[1]=xp*img[im].rotMat[1][0] + yp*img[im].rotMat[1][1] + zp*img[im].rotMat[1][2];
+    x[2]=xp*img[im].rotMat[2][0] + yp*img[im].rotMat[2][1] + zp*img[im].rotMat[2][2];
+
+    dx[0]= -img[im].rotMat[0][2];
+    dx[1]= -img[im].rotMat[1][2];
+    dx[2]= -img[im].rotMat[2][2];
+
+    i=0;
+    dist2=(x[0]-g[i].x[0])*(x[0]-g[i].x[0]) + (x[1]-g[i].x[1])*(x[1]-g[i].x[1]) + (x[2]-g[i].x[2])*(x[2]-g[i].x[2]);
+    posn=i;
+    for(i=1;i<par->ncell;i++){
+      ndist2=(x[0]-g[i].x[0])*(x[0]-g[i].x[0]) + (x[1]-g[i].x[1])*(x[1]-g[i].x[1]) + (x[2]-g[i].x[2])*(x[2]-g[i].x[2]);
+      if(ndist2<dist2){
+        posn=i;
+        dist2=ndist2;
+      }
+    }
+
+    col=0;
+    do{
+      ds=2.*zp-col;
+      nposn=-1;
+      line_plane_intersect(g,&ds,posn,&nposn,dx,x);
+      if(par->polarization){
+        for(ichan=0;ichan<img[im].nchan;ichan++){
+          sourceFunc_pol(snu_pol,&dtau,ds,m,vfac,g,posn,0,0,img[im].theta);
+//          subintens[ichan]+=exp(-tau[ichan])*(1.-exp(-dtau))*snu_pol[ichan];
+//          tau[ichan]+=dtau;
+          ray.intensity[ichan]+=exp(-ray.tau[ichan])*(1.-exp(-dtau))*snu_pol[ichan];
+          ray.tau[ichan]+=dtau;
+        }
+      } else {
+        for(ichan=0;ichan<img[im].nchan;ichan++){
+          jnu=.0;
+          alpha=0.;
+          snu=0.;
+          dtau=0.;
+
+          for(iline=0;iline<nlinetot;iline++){
+            if(img[im].doline && m[counta[iline]].freq[countb[iline]] > img[im].freq-img[im].bandwidth/2. && m[counta[iline]].freq[countb[iline]] < img[im].freq+img[im].bandwidth/2.){
+              if(img[im].trans > -1){
+                shift=(m[counta[iline]].freq[countb[iline]]-m[counta[iline]].freq[img[im].trans])/m[counta[iline]].freq[img[im].trans]*CLIGHT;
+              } else {
+                shift=(m[counta[iline]].freq[countb[iline]]-img[im].freq)/img[im].freq*CLIGHT;
+              }
+              deltav=(ichan-(int)(img[im].nchan/2.))*img[im].velres-img[im].source_vel + shift;
+
+              if(!par->pregrid) velocityspline2(x,dx,ds,g[posn].mol[counta[iline]].binv,deltav,&vfac);
+              else vfac=gaussline(deltav-veloproject(dx,g[posn].vel),g[posn].mol[counta[iline]].binv);
+
+              sourceFunc_line(&jnu,&alpha,m,vfac,g,posn,counta[iline],countb[iline]);
+            }
+          }
+
+          if(img[im].doline && img[im].trans > -1) sourceFunc_cont(&jnu,&alpha,g,posn,0,img[im].trans);
+          else if(img[im].doline && img[im].trans == -1) sourceFunc_cont(&jnu,&alpha,g,posn,0,tmptrans);
+          else sourceFunc_cont(&jnu,&alpha,g,posn,0,0);
+          if(fabs(alpha)>0.){
+            snu=(jnu/alpha)*m[0].norminv;
+            dtau=alpha*ds;
+          }
+//          subintens[ichan]+=exp(-tau[ichan])*(1.-exp(-dtau))*snu;
+//          tau[ichan]+=dtau;
+          ray.intensity[ichan]+=exp(-ray.tau[ichan])*(1.-exp(-dtau))*snu;
+          ray.tau[ichan]+=dtau;
+        }
+      }
+
+      /* new coordinates */
+      for(i=0;i<3;i++) x[i]+=ds*dx[i];
+      col+=ds;
+      posn=nposn;
+    } while(col < 2*zp);
+
+    /* add or subtract cmb */
+    for(ichan=0;ichan<img[im].nchan;ichan++){
+//      subintens[ichan]+=(exp(-tau[ichan])-1.)*m[0].local_cmb[tmptrans];
+      ray.intensity[ichan]+=(exp(-ray.tau[ichan])-1.)*m[0].local_cmb[tmptrans];
+    }
+  }
+//  for(ichan=0;ichan<img[im].nchan;ichan++){
+//    ray.intensity[ichan]=subintens[ichan];
+//    ray.tau[ichan]=tau[ichan];
+//  }
+
+//  free(tau);
+//  free(subintens);
+}
+
 
 void
 raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
   int *counta, *countb,nlinetot,aa;
-  int ichan, posn,nposn,i,px,iline,tmptrans;
-  double *tau, *subintens;
-  double vfac=0.,x[3],dx[3];
-  double deltav,ds,dist2,ndist2,size,xp,yp,zp,col,shift,minfreq,absDeltaFreq,jnu,alpha,snu,dtau,snu_pol[3];
+  int ichan,px,iline,tmptrans;
+  double size,minfreq,absDeltaFreq;
+  rayData ray;
 
   gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
 #ifdef TEST
@@ -101,10 +217,9 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
     }
   } else tmptrans=img[im].trans;
 
-  /* Allocate dynamical arrays */
-  tau = malloc(sizeof(double)*img[im].nchan);
-  subintens = malloc(sizeof(double)*img[im].nchan);
-  
+  ray.intensity=malloc(sizeof(double) * img[im].nchan);
+  ray.tau=malloc(sizeof(double) * img[im].nchan);
+
   /* Main loop through pixel grid */
   for(px=0;px<(img[im].pxls*img[im].pxls);px++){
     for(ichan=0;ichan<img[im].nchan;ichan++){
@@ -112,106 +227,30 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
       img[im].pixel[px].tau[ichan]=0.0;
     }
     for(aa=0;aa<par->antialias;aa++){
+//      for(ichan=0;ichan<img[im].nchan;ichan++) {
+//        ray.intensity[ichan]=0.0;
+//        ray.tau[ichan]=0.0;
+//      }
+      ray.x = size*(gsl_rng_uniform(ran)+px%img[im].pxls)-size*img[im].pxls/2.;
+      ray.y = size*(gsl_rng_uniform(ran)+px/img[im].pxls)-size*img[im].pxls/2.;
+
+      traceray(ray, tmptrans, im, par, g, m, img, nlinetot, counta, countb);
+
       for(ichan=0;ichan<img[im].nchan;ichan++){
-        tau[ichan]=0.0;
-        subintens[ichan]=0.0;
-      }
-      xp=size*(gsl_rng_uniform(ran)+px%img[im].pxls)-size*img[im].pxls/2.;
-      yp=size*(gsl_rng_uniform(ran)+px/img[im].pxls)-size*img[im].pxls/2.;
-
-      if((xp*xp+yp*yp)/par->radiusSqu <= 1 ) {
-        zp=sqrt(par->radiusSqu-(xp*xp+yp*yp));
-
-        x[0]=xp*img[im].rotMat[0][0] + yp*img[im].rotMat[0][1] + zp*img[im].rotMat[0][2];
-        x[1]=xp*img[im].rotMat[1][0] + yp*img[im].rotMat[1][1] + zp*img[im].rotMat[1][2];
-        x[2]=xp*img[im].rotMat[2][0] + yp*img[im].rotMat[2][1] + zp*img[im].rotMat[2][2];
-
-        dx[0]= -img[im].rotMat[0][2];
-        dx[1]= -img[im].rotMat[1][2];
-        dx[2]= -img[im].rotMat[2][2];
-        
-        i=0;
-        dist2=(x[0]-g[i].x[0])*(x[0]-g[i].x[0]) + (x[1]-g[i].x[1])*(x[1]-g[i].x[1]) + (x[2]-g[i].x[2])*(x[2]-g[i].x[2]);
-        posn=i;
-        for(i=1;i<par->ncell;i++){
-          ndist2=(x[0]-g[i].x[0])*(x[0]-g[i].x[0]) + (x[1]-g[i].x[1])*(x[1]-g[i].x[1]) + (x[2]-g[i].x[2])*(x[2]-g[i].x[2]);
-          if(ndist2<dist2){
-            posn=i;
-            dist2=ndist2;
-          }
-        }
-
-        col=0;
-        do{
-          ds=2.*zp-col;
-          line_plane_intersect(g,&ds,posn,&nposn,dx,x);
-          if(par->polarization){
-            for(ichan=0;ichan<img[im].nchan;ichan++){
-              sourceFunc_pol(snu_pol,&dtau,ds,m,vfac,g,posn,0,0,img[im].theta);
-              subintens[ichan]+=exp(-tau[ichan])*(1.-exp(-dtau))*snu_pol[ichan];
-              tau[ichan]+=dtau;
-            }
-          } else {
-            for(ichan=0;ichan<img[im].nchan;ichan++){
-              jnu=.0;
-              alpha=0.;
-              snu=0.;
-              dtau=0.;
-              for(iline=0;iline<nlinetot;iline++){
-                if(img[im].doline && m[counta[iline]].freq[countb[iline]] > img[im].freq-img[im].bandwidth/2. && m[counta[iline]].freq[countb[iline]] < img[im].freq+img[im].bandwidth/2.){
-                  if(img[im].trans > -1){
-                    shift=(m[counta[iline]].freq[countb[iline]]-m[counta[iline]].freq[img[im].trans])/m[counta[iline]].freq[img[im].trans]*CLIGHT;
-                  } else {
-                    shift=(m[counta[iline]].freq[countb[iline]]-img[im].freq)/img[im].freq*CLIGHT;
-                  }
-                  deltav=(ichan-(int)(img[im].nchan/2.))*img[im].velres-img[im].source_vel + shift;
-
-                  if(!par->pregrid) velocityspline2(x,dx,ds,g[posn].mol[counta[iline]].binv,deltav,&vfac);
-                  else vfac=gaussline(deltav-veloproject(dx,g[posn].vel),g[posn].mol[counta[iline]].binv);
-
-                  sourceFunc_line(&jnu,&alpha,m,vfac,g,posn,counta[iline],countb[iline]);
-                }
-              }
-
-              if(img[im].doline && img[im].trans > -1) sourceFunc_cont(&jnu,&alpha,g,posn,0,img[im].trans);
-              else if(img[im].doline && img[im].trans == -1) sourceFunc_cont(&jnu,&alpha,g,posn,0,tmptrans);
-              else sourceFunc_cont(&jnu,&alpha,g,posn,0,0);
-              if(fabs(alpha)>0.){
-                snu=(jnu/alpha)*m[0].norminv;
-                dtau=alpha*ds;
-              }
-              subintens[ichan]+=exp(-tau[ichan])*(1.-exp(-dtau))*snu;
-              tau[ichan]+=dtau;
-            }
-          }
-
-          /* new coordinates */
-          for(i=0;i<3;i++) x[i]+=ds*dx[i];
-          col+=ds;
-          posn=nposn;
-        } while(col < 2*zp);
-
-        /* add or subtract cmb */
-        for(ichan=0;ichan<img[im].nchan;ichan++){
-          subintens[ichan]+=(exp(-tau[ichan])-1.)*m[0].local_cmb[tmptrans];
-        }
-
-        for(ichan=0;ichan<img[im].nchan;ichan++){
-          img[im].pixel[px].intense[ichan]+=subintens[ichan]/(double) par->antialias;
-          img[im].pixel[px].tau[ichan]+=tau[ichan]/(double) par->antialias;
-        }
+        img[im].pixel[px].intense[ichan] += ray.intensity[ichan]/(double) par->antialias;
+        img[im].pixel[px].tau[ichan] += ray.tau[ichan]/(double) par->antialias;
       }
     }
+
     if(!silent) progressbar((double)(px)/(double)(img[im].pxls*img[im].pxls-1), 13);
   }
 
   img[im].trans=tmptrans;
-  free(tau);
-  free(subintens);
+  free(ray.tau);
+  free(ray.intensity);
   free(counta);
   free(countb);
   gsl_rng_free(ran);
 }
-
 
 
