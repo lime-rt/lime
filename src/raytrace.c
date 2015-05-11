@@ -118,7 +118,8 @@ traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molD
           dtau=0.;
 
           for(iline=0;iline<nlinetot;iline++){
-            if(img[im].doline && m[counta[iline]].freq[countb[iline]] > img[im].freq-img[im].bandwidth/2. && m[counta[iline]].freq[countb[iline]] < img[im].freq+img[im].bandwidth/2.){
+            if(img[im].doline && m[counta[iline]].freq[countb[iline]] > img[im].freq-img[im].bandwidth/2.
+            && m[counta[iline]].freq[countb[iline]] < img[im].freq+img[im].bandwidth/2.){
               if(img[im].trans > -1){
                 shift=(m[counta[iline]].freq[countb[iline]]-m[counta[iline]].freq[img[im].trans])/m[counta[iline]].freq[img[im].trans]*CLIGHT;
               } else {
