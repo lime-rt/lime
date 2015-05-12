@@ -123,15 +123,8 @@ double veloproject(double dx[3], double *vel){
 }
 
 
-double gaussline(double v, double sigma){
-  int maxgau=101,maxsig=4,ival;
-  double fac,val;
-
-  fac=(maxgau-1)/maxsig;
-  ival=(int)(fac*(fabs(v)*sigma))+1;
-  if((ival-1)>=maxgau) return 0.;
-  val=(ival*ival)/(fac*fac);
-  return exp(-val);
+double gaussline(double v, double oneOnSigma){
+  return exp(-v*v*oneOnSigma*oneOnSigma);
 }
 
 
