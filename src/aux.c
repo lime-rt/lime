@@ -21,6 +21,7 @@ parseInput(inputPars *par, image **img, molData **m){
   FILE *fp;
   int i,id;
   double BB[3];
+  double cosPhi,sinPhi,cosTheta,sinTheta;
 
   /* Set default values */
   par->dust  	    = NULL;
@@ -152,6 +153,36 @@ parseInput(inputPars *par, image **img, molData **m){
       (*img)[i].pixel[id].intense = malloc(sizeof(double)*(*img)[i].nchan);
       (*img)[i].pixel[id].tau = malloc(sizeof(double)*(*img)[i].nchan);
     }
+
+    /* Rotation matrix
+
+            |1          0           0   |
+     R_x(a)=|0        cos(a)      sin(a)|
+            |0       -sin(a)      cos(a)|
+
+            |cos(b)     0       -sin(b)|
+     R_y(b)=|  0        1          0   |
+            |sin(b)     0        cos(b)|
+
+            |      cos(b)       0          -sin(b)|
+     Rot =  |sin(a)sin(b)     cos(a)  sin(a)cos(b)|
+            |cos(a)sin(b)    -sin(a)  cos(a)cos(b)|
+
+    */
+
+    cosPhi   = cos((*img)[i].phi);
+    sinPhi   = sin((*img)[i].phi);
+    cosTheta = cos((*img)[i].theta);
+    sinTheta = sin((*img)[i].theta);
+    (*img)[i].rotMat[0][0] =           cosPhi;
+    (*img)[i].rotMat[0][1] =  0.0;
+    (*img)[i].rotMat[0][2] =          -sinPhi;
+    (*img)[i].rotMat[1][0] =  sinTheta*sinPhi;
+    (*img)[i].rotMat[1][1] =  cosTheta;
+    (*img)[i].rotMat[1][2] =  sinTheta*cosPhi;
+    (*img)[i].rotMat[2][0] =  cosTheta*sinPhi;
+    (*img)[i].rotMat[2][1] = -sinTheta;
+    (*img)[i].rotMat[2][2] =  cosTheta*cosPhi;
   }
 
   /* Allocate moldata array */

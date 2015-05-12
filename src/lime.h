@@ -147,6 +147,7 @@ typedef struct {
   double source_vel;
   double theta,phi;
   double distance;
+  double rotMat[3][3];
 } image;
 
 typedef struct {
