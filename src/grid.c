@@ -162,7 +162,7 @@ qhull(inputPars *par, struct grid *g){
   facetT *facet;
   vertexT *vertex,**vertexp;
   coordT *pt_array;
-  int simplex[DIM];
+  int simplex[DIM+1];
   int curlong, totlong;
 
   pt_array=malloc(DIM*sizeof(coordT)*par->ncell);
