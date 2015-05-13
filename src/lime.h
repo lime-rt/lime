@@ -76,7 +76,7 @@ typedef struct {
   char *pregrid;
   char *restart;
   char *dust;
-  int sampling,collPart,lte_only,antialias,polarization;
+  int sampling,collPart,lte_only,antialias,polarization,doPregrid;
   char **moldatfile;
 } inputPars;
 

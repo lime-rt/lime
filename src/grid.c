@@ -22,7 +22,7 @@ gridAlloc(inputPars *par, struct grid **g){
   *g=malloc(sizeof(struct grid)*(par->pIntensity+par->sinkPoints));
   memset(*g, 0., sizeof(struct grid) * (par->pIntensity+par->sinkPoints));
 
-  if(par->pregrid || par->restart) par->collPart=1;
+  if(par->doPregrid || par->restart) par->collPart=1;
   else{
     for(i=0;i<99;i++) temp[i]=-1;
     density(AU,AU,AU,temp);

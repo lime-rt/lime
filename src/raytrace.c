@@ -183,7 +183,7 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
                   }
                   deltav=(ichan-(int)(img[im].nchan/2.))*img[im].velres-img[im].source_vel + shift;
 
-                  if(!par->pregrid) velocityspline2(x,dx,ds,g[posn].mol[counta[iline]].binv,deltav,&vfac);
+                  if(!par->doPregrid) velocityspline2(x,dx,ds,g[posn].mol[counta[iline]].binv,deltav,&vfac);
                   else vfac=gaussline(deltav-veloproject(dx,g[posn].vel),g[posn].mol[counta[iline]].binv);
 
                   sourceFunc_line(&jnu,&alpha,m,vfac,g,posn,counta[iline],countb[iline]);

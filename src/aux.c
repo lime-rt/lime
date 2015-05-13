@@ -29,7 +29,7 @@ parseInput(inputPars *par, image **img, molData **m){
   par->outputfile   = NULL;
   par->binoutputfile= NULL;
   par->gridfile     = NULL;
-  par->pregrid	    = NULL;
+  par->pregrid      = NULL;
   par->restart      = NULL;
 
   par->tcmb = 2.728;
@@ -40,6 +40,7 @@ parseInput(inputPars *par, image **img, molData **m){
   par->polarization=0;
   par->pIntensity=0;
   par->sinkPoints=0;
+  par->doPregrid=0;
 
   /* Allocate space for output fits images */
   (*img)=malloc(sizeof(image)*MAX_NSPECIES);
@@ -98,6 +99,7 @@ parseInput(inputPars *par, image **img, molData **m){
   par->ncell=par->pIntensity+par->sinkPoints;
   par->radiusSqu=par->radius*par->radius;
   par->minScaleSqu=par->minScale*par->minScale;
+  if(par->pregrid!=NULL) par->doPregrid=1;
 
   /*
 Now we need to calculate the cutoff value used in calcSourceFn(). The issue is to decide between
