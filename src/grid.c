@@ -557,6 +557,19 @@ buildGrid(inputPars *par, struct grid *g){
         y=(2*gsl_rng_uniform(ran)-1)*par->radius;
         if(DIM==3) z=(2*gsl_rng_uniform(ran)-1)*par->radius;
         else z=0;
+      } else if(par->sampling==2){
+        r=pow(10,logmin+gsl_rng_uniform(ran)*(lograd-logmin));
+        theta=2.*PI*gsl_rng_uniform(ran);
+        if(DIM==3) {
+          z=2*gsl_rng_uniform(ran)-1.;
+          semiradius=r*sqrt(1.-z*z);
+          z*=r;
+        } else {
+          z=0.;
+          semiradius=r;
+        }
+        x=semiradius*cos(theta);
+        y=semiradius*sin(theta);
       } else {
         if(!silent) bail_out("Don't know how to sample model");
         exit(1);

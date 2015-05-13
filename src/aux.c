@@ -34,7 +34,7 @@ parseInput(inputPars *par, image **img, molData **m){
 
   par->tcmb = 2.728;
   par->lte_only=0;
-  par->sampling=0;
+  par->sampling=2;
   par->blend=0;
   par->antialias=1;
   par->polarization=0;
