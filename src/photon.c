@@ -165,6 +165,8 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
   expTau=malloc(sizeof(double)*nlinetot);
   velocity(g[id].x[0],g[id].x[1],g[id].x[2],vel);
   
+  np_per_line=(int) g[id].nphot/g[id].numNeigh; // Works out to be equal to ininphot. :-/
+
   for(iphot=0;iphot<g[id].nphot;iphot++){
     firststep=1;
     for(iline=0;iline<nlinetot;iline++){
@@ -181,10 +183,15 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
     inidir[1]=semiradius*sin(pt_theta);
     inidir[2]=pt_z;
     
-    iter=(int) (gsl_rng_uniform(ran)*3.);
-    np_per_line=(int) g[id].nphot/g[id].numNeigh;
+    iter=(int) (gsl_rng_uniform(ran)*(double)N_RAN_PER_SEGMENT); // can have values in [0,1,..,N_RAN_PER_SEGMENT-1]
     ip_at_line=(int) iphot/g[id].numNeigh;
-    segment=1/(2.*np_per_line)*(2*ip_at_line-np_per_line+iter);
+    segment=(N_RAN_PER_SEGMENT*(ip_at_line-np_per_line/2.)+iter)/(double)(np_per_line*N_RAN_PER_SEGMENT);
+    /*
+    Values of segment should be evenly distributed (considering the
+    entire ensemble of photons) between -0.5 and +0.5, and are chosen
+    from a sequence of possible values separated by
+    1/(N_RAN_PER_SEGMENT*ininphot).
+    */
     
     dir=sortangles(inidir,id,g,ran);
     here=g[id].id;

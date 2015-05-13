@@ -64,6 +64,7 @@
 #define fixset			1e-6
 #define blendmask		1.e4
 #define MAX_NSPECIES            100
+#define N_RAN_PER_SEGMENT       3
 
 
 /* input parameters */
