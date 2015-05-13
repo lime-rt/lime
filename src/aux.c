@@ -14,6 +14,7 @@
 #include "lime.h"
 #include <gsl/gsl_sort.h>
 #include <gsl/gsl_statistics.h>
+#include <float.h>
 
 
 void
@@ -98,6 +99,22 @@ parseInput(inputPars *par, image **img, molData **m){
   par->radiusSqu=par->radius*par->radius;
   par->minScaleSqu=par->minScale*par->minScale;
 
+  /*
+Now we need to calculate the cutoff value used in calcSourceFn(). The issue is to decide between
+
+  y = (1 - exp[-x])/x
+
+or the approximation using the Taylor expansion of exp(-x), which to 3rd order is
+
+  y ~ 1 - x/2 + x^2/6.
+
+The cutoff will be the value of abs(x) for which the error in the exact expression equals the next unused Taylor term, which is x^3/24. This error can be shown to be given for small |x| by epsilon/|x|, where epsilon is the floating-point precision of the computer. Hence the cutoff evaluates to
+
+  |x|_cutoff = (24*epsilon)^{1/4}.
+
+  */
+  par->taylorCutoff = pow(24.*DBL_EPSILON, 0.25);
+
   if(par->dust != NULL){
     if((fp=fopen(par->dust, "r"))==NULL){
       if(!silent) bail_out("Error opening dust opacity data file!");
@@ -107,10 +124,6 @@ parseInput(inputPars *par, image **img, molData **m){
       fclose(fp);
     }
   }
-
-
-
-
 
   /* Allocate pixel space and parse image information */
   for(i=0;i<par->nImages;i++){

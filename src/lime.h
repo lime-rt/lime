@@ -68,7 +68,7 @@
 
 /* input parameters */
 typedef struct {
-  double radius,radiusSqu,minScale,minScaleSqu,tcmb;
+  double radius,radiusSqu,minScale,minScaleSqu,tcmb,taylorCutoff;
   int ncell,sinkPoints,pIntensity,nImages,nSpecies,blend;
   char *outputfile, *binoutputfile, *inputfile;
   char *gridfile;
@@ -169,6 +169,7 @@ void gasIIdust(double,double,double,double *);
 
 void   	binpopsout(inputPars *, struct grid *, molData *);
 void   	buildGrid(inputPars *, struct grid *);
+void    calcSourceFn(double dTau, const inputPars *par, double *remnantSnu, double *expDTau);
 void	continuumSetup(int, image *, molData *, inputPars *, struct grid *);
 void	distCalc(inputPars *, struct grid *);
 void	fit_d1fi(double, double, double*);

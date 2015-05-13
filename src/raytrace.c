@@ -65,7 +65,7 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
   int ichan, posn,nposn,i,px,iline,tmptrans;
   double *tau, *subintens;
   double vfac=0.,x[3],dx[3];
-  double deltav,ds,dist2,ndist2,size,xp,yp,zp,col,shift,minfreq,absDeltaFreq,jnu,alpha,snu,dtau,snu_pol[3];
+  double deltav,ds,dist2,ndist2,size,xp,yp,zp,col,shift,minfreq,absDeltaFreq,jnu,alpha,remnantSnu,dtau,expDTau,snu_pol[3];
   double cosPhi,sinPhi,cosTheta,sinTheta;
   gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
 #ifdef TEST
@@ -174,8 +174,6 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
             for(ichan=0;ichan<img[im].nchan;ichan++){
               jnu=.0;
               alpha=0.;
-              snu=0.;
-              dtau=0.;
               for(iline=0;iline<nlinetot;iline++){
                 if(img[im].doline && m[counta[iline]].freq[countb[iline]] > img[im].freq-img[im].bandwidth/2. && m[counta[iline]].freq[countb[iline]] < img[im].freq+img[im].bandwidth/2.){
                   if(img[im].trans > -1){
@@ -195,11 +193,11 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
               if(img[im].doline && img[im].trans > -1) sourceFunc_cont(&jnu,&alpha,g,posn,0,img[im].trans);
               else if(img[im].doline && img[im].trans == -1) sourceFunc_cont(&jnu,&alpha,g,posn,0,tmptrans);
               else sourceFunc_cont(&jnu,&alpha,g,posn,0,0);
-              if(fabs(alpha)>0.){
-                snu=(jnu/alpha)*m[0].norminv;
-                dtau=alpha*ds;
-              }
-              subintens[ichan]+=exp(-tau[ichan])*(1.-exp(-dtau))*snu;
+              dtau=alpha*ds;
+//???              if(dtau < -30) dtau = -30; // as in photon()?
+              calcSourceFn(dtau, par, &remnantSnu, &expDTau);
+              remnantSnu *= jnu*m[0].norminv*ds;
+              subintens[ichan]+=exp(-tau[ichan])*remnantSnu;
               tau[ichan]+=dtau;
 
             }

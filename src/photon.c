@@ -128,13 +128,38 @@ double gaussline(double v, double oneOnSigma){
 }
 
 
+void calcSourceFn(double dTau, const inputPars *par, double *remnantSnu, double *expDTau){
+  /*
+  The source function S is defined as j_nu/alpha, which is clearly not
+  defined for alpha==0. However S is used in the algorithm only in the
+  term (1-exp[-alpha*ds])*S, which is defined for all values of alpha.
+  The present function calculates this term and returns it in the
+  argument remnantSnu. For values of abs(alpha*ds) less than a pre-
+  calculated cutoff supplied in inputPars, a Taylor approximation is
+  used.
+
+  Note that the same cutoff condition holds for replacement of
+  exp(-dTau) by its Taylor expansion to 3rd order.
+  */
+
+  if (fabs(dTau)<par->taylorCutoff){
+    *remnantSnu = 1. - dTau*(1. - dTau/3.)/2.;
+    *expDTau = 1. - dTau*(*remnantSnu);
+  } else {
+    *expDTau = exp(-dTau);
+    *remnantSnu = (1.-(*expDTau))/dTau;
+  }
+}
+
+
 void
 photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPars *par,blend *matrix){
   int iphot,iline,jline,here,there,firststep,dir,np_per_line,ip_at_line,l;
   int *counta, *countb,nlinetot;
-  double deltav,segment,vblend,snu,dtau,expDTau,jnu,alpha,ds,vfac[par->nSpecies],pt_theta,pt_z,semiradius;
+  double deltav,segment,vblend,dtau,expDTau,jnu,alpha,ds,vfac[par->nSpecies],pt_theta,pt_z,semiradius;
   double *tau,*expTau,vel[3],x[3], inidir[3];
-  
+  double remnantSnu;
+
   lineCount(par->nSpecies, m, &counta, &countb, &nlinetot);
   tau=malloc(sizeof(double)*nlinetot);
   expTau=malloc(sizeof(double)*nlinetot);
@@ -191,19 +216,16 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
       for(iline=0;iline<nlinetot;iline++){
         jnu=0.;
         alpha=0.;
-        snu=0.;
-        dtau=0.;
         
         sourceFunc_line(&jnu,&alpha,m,vfac[counta[iline]],g,here,counta[iline],countb[iline]);
         sourceFunc_cont(&jnu,&alpha,g,here,counta[iline],countb[iline]);
-        if(fabs(alpha)>0.){
-          snu=(jnu/alpha)*m[0].norminv;
-          dtau=alpha*ds;
-          if(dtau < -30) dtau = -30;
-        }
-        
-        expDTau = exp(-dtau);
-        m[0].phot[iline+iphot*m[0].nline]+=expTau[iline]*(1.-expDTau)*snu;
+
+        dtau=alpha*ds;
+        if(dtau < -30) dtau = -30;
+        calcSourceFn(dtau, par, &remnantSnu, &expDTau);
+        remnantSnu *= jnu*m[0].norminv*ds;
+
+        m[0].phot[iline+iphot*m[0].nline]+=expTau[iline]*remnantSnu;
         tau[iline]+=dtau;
         expTau[iline]*=expDTau;
         if(tau[iline] < -30.){
@@ -221,13 +243,12 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
               if(!par->pregrid) velocityspline(g,here,dir,g[id].mol[counta[jline]].binv,deltav-matrix[jline].deltav,&vblend);
               else velocityspline_lin(g,here,dir,g[id].mol[counta[jline]].binv,deltav-matrix[jline].deltav,&vblend);	
               sourceFunc_line(&jnu,&alpha,m,vblend,g,here,counta[jline],countb[jline]);
-              if(fabs(alpha)>0.){
-                snu=(jnu/alpha)*m[0].norminv;
-                dtau=alpha*ds;
-                if(dtau < -30) dtau = -30;
-              }
-              expDTau = exp(-dtau);
-              m[0].phot[jline+iphot*m[0].nline]+=expTau[jline]*(1.-expDTau)*snu;
+              dtau=alpha*ds;
+              if(dtau < -30) dtau = -30;
+              calcSourceFn(dtau, par, &remnantSnu, &expDTau);
+              remnantSnu *= jnu*m[0].norminv*ds;
+
+              m[0].phot[jline+iphot*m[0].nline]+=expTau[jline]*remnantSnu;
               tau[jline]+=dtau;
               expTau[jline]*=expDTau;
               if(tau[jline] < -30.){
@@ -261,9 +282,9 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
 void
 getjbar(int posn, molData *m, struct grid *g, inputPars *par){
   int iline,iphot;
-  double tau, expTau, snu, vsum=0., jnu, alpha;
+  double tau, expTau, remnantSnu, vsum=0., jnu, alpha;
   int *counta, *countb,nlinetot;
-  
+
   lineCount(par->nSpecies, m, &counta, &countb, &nlinetot);
   
   for(iline=0;iline<m[0].nline;iline++) m[0].jbar[iline]=0.;
@@ -272,17 +293,14 @@ getjbar(int posn, molData *m, struct grid *g, inputPars *par){
       for(iline=0;iline<m[0].nline;iline++){
         jnu=0.;
         alpha=0.;
-        snu=0.;
-        tau=0.;
         
         sourceFunc_line(&jnu,&alpha,m,m[0].vfac[iphot],g,posn,counta[iline],countb[iline]);
         sourceFunc_cont(&jnu,&alpha,g,posn,counta[iline],countb[iline]);
-        if(fabs(alpha)>0.){
-          snu=(jnu/alpha)*m[0].norminv;
-          tau=alpha*m[0].ds[iphot];
-        }
-        expTau = exp(-tau);
-        m[0].jbar[iline]+=m[0].vfac[iphot]*(expTau*m[0].phot[iline+iphot*m[0].nline]+(1.-expTau)*snu);
+        tau=alpha*m[0].ds[iphot];
+        calcSourceFn(tau, par, &remnantSnu, &expTau);
+        remnantSnu *= jnu*m[0].norminv*m[0].ds[iphot];
+
+        m[0].jbar[iline]+=m[0].vfac[iphot]*(expTau*m[0].phot[iline+iphot*m[0].nline]+remnantSnu);
       }
       vsum+=m[0].vfac[iphot];
     }
