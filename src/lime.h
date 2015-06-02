@@ -156,6 +156,8 @@ typedef struct {
   double deltav;
 } blend;
 
+typedef struct {double x,y, *intensity, *tau;} rayData;
+
 
 
 /* Some functions */
@@ -203,7 +205,7 @@ void	qhull(inputPars *, struct grid *);
 void  	photon(int, struct grid *, molData *, int, const gsl_rng *,inputPars *,blend *);
 void	parseInput(inputPars *, image **, molData **);
 double 	planckfunc(int, double, molData *, int);
-int		pointEvaluation(inputPars *,double, double, double, double);
+int     pointEvaluation(inputPars *,double, double, double, double);
 void   	popsin(inputPars *, struct grid **, molData **, int *);
 void   	popsout(inputPars *, struct grid *, molData *);
 void	predefinedGrid(inputPars *, struct grid *);
@@ -211,7 +213,7 @@ double 	ratranInput(char *, char *, double, double, double);
 void   	raytrace(int, inputPars *, struct grid *, molData *, image *);
 void	report(int, inputPars *, struct grid *);
 void	smooth(inputPars *, struct grid *);
-int		sortangles(double *, int, struct grid *, const gsl_rng *);
+int     sortangles(double *, int, struct grid *, const gsl_rng *);
 void	sourceFunc(double *, double *, double, molData *,double,struct grid *,int,int, int,int);
 void    sourceFunc_line(double *,double *,molData *, double, struct grid *, int, int,int);
 void    sourceFunc_cont(double *,double *, struct grid *, int, int,int);

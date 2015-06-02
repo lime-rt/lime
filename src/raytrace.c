@@ -13,8 +13,6 @@
 
 #include "lime.h"
 
-typedef struct {double x,y, *intensity, *tau;} rayData;
-
 
 void
 velocityspline2(double x[3], double dx[3], double ds, double binv, double deltav, double *vfac){
