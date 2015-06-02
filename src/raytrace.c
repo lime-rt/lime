@@ -67,7 +67,7 @@ void
 traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molData *m, image *img, int nlinetot, int *counta, int *countb){
   int ichan,posn,nposn,i,iline;
   double vfac=0.,x[3],dx[3];
-  double deltav,ds,dist2,ndist2,xp,yp,zp,col,shift,jnu,alpha,snu,dtau,snu_pol[3];
+  double deltav,ds,dist2,ndist2,xp,yp,zp,col,shift,jnu,alpha,remnantSnu,dtau,expDTau,snu_pol[3];
 
   for(ichan=0;ichan<img[im].nchan;ichan++){
     ray.tau[ichan]=0.0;
@@ -114,8 +114,6 @@ traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molD
         for(ichan=0;ichan<img[im].nchan;ichan++){
           jnu=.0;
           alpha=0.;
-          snu=0.;
-          dtau=0.;
 
           for(iline=0;iline<nlinetot;iline++){
             if(img[im].doline && m[counta[iline]].freq[countb[iline]] > img[im].freq-img[im].bandwidth/2.
@@ -137,11 +135,11 @@ traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molD
           if(img[im].doline && img[im].trans > -1) sourceFunc_cont(&jnu,&alpha,g,posn,0,img[im].trans);
           else if(img[im].doline && img[im].trans == -1) sourceFunc_cont(&jnu,&alpha,g,posn,0,tmptrans);
           else sourceFunc_cont(&jnu,&alpha,g,posn,0,0);
-          if(fabs(alpha)>0.){
-            snu=(jnu/alpha)*m[0].norminv;
-            dtau=alpha*ds;
-          }
-          ray.intensity[ichan]+=exp(-ray.tau[ichan])*(1.-exp(-dtau))*snu;
+          dtau=alpha*ds;
+//???          if(dtau < -30) dtau = -30; // as in photon()?
+          calcSourceFn(dtau, par, &remnantSnu, &expDTau);
+          remnantSnu *= jnu*m[0].norminv*ds;
+          ray.intensity[ichan]+=exp(-ray.tau[ichan])*remnantSnu;
           ray.tau[ichan]+=dtau;
         }
       }
