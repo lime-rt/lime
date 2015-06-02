@@ -59,7 +59,7 @@ writefits(int im, inputPars *par, molData *m, image *img){
   crpix2  =(double) img[im].pxls/2+0.5;
   crval2  =0.0e0;
   cdelt3  =img[im].velres;
-  crpix3  =(double) img[im].nchan/2.+1;
+  crpix3  =(double) (img[im].nchan-1)/2.+1;
   crval3  =0.0e0;
   bscale  =1.0e0;
   bzero   =0.0e0;

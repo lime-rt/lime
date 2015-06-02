@@ -64,7 +64,7 @@ line_plane_intersect(struct grid *g, double *ds, int posn, int *nposn, double *d
 void
 traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molData *m, image *img, int nlinetot, int *counta, int *countb, double cutoff){
   int ichan,posn,nposn,i,iline;
-  double vfac=0.,x[3],dx[3];
+  double vfac=0.,x[3],dx[3],vThisChan;
   double deltav,ds,dist2,ndist2,xp,yp,zp,col,shift,jnu,alpha,remnantSnu,dtau,expDTau,snu_pol[3];
 
   for(ichan=0;ichan<img[im].nchan;ichan++){
@@ -121,7 +121,8 @@ traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molD
               } else {
                 shift=(m[counta[iline]].freq[countb[iline]]-img[im].freq)/img[im].freq*CLIGHT;
               }
-              deltav=(ichan-(int)(img[im].nchan/2.))*img[im].velres-img[im].source_vel + shift;
+              vThisChan=(ichan-(img[im].nchan-1)/2.)*img[im].velres; // Consistent with the WCS definition in writefits().
+              deltav = vThisChan - img[im].source_vel + shift;
 
               if(!par->pregrid) velocityspline2(x,dx,ds,g[posn].mol[counta[iline]].binv,deltav,&vfac);
               else vfac=gaussline(deltav-veloproject(dx,g[posn].vel),g[posn].mol[counta[iline]].binv);
