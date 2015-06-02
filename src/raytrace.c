@@ -23,7 +23,7 @@ velocityspline2(double x[3], double dx[3], double ds, double binv, double deltav
   for(i=0;i<steps;i++){
     d=i*ds/steps;
     velocity(x[0]+(dx[0]*d),x[1]+(dx[1]*d),x[2]+(dx[2]*d),vel);
-    v=deltav-veloproject(dx,vel);
+    v=deltav+veloproject(dx,vel);
     val=fabs(v)*binv;
     if(val <=  2500.){
       *vfac+= exp(-(val*val));
@@ -78,13 +78,10 @@ traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molD
   if((xp*xp+yp*yp)/par->radiusSqu <= 1 ) {
     zp=sqrt(par->radiusSqu-(xp*xp+yp*yp));
 
-    x[0]=xp*img[im].rotMat[0][0] + yp*img[im].rotMat[0][1] + zp*img[im].rotMat[0][2];
-    x[1]=xp*img[im].rotMat[1][0] + yp*img[im].rotMat[1][1] + zp*img[im].rotMat[1][2];
-    x[2]=xp*img[im].rotMat[2][0] + yp*img[im].rotMat[2][1] + zp*img[im].rotMat[2][2];
-
-    dx[0]= -img[im].rotMat[0][2];
-    dx[1]= -img[im].rotMat[1][2];
-    dx[2]= -img[im].rotMat[2][2];
+    for(i=0;i<3;i++){
+      x[i]=xp*img[im].rotMat[i][0] + yp*img[im].rotMat[i][1] + zp*img[im].rotMat[i][2];
+      dx[i]= -img[im].rotMat[i][2];
+    }
 
     i=0;
     dist2=(x[0]-g[i].x[0])*(x[0]-g[i].x[0]) + (x[1]-g[i].x[1])*(x[1]-g[i].x[1]) + (x[2]-g[i].x[2])*(x[2]-g[i].x[2]);
@@ -125,7 +122,7 @@ traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molD
               deltav = vThisChan - img[im].source_vel + shift;
 
               if(!par->pregrid) velocityspline2(x,dx,ds,g[posn].mol[counta[iline]].binv,deltav,&vfac);
-              else vfac=gaussline(deltav-veloproject(dx,g[posn].vel),g[posn].mol[counta[iline]].binv);
+              else vfac=gaussline(deltav+veloproject(dx,g[posn].vel),g[posn].mol[counta[iline]].binv);
 
               sourceFunc_line(&jnu,&alpha,m,vfac,g,posn,counta[iline],countb[iline]);
             }
