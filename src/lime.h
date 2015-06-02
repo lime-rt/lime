@@ -193,7 +193,7 @@ void	getVelosplines_lin(inputPars *, struct grid *);
 void	gridAlloc(inputPars *, struct grid **);
 void   	kappa(molData *, struct grid *, inputPars *,int);
 void	levelPops(molData *, inputPars *, struct grid *, int *);
-void	line_plane_intersect(struct grid *, double *, int , int *, double *, double *);
+void	line_plane_intersect(struct grid *, double *, int , int *, double *, double *, double);
 void	lineBlend(molData *, inputPars *, blend **);
 void    lineCount(int,molData *,int **, int **, int *);
 void	LTE(inputPars *, struct grid *, molData *);
@@ -219,6 +219,7 @@ void    sourceFunc_pol(double *, double *, double, molData *, double, struct gri
 void   	stateq(int, struct grid *, molData *, double *, int, inputPars *);
 void	statistics(int, molData *, struct grid *, int *, double *, double *, int *);
 void    stokesangles(double, double, double, double, double *);
+void    traceray(rayData, int, int, inputPars *, struct grid *, molData *, image *, int, int *, int *, double);
 void   	velocityspline(struct grid *, int, int, double, double, double*);
 void   	velocityspline2(double *, double *, double, double, double, double*);
 double 	veloproject(double *, double *);
