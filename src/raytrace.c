@@ -13,8 +13,6 @@
 
 #include "lime.h"
 
-typedef struct {double x,y, *intensity, *tau;} rayData;
-
 
 void
 velocityspline2(double x[3], double dx[3], double ds, double binv, double deltav, double *vfac){
@@ -25,7 +23,7 @@ velocityspline2(double x[3], double dx[3], double ds, double binv, double deltav
   for(i=0;i<steps;i++){
     d=i*ds/steps;
     velocity(x[0]+(dx[0]*d),x[1]+(dx[1]*d),x[2]+(dx[2]*d),vel);
-    v=deltav-veloproject(dx,vel);
+    v=deltav+veloproject(dx,vel);
     val=fabs(v)*binv;
     if(val <=  2500.){
       *vfac+= exp(-(val*val));
@@ -37,7 +35,7 @@ velocityspline2(double x[3], double dx[3], double ds, double binv, double deltav
 
 
 void
-line_plane_intersect(struct grid *g, double *ds, int posn, int *nposn, double *dx, double *x){
+line_plane_intersect(struct grid *g, double *ds, int posn, int *nposn, double *dx, double *x, double cutoff){
   double newdist, numerator, denominator ;
   int i;
 
@@ -53,7 +51,7 @@ line_plane_intersect(struct grid *g, double *ds, int posn, int *nposn, double *d
     
     if(fabs(denominator) > 0){
       newdist=numerator/denominator;
-      if(newdist<*ds && newdist > 1e4){
+      if(newdist<*ds && newdist > cutoff){
         *ds=newdist;
         *nposn=g[posn].neigh[i]->id;
       }
@@ -64,10 +62,10 @@ line_plane_intersect(struct grid *g, double *ds, int posn, int *nposn, double *d
 
 
 void
-traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molData *m, image *img, int nlinetot, int *counta, int *countb){
+traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molData *m, image *img, int nlinetot, int *counta, int *countb, double cutoff){
   int ichan,posn,nposn,i,iline;
-  double vfac=0.,x[3],dx[3];
-  double deltav,ds,dist2,ndist2,xp,yp,zp,col,shift,jnu,alpha,snu,dtau,snu_pol[3];
+  double vfac=0.,x[3],dx[3],vThisChan;
+  double deltav,ds,dist2,ndist2,xp,yp,zp,col,shift,jnu,alpha,remnantSnu,dtau,expDTau,snu_pol[3];
 
   for(ichan=0;ichan<img[im].nchan;ichan++){
     ray.tau[ichan]=0.0;
@@ -80,13 +78,10 @@ traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molD
   if((xp*xp+yp*yp)/par->radiusSqu <= 1 ) {
     zp=sqrt(par->radiusSqu-(xp*xp+yp*yp));
 
-    x[0]=xp*img[im].rotMat[0][0] + yp*img[im].rotMat[0][1] + zp*img[im].rotMat[0][2];
-    x[1]=xp*img[im].rotMat[1][0] + yp*img[im].rotMat[1][1] + zp*img[im].rotMat[1][2];
-    x[2]=xp*img[im].rotMat[2][0] + yp*img[im].rotMat[2][1] + zp*img[im].rotMat[2][2];
-
-    dx[0]= -img[im].rotMat[0][2];
-    dx[1]= -img[im].rotMat[1][2];
-    dx[2]= -img[im].rotMat[2][2];
+    for(i=0;i<3;i++){
+      x[i]=xp*img[im].rotMat[i][0] + yp*img[im].rotMat[i][1] + zp*img[im].rotMat[i][2];
+      dx[i]= -img[im].rotMat[i][2];
+    }
 
     i=0;
     dist2=(x[0]-g[i].x[0])*(x[0]-g[i].x[0]) + (x[1]-g[i].x[1])*(x[1]-g[i].x[1]) + (x[2]-g[i].x[2])*(x[2]-g[i].x[2]);
@@ -103,7 +98,7 @@ traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molD
     do{
       ds=2.*zp-col;
       nposn=-1;
-      line_plane_intersect(g,&ds,posn,&nposn,dx,x);
+      line_plane_intersect(g,&ds,posn,&nposn,dx,x,cutoff);
       if(par->polarization){
         for(ichan=0;ichan<img[im].nchan;ichan++){
           sourceFunc_pol(snu_pol,&dtau,ds,m,vfac,g,posn,0,0,img[im].theta);
@@ -114,8 +109,6 @@ traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molD
         for(ichan=0;ichan<img[im].nchan;ichan++){
           jnu=.0;
           alpha=0.;
-          snu=0.;
-          dtau=0.;
 
           for(iline=0;iline<nlinetot;iline++){
             if(img[im].doline && m[counta[iline]].freq[countb[iline]] > img[im].freq-img[im].bandwidth/2.
@@ -125,10 +118,11 @@ traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molD
               } else {
                 shift=(m[counta[iline]].freq[countb[iline]]-img[im].freq)/img[im].freq*CLIGHT;
               }
-              deltav=(ichan-(int)(img[im].nchan/2.))*img[im].velres-img[im].source_vel + shift;
+              vThisChan=(ichan-(img[im].nchan-1)/2.)*img[im].velres; // Consistent with the WCS definition in writefits().
+              deltav = vThisChan - img[im].source_vel + shift;
 
               if(!par->pregrid) velocityspline2(x,dx,ds,g[posn].mol[counta[iline]].binv,deltav,&vfac);
-              else vfac=gaussline(deltav-veloproject(dx,g[posn].vel),g[posn].mol[counta[iline]].binv);
+              else vfac=gaussline(deltav+veloproject(dx,g[posn].vel),g[posn].mol[counta[iline]].binv);
 
               sourceFunc_line(&jnu,&alpha,m,vfac,g,posn,counta[iline],countb[iline]);
             }
@@ -137,11 +131,11 @@ traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molD
           if(img[im].doline && img[im].trans > -1) sourceFunc_cont(&jnu,&alpha,g,posn,0,img[im].trans);
           else if(img[im].doline && img[im].trans == -1) sourceFunc_cont(&jnu,&alpha,g,posn,0,tmptrans);
           else sourceFunc_cont(&jnu,&alpha,g,posn,0,0);
-          if(fabs(alpha)>0.){
-            snu=(jnu/alpha)*m[0].norminv;
-            dtau=alpha*ds;
-          }
-          ray.intensity[ichan]+=exp(-ray.tau[ichan])*(1.-exp(-dtau))*snu;
+          dtau=alpha*ds;
+//???          if(dtau < -30) dtau = -30; // as in photon()?
+          calcSourceFn(dtau, par, &remnantSnu, &expDTau);
+          remnantSnu *= jnu*m[0].norminv*ds;
+          ray.intensity[ichan]+=exp(-ray.tau[ichan])*remnantSnu;
           ray.tau[ichan]+=dtau;
         }
       }
@@ -165,6 +159,7 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
   int *counta, *countb,nlinetot,aa;
   int ichan,px,iline,tmptrans;
   double size,minfreq,absDeltaFreq;
+  double cutoff;
   rayData ray;
 
   gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
@@ -204,6 +199,8 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
   ray.intensity=malloc(sizeof(double) * img[im].nchan);
   ray.tau=malloc(sizeof(double) * img[im].nchan);
 
+  cutoff = par->minScale*1.0e-7;
+
   /* Main loop through pixel grid */
   for(px=0;px<(img[im].pxls*img[im].pxls);px++){
     for(ichan=0;ichan<img[im].nchan;ichan++){
@@ -214,7 +211,7 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
       ray.x = size*(gsl_rng_uniform(ran)+px%img[im].pxls)-size*img[im].pxls/2.;
       ray.y = size*(gsl_rng_uniform(ran)+px/img[im].pxls)-size*img[im].pxls/2.;
 
-      traceray(ray, tmptrans, im, par, g, m, img, nlinetot, counta, countb);
+      traceray(ray, tmptrans, im, par, g, m, img, nlinetot, counta, countb, cutoff);
 
       for(ichan=0;ichan<img[im].nchan;ichan++){
         img[im].pixel[px].intense[ichan] += ray.intensity[ichan]/(double) par->antialias;
@@ -249,6 +246,8 @@ kept it.
   int *counta, *countb,nlinetot;
   int ichan,i,px,iline,tmptrans,count;
   double size,xp,yp,minfreq,absDeltaFreq;
+  double cutoff;
+
   gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
 #ifdef TEST
   gsl_rng_set(ran,178490);
@@ -366,10 +365,12 @@ kept it.
     free(pt_array);  
   }
 
+  cutoff = par->minScale*1.0e-7;
+
   /* Main loop through rays */
   count=0;
   for(px=0;px<par->pIntensity;px++){
-    traceray(rays[px], tmptrans, im, par, g, m, img, nlinetot, counta, countb);
+    traceray(rays[px], tmptrans, im, par, g, m, img, nlinetot, counta, countb, cutoff);
     ++count;
     if(!silent) progressbar((double)(count)/(double)(par->pIntensity-1), 13);
   }

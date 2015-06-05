@@ -64,18 +64,19 @@
 #define fixset			1e-6
 #define blendmask		1.e4
 #define MAX_NSPECIES            100
+#define N_RAN_PER_SEGMENT       3
 
 
 /* input parameters */
 typedef struct {
-  double radius,radiusSqu,minScale,minScaleSqu,tcmb;
+  double radius,radiusSqu,minScale,minScaleSqu,tcmb,taylorCutoff;
   int ncell,sinkPoints,pIntensity,nImages,nSpecies,blend;
   char *outputfile, *binoutputfile, *inputfile;
   char *gridfile;
   char *pregrid;
   char *restart;
   char *dust;
-  int sampling,collPart,lte_only,antialias,polarization;
+  int sampling,collPart,lte_only,antialias,polarization,doPregrid;
   char **moldatfile;
 } inputPars;
 
@@ -155,6 +156,8 @@ typedef struct {
   double deltav;
 } blend;
 
+typedef struct {double x,y, *intensity, *tau;} rayData;
+
 
 
 /* Some functions */
@@ -170,6 +173,7 @@ void gasIIdust(double,double,double,double *);
 
 void   	binpopsout(inputPars *, struct grid *, molData *);
 void   	buildGrid(inputPars *, struct grid *);
+void    calcSourceFn(double dTau, const inputPars *par, double *remnantSnu, double *expDTau);
 void	continuumSetup(int, image *, molData *, inputPars *, struct grid *);
 void	distCalc(inputPars *, struct grid *);
 void	fit_d1fi(double, double, double*);
@@ -191,7 +195,7 @@ void	getVelosplines_lin(inputPars *, struct grid *);
 void	gridAlloc(inputPars *, struct grid **);
 void   	kappa(molData *, struct grid *, inputPars *,int);
 void	levelPops(molData *, inputPars *, struct grid *, int *);
-void	line_plane_intersect(struct grid *, double *, int , int *, double *, double *);
+void	line_plane_intersect(struct grid *, double *, int , int *, double *, double *, double);
 void	lineBlend(molData *, inputPars *, blend **);
 void    lineCount(int,molData *,int **, int **, int *);
 void	LTE(inputPars *, struct grid *, molData *);
@@ -201,7 +205,7 @@ void	qhull(inputPars *, struct grid *);
 void  	photon(int, struct grid *, molData *, int, const gsl_rng *,inputPars *,blend *);
 void	parseInput(inputPars *, image **, molData **);
 double 	planckfunc(int, double, molData *, int);
-int		pointEvaluation(inputPars *,double, double, double, double);
+int     pointEvaluation(inputPars *,double, double, double, double);
 void   	popsin(inputPars *, struct grid **, molData **, int *);
 void   	popsout(inputPars *, struct grid *, molData *);
 void	predefinedGrid(inputPars *, struct grid *);
@@ -209,7 +213,7 @@ double 	ratranInput(char *, char *, double, double, double);
 void   	raytrace(int, inputPars *, struct grid *, molData *, image *);
 void	report(int, inputPars *, struct grid *);
 void	smooth(inputPars *, struct grid *);
-int		sortangles(double *, int, struct grid *, const gsl_rng *);
+int     sortangles(double *, int, struct grid *, const gsl_rng *);
 void	sourceFunc(double *, double *, double, molData *,double,struct grid *,int,int, int,int);
 void    sourceFunc_line(double *,double *,molData *, double, struct grid *, int, int,int);
 void    sourceFunc_cont(double *,double *, struct grid *, int, int,int);
@@ -217,6 +221,7 @@ void    sourceFunc_pol(double *, double *, double, molData *, double, struct gri
 void   	stateq(int, struct grid *, molData *, double *, int, inputPars *);
 void	statistics(int, molData *, struct grid *, int *, double *, double *, int *);
 void    stokesangles(double, double, double, double, double *);
+void    traceray(rayData, int, int, inputPars *, struct grid *, molData *, image *, int, int *, int *, double);
 void   	velocityspline(struct grid *, int, int, double, double, double*);
 void   	velocityspline2(double *, double *, double, double, double, double*);
 double 	veloproject(double *, double *);

@@ -22,7 +22,7 @@ gridAlloc(inputPars *par, struct grid **g){
   *g=malloc(sizeof(struct grid)*(par->pIntensity+par->sinkPoints));
   memset(*g, 0., sizeof(struct grid) * (par->pIntensity+par->sinkPoints));
 
-  if(par->pregrid || par->restart) par->collPart=1;
+  if(par->doPregrid || par->restart) par->collPart=1;
   else{
     for(i=0;i<99;i++) temp[i]=-1;
     density(AU,AU,AU,temp);
@@ -162,7 +162,7 @@ qhull(inputPars *par, struct grid *g){
   facetT *facet;
   vertexT *vertex,**vertexp;
   coordT *pt_array;
-  int simplex[DIM];
+  int simplex[DIM+1];
   int curlong, totlong;
 
   pt_array=malloc(DIM*sizeof(coordT)*par->ncell);
@@ -557,6 +557,19 @@ buildGrid(inputPars *par, struct grid *g){
         y=(2*gsl_rng_uniform(ran)-1)*par->radius;
         if(DIM==3) z=(2*gsl_rng_uniform(ran)-1)*par->radius;
         else z=0;
+      } else if(par->sampling==2){
+        r=pow(10,logmin+gsl_rng_uniform(ran)*(lograd-logmin));
+        theta=2.*PI*gsl_rng_uniform(ran);
+        if(DIM==3) {
+          z=2*gsl_rng_uniform(ran)-1.;
+          semiradius=r*sqrt(1.-z*z);
+          z*=r;
+        } else {
+          z=0.;
+          semiradius=r;
+        }
+        x=semiradius*cos(theta);
+        y=semiradius*sin(theta);
       } else {
         if(!silent) bail_out("Don't know how to sample model");
         exit(1);
