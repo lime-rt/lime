@@ -26,7 +26,11 @@ velocityspline2(double x[3], double dx[3], double ds, double binv, double deltav
     v=deltav+veloproject(dx,vel);
     val=fabs(v)*binv;
     if(val <=  2500.){
-      *vfac+= exp(-(val*val));
+#ifdef FASTEXP
+      *vfac+= FastExp(val*val);
+#else
+      *vfac+=   exp(-(val*val));
+#endif
     }
   }
   *vfac=*vfac/steps;
@@ -102,7 +106,11 @@ traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molD
       if(par->polarization){
         for(ichan=0;ichan<img[im].nchan;ichan++){
           sourceFunc_pol(snu_pol,&dtau,ds,m,vfac,g,posn,0,0,img[im].theta);
-          ray.intensity[ichan]+=exp(-ray.tau[ichan])*(1.-exp(-dtau))*snu_pol[ichan];
+#ifdef FASTEXP
+          ray.intensity[ichan]+=FastExp(ray.tau[ichan])*(1.-exp(-dtau))*snu_pol[ichan];
+#else
+          ray.intensity[ichan]+=   exp(-ray.tau[ichan])*(1.-exp(-dtau))*snu_pol[ichan];
+#endif
           ray.tau[ichan]+=dtau;
         }
       } else {
@@ -135,7 +143,11 @@ traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molD
 //???          if(dtau < -30) dtau = -30; // as in photon()?
           calcSourceFn(dtau, par, &remnantSnu, &expDTau);
           remnantSnu *= jnu*m[0].norminv*ds;
-          ray.intensity[ichan]+=exp(-ray.tau[ichan])*remnantSnu;
+#ifdef FASTEXP
+          ray.intensity[ichan]+=FastExp(ray.tau[ichan])*remnantSnu;
+#else
+          ray.intensity[ichan]+=   exp(-ray.tau[ichan])*remnantSnu;
+#endif
           ray.tau[ichan]+=dtau;
         }
       }
@@ -147,9 +159,15 @@ traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molD
     } while(col < 2*zp);
 
     /* add or subtract cmb */
+#ifdef FASTEXP
+    for(ichan=0;ichan<img[im].nchan;ichan++){
+      ray.intensity[ichan]+=(FastExp(ray.tau[ichan])-1.)*m[0].local_cmb[tmptrans];
+    }
+#else
     for(ichan=0;ichan<img[im].nchan;ichan++){
       ray.intensity[ichan]+=(exp(-ray.tau[ichan])-1.)*m[0].local_cmb[tmptrans];
     }
+#endif
   }
 }
 

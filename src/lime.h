@@ -65,6 +65,8 @@
 #define blendmask		1.e4
 #define MAX_NSPECIES            100
 #define N_RAN_PER_SEGMENT       3
+#define FAST_EXP_MAX_TAYLOR	3
+#define FAST_EXP_NUM_BITS	8
 
 
 /* input parameters */
@@ -227,6 +229,11 @@ void   	velocityspline2(double *, double *, double, double, double, double*);
 double 	veloproject(double *, double *);
 void	writefits(int, inputPars *, molData *, image *);
 void    write_VTK_unstructured_Points(inputPars *, struct grid *);
+int	factorial(const int n);
+double	taylor(const int maxOrder, const float x);
+void	calcFastExpRange(const int maxTaylorOrder, const int maxNumBitsPerMantField, int *numMantissaFields, int *lowestExponent, int *numExponentsUsed);
+void	calcTableEntries(const int maxTaylorOrder, const int maxNumBitsPerMantField);
+inline double	FastExp(const float negarg);
 
 
 /* Curses functions */
