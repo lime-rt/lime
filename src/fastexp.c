@@ -138,6 +138,8 @@ See description of the lookup algorithm in function calcFastExpRange().
     int m;
   } floPo;
 
+  // Should raise an exception here #ifndef FASTEXP?
+
   calcFastExpRange(maxTaylorOrder, maxNumBitsPerMantField, &numMantissaFields, &lowestExponent, &numExponentsUsed);
 
   exponentOffset = ieee754ExpOffset + lowestExponent;
@@ -201,6 +203,8 @@ Should be equal to 2^B, where B is the maximum number of bits in a mantissa mask
     int m;
   } floPo;
   double result;
+
+  // Should raise an exception here #ifndef FASTEXP?
 
   if (negarg<0.0) return exp(-negarg);
   if (negarg==0.0) return 1.0;
