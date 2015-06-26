@@ -36,7 +36,7 @@ int main () {
 
   parseInput(&par,&img,&m);
 
-  if(par.pregrid)
+  if(par.doPregrid)
     {
       gridAlloc(&par,&g);
       predefinedGrid(&par,g);

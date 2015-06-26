@@ -14,6 +14,7 @@
 #include "lime.h"
 #include <gsl/gsl_sort.h>
 #include <gsl/gsl_statistics.h>
+#include <float.h>
 
 
 void
@@ -21,6 +22,7 @@ parseInput(inputPars *par, image **img, molData **m){
   FILE *fp;
   int i,id;
   double BB[3];
+  double cosPhi,sinPhi,cosTheta,sinTheta;
 
   /* Set default values */
   par->dust  	    = NULL;
@@ -28,17 +30,18 @@ parseInput(inputPars *par, image **img, molData **m){
   par->outputfile   = NULL;
   par->binoutputfile= NULL;
   par->gridfile     = NULL;
-  par->pregrid	    = NULL;
+  par->pregrid      = NULL;
   par->restart      = NULL;
 
   par->tcmb = 2.728;
   par->lte_only=0;
-  par->sampling=0;
+  par->sampling=2;
   par->blend=0;
   par->antialias=1;
   par->polarization=0;
   par->pIntensity=0;
   par->sinkPoints=0;
+  par->doPregrid=0;
 
   /* Allocate space for output fits images */
   (*img)=malloc(sizeof(image)*MAX_NSPECIES);
@@ -97,6 +100,23 @@ parseInput(inputPars *par, image **img, molData **m){
   par->ncell=par->pIntensity+par->sinkPoints;
   par->radiusSqu=par->radius*par->radius;
   par->minScaleSqu=par->minScale*par->minScale;
+  if(par->pregrid!=NULL) par->doPregrid=1;
+
+  /*
+Now we need to calculate the cutoff value used in calcSourceFn(). The issue is to decide between
+
+  y = (1 - exp[-x])/x
+
+or the approximation using the Taylor expansion of exp(-x), which to 3rd order is
+
+  y ~ 1 - x/2 + x^2/6.
+
+The cutoff will be the value of abs(x) for which the error in the exact expression equals the next unused Taylor term, which is x^3/24. This error can be shown to be given for small |x| by epsilon/|x|, where epsilon is the floating-point precision of the computer. Hence the cutoff evaluates to
+
+  |x|_cutoff = (24*epsilon)^{1/4}.
+
+  */
+  par->taylorCutoff = pow(24.*DBL_EPSILON, 0.25);
 
   if(par->dust != NULL){
     if((fp=fopen(par->dust, "r"))==NULL){
@@ -107,10 +127,6 @@ parseInput(inputPars *par, image **img, molData **m){
       fclose(fp);
     }
   }
-
-
-
-
 
   /* Allocate pixel space and parse image information */
   for(i=0;i<par->nImages;i++){
@@ -152,6 +168,36 @@ parseInput(inputPars *par, image **img, molData **m){
       (*img)[i].pixel[id].intense = malloc(sizeof(double)*(*img)[i].nchan);
       (*img)[i].pixel[id].tau = malloc(sizeof(double)*(*img)[i].nchan);
     }
+
+    /* Rotation matrix
+
+            |1          0           0   |
+     R_x(a)=|0        cos(a)      sin(a)|
+            |0       -sin(a)      cos(a)|
+
+            |cos(b)     0       -sin(b)|
+     R_y(b)=|  0        1          0   |
+            |sin(b)     0        cos(b)|
+
+            |      cos(b)       0          -sin(b)|
+     Rot =  |sin(a)sin(b)     cos(a)  sin(a)cos(b)|
+            |cos(a)sin(b)    -sin(a)  cos(a)cos(b)|
+
+    */
+
+    cosPhi   = cos((*img)[i].phi);
+    sinPhi   = sin((*img)[i].phi);
+    cosTheta = cos((*img)[i].theta);
+    sinTheta = sin((*img)[i].theta);
+    (*img)[i].rotMat[0][0] =           cosPhi;
+    (*img)[i].rotMat[0][1] =  0.0;
+    (*img)[i].rotMat[0][2] =          -sinPhi;
+    (*img)[i].rotMat[1][0] =  sinTheta*sinPhi;
+    (*img)[i].rotMat[1][1] =  cosTheta;
+    (*img)[i].rotMat[1][2] =  sinTheta*cosPhi;
+    (*img)[i].rotMat[2][0] =  cosTheta*sinPhi;
+    (*img)[i].rotMat[2][1] = -sinTheta;
+    (*img)[i].rotMat[2][2] =  cosTheta*cosPhi;
   }
 
   /* Allocate moldata array */

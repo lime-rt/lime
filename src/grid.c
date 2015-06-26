@@ -22,7 +22,7 @@ gridAlloc(inputPars *par, struct grid **g){
   *g=malloc(sizeof(struct grid)*(par->pIntensity+par->sinkPoints));
   memset(*g, 0., sizeof(struct grid) * (par->pIntensity+par->sinkPoints));
 
-  if(par->pregrid || par->restart) par->collPart=1;
+  if(par->doPregrid || par->restart) par->collPart=1;
   else{
     for(i=0;i<99;i++) temp[i]=-1;
     density(AU,AU,AU,temp);
@@ -162,7 +162,7 @@ qhull(inputPars *par, struct grid *g){
   facetT *facet;
   vertexT *vertex,**vertexp;
   coordT *pt_array;
-  int simplex[DIM];
+  int simplex[DIM+1];
   int curlong, totlong;
 
   pt_array=malloc(DIM*sizeof(coordT)*par->ncell);
@@ -183,7 +183,7 @@ qhull(inputPars *par, struct grid *g){
         {
           free( g[id].neigh );
         }
-      g[id].neigh=malloc(sizeof(struct grid)*g[id].numNeigh);
+      g[id].neigh=malloc(sizeof(struct grid *)*g[id].numNeigh);
       for(k=0;k<g[id].numNeigh;k++) {
         g[id].neigh[k]=NULL;
       }
@@ -246,7 +246,6 @@ distCalc(inputPars *par, struct grid *g){
     memset(g[i].ds, 0., sizeof(double) * g[i].numNeigh);
     for(k=0;k<g[i].numNeigh;k++){
       for(l=0;l<3;l++) g[i].dir[k].x[l] = g[i].neigh[k]->x[l] - g[i].x[l];
-      g[i].ds[k]=sqrt(pow(g[i].dir[k].x[0],2)+pow(g[i].dir[k].x[1],2)+pow(g[i].dir[k].x[2],2));
       g[i].ds[k]=sqrt(g[i].dir[k].x[0]*g[i].dir[k].x[0]+g[i].dir[k].x[1]*g[i].dir[k].x[1]+g[i].dir[k].x[2]*g[i].dir[k].x[2]);
       for(l=0;l<3;l++) g[i].dir[k].xn[l] = g[i].dir[k].x[l]/g[i].ds[k];
     }
@@ -396,8 +395,8 @@ getArea(inputPars *par, struct grid *g, const gsl_rng *ran){
       b=j;
       for(j=1;j<g[i].numNeigh;j++){
         angle[j]=( x*g[i].dir[j].xn[0]
-                   +y*g[i].dir[j].xn[1]
-                   +z*g[i].dir[j].xn[2]);
+                  +y*g[i].dir[j].xn[1]
+                  +z*g[i].dir[j].xn[2]);
         if(angle[j]>best){
           best=angle[j];
           b=j;
@@ -558,6 +557,19 @@ buildGrid(inputPars *par, struct grid *g){
         y=(2*gsl_rng_uniform(ran)-1)*par->radius;
         if(DIM==3) z=(2*gsl_rng_uniform(ran)-1)*par->radius;
         else z=0;
+      } else if(par->sampling==2){
+        r=pow(10,logmin+gsl_rng_uniform(ran)*(lograd-logmin));
+        theta=2.*PI*gsl_rng_uniform(ran);
+        if(DIM==3) {
+          z=2*gsl_rng_uniform(ran)-1.;
+          semiradius=r*sqrt(1.-z*z);
+          z*=r;
+        } else {
+          z=0.;
+          semiradius=r;
+        }
+        x=semiradius*cos(theta);
+        y=semiradius*sin(theta);
       } else {
         if(!silent) bail_out("Don't know how to sample model");
         exit(1);

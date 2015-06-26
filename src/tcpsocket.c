@@ -60,55 +60,52 @@ openSocket(inputPars *par, int id){
   remote = (struct sockaddr_in *)malloc(sizeof(struct sockaddr_in *));
   remote->sin_family = AF_INET;
   tmpres = inet_pton(AF_INET, ip, (void *)(&(remote->sin_addr.s_addr)));
-  if( tmpres < 0)
-    {
-      if(!silent) bail_out("Can't set remote->sin_addr.s_addr");
-      exit(1);
-    }else if(tmpres == 0)
-      {
-        if(!silent) bail_out("Not a valid IP address");
-        exit(1);
-      }
-    remote->sin_port = htons(80);
+  if( tmpres < 0){
+    if(!silent) bail_out("Can't set remote->sin_addr.s_addr");
+    exit(1);
+  }else if(tmpres == 0){
+    if(!silent) bail_out("Not a valid IP address");
+    exit(1);
+  }
+  remote->sin_port = htons(80);
 
-    if(connect(sock, (struct sockaddr *)remote, sizeof(struct sockaddr)) < 0){
-      if(!silent) bail_out("Could not connect");
-      exit(1);
-    }
+  if(connect(sock, (struct sockaddr *)remote, sizeof(struct sockaddr)) < 0){
+    if(!silent) bail_out("Could not connect");
+    exit(1);
+  }
 
-    // -5 is to consider the %s %s %s in tpl and the ending \0
-    get = (char *)malloc(strlen(host)+strlen(page)+strlen(USERAGENT)+strlen(tpl)-5);
-    sprintf(get, tpl, page, host, USERAGENT);
+  // -5 is to consider the %s %s %s in tpl and the ending \0
+  get = (char *)malloc(strlen(host)+strlen(page)+strlen(USERAGENT)+strlen(tpl)-5);
+  sprintf(get, tpl, page, host, USERAGENT);
 
-    //fprintf(stderr, "Query is:\n<<START>>\n%s<<END>>\n", get);
+  //fprintf(stderr, "Query is:\n<<START>>\n%s<<END>>\n", get);
 
-    //Send the query to the server
-    int sent = 0;
-    while(sent < strlen(get))
-      {
-        tmpres = send(sock, get+sent, strlen(get)-sent, 0);
-        if(tmpres == -1){
-          perror("Can't send query");
-          exit(1);
-        }
-        sent += tmpres;
-      }
-
-    memset(buf, 0, sizeof(buf));
-    if((fp=fopen(par->moldatfile[id], "w"))==NULL) {
-      if(!silent) bail_out("Failed to write moldata!");
+  //Send the query to the server
+  int sent = 0;
+  while(sent < strlen(get)){
+    tmpres = send(sock, get+sent, strlen(get)-sent, 0);
+    if(tmpres == -1){
+      perror("Can't send query");
       exit(1);
     }
+    sent += tmpres;
+  }
 
-    int flag=0;
-    while((tmpres = recv(sock, buf, 1, 0)) > 0){
-      if(strstr(buf,"!")) flag=1;
-      if(flag) fprintf(fp,"%s",buf);
-    }
+  memset(buf, 0, sizeof(buf));
+  if((fp=fopen(par->moldatfile[id], "w"))==NULL) {
+    if(!silent) bail_out("Failed to write moldata!");
+    exit(1);
+  }
 
-    free(get);
-    free(t);
-    free(remote);
-    close(sock);
-    fclose(fp);
+  int flag=0;
+  while((tmpres = recv(sock, buf, 1, 0)) > 0){
+    if(strstr(buf,"!")) flag=1;
+    if(flag) fprintf(fp,"%s",buf);
+  }
+
+  free(get);
+  free(t);
+  free(remote);
+  close(sock);
+  fclose(fp);
 }

@@ -67,9 +67,6 @@ report(int i, inputPars *par, struct grid *g){
     gsl_histogram_set_ranges_uniform (h, par->minScale, par->radius);
     gsl_histogram_set_ranges_uniform (f, min_l, max_l);
 
-		gsl_histogram_set_ranges_uniform (h, par->minScale, par->radius); 
-		gsl_histogram_set_ranges_uniform (f, min_l, max_l); 
-		
 		for(j=0;j<par->ncell-par->sinkPoints;j++) {
 			gsl_histogram_increment (h, sqrt(g[j].x[0]*g[j].x[0]+g[j].x[1]*g[j].x[1]+g[j].x[2]*g[j].x[2])); 
       for(k=0;k<g[j].numNeigh;k++){
