@@ -15,6 +15,7 @@ function usage {
     echo "Options:"
     echo "   -V     Display version information"
     echo "   -h     Display this message"
+    echo "   -f     Use fast exponential computation"
     echo ""
     echo "See <http://lime.readthedocs.org> for more information."
     echo "Report bugs to <http://github.com/lime-rt/lime/issues>."
@@ -24,7 +25,8 @@ function tip {
     echo "Try 'lime -h' for more information."
 }
 
-options="Vh"
+options="Vhf"
+cpp_flags=""
 
 while getopts ${options} opt; do
     case $opt in
@@ -35,6 +37,10 @@ while getopts ${options} opt; do
 	h)
 	    usage
 	    exit 0
+	    ;;
+	f)
+	    cpp_flags+="-DFASTEXP"
+	    shift $((OPTIND-1))
 	    ;;
 	\?)
 	    tip
@@ -50,7 +56,7 @@ fi
 
 export WORKDIR=$PWD
 cd $PATHTOLIME
-make MODELS=$WORKDIR/$1 TARGET=$WORKDIR/lime_$$.x
+make EXTRACPPFLAGS="${cpp_flags}" MODELS=$WORKDIR/$1 TARGET=$WORKDIR/lime_$$.x
 make clean
 cd $WORKDIR
 ./lime_$$.x

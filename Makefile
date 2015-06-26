@@ -24,7 +24,8 @@ CPPFLAGS	= -I${PREFIX}/include \
 		  -I${PREFIX}/src \
 		  -I${HOME}/include \
 		  -I/opt/local/include \
-		  -I/sw//include
+		  -I/sw//include \
+	          ${EXTRACPPFLAGS}
 
 ifdef OLD_QHULL
 	QHULL   = qhull
