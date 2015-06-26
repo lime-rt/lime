@@ -124,7 +124,14 @@ double veloproject(double dx[3], double *vel){
 
 
 double gaussline(double v, double oneOnSigma){
-  return exp(-v*v*oneOnSigma*oneOnSigma);
+  double val;
+
+  val = v*v*oneOnSigma*oneOnSigma;
+#ifdef FASTEXP
+  return FastExp(val);
+#else
+  return exp(-val);
+#endif
 }
 
 
@@ -142,6 +149,14 @@ void calcSourceFn(double dTau, const inputPars *par, double *remnantSnu, double 
   exp(-dTau) by its Taylor expansion to 3rd order.
   */
 
+#ifdef FASTEXP
+  *expDTau = FastExp(dTau);
+  if (fabs(dTau)<par->taylorCutoff){
+    *remnantSnu = 1. - dTau*(1. - dTau/3.)/2.;
+  } else {
+    *remnantSnu = (1.-(*expDTau))/dTau;
+  }
+#else
   if (fabs(dTau)<par->taylorCutoff){
     *remnantSnu = 1. - dTau*(1. - dTau/3.)/2.;
     *expDTau = 1. - dTau*(*remnantSnu);
@@ -149,6 +164,7 @@ void calcSourceFn(double dTau, const inputPars *par, double *remnantSnu, double 
     *expDTau = exp(-dTau);
     *remnantSnu = (1.-(*expDTau))/dTau;
   }
+#endif
 }
 
 
