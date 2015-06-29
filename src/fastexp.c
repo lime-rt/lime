@@ -1,4 +1,3 @@
-#include <ieee754.h> // This is not actually used, but the rare event of a compilation failure because this header file is missing means the floats probably don't adhere to the IEEE 754 standard!
 #include "lime.h"
 
 
