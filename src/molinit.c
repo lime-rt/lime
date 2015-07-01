@@ -148,10 +148,6 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
   m[i].freq		= malloc(sizeof(double)*m[i].nline);
   m[i].beinstu	= malloc(sizeof(double)*m[i].nline);
   m[i].beinstl	= malloc(sizeof(double)*m[i].nline);
-  m[i].phot     = malloc(sizeof(double)*m->nline*max_phot);
-  m[i].ds       = malloc(sizeof(double)*max_phot);
-  m[i].vfac     = malloc(sizeof(double)*max_phot);
-  m[i].jbar     = malloc(sizeof(double)*m[i].nline);
 
   /* Read transitions, Einstein A, and frequencies */
   for(iline=0;iline<m[i].nline;iline++){

@@ -17,7 +17,7 @@
 
 
 void
-stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par){
+stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par, molDataPrivate *mp, double *halfFirstDs){
   int t,s,iter;
   double *opop, *oopop;
   double diff;
@@ -44,8 +44,8 @@ stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par){
   iter=0;
 
   while((diff>TOL && iter<MAXITER) || iter<5){
-    getjbar(id,m,g,par);
-    getmatrix(id,matrix,m,g,ispec);
+    getjbar(id,m,g,par,mp,halfFirstDs);
+    getmatrix(id,matrix,m,g,ispec,mp);
     for(s=0;s<m[ispec].nlev;s++){
       for(t=0;t<m[ispec].nlev-1;t++){
         gsl_matrix_set(reduc,t,s,gsl_matrix_get(matrix,t,s));
@@ -86,7 +86,7 @@ stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par){
 
 
 void
-getmatrix(int id, gsl_matrix *matrix, molData *m, struct grid *g, int ispec){
+getmatrix(int id, gsl_matrix *matrix, molData *m, struct grid *g, int ispec, molDataPrivate *mp){
   int p,t,k,l,ipart;
   struct getmatrix {
     double *ctot;
@@ -115,10 +115,10 @@ getmatrix(int id, gsl_matrix *matrix, molData *m, struct grid *g, int ispec){
   for(t=0;t<m[ispec].nline;t++){
     k=m[ispec].lau[t];
     l=m[ispec].lal[t];
-    gsl_matrix_set(matrix, k, k, gsl_matrix_get(matrix, k, k)+m[ispec].beinstu[t]*m[ispec].jbar[t]+m[ispec].aeinst[t]);
-    gsl_matrix_set(matrix, l, l, gsl_matrix_get(matrix, l, l)+m[ispec].beinstl[t]*m[ispec].jbar[t]);
-    gsl_matrix_set(matrix, k, l, gsl_matrix_get(matrix, k, l)-m[ispec].beinstl[t]*m[ispec].jbar[t]);
-    gsl_matrix_set(matrix, l, k, gsl_matrix_get(matrix, l, k)-m[ispec].beinstu[t]*m[ispec].jbar[t]-m[ispec].aeinst[t]);
+    gsl_matrix_set(matrix, k, k, gsl_matrix_get(matrix, k, k)+m[ispec].beinstu[t]*mp[ispec].jbar[t]+m[ispec].aeinst[t]);
+    gsl_matrix_set(matrix, l, l, gsl_matrix_get(matrix, l, l)+m[ispec].beinstl[t]*mp[ispec].jbar[t]);
+    gsl_matrix_set(matrix, k, l, gsl_matrix_get(matrix, k, l)-m[ispec].beinstl[t]*mp[ispec].jbar[t]);
+    gsl_matrix_set(matrix, l, k, gsl_matrix_get(matrix, l, k)-m[ispec].beinstu[t]*mp[ispec].jbar[t]-m[ispec].aeinst[t]);
   }
 
   /* Populate matrix with collisional transitions */
