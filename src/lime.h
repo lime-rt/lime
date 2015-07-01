@@ -83,14 +83,18 @@ typedef struct {
   char **moldatfile;
 } inputPars;
 
-/* Molecular data and radiation field */
+/* Molecular data: shared attributes */
 typedef struct {
   int nlev,nline,*ntrans,npart;
   int *lal,*lau,*lcl,*lcu;
   double *aeinst,*freq,*beinstu,*beinstl,*up,*down,*eterm,*gstat;
-  double *jbar,norm,norminv,*cmb,*local_cmb;
-  double *phot, *ds, *vfac;
+  double norm,norminv,*cmb,*local_cmb;
 } molData;
+
+/* Molecular data: thread-safe private attributes */
+typedef struct {
+  double *jbar,*phot,*vfac;
+} molDataPrivate;
 
 typedef struct {
   double *intensity;
@@ -189,9 +193,9 @@ void   	freeGrid(const inputPars * par, const molData* m, struct grid * g);
 void   	freePopulation(const inputPars * par, const molData* m, struct populations * pop);
 double 	gaussline(double, double);
 void    getArea(inputPars *, struct grid *, const gsl_rng *);
-void    getjbar(int, molData *, struct grid *, inputPars *);
+void    getjbar(int, molData *, struct grid *, inputPars *,molDataPrivate *,double *);
 void    getMass(inputPars *, struct grid *, const gsl_rng *);
-void   	getmatrix(int, gsl_matrix *, molData *, struct grid *, int);
+void   	getmatrix(int, gsl_matrix *, molData *, struct grid *, int, molDataPrivate *);
 void	getclosest(double, double, double, long *, long *, double *, double *, double *);
 void	getVelosplines(inputPars *, struct grid *);
 void	getVelosplines_lin(inputPars *, struct grid *);
@@ -205,7 +209,7 @@ void	LTE(inputPars *, struct grid *, molData *);
 void   	molinit(molData *, inputPars *, struct grid *,int);
 void    openSocket(inputPars *par, int);
 void	qhull(inputPars *, struct grid *);
-void  	photon(int, struct grid *, molData *, int, const gsl_rng *,inputPars *,blend *);
+void  	photon(int, struct grid *, molData *, int, const gsl_rng *,inputPars *,blend *,molDataPrivate *,double *);
 void	parseInput(inputPars *, image **, molData **);
 double 	planckfunc(int, double, molData *, int);
 int     pointEvaluation(inputPars *,double, double, double, double);
@@ -221,7 +225,7 @@ void	sourceFunc(double *, double *, double, molData *,double,struct grid *,int,i
 void    sourceFunc_line(double *,double *,molData *, double, struct grid *, int, int,int);
 void    sourceFunc_cont(double *,double *, struct grid *, int, int,int);
 void    sourceFunc_pol(double *, double *, double, molData *, double, struct grid *, int, int, int, double);
-void   	stateq(int, struct grid *, molData *, int, inputPars *);
+void   	stateq(int, struct grid *, molData *, int, inputPars *,molDataPrivate *,double *);
 void	statistics(int, molData *, struct grid *, int *, double *, double *, int *);
 void    stokesangles(double, double, double, double, double *);
 void    traceray(rayData, int, int, inputPars *, struct grid *, molData *, image *, int, int *, int *, double);
