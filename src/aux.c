@@ -501,15 +501,19 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
       }
       halfFirstDs = malloc(sizeof(double)*max_phot);
 
+      gsl_rng *localran = gsl_rng_alloc(gsl_rng_ranlxs2);
+      gsl_rng_set(localran, (int)gsl_rng_uniform(ran)*1e6);
+
       for(id=0;id<par->pIntensity;id++){
         if(!silent) progressbar((double)id/par->pIntensity,10);
         if(g[id].dens[0] > 0 && g[id].t[0] > 0){
-          photon(id,g,m,0,ran,par,matrix,mp,halfFirstDs);
+          photon(id,g,m,0,localran,par,matrix,mp,halfFirstDs);
           for(ispec=0;ispec<par->nSpecies;ispec++) stateq(id,g,m,ispec,par,mp,halfFirstDs);
         }
         if(!silent) warning("");
       }
 
+      gsl_rng_free(localran);
       freeMolDataPrivate(par, mp);
       free(halfFirstDs);
 
