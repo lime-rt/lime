@@ -178,7 +178,6 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
   int ichan,px,iline,tmptrans;
   double size,minfreq,absDeltaFreq;
   double cutoff;
-  rayData ray;
 
   gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
 #ifdef TEST
@@ -214,10 +213,12 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
     }
   } else tmptrans=img[im].trans;
 
+  cutoff = par->minScale*1.0e-7;
+
+  /* Declaration of thread-private pointers */
+  rayData ray;
   ray.intensity=malloc(sizeof(double) * img[im].nchan);
   ray.tau=malloc(sizeof(double) * img[im].nchan);
-
-  cutoff = par->minScale*1.0e-7;
 
   /* Main loop through pixel grid */
   for(px=0;px<(img[im].pxls*img[im].pxls);px++){
@@ -239,11 +240,11 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
 
     if(!silent) progressbar((double)(px)/(double)(img[im].pxls*img[im].pxls-1), 13);
   }
+  free(ray.tau);
+  free(ray.intensity);
 
   img[im].trans=tmptrans;
 
-  free(ray.tau);
-  free(ray.intensity);
   free(counta);
   free(countb);
   gsl_rng_free(ran);
