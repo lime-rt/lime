@@ -217,12 +217,8 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
       (*m)[i].down = NULL;
       (*m)[i].eterm = NULL;
       (*m)[i].gstat = NULL;
-      (*m)[i].jbar = NULL;
       (*m)[i].cmb = NULL;
       (*m)[i].local_cmb = NULL;
-      (*m)[i].phot = NULL;
-      (*m)[i].ds = NULL;
-      (*m)[i].vfac = NULL;
     }
 }
 
@@ -286,10 +282,6 @@ freeInput( inputPars *par, image* img, molData* mol )
             {
               free(mol[i].gstat);
             }
-          if( mol[i].jbar != NULL )
-            {
-              free(mol[i].jbar);
-            }
           if( mol[i].cmb != NULL )
             {
               free(mol[i].cmb);
@@ -297,18 +289,6 @@ freeInput( inputPars *par, image* img, molData* mol )
           if( mol[i].local_cmb != NULL )
             {
               free(mol[i].local_cmb);
-            }
-          if( mol[i].phot != NULL )
-            {
-              free(mol[i].phot);
-            }
-          if( mol[i].ds != NULL )
-            {
-              free(mol[i].ds);
-            }
-          if( mol[i].vfac != NULL )
-            {
-              free(mol[i].vfac);
             }
         }
       free(mol);
@@ -328,6 +308,25 @@ freeInput( inputPars *par, image* img, molData* mol )
     {
       free(par->moldatfile);
     }
+}
+
+void
+freeMolDataPrivate(inputPars *par, molDataPrivate *mol){
+  int i;
+  if (mol!= 0){
+    for (i=0;i<par->nSpecies;i++){
+      if (mol[i].jbar != NULL){
+        free(mol[i].jbar);
+      }
+      if (mol[i].phot != NULL){
+        free(mol[i].phot);
+      }
+      if (mol[i].vfac != NULL){
+        free(mol[i].vfac);
+      }
+    }
+    free(mol);
+  }
 }
 
 
@@ -427,7 +426,7 @@ lineBlend(molData *m, inputPars *par, blend **matrix){
 
 void
 levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
-  int id,conv=0,iter,ilev,prog=0,ispec,c=0,n;
+  int id,conv=0,iter,ilev,prog=0,ispec,c=0,n,i;
   double percent=0.,*median,result1=0,result2=0,snr,delta_pop;
   blend *matrix;
   struct statistics { double *pop, *ave, *sigma; } *stat;
@@ -491,14 +490,28 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
         }
       }
 
+      /* Declare and allocate thread-private variables */
+      molDataPrivate *mp;
+      double *halfFirstDs;
+      mp=malloc(sizeof(molDataPrivate)*par->nSpecies);
+      for (i=0;i<par->nSpecies;i++){
+        mp[i].phot = malloc(sizeof(double)*m[i].nline*max_phot);
+        mp[i].vfac = malloc(sizeof(double)*           max_phot);
+        mp[i].jbar = malloc(sizeof(double)*m[i].nline);
+      }
+      halfFirstDs = malloc(sizeof(double)*max_phot);
+
       for(id=0;id<par->pIntensity;id++){
         if(!silent) progressbar((double)id/par->pIntensity,10);
         if(g[id].dens[0] > 0 && g[id].t[0] > 0){
-          photon(id,g,m,0,ran,par,matrix);
-          for(ispec=0;ispec<par->nSpecies;ispec++) stateq(id,g,m,ispec,par);
+          photon(id,g,m,0,ran,par,matrix,mp,halfFirstDs);
+          for(ispec=0;ispec<par->nSpecies;ispec++) stateq(id,g,m,ispec,par,mp,halfFirstDs);
         }
         if(!silent) warning("");
       }
+
+      freeMolDataPrivate(par, mp);
+      free(halfFirstDs);
 
       for(id=0;id<par->ncell && !g[id].sink;id++){
         snr=0;
