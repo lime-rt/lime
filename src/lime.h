@@ -221,7 +221,7 @@ void	sourceFunc(double *, double *, double, molData *,double,struct grid *,int,i
 void    sourceFunc_line(double *,double *,molData *, double, struct grid *, int, int,int);
 void    sourceFunc_cont(double *,double *, struct grid *, int, int,int);
 void    sourceFunc_pol(double *, double *, double, molData *, double, struct grid *, int, int, int, double);
-void   	stateq(int, struct grid *, molData *, double *, int, inputPars *);
+void   	stateq(int, struct grid *, molData *, int, inputPars *);
 void	statistics(int, molData *, struct grid *, int *, double *, double *, int *);
 void    stokesangles(double, double, double, double, double *);
 void    traceray(rayData, int, int, inputPars *, struct grid *, molData *, image *, int, int *, int *, double);

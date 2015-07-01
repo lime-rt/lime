@@ -428,7 +428,7 @@ lineBlend(molData *m, inputPars *par, blend **matrix){
 void
 levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
   int id,conv=0,iter,ilev,prog=0,ispec,c=0,n;
-  double percent=0.,pstate,*median,result1=0,result2=0,snr,delta_pop;
+  double percent=0.,*median,result1=0,result2=0,snr,delta_pop;
   blend *matrix;
   struct statistics { double *pop, *ave, *sigma; } *stat;
 
@@ -483,7 +483,6 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
   if(par->lte_only==0){
     do{
       if(!silent) progressbar2(prog++, 0, result1, result2);
-      pstate=0.;
 
       for(id=0;id<par->ncell && !g[id].sink;id++){
         if(!silent) progressbar((double)id/par->pIntensity,10);
@@ -493,7 +492,7 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
         }
         if(g[id].dens[0] > 0 && g[id].t[0] > 0){
           photon(id,g,m,0,ran,par,matrix);
-          for(ispec=0;ispec<par->nSpecies;ispec++) stateq(id,g,m,&pstate,ispec,par);
+          for(ispec=0;ispec<par->nSpecies;ispec++) stateq(id,g,m,ispec,par);
         }
         if(!silent) warning("");
 
