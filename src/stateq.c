@@ -17,7 +17,7 @@
 
 
 void
-stateq(int id, struct grid *g, molData *m, double *pstate, int ispec, inputPars *par){
+stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par){
   int t,s,iter;
   double *opop, *oopop;
   double diff;
@@ -72,7 +72,6 @@ stateq(int id, struct grid *g, molData *m, double *pstate, int ispec, inputPars 
     }
     iter++;
   }
-  if(diff>TOL) *pstate=diff;
   gsl_matrix_free(matrix);
   gsl_matrix_free(reduc);
   gsl_matrix_free(svv);
