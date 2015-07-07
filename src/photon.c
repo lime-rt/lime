@@ -297,6 +297,7 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
       }
     }
   }
+  free(expTau);
   free(tau);
   free(counta);
   free(countb);
