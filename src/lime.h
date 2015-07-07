@@ -34,8 +34,9 @@
 #include <fitsio.h>
 #endif
 
-#define silent 0
-#define DIM 3
+#define silent		0
+#define DIM		3
+#define VERSION		"1.5"
 
 /* Physical constants */
 #define PI			3.14159265358979323846
