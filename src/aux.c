@@ -369,8 +369,8 @@ lineCount(int n,molData *m,int **counta,int **countb,int *nlinetot){
   *nlinetot=0;
   for(ispec=0;ispec<n;ispec++) *nlinetot+=m[ispec].nline;
   if(*nlinetot > 0){
-  *counta=malloc(sizeof(int)* *nlinetot);
-  *countb=malloc(sizeof(int)* *nlinetot);
+  *counta=malloc(sizeof(*counta)* *nlinetot);
+  *countb=malloc(sizeof(*countb)* *nlinetot);
   } else {
     if(!silent) bail_out("Error: Line count finds no lines");
     exit(0);
@@ -499,7 +499,7 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
         mp[i].vfac = malloc(sizeof(double)*           max_phot);
         mp[i].jbar = malloc(sizeof(double)*m[i].nline);
       }
-      halfFirstDs = malloc(sizeof(double)*max_phot);
+      halfFirstDs = malloc(sizeof(*halfFirstDs)*max_phot);
 
       gsl_rng *localran = gsl_rng_alloc(gsl_rng_ranlxs2);
       gsl_rng_set(localran, (int)gsl_rng_uniform(ran)*1e6);
@@ -543,7 +543,7 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
         if(snr <= 3 && g[id].conv==2) g[id].conv=1;
       }
 
-      median=malloc(sizeof(double)*gsl_max(c,1));
+      median=malloc(sizeof(*median)*gsl_max(c,1));
       c=0;
       for(id=0;id<par->pIntensity;id++){
         for(ilev=0;ilev<m[0].nlev;ilev++){
