@@ -44,7 +44,7 @@ endif
 
 TARGET  = lime.x 
 CC		= gcc
-SRCS    = src/aux.c src/curses.c src/grid.c src/LTEsolution.c   \
+SRCS    = src/aux.c src/messages.c src/grid.c src/LTEsolution.c   \
 		  src/main.c src/molinit.c src/photon.c src/popsin.c    \
 		  src/popsout.c src/predefgrid.c src/ratranInput.c      \
           src/raytrace.c src/smooth.c src/sourcefunc.c          \
@@ -53,7 +53,7 @@ SRCS    = src/aux.c src/curses.c src/grid.c src/LTEsolution.c   \
 		  src/velospline.c src/getclosest.c  \
 		  src/tcpsocket.c src/defaults.c src/fastexp.c
 MODELS  = model.c
-OBJS    = src/aux.o src/curses.o src/grid.o src/LTEsolution.o   \
+OBJS    = src/aux.o src/messages.o src/grid.o src/LTEsolution.o   \
 		  src/main.o src/molinit.o src/photon.o src/popsin.o    \
 		  src/popsout.o src/predefgrid.o src/raytrace.o         \
 		  src/ratranInput.o src/smooth.o src/sourcefunc.o       \
@@ -63,7 +63,7 @@ OBJS    = src/aux.o src/curses.o src/grid.o src/LTEsolution.o   \
 		  src/tcpsocket.o src/defaults.o src/fastexp.o
 MODELO 	= src/model.o
 
-#CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing -DTEST -DFASTEXP
+#CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing -DTEST -DFASTEXP -DDEBUG
 CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing
 LDFLAGS = -lgsl -lgslcblas -l${QHULL} -lcfitsio -lncurses -lm 
 
