@@ -43,6 +43,7 @@ kappa(molData *m, struct grid *g, inputPars *par, int s){
       kaptab=malloc(sizeof(*kaptab)*i);
     } else {
       if(!silent) bail_out("No opacities read");
+      exit(1);
     }
     for(k=0;k<i;k++){
       fscanf(fp,"%lf %lf\n", &lamtab[k], &kaptab[k]);
