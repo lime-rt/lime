@@ -17,7 +17,7 @@
 
 
 void
-stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par, molDataPrivate *mp, double *halfFirstDs){
+stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par, gridPointData *mp, double *halfFirstDs){
   int t,s,iter;
   double *opop, *oopop;
   double diff;
@@ -86,7 +86,7 @@ stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par, molDataPri
 
 
 void
-getmatrix(int id, gsl_matrix *matrix, molData *m, struct grid *g, int ispec, molDataPrivate *mp){
+getmatrix(int id, gsl_matrix *matrix, molData *m, struct grid *g, int ispec, gridPointData *mp){
   int p,t,k,l,ipart;
   struct getmatrix {
     double *ctot;
