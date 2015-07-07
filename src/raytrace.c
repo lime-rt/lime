@@ -175,16 +175,25 @@ traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molD
 void
 raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
   int *counta, *countb,nlinetot,aa;
-  int ichan,px,iline,tmptrans;
+  int ichan,px,iline,tmptrans,i,threadI;
   double size,minfreq,absDeltaFreq;
   double cutoff;
+  const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
 
-  gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
+  gsl_rng *ran = gsl_rng_alloc(ranNumGenType);	/* Random number generator */
 #ifdef TEST
   gsl_rng_set(ran,178490);
 #else
   gsl_rng_set(ran,time(0));
 #endif
+
+  gsl_rng **threadRans;
+  threadRans = malloc(sizeof(gsl_rng *)*par->nThreads);
+
+  for (i=0;i<par->nThreads;i++){
+    threadRans[i] = gsl_rng_alloc(ranNumGenType);
+    gsl_rng_set(threadRans[i],(int)gsl_rng_uniform(ran)*1e6);
+  }
 
   size=img[im].distance*img[im].imgres;
 
@@ -215,13 +224,12 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
 
   cutoff = par->minScale*1.0e-7;
 
+  threadI = omp_get_thread_num();
+
   /* Declaration of thread-private pointers */
   rayData ray;
   ray.intensity=malloc(sizeof(double) * img[im].nchan);
   ray.tau=malloc(sizeof(double) * img[im].nchan);
-
-  gsl_rng *localran = gsl_rng_alloc(gsl_rng_ranlxs2);
-  gsl_rng_set(localran, (int)gsl_rng_uniform(ran)*1e6);
 
   /* Main loop through pixel grid */
   for(px=0;px<(img[im].pxls*img[im].pxls);px++){
@@ -230,8 +238,8 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
       img[im].pixel[px].tau[ichan]=0.0;
     }
     for(aa=0;aa<par->antialias;aa++){
-      ray.x = size*(gsl_rng_uniform(localran)+px%img[im].pxls)-size*img[im].pxls/2.;
-      ray.y = size*(gsl_rng_uniform(localran)+px/img[im].pxls)-size*img[im].pxls/2.;
+      ray.x = size*(gsl_rng_uniform(threadRans[threadI])+px%img[im].pxls)-size*img[im].pxls/2.;
+      ray.y = size*(gsl_rng_uniform(threadRans[threadI])+px/img[im].pxls)-size*img[im].pxls/2.;
 
       traceray(ray, tmptrans, im, par, g, m, img, nlinetot, counta, countb, cutoff);
 
@@ -243,7 +251,6 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
 
     if(!silent) progressbar((double)(px)/(double)(img[im].pxls*img[im].pxls-1), 13);
   }
-  gsl_rng_free(localran);
   free(ray.tau);
   free(ray.intensity);
 
@@ -251,6 +258,10 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
 
   free(counta);
   free(countb);
+  for (i=0;i<par->nThreads;i++){
+    gsl_rng_free(threadRans[i]);
+  }
+  free(threadRans);
   gsl_rng_free(ran);
 }
 
