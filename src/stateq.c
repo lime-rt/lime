@@ -65,7 +65,12 @@ stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par, gridPointD
       gsl_vector_set(newpop,t,gsl_max(gsl_vector_get(newpop,t),1e-30));
       oopop[t]=opop[t];
       opop[t]=g[id].mol[ispec].pops[t];
-      g[id].mol[ispec].pops[t]=gsl_vector_get(newpop,t);
+
+#pragma omp critical
+      {
+        g[id].mol[ispec].pops[t]=gsl_vector_get(newpop,t);
+      }
+
       if(gsl_min(g[id].mol[ispec].pops[t],gsl_min(opop[t],oopop[t]))>minpop){
         diff=gsl_max(fabs(g[id].mol[ispec].pops[t]-opop[t])/g[id].mol[ispec].pops[t],gsl_max(fabs(g[id].mol[ispec].pops[t]-oopop[t])/g[id].mol[ispec].pops[t],diff));
       }

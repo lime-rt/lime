@@ -175,7 +175,7 @@ traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molD
 void
 raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
   int *counta, *countb,nlinetot,aa;
-  int ichan,px,iline,tmptrans,i,threadI;
+  int ichan,px,iline,tmptrans,i,threadI,nRaysDone;
   double size,minfreq,absDeltaFreq;
   double cutoff;
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
@@ -224,35 +224,52 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
 
   cutoff = par->minScale*1.0e-7;
 
-  threadI = omp_get_thread_num();
-
-  /* Declaration of thread-private pointers */
-  rayData ray;
-  ray.intensity=malloc(sizeof(double) * img[im].nchan);
-  ray.tau=malloc(sizeof(double) * img[im].nchan);
-
-  /* Main loop through pixel grid */
   for(px=0;px<(img[im].pxls*img[im].pxls);px++){
     for(ichan=0;ichan<img[im].nchan;ichan++){
       img[im].pixel[px].intense[ichan]=0.0;
       img[im].pixel[px].tau[ichan]=0.0;
     }
-    for(aa=0;aa<par->antialias;aa++){
-      ray.x = size*(gsl_rng_uniform(threadRans[threadI])+px%img[im].pxls)-size*img[im].pxls/2.;
-      ray.y = size*(gsl_rng_uniform(threadRans[threadI])+px/img[im].pxls)-size*img[im].pxls/2.;
+  }
 
-      traceray(ray, tmptrans, im, par, g, m, img, nlinetot, counta, countb, cutoff);
+  nRaysDone=0;
+  omp_set_dynamic(0);
+  #pragma omp parallel private(px,aa,threadI) num_threads(par->nThreads)
+  {
+    threadI = omp_get_thread_num();
 
-      for(ichan=0;ichan<img[im].nchan;ichan++){
-        img[im].pixel[px].intense[ichan] += ray.intensity[ichan]/(double) par->antialias;
-        img[im].pixel[px].tau[ichan] += ray.tau[ichan]/(double) par->antialias;
+    /* Declaration of thread-private pointers */
+    rayData ray;
+    ray.intensity=malloc(sizeof(double) * img[im].nchan);
+    ray.tau=malloc(sizeof(double) * img[im].nchan);
+
+    #pragma omp for
+    /* Main loop through pixel grid */
+    for(px=0;px<(img[im].pxls*img[im].pxls);px++){
+      #pragma omp atomic
+      ++nRaysDone;
+
+      for(aa=0;aa<par->antialias;aa++){
+        ray.x = size*(gsl_rng_uniform(threadRans[threadI])+px%img[im].pxls)-size*img[im].pxls/2.;
+        ray.y = size*(gsl_rng_uniform(threadRans[threadI])+px/img[im].pxls)-size*img[im].pxls/2.;
+
+        traceray(ray, tmptrans, im, par, g, m, img, nlinetot, counta, countb, cutoff);
+
+        #pragma omp critical
+        {
+          for(ichan=0;ichan<img[im].nchan;ichan++){
+            img[im].pixel[px].intense[ichan] += ray.intensity[ichan]/(double) par->antialias;
+            img[im].pixel[px].tau[ichan] += ray.tau[ichan]/(double) par->antialias;
+          }
+        }
       }
     }
+    if (threadI == 0){ // i.e., is master thread
+      if(!silent) progressbar((double)(nRaysDone)/(double)(img[im].pxls*img[im].pxls-1), 13);
+    }
 
-    if(!silent) progressbar((double)(px)/(double)(img[im].pxls*img[im].pxls-1), 13);
-  }
-  free(ray.tau);
-  free(ray.intensity);
+    free(ray.tau);
+    free(ray.intensity);
+  } // end of parallel block.
 
   img[im].trans=tmptrans;
 
