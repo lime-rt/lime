@@ -355,7 +355,7 @@ getArea(inputPars *par, struct grid *g, const gsl_rng *ran){
   /* Lots of circles approach -- badly broken, needs to be fixed  */
   /*
      for(i=0;i<par->pIntensity;i++){
-     angle=malloc(sizeof(double)*g[i].numNeigh);
+     angle=malloc(sizeof(*angle)*g[i].numNeigh);
      g[i].w=malloc(sizeof(double)*g[i].numNeigh);
      for(k=0;k<g[i].numNeigh;k++){
      best=0;
@@ -378,7 +378,7 @@ getArea(inputPars *par, struct grid *g, const gsl_rng *ran){
 
 
   for(i=0;i<par->pIntensity;i++){
-    angle=malloc(sizeof(double)*g[i].numNeigh);
+    angle=malloc(sizeof(*angle)*g[i].numNeigh);
     g[i].w=malloc(sizeof(double)*g[i].numNeigh);
     memset(g[i].w, 0, sizeof(double) * g[i].numNeigh);
     for(k=0;k<1000;k++){
@@ -475,7 +475,7 @@ getMass(inputPars *par, struct grid *g, const gsl_rng *ran){
     suma=0.;
     // farea=malloc(sizeof(double)*pts[i].vps);
     if(pts[i].vps>0){
-      farea=malloc(sizeof(double)*pts[i].vps);
+      farea=malloc(sizeof(*farea)*pts[i].vps);
     } else {
       if(!silent) bail_out("Qhull error");
       exit(0);

@@ -21,8 +21,8 @@ kappa(molData *m, struct grid *g, inputPars *par, int s){
   double loglam, *lamtab, *kaptab, *kappatab, gtd;
   gsl_spline *spline;
 
-  kappatab   	 = malloc(sizeof(double)*m[s].nline);
-  m[s].cmb	     = malloc(sizeof(double)*m[s].nline);
+  kappatab   	 = malloc(sizeof(*kappatab)*m[s].nline);
+  m[s].cmb	 = malloc(sizeof(double)*m[s].nline);
   m[s].local_cmb = malloc(sizeof(double)*m[s].nline);
 
   if(par->dust == NULL){
@@ -39,8 +39,8 @@ kappa(molData *m, struct grid *g, inputPars *par, int s){
     }
     rewind(fp);
     if(i>0){
-      lamtab=malloc(sizeof(double)*i);
-      kaptab=malloc(sizeof(double)*i);
+      lamtab=malloc(sizeof(*lamtab)*i);
+      kaptab=malloc(sizeof(*kaptab)*i);
     } else {
       if(!silent) bail_out("No opacities read");
     }
@@ -142,12 +142,12 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
   fscanf(fp, "%d\n", &m[i].nline);
   fgets(string, 80, fp);
 
-  m[i].lal		= malloc(sizeof(int)*m[i].nline);
-  m[i].lau		= malloc(sizeof(int)*m[i].nline);
-  m[i].aeinst	= malloc(sizeof(double)*m[i].nline);
-  m[i].freq		= malloc(sizeof(double)*m[i].nline);
-  m[i].beinstu	= malloc(sizeof(double)*m[i].nline);
-  m[i].beinstl	= malloc(sizeof(double)*m[i].nline);
+  m[i].lal     = malloc(sizeof(int)*m[i].nline);
+  m[i].lau     = malloc(sizeof(int)*m[i].nline);
+  m[i].aeinst  = malloc(sizeof(double)*m[i].nline);
+  m[i].freq    = malloc(sizeof(double)*m[i].nline);
+  m[i].beinstu = malloc(sizeof(double)*m[i].nline);
+  m[i].beinstl = malloc(sizeof(double)*m[i].nline);
 
   /* Read transitions, Einstein A, and frequencies */
   for(iline=0;iline<m[i].nline;iline++){
@@ -175,7 +175,7 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
   if(par->lte_only==0){
     fgets(string, 80, fp);
     fscanf(fp,"%d\n", &m[i].npart);
-    count=malloc(sizeof(int)*m[i].npart);
+    count=malloc(sizeof(*count)*m[i].npart);
     /* collision partner sanity check */
 
     if(m[i].npart > par->collPart) flag=1;
@@ -186,7 +186,7 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
 
 
     m[i].ntrans = malloc(sizeof(int)*m[i].npart);
-    ntemp = malloc(sizeof(int)*m[i].npart);
+    ntemp = malloc(sizeof(*ntemp)*m[i].npart);
     part = malloc(sizeof(struct data) * m[i].npart);
 
     for(ipart=0;ipart<m[i].npart;ipart++){
