@@ -431,10 +431,11 @@ lineBlend(molData *m, inputPars *par, blend **matrix){
 
 void
 levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
-  int id,conv=0,iter,ilev,prog=0,ispec,c=0,n,i;
+  int id,conv=0,iter,ilev,prog=0,ispec,c=0,n,i,threadI;
   double percent=0.,*median,result1=0,result2=0,snr,delta_pop;
   blend *matrix;
   struct statistics { double *pop, *ave, *sigma; } *stat;
+  const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
 
   stat=malloc(sizeof(struct statistics)*par->pIntensity);
 
@@ -452,12 +453,20 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
   }
 
   /* Random number generator */
-  gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);
+  gsl_rng *ran = gsl_rng_alloc(ranNumGenType);
 #ifdef TEST
   gsl_rng_set(ran, 1237106) ;
 #else 
   gsl_rng_set(ran,time(0));
 #endif
+
+  gsl_rng **threadRans;
+  threadRans = malloc(sizeof(gsl_rng *)*par->nThreads);
+
+  for (i=0;i<par->nThreads;i++){
+    threadRans[i] = gsl_rng_alloc(ranNumGenType);
+    gsl_rng_set(threadRans[i],(int)gsl_rng_uniform(ran)*1e6);
+  }
 
   /* Read in all molecular data */
   for(id=0;id<par->nSpecies;id++) molinit(m,par,g,id);
@@ -495,6 +504,8 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
         }
       }
 
+      threadI = omp_get_thread_num();
+
       /* Declare and allocate thread-private variables */
       gridPointData *mp;
       double *halfFirstDs;
@@ -506,19 +517,15 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
       }
       halfFirstDs = malloc(sizeof(*halfFirstDs)*max_phot);
 
-      gsl_rng *localran = gsl_rng_alloc(gsl_rng_ranlxs2);
-      gsl_rng_set(localran, (int)gsl_rng_uniform(ran)*1e6);
-
       for(id=0;id<par->pIntensity;id++){
         if(!silent) progressbar((double)id/par->pIntensity,10);
         if(g[id].dens[0] > 0 && g[id].t[0] > 0){
-          photon(id,g,m,0,localran,par,matrix,mp,halfFirstDs);
+          photon(id,g,m,0,threadRans[threadI],par,matrix,mp,halfFirstDs);
           for(ispec=0;ispec<par->nSpecies;ispec++) stateq(id,g,m,ispec,par,mp,halfFirstDs);
         }
         if(!silent) warning("");
       }
 
-      gsl_rng_free(localran);
       freeGridPointData(par, mp);
       free(halfFirstDs);
 
@@ -568,6 +575,11 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
     } while(conv++<NITERATIONS);
     if(par->binoutputfile) binpopsout(par,g,m);
   }
+
+  for (i=0;i<par->nThreads;i++){
+    gsl_rng_free(threadRans[i]);
+  }
+  free(threadRans);
   gsl_rng_free(ran);
   for(id=0;id<par->pIntensity;id++){
     free(stat[id].pop);

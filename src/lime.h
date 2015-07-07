@@ -34,6 +34,9 @@
 #include <fitsio.h>
 #endif
 
+#define omp_get_num_threads() 0
+#define omp_get_thread_num() 0
+
 #define silent 0
 #define DIM 3
 #define VERSION	"1.5"
