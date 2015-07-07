@@ -42,6 +42,7 @@ parseInput(inputPars *par, image **img, molData **m){
   par->pIntensity=0;
   par->sinkPoints=0;
   par->doPregrid=0;
+  par->nThreads=0;
 
   /* Allocate space for output fits images */
   (*img)=malloc(sizeof(image)*MAX_NSPECIES);
@@ -96,6 +97,10 @@ parseInput(inputPars *par, image **img, molData **m){
     (*img)[i].bandwidth=-1.;
   }
   input(par,*img);
+
+  if(par->nThreads == 0){ // Hmm. Really ought to have a separate boolean parameter.
+    par->nThreads = defaultNThreads;
+  }
 
   par->ncell=par->pIntensity+par->sinkPoints;
   par->radiusSqu=par->radius*par->radius;

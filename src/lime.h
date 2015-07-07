@@ -36,6 +36,7 @@
 
 #define silent 0
 #define DIM 3
+#define defaultNThreads 1
 
 /* Physical constants */
 #define PI			3.14159265358979323846
@@ -78,7 +79,7 @@ typedef struct {
   char *pregrid;
   char *restart;
   char *dust;
-  int sampling,collPart,lte_only,antialias,polarization,doPregrid;
+  int sampling,collPart,lte_only,antialias,polarization,doPregrid,nThreads;
   char **moldatfile;
 } inputPars;
 
