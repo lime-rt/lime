@@ -29,6 +29,23 @@ greetings(){
 }
 
 void
+greetings_parallel(numThreads){
+  initscr();
+  if (numThreads>1){
+    printw("*** LIME, The versatile line modeling engine, Ver. 1.5 (parallel running, %d threads)\n", numThreads);
+  } else {
+    printw("*** LIME, The versatile line modeling engine, Ver. 1.5\n");
+  }
+#ifdef TEST
+  printw(">>> NOTE! Test flag is set in the Makefile. <<<\n");
+#endif
+#ifdef FASTEXP
+  printw(">>> NOTE! Fast-exponential routine is enabled. <<<\n");
+#endif
+  refresh();
+}
+
+void
 screenInfo(){
   move(4,4);  printw("Building grid      :");
   move(4,51); printw("|");
