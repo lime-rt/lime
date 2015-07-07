@@ -335,7 +335,6 @@ freeGridPointData(inputPars *par, gridPointData *mol){
 }
 
 
-
 float
 invSqrt(float x){
   /* The magic Quake(TM) fast inverse square root algorithm   */
@@ -431,7 +430,7 @@ lineBlend(molData *m, inputPars *par, blend **matrix){
 
 void
 levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
-  int id,conv=0,iter,ilev,prog=0,ispec,c=0,n,i,threadI;
+  int id,conv=0,iter,ilev,prog=0,ispec,c=0,n,i,threadI,nVerticesDone;
   double percent=0.,*median,result1=0,result2=0,snr,delta_pop;
   blend *matrix;
   struct statistics { double *pop, *ave, *sigma; } *stat;
@@ -504,30 +503,43 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
         }
       }
 
-      threadI = omp_get_thread_num();
+      nVerticesDone=0;
+      omp_set_dynamic(0);
+#pragma omp parallel private(i,id,ispec,threadI) num_threads(par->nThreads)
+      {
+        threadI = omp_get_thread_num();
 
-      /* Declare and allocate thread-private variables */
-      gridPointData *mp;
-      double *halfFirstDs;
-      mp=malloc(sizeof(gridPointData)*par->nSpecies);
-      for (i=0;i<par->nSpecies;i++){
-        mp[i].phot = malloc(sizeof(double)*m[i].nline*max_phot);
-        mp[i].vfac = malloc(sizeof(double)*           max_phot);
-        mp[i].jbar = malloc(sizeof(double)*m[i].nline);
-      }
-      halfFirstDs = malloc(sizeof(*halfFirstDs)*max_phot);
-
-      for(id=0;id<par->pIntensity;id++){
-        if(!silent) progressbar((double)id/par->pIntensity,10);
-        if(g[id].dens[0] > 0 && g[id].t[0] > 0){
-          photon(id,g,m,0,threadRans[threadI],par,matrix,mp,halfFirstDs);
-          for(ispec=0;ispec<par->nSpecies;ispec++) stateq(id,g,m,ispec,par,mp,halfFirstDs);
+        /* Declare and allocate thread-private variables */
+        gridPointData *mp;	// Could have declared them earlier
+        double *halfFirstDs;	// and included them in private() I guess.
+        mp=malloc(sizeof(gridPointData)*par->nSpecies);
+        for (i=0;i<par->nSpecies;i++){
+          mp[i].phot = malloc(sizeof(double)*m[i].nline*max_phot);
+          mp[i].vfac = malloc(sizeof(double)*           max_phot);
+          mp[i].jbar = malloc(sizeof(double)*m[i].nline);
         }
-        if(!silent) warning("");
-      }
+        halfFirstDs = malloc(sizeof(*halfFirstDs)*max_phot);
 
-      freeGridPointData(par, mp);
-      free(halfFirstDs);
+#pragma omp for
+        for(id=0;id<par->pIntensity;id++){
+#pragma omp atomic
+          ++nVerticesDone;
+
+          if (threadI == 0){ // i.e., is master thread
+            if(!silent) progressbar((double)nVerticesDone/par->pIntensity,10);
+          }
+          if(g[id].dens[0] > 0 && g[id].t[0] > 0){
+            photon(id,g,m,0,threadRans[threadI],par,matrix,mp,halfFirstDs);
+            for(ispec=0;ispec<par->nSpecies;ispec++) stateq(id,g,m,ispec,par,mp,halfFirstDs);
+          }
+          if (threadI == 0){ // i.e., is master thread
+            if(!silent) warning("");
+          }
+        }
+
+        freeGridPointData(par, mp);
+        free(halfFirstDs);
+      } // end parallel block.
 
       for(id=0;id<par->ncell && !g[id].sink;id++){
         snr=0;

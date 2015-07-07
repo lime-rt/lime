@@ -34,8 +34,13 @@
 #include <fitsio.h>
 #endif
 
+#ifdef _OPENMP
+#include <omp.h>
+#else
 #define omp_get_num_threads() 0
 #define omp_get_thread_num() 0
+#define omp_set_dynamic(int) 0
+#endif
 
 #define silent 0
 #define DIM 3
@@ -248,6 +253,7 @@ inline double	FastExp(const float negarg);
 /* Curses functions */
 
 void 	greetings();
+void 	greetings_parallel(int);
 void	screenInfo();
 void 	done(int);
 void 	progressbar(double,int);
