@@ -169,7 +169,7 @@ void calcSourceFn(double dTau, const inputPars *par, double *remnantSnu, double 
 
 
 void
-photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPars *par,blend *matrix, molDataPrivate *mp, double *halfFirstDs){
+photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPars *par,blend *matrix, gridPointData *mp, double *halfFirstDs){
   int iphot,iline,jline,here,there,firststep,dir,np_per_line,ip_at_line,l;
   int *counta, *countb,nlinetot;
   double deltav,segment,vblend,dtau,expDTau,jnu,alpha,ds,vfac[par->nSpecies],pt_theta,pt_z,semiradius;
@@ -304,7 +304,7 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
 }
 
 void
-getjbar(int posn, molData *m, struct grid *g, inputPars *par, molDataPrivate *mp, double *halfFirstDs){
+getjbar(int posn, molData *m, struct grid *g, inputPars *par, gridPointData *mp, double *halfFirstDs){
   int iline,iphot;
   double tau, expTau, remnantSnu, vsum=0., jnu, alpha;
   int *counta, *countb,nlinetot;
