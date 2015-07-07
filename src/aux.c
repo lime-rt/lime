@@ -311,7 +311,7 @@ freeInput( inputPars *par, image* img, molData* mol )
 }
 
 void
-freeMolDataPrivate(inputPars *par, molDataPrivate *mol){
+freeGridPointData(inputPars *par, gridPointData *mol){
   int i;
   if (mol!= 0){
     for (i=0;i<par->nSpecies;i++){
@@ -491,9 +491,9 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
       }
 
       /* Declare and allocate thread-private variables */
-      molDataPrivate *mp;
+      gridPointData *mp;
       double *halfFirstDs;
-      mp=malloc(sizeof(molDataPrivate)*par->nSpecies);
+      mp=malloc(sizeof(gridPointData)*par->nSpecies);
       for (i=0;i<par->nSpecies;i++){
         mp[i].phot = malloc(sizeof(double)*m[i].nline*max_phot);
         mp[i].vfac = malloc(sizeof(double)*           max_phot);
@@ -514,7 +514,7 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
       }
 
       gsl_rng_free(localran);
-      freeMolDataPrivate(par, mp);
+      freeGridPointData(par, mp);
       free(halfFirstDs);
 
       for(id=0;id<par->ncell && !g[id].sink;id++){
