@@ -34,9 +34,10 @@
 #include <fitsio.h>
 #endif
 
-#define silent		0
-#define DIM		3
-#define VERSION		"1.5"
+#define silent 0
+#define DIM 3
+#define VERSION	"1.5"
+#define defaultNThreads 1
 
 /* Physical constants */
 #define PI			3.14159265358979323846
@@ -79,7 +80,7 @@ typedef struct {
   char *pregrid;
   char *restart;
   char *dust;
-  int sampling,collPart,lte_only,antialias,polarization,doPregrid;
+  int sampling,collPart,lte_only,antialias,polarization,doPregrid,nThreads;
   char **moldatfile;
 } inputPars;
 
