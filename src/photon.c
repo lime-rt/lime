@@ -177,8 +177,8 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
   double remnantSnu;
 
   lineCount(par->nSpecies, m, &counta, &countb, &nlinetot);
-  tau=malloc(sizeof(double)*nlinetot);
-  expTau=malloc(sizeof(double)*nlinetot);
+  tau=malloc(sizeof(*tau)*nlinetot);
+  expTau=malloc(sizeof(*expTau)*nlinetot);
   velocity(g[id].x[0],g[id].x[1],g[id].x[2],vel);
   
   np_per_line=(int) g[id].nphot/g[id].numNeigh; // Works out to be equal to ininphot. :-/

@@ -31,8 +31,8 @@ stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par, gridPointD
   gsl_vector *work   = gsl_vector_alloc(m[ispec].nlev);
   gsl_permutation *p = gsl_permutation_alloc (m[ispec].nlev);
 
-  opop	 = malloc(sizeof(double)*m[ispec].nlev);
-  oopop	 = malloc(sizeof(double)*m[ispec].nlev);
+  opop	 = malloc(sizeof(*opop)*m[ispec].nlev);
+  oopop	 = malloc(sizeof(*oopop)*m[ispec].nlev);
 
   for(t=0;t<m[ispec].nlev;t++){
     opop[t]=0.;
