@@ -186,13 +186,6 @@ This value should be calculated from 127+lowestExponent, where 127 is the offset
   exponentOffset = ieee754ExpOffset + lowestExponent;
   */
 
-  int numJs=256;
-  /*
-Should be equal to 2^B, where B is the maximum number of bits in a mantissa mask (hardwired here to 8).
-
-  numJs = (int)pow(2.,maxNumBitsPerMantField);
-  */
-
   int mantMask0=0x007f0000, mantMask1=0x0000ff00, mantMask2=0x000000ff;
   int mantOffset0=16, mantOffset1=8, mantOffset2=0;
   int i,j0,j1,j2,l;
