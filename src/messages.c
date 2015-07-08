@@ -211,6 +211,34 @@ progressbar2_new(int flag, int prog, double percent, double minsnr, double media
 #endif
 }
 
+void casaStyleProgressBar(const int maxI, int i){
+  static int minorCounter=0,majorCounter=0;
+  static float counter=0.0;
+  const int minorsPerMajor=5, maxMajor=10, minorInterval=2; // product must be 100
+  int percentI;
+
+  while (counter<=i){
+    // decide whether to print minor or major symbol.
+    if (minorCounter==majorCounter){
+      percentI = minorCounter*minorInterval;
+      if (percentI==100){
+        printf("%d%%\n", percentI);
+      }else{
+        printf("%d%%", percentI);
+        fflush(stdout);
+      }
+
+      majorCounter += minorsPerMajor;
+    } else { // assume minorCounter<majorCounter, because I can't see how it could be >!
+      printf(".");
+      fflush(stdout);
+    }
+
+    minorCounter++;
+    counter = (maxI-1)*(minorCounter/(float)(minorsPerMajor*maxMajor));
+  }
+}
+
 void
 goodnight(int initime, char filename[80]){
   int runtime=time(0)-initime;
