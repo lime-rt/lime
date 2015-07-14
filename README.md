@@ -1,8 +1,9 @@
 LIME (Line Modeling Engine)
 ===========================
 
-Copyright (C) 2006-2014 Christian Brinch
-Copyright (C) 2015 The LIME development team
+Copyright (C) 2006-2014 Christian Brinch.
+
+Copyright (C) 2015 the LIME development team.
 
 LIME was created by Christian Brinch, but is now maintained by several people. See the LIME repository on [GitHub](https://github.com/lime-rt/lime) for further details.
   
@@ -97,7 +98,7 @@ LIME needs to be able to find both shared-object libraries (files which usually 
   * old: cfitsio/fitsio.h
   * new: /fitsio.h
 
-If you have the older version of either qhull or cfitsio, set the respective environment variables OLD_QHULL and/or OLD_FITSIO to T
+If you have the older version of either qhull or cfitsio, set the respective environment variables OLD_QHULL and/or OLD_FITSIO to T.
 
 
 

@@ -441,7 +441,7 @@ polarization is switched on, LIME is identical to the DustPol code
 
     (integer) par->nThreads (optional)
 
-If set, LIME will perform the most time-cnsuming sections of its calculations in parallel, using the specified number of threads. Serial operation is the default.
+If set, LIME will perform the most time-consuming sections of its calculations in parallel, using the specified number of threads. Serial operation is the default.
 
 Images
 ~~~~~~
