@@ -16,6 +16,7 @@ function usage {
     echo "   -V     Display version information"
     echo "   -h     Display this message"
     echo "   -f     Use fast exponential computation"
+    echo "   -n     Turn off ncurses output"
     echo ""
     echo "See <http://lime.readthedocs.org> for more information."
     echo "Report bugs to <http://github.com/lime-rt/lime/issues>."
@@ -25,7 +26,7 @@ function tip {
     echo "Try 'lime -h' for more information."
 }
 
-options="Vhf"
+options="Vhfn"
 cpp_flags=""
 
 while getopts ${options} opt; do
@@ -42,6 +43,10 @@ while getopts ${options} opt; do
 	    cpp_flags+="-DFASTEXP"
 	    shift $((OPTIND-1))
 	    ;;
+	n)
+	    cpp_flags+="-DNO_NCURSES"
+	    shift $((OPTIND-1))
+	    ;;	    
 	\?)
 	    tip
 	    exit 1

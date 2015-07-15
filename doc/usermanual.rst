@@ -180,6 +180,11 @@ LIME accepts several command line options:
    better precision than that for much of the range. Use of this
    option reduces the run time by 25%.
 
+.. option:: -n
+
+   Turn off `curses` messages. This is useful when running LIME in a
+   non-interactive way.
+
 Setting up models
 -----------------
 
