@@ -99,7 +99,7 @@ parseInput(inputPars *par, image **img, molData **m){
   input(par,*img);
 
   if(par->nThreads == 0){ // Hmm. Really ought to have a separate boolean parameter.
-    par->nThreads = defaultNThreads;
+    par->nThreads = NTHREADS;
   }
 
   par->ncell=par->pIntensity+par->sinkPoints;

@@ -45,7 +45,10 @@
 #define silent 0
 #define DIM 3
 #define VERSION	"1.5"
-#define defaultNThreads 1
+#define DEFAULT_NTHREADS 1
+#ifndef NTHREADS /* Value passed from the LIME script */
+#define NTHREADS DEFAULT_NTHREADS
+#endif
 
 /* Physical constants */
 #define PI			3.14159265358979323846

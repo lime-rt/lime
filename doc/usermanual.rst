@@ -191,8 +191,18 @@ LIME accepts several command line options:
 
 .. option:: -n
 
-   Turn off `curses` messages. This is useful when running LIME in a
+   Turn off `ncurses` messages. This is useful when running LIME in a
    non-interactive way.
+
+.. option:: -p nthreads
+
+   Run in parallel mode with `nthreads`. The default a single thread,
+   i.e. serial execution.
+
+.. note::
+
+   The number of threads may also be set with the :ref:`par->nThreads <par-nthreads>`
+   parameter.
 
 Setting up models
 -----------------
@@ -441,6 +451,8 @@ containing the Stokes I, Q, and U. In order for the polarization to
 work, a magnetic field needs to be defined (see below). When
 polarization is switched on, LIME is identical to the DustPol code
 (Padovani et al., 2012).
+
+.. _par-nthreads:
 
 .. code:: c
 
