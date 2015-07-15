@@ -114,7 +114,8 @@ completion, the user is prompted to press a key which will bring the
 terminal window back. It is possible to run LIME in silent mode, that
 is, without any output in the terminal window. This is done by setting
 the silent flag to 1 (the default setting is 0) in the file
-LimePackage/src/lime.h.
+LimePackage/src/lime.h. LIME also accepts several
+:ref:`command line options <lime-options>`.
 
 The inner workings of LIME
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -149,6 +150,35 @@ When the solution has converged, the code will ray-trace the model to
 obtain an image. Ray-tracing is done for each user- defined image in
 turn. At the end of the ray-tracing, FITS files will be written to the
 disk at the code will clean up the memory and terminate.
+
+.. _lime-options:
+
+Command line options
+--------------------
+
+.. note::
+
+   Starting with LIME 1.5, command line options can be used to change
+   LIME default behavior without editing the source code.
+
+LIME accepts several command line options:
+
+.. option:: -V
+
+   Display version information
+
+.. option:: -h
+
+   Display help message
+
+.. option:: -f
+
+   Use fast exponential computation. When this option is set, LIME
+   uses a lookup-table replacement for the exponential function, which
+   however (due to cunning use of the properties of the function)
+   returns a value with full floating-point precision, indeed with
+   better precision than that for much of the range. Use of this
+   option reduces the run time by 25%.
 
 Setting up models
 -----------------

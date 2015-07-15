@@ -1,11 +1,64 @@
 #!/bin/bash -e
-export WORKDIR=$PWD
+# lime -- LIME main script
 
+function version {
+    echo "This is LIME, The versatile line modeling engine, Ver.1.31"
+    echo "Copyright 2006--2014, Christian Brinch <brinch@nbi.dk>"
+}
+
+function usage {
+    echo "Usage: lime [OPTION] [[FILE]]"
+    echo " "
+    echo "Arguments:"
+    echo "   FILE   C model file"
+    echo " "
+    echo "Options:"
+    echo "   -V     Display version information"
+    echo "   -h     Display this message"
+    echo "   -f     Use fast exponential computation"
+    echo ""
+    echo "See <http://lime.readthedocs.org> for more information."
+    echo "Report bugs to <http://github.com/lime-rt/lime/issues>."
+}
+
+function tip {
+    echo "Try 'lime -h' for more information."
+}
+
+options="Vhf"
+cpp_flags=""
+
+while getopts ${options} opt; do
+    case $opt in
+	V)
+	    version
+	    exit 0
+	    ;;
+	h)
+	    usage
+	    exit 0
+	    ;;
+	f)
+	    cpp_flags+="-DFASTEXP"
+	    shift $((OPTIND-1))
+	    ;;
+	\?)
+	    tip
+	    exit 1
+	    ;;
+    esac
+done
+if [ $# -ne 1 ]; then
+    echo "Invalid number of arguments"
+    tip
+    exit 1
+fi
+
+export WORKDIR=$PWD
 cd $PATHTOLIME
-make MODELS=$WORKDIR/$1 TARGET=$WORKDIR/lime_$$.x
+make EXTRACPPFLAGS="${cpp_flags}" MODELS=$WORKDIR/$1 TARGET=$WORKDIR/lime_$$.x
 make clean
 cd $WORKDIR
 ./lime_$$.x
 rm -rf lime_$$.x
-exit
-
+exit 0
