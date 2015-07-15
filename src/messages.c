@@ -17,7 +17,7 @@
 
 void
 greetings(){
-#ifdef DEBUG
+#ifdef NO_NCURSES
 
   printf("*** LIME, The versatile line modeling engine, Ver. %s\n", VERSION);
 #ifdef TEST
@@ -44,7 +44,7 @@ greetings(){
 
 void
 greetings_parallel(numThreads){
-#ifdef DEBUG
+#ifdef NO_NCURSES
 
   if (numThreads>1){
     printf("*** LIME, The versatile line modeling engine, Ver. %s (parallel running, %d threads)\n", VERSION, numThreads);
@@ -79,7 +79,7 @@ greetings_parallel(numThreads){
 
 void
 screenInfo(){
-#ifndef DEBUG
+#ifndef NO_NCURSES
   move(4,4);  printw("Building grid      :");
   move(4,51); printw("|");
   move(5,4);  printw("Smoothing grid     :");
@@ -107,7 +107,7 @@ screenInfo(){
 
 void
 done(int line){
-#ifdef DEBUG
+#ifdef NO_NCURSES
   if (line == 4)
     printf(  "   Building grid: DONE                               \n\n"); 
   else if (line == 5)
@@ -127,7 +127,7 @@ done(int line){
 
 void
 progressbar(double percent, int line){
-#ifdef DEBUG
+#ifdef NO_NCURSES
   if (line == 4)
     printf("   Building grid: %.2f percent done\r", percent * 100.);
   else if (line == 5)
@@ -151,7 +151,7 @@ progressbar(double percent, int line){
 
 void
 progressbar2(int prog, double percent, double minsnr, double median){
-#ifndef DEBUG
+#ifndef NO_NCURSES
   move(7,38); printw("                    ");            
   move(8,38); printw("                    ");
   if(minsnr<1000){
@@ -174,7 +174,7 @@ progressbar2(int prog, double percent, double minsnr, double median){
 
 void
 progressbar2_new(int flag, int prog, double percent, double minsnr, double median){
-#ifdef DEBUG
+#ifdef NO_NCURSES
   if (flag == 1){
     if (minsnr < 1000)
       printf("      Statistics: Min(SNR)    %3.3f                     \n", minsnr); 
@@ -242,7 +242,7 @@ void casaStyleProgressBar(const int maxI, int i){
 void
 goodnight(int initime, char filename[80]){
   int runtime=time(0)-initime;
-#ifdef DEBUG
+#ifdef NO_NCURSES
   printf("Output written to %s", filename);
   printf("*** Program ended successfully               \n");
   printf("    Runtime: %3dh %2dm %2ds\n\n", runtime / 3600, runtime / 60 % 60, runtime % 60);
@@ -260,7 +260,7 @@ goodnight(int initime, char filename[80]){
 
 void
 quotemass(double mass){
-#ifdef DEBUG
+#ifdef NO_NCURSES
   printf("  Total mass contained in model: %3.2e solar masses", mass);
 #else
   move(21,6); printw("Total mass contained in model: %3.2e solar masses", mass);
@@ -272,7 +272,7 @@ quotemass(double mass){
 
 void
 warning(char message[80]){
-#ifdef DEBUG
+#ifdef NO_NCURSES
   if(strlen(message)>0)
     {
       printf("Warning : %s\n", message );
@@ -285,7 +285,7 @@ warning(char message[80]){
 
 void
 bail_out(char message[80]){
-#ifdef DEBUG
+#ifdef NO_NCURSES
   printf("Error : %s\n", message );
 #else
   move(22,0); printw("*** %s",message);
@@ -298,7 +298,7 @@ bail_out(char message[80]){
 
 void
 collpartmesg(char molecule[90], int partners){//, int specnumber){
-#ifdef DEBUG
+#ifdef NO_NCURSES
   printf("   Molecule: %.25s\n", molecule);
   if (partners==1)
     printf("   %d collision partner:\n", partners);
@@ -319,7 +319,7 @@ collpartmesg(char molecule[90], int partners){//, int specnumber){
 
 void
 collpartmesg2(char name[10], int partner){
-#ifdef DEBUG
+#ifdef NO_NCURSES
   printf("      %s\n ", name);
 #else
   move(8,63); printw("%s ",name);
@@ -329,7 +329,7 @@ collpartmesg2(char name[10], int partner){
 
 void
 collpartmesg3(int number, int flag){
-#ifdef DEBUG
+#ifdef NO_NCURSES
   if (number==1)
     printf("   Model provides: %d density profile\n\n", number);
   else
