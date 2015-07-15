@@ -1,9 +1,11 @@
 LIME (Line Modeling Engine)
 ===========================
 
-Created by [Christian Brinch](mailto:brinch@nbi.dk), Copyright 2006-2013
+Copyright (C) 2006-2014 Christian Brinch.
 
-Niels Bohr institutet, University of Copenhagen
+Copyright (C) 2015 the LIME development team.
+
+LIME was created by Christian Brinch, but is now maintained by several people. See the LIME repository on [GitHub](https://github.com/lime-rt/lime) for further details.
   
 About LIME
 ----------
@@ -18,14 +20,13 @@ user-supplied physical model.  Details on the method can be found in
 Any scientific publication making use of the LIME code should also
 reference this publication.
 
-A comprehensive user manual is available online at the [LIME
-website](http://www.nbi.dk/~brinch/lime.html).
+A comprehensive user manual is available online at the [ReadTheDocs](https://readthedocs.org/projects/lime/) website.
 
 Installation notes
 ------------------
 
 The LIME code needs three library packages in order to compile: qhull,
-gsl, and cfitsio.
+gsl, and cfitsio. If these are not already present on your system, you will need to install them.
 
 ### Mac OS X
 
@@ -49,7 +50,7 @@ $ fink install qhull6.3.1-dev cfitsio gsl
 
 ### Linux / Unix / Mac OS X (alternative)
 
-Download the sources from the following locations. Make sure to get
+If one or more of these packages is not present on your system, you can download the sources from the following locations. Make sure to get
 the latest versions.
 
 - [qhull](http://www.qhull.org/download/)
@@ -70,8 +71,8 @@ All three library packages are installed using the following
  ```
 
 In some cases the qhull library will produce a segmentation fault unless it is 
-compiled with the `-fno-strict-aliasing` flag. The example here does not 
-require root. Some modifications to the Makefile may be required if another
+compiled with the `-fno-strict-aliasing` flag. Note that the example here does not 
+require root privileges. Some modifications to the Makefile may be required if another
 location is set for the installation.
 
 *Note for qhull2011.1 and later:* This version of qhull will sometimes
@@ -84,6 +85,22 @@ qhull does not include a configure script.
 LIME is automatically compiled at runtime so there is no installation
 required and also no configure script. Do not try to `make` or `make
 install` LIME as this will produce an error.
+
+### Older versions of qhull or cfitsio
+
+LIME needs to be able to find both shared-object libraries (files which usually reside in /usr/lib, have names starting with 'lib' and ending with '.so') and header files (usually or at least often in /usr/include, ending in '.h') for both qhull and cfitsio. Unfortunately, different versions of these packages use slightly different locations/names, as follows:
+
+- qhull
+  * old: libqhull.so, qhull/qhull_a.h
+  * new: libqhullstatic.so, libqhull/qhull_a.h
+
+- cfitsio
+  * old: cfitsio/fitsio.h
+  * new: /fitsio.h
+
+If you have the older version of either qhull or cfitsio, set the respective environment variables OLD_QHULL and/or OLD_FITSIO to T.
+
+
 
 Running the code
 ----------------
@@ -126,49 +143,5 @@ with the standards of linking C and Fortran. See [this
 page](http://tinyurl.com/y6sddr) for information on how to link C and
 Fortran. If Fortran subroutines are used, the linking of LIME needs to
 be done with the Fortran compiler. Modify the Makefile accordingly.
-
-
-Changelog
----------
-
-- 1.31: Bug was found and fixed in `getJbar()`
-
-- 1.3: LIME can now run multiple instances in the same directory. Grid
-  data structure has changed. A memory leak in qhull call has been
-  closed.  model.c no longer has to contain functions that are not
-  needed.  LIME can be restarted from previously calculated
-  populations. gas- to-dust ratio has been implemented as a function
-  rather than a constant.
-      
-- 1.23: Includes a tcp client so that LIME can automatically download
-  LAMDA files. Makefile and lime script improved. Semantic updates.
-
-- 1.22: Fixed a bug in the vtk output. Fixed a bug in the
-  randomization of photon directions. vtk file now contains the
-  normalized velocities.
-
-- 1.21: A few memory leaks fixed. Output screen updated with more
-  information.  LIME now always calculates molecular density with
-  respect to total H2 A catch for negative optically depth has been
-  implemented.
-      
-- 1.2: Minor bug fix in ray-tracer (Thanks to Ruud Visser). FITS
-  header tweaked for CASA compatability. Photon transport slightly
-  optimized.  The photons nitial directions are now
-  randomized. Multiple lines no longer get mirrored. LIME should run
-  faster now.
-      
-- 1.1: Raytracer has been rewritten and optimized and now includes an
-  anti- aliasing filter. The FITS header has been corrected. LIME
-  images can now be read directly by CASA. Continuum polarization
-  implemented.
-
-- 1.03: Bug fixes
-
-- 1.02: Minor bug fixes and some clean-up of the code. The VTK file
-  now contains density, temperature, molecular density and the
-  velocity field. Faster evaluation of line-of-sight velocities
-
-- 1.01: First full public release
 
 [![Build Status](https://travis-ci.org/lime-rt/lime.svg?branch=master)](https://travis-ci.org/lime-rt/lime) [![Documentation Status](https://readthedocs.org/projects/lime/badge/?version=latest)](https://readthedocs.org/projects/lime/?badge=latest)

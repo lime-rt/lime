@@ -1,47 +1,15 @@
 LIME user manual
 ================
 
-Christian Brinch, Niels Bohr Institutet, University of Copenhagen brinch@nbi.dk, http://www.nbi.dk/~brinch/lime.php
-
 Introduction
 ------------
 
-The LIME code
-~~~~~~~~~~~~~
+Disclaimer
+~~~~~~~~~~
 
-LIME (Line Modeling Engine) is an excitation and radiation transfer
-code that can be used to predict line and continuum radiation from an
-astronomical source model. The code uses unstructured 3D Delaunay
-grids for photon transport and accelerated Lambda Iteration for
-population calculations. The LIME code was written by Christian Brinch
-between 2006 and 2010, with version 1.0 appearing in early 2010. LIME
-derives from the radiation transfer code RATRAN developed by
-Michiel R.  Hogerheijde and Floris van der Tak (Hogerhijde & van der
-Tak, 2000), although after several rewrites, the shared codebase is
-very small. The photon transport method is a direct implementation of
-the SimpleX algorithm (Ritzerveld & Icke, 2006).
-
-LIME was developed for the purpose of predicting the emission signature
-of low-mass young stellar objects, including molecular envelopes and
-protoplanetary disks. In principle the method should work for similar
-environments such as (giant) molecular clouds, atmospheres around
-evolved stars, high mass stars, molecular outflows, etc. As opposed to
-most other line radiation transfer codes which are constrained by
-cylindrical or spherical symmetry, LIME does not impose any such
-geometrical constrains being a 3D code and therefore, the main
-limitation to what can be done with LIME is the availability of input
-models. Please note that LIME is not open source software. It is not to
-be distributed and/or modified without the permission of either
-Christian Brinch or Michiel R. Hogerheijde. Any publication that
-contains results obtained with the LIME code should cite the publication
-Brinch & Hogerheijde, A&A, 523, A25, 2010.
-
-Important notice for all users
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-LIME is provided as is and the author cannot, under any circumstances,
-guarantee that results given by LIME are correct nor can he be held
-responsible for erroneous results. The author does not pretend that LIME
+We, the authors and maintainers of LIME, do not
+guarantee that results given by LIME are correct, nor can we be held
+responsible for erroneous results. We do not claim that LIME
 is perfect or free of bugs and therefore the user should always take
 utmost care when drawing scientific conclusions based on results
 obtained with LIME. It is very important that the user performs tests
@@ -50,22 +18,62 @@ the results are reasonable and reliable. In particular, care needs to be
 taken when extending the runtime parameters into regimes for which the
 code was not designed.
 
-Getting started
-~~~~~~~~~~~~~~~
 
-The LIME code is distributed as a zip-file containing the source code,
-this documentation, and an example model. Make sure always to have the
-latest version of the code. Information on the current version can be
-found on the LIME website. The latest version of the code can be
-obtained by registering an account on the LIME forum website
-(http://brinch.eu/limeforum). At the LIME forum, all current and past
-versions can be downloaded and it is also possible to obtain the code
-through GIT via the LIME forum.
+The LIME code
+~~~~~~~~~~~~~
+
+LIME (Line Modeling Engine) is an excitation and radiation transfer
+code that can be used to predict line and continuum radiation from an
+astronomical source model. The code uses unstructured 3D Delaunay
+grids for photon transport and accelerated Lambda Iteration for
+population calculations.
+
+LIME was developed for the purpose of predicting the emission signature
+of low-mass young stellar objects, including molecular envelopes and
+protoplanetary disks. In principle the method should work for similar
+environments such as (giant) molecular clouds, atmospheres around
+evolved stars, high mass stars, molecular outflows, etc. As opposed to
+most other line radiation transfer codes which are constrained by
+cylindrical or spherical symmetry, LIME, being a 3D code, does not impose any such
+geometrical constraints. The main
+limitation therefore to what can be done with LIME is the availability of input
+models.
+
+LIME is distributed under a Gnu General Public License.
+
+Any publication that contains results obtained with the LIME code should cite the publication
+Brinch & Hogerheijde, A&A, 523, A25, 2010.
+
+Development history
+~~~~~~~~~~~~~~~~~~~
+
+The initial LIME code was written by Christian Brinch
+between 2006 and 2010, with version 1.0 appearing in early 2010. LIME
+derives from the radiation transfer code RATRAN developed by
+Michiel R.  Hogerheijde and Floris van der Tak (Hogerhijde & van der
+Tak, 2000), although after several rewrites, the shared codebase is
+very small. The photon transport method is a direct implementation of
+the SimpleX algorithm (Ritzerveld & Icke, 2006).
+
+Subsequent to the creation of the package by Christian Brinch, contributors to LIME have included:
+
+- Tuomas Lunttila
+- Sébastien Maret
+- Anika Schmiedeke
+- Ian Stewart
+- Mathieu Westphal
+
+
+Obtaining LIME
+~~~~~~~~~~~~~~
+
+The LIME code can be obtained from gitHub at `<https://github.com/lime-rt/lime>`_. The available files include the source code,
+this documentation, and an example model. The documentation can be read on line at `<https://readthedocs.org/projects/lime/>`_.
 
 Requirements
 ~~~~~~~~~~~~
 
-LIME runs on any platform with an ansi C compiler. Most modern operating
+LIME runs on any platform with an ANSI C compiler. Most modern operating
 systems are equipped with the GNU gcc compiler, but if it is not already
 present, it can be obtained from the GNU website (http://www.gnu.org).
 Furthermore, LIME needs a number of libraries to be present, including
@@ -76,10 +84,11 @@ strictly needed for LIME to run, it is useful to have some kind of
 software that can process FITS files (IDL, CASA, MIRIAD, etc.) in order
 to be able to extract science results from the model images.
 
-There is not really any specific hardware requirements for LIME to run.
+There are no specific hardware requirements for LIME to run.
 A fast computer is recommended (>2 GHz) with a reasonable amount of
-memory (>1 GB), but less will do as well. LIME is not a parallel code,
-but it is possible to run several instances of LIME simultaneously on a
+memory (>1 GB), but less will do as well. LIME can be run in multi-threaded
+(parallel) mode, if several CPUs are available. It is also possible to
+run several instances of LIME simultaneously on a
 multi-processor machine with enough memory.
 
 Setting up LIME
@@ -126,15 +135,15 @@ settings in the model file. All user defined settings are checked for
 sanity and in case there are inconsistencies, LIME will abort with an
 error message. It then goes on to generate the grid (unless a predefined
 grid is provided) by picking and evaluating random points until enough
-points have been chosen to form the grid. The grid is then smoothed to
-avoid oddly shaped Delaunay triangles and this is an iterative process.
+points have been chosen to form the grid. The grid is then iteratively
+smoothed to avoid oddly-shaped Delaunay triangles.
 Because the grid needs to be re-triangulated at each iteration, the
 smoothing process may take a while. After smoothing, a number of grid
-properties are pre-calculated, e.g., velocity splines, for later use and
+properties (e.g. velocity splines) are pre-calculated for later use, and
 the grid is written to file.
 
 When the grid is ready, LIME decides whether to calculate populations or
-not, depending on users choice of output images and LTE options (see
+not, depending on the user's choice of output images and LTE options (see
 chapter 2). If one or more non-LTE line images are asked for, LIME will
 proceed to calculate the level populations. This too is an iterative
 process where the radiation field and the populations are recalculated
@@ -287,12 +296,15 @@ thousands and about ten thousand.
 
     (integer) par->sampling (optional)
 
-The sampling parameter takes value 0 or 1. sampling=0 is used for
+The sampling parameter takes value 0, 1 or 2. sampling=0 is used for
 uniform sampling in Log(radius) which is useful for models with a
 central condensation (i.e., envelopes, disks), whereas sampling=1 is
 uniform sampling in x, y, and z. The latter is useful for models with no
-central condensation (molecular clouds, galaxies, slab geometries). The
-default value is sampling=0.
+central condensation (molecular clouds, galaxies, slab geometries).
+
+The value sampling=2 was added because the routine for 0 was found not to generate grid points with exact spherical rotational symmetry. The 2 setting implements this now properly; sampling=0 has, however, been retained for purposes of backward compatibility. In practice there is little obvious difference between the outputs from 0 versus 2.
+
+The default value is now sampling=2.
 
 .. code:: c
 
@@ -429,6 +441,12 @@ containing the Stokes I, Q, and U. In order for the polarization to
 work, a magnetic field needs to be defined (see below). When
 polarization is switched on, LIME is identical to the DustPol code
 (Padovani et al., 2012).
+
+.. code:: c
+
+    (integer) par->nThreads (optional)
+
+If set, LIME will perform the most time-consuming sections of its calculations in parallel, using the specified number of threads. Serial operation is the default.
 
 Images
 ~~~~~~
@@ -580,6 +598,16 @@ the functions that are relevant to a particular model, e.g., for
 continuum images only, the user need not include the abundance function
 or any of the velocity functions. The magnetic field function needs only
 be included for continuum polarization images.
+
+
+.. figure:: images/fig_coords_big.png
+   :alt: coordinates
+   :width: 380
+   :align: right
+   :figwidth: 400
+
+   The cartesian coordinate system used by LIME, showing the direction of the observer (red arrow) and the relation to the axes of the user-specifiable angles theta and phi.
+
 
 Density
 ~~~~~~~
@@ -1181,14 +1209,13 @@ Ideas for LIME 2.0
 
 In the following we list a number of new features which are being
 considered for the next major release of LIME. Users should feel free to
-contact the author with suggestions, improvements, new functionalities
-or bugs needed to be fixed.
+contact the maintainers with suggestions, improvements, new functionalities
+or bugs needing to be fixed.
 
 -  Line polarization
--  Parallelization
 -  Visibility output
 -  Tau images
--  user defined, function based grid sample weights
+-  User-defined, function based grid sample weights
 -  Basecol/Vamdc support
 -  etc...
 
