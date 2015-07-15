@@ -594,7 +594,7 @@ buildGrid(inputPars *par, struct grid *g){
     if(!silent) progressbar((double) k/((double)par->pIntensity-1), 4);
   }
   /* end model grid point assignment */
-
+  if(!silent) done(4);
 
   /* Add surface sink particles */
   for(i=0;i<par->sinkPoints;i++){
