@@ -830,7 +830,7 @@ the values to model.c. This can be done the following way:
       fortransub_(&x, &y, &z, &density[0]);
     }
 
-.. code:: f90
+.. code:: fortran
 
     SUBROUTINE fortransub(x,y,z,temp)
     DOUBLE x,y,z,temp
