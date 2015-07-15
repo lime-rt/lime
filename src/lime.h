@@ -34,8 +34,9 @@
 #include <fitsio.h>
 #endif
 
-#define silent 0
-#define DIM 3
+#define silent		0
+#define DIM		3
+#define VERSION		"1.5"
 
 /* Physical constants */
 #define PI			3.14159265358979323846
@@ -243,6 +244,7 @@ void	screenInfo();
 void 	done(int);
 void 	progressbar(double,int);
 void 	progressbar2(int,double,double,double);
+void	casaStyleProgressBar(const int,int);
 void 	goodnight(int, char *);
 void	quotemass(double);
 void 	warning(char *);
