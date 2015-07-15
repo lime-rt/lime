@@ -111,7 +111,7 @@ done(int line){
   if (line == 4)
     printf(  "   Building grid: DONE                               \n\n"); 
   else if (line == 5)
-    printf(  "   Building grid: DONE                               \n\n");
+    printf(  "   Smoothing grid: DONE                              \n\n");
   else if (line == 10)
     printf(  "   Propagating photons: DONE                         \n\n");
   else if (line == 13)
@@ -130,8 +130,10 @@ progressbar(double percent, int line){
 #ifdef NO_NCURSES
   if (line == 4)
     printf("   Building grid: %.2f percent done\r", percent * 100.);
-  else if (line == 5)
+  else if (line == 5){
     printf("   Smoothing grid: %.2f percent done\r", percent * 100.);
+    fflush(stdout);
+    }
   else if (line == 10)
     printf("   Propagating photons: %.2f percent done\r", percent * 100.);
   else if (line == 13)
