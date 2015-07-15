@@ -13,10 +13,11 @@ function usage {
     echo "   FILE   C model file"
     echo " "
     echo "Options:"
-    echo "   -V     Display version information"
-    echo "   -h     Display this message"
-    echo "   -f     Use fast exponential computation"
-    echo "   -n     Turn off ncurses output"
+    echo "   -V           Display version information"
+    echo "   -h           Display this message"
+    echo "   -f           Use fast exponential computation"
+    echo "   -n           Turn off ncurses output"
+    echo "   -p NTHREADS  Run in parallel with NTHREADS threads (default: 1)"
     echo ""
     echo "See <http://lime.readthedocs.org> for more information."
     echo "Report bugs to <http://github.com/lime-rt/lime/issues>."
@@ -26,7 +27,7 @@ function tip {
     echo "Try 'lime -h' for more information."
 }
 
-options="Vhfn"
+options=":Vfnp:h"
 cpp_flags=""
 
 while getopts ${options} opt; do
@@ -40,21 +41,33 @@ while getopts ${options} opt; do
 	    exit 0
 	    ;;
 	f)
-	    cpp_flags+="-DFASTEXP"
-	    shift $((OPTIND-1))
+	    cpp_flags+="-DFASTEXP "
 	    ;;
 	n)
-	    cpp_flags+="-DNO_NCURSES"
-	    shift $((OPTIND-1))
-	    ;;	    
+	    cpp_flags+="-DNO_NCURSES "
+	    ;;
+	p)
+	    nthreads=${OPTARG}
+	    if [[ $nthreads =~ ^[1-9][0-9]*$ ]]; then
+		cpp_flags+="-DNTHREADS=${nthreads} "
+	    else
+		echo "lime: error: invalid number of threads" >&2
+		tip
+		exit 1
+	    fi
+	    ;;
 	\?)
+	    echo "lime: error: unknown option" >&2
 	    tip
 	    exit 1
 	    ;;
     esac
 done
+
+shift $((OPTIND-1))
+
 if [ $# -ne 1 ]; then
-    echo "Invalid number of arguments"
+    echo "lime: error: incorrect number of arguments" >&2
     tip
     exit 1
 fi
