@@ -59,6 +59,7 @@ Subsequent to the creation of the package by Christian Brinch, contributors to L
 
 - Tuomas Lunttila
 - Sébastien Maret
+- Marco Padovani
 - Anika Schmiedeke
 - Ian Stewart
 - Mathieu Westphal
