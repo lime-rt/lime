@@ -20,7 +20,7 @@ user-supplied physical model.  Details on the method can be found in
 Any scientific publication making use of the LIME code should also
 reference this publication.
 
-A comprehensive user manual is available online at the [ReadTheDocs](https://readthedocs.org/projects/lime/) website.
+A comprehensive user manual is available online at the [ReadTheDocs](http://lime.readthedocs.org/) website.
 
 Installation notes
 ------------------
