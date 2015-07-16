@@ -28,7 +28,7 @@ writefits(int im, inputPars *par, molData *m, image *img){
   long int fpixels[3],lpixels[3];
   char negfile[100]="! ";
 
-  row = malloc(sizeof(float)*img[im].pxls);
+  row = malloc(sizeof(*row)*img[im].pxls);
 
   naxes[0]=img[im].pxls;
   naxes[1]=img[im].pxls;

@@ -34,9 +34,21 @@
 #include <fitsio.h>
 #endif
 
-#define silent		0
-#define DIM		3
-#define VERSION		"1.5"
+#ifdef _OPENMP
+#include <omp.h>
+#else
+#define omp_get_num_threads() 0
+#define omp_get_thread_num() 0
+#define omp_set_dynamic(int) 0
+#endif
+
+#define silent 0
+#define DIM 3
+#define VERSION	"1.5"
+#define DEFAULT_NTHREADS 1
+#ifndef NTHREADS /* Value passed from the LIME script */
+#define NTHREADS DEFAULT_NTHREADS
+#endif
 
 /* Physical constants */
 #define PI			3.14159265358979323846
@@ -79,18 +91,22 @@ typedef struct {
   char *pregrid;
   char *restart;
   char *dust;
-  int sampling,collPart,lte_only,antialias,polarization,doPregrid;
+  int sampling,collPart,lte_only,antialias,polarization,doPregrid,nThreads;
   char **moldatfile;
 } inputPars;
 
-/* Molecular data and radiation field */
+/* Molecular data: shared attributes */
 typedef struct {
   int nlev,nline,*ntrans,npart;
   int *lal,*lau,*lcl,*lcu;
   double *aeinst,*freq,*beinstu,*beinstl,*up,*down,*eterm,*gstat;
-  double *jbar,norm,norminv,*cmb,*local_cmb;
-  double *phot, *ds, *vfac;
+  double norm,norminv,*cmb,*local_cmb;
 } molData;
+
+/* Data concerning a single grid vertex which is passed from photon() to stateq(). This data needs to be thread-safe. */
+typedef struct {
+  double *jbar,*phot,*vfac;
+} gridPointData;
 
 typedef struct {
   double *intensity;
@@ -189,9 +205,9 @@ void   	freeGrid(const inputPars * par, const molData* m, struct grid * g);
 void   	freePopulation(const inputPars * par, const molData* m, struct populations * pop);
 double 	gaussline(double, double);
 void    getArea(inputPars *, struct grid *, const gsl_rng *);
-void    getjbar(int, molData *, struct grid *, inputPars *);
+void    getjbar(int, molData *, struct grid *, inputPars *,gridPointData *,double *);
 void    getMass(inputPars *, struct grid *, const gsl_rng *);
-void   	getmatrix(int, gsl_matrix *, molData *, struct grid *, int);
+void   	getmatrix(int, gsl_matrix *, molData *, struct grid *, int, gridPointData *);
 void	getclosest(double, double, double, long *, long *, double *, double *, double *);
 void	getVelosplines(inputPars *, struct grid *);
 void	getVelosplines_lin(inputPars *, struct grid *);
@@ -205,7 +221,7 @@ void	LTE(inputPars *, struct grid *, molData *);
 void   	molinit(molData *, inputPars *, struct grid *,int);
 void    openSocket(inputPars *par, int);
 void	qhull(inputPars *, struct grid *);
-void  	photon(int, struct grid *, molData *, int, const gsl_rng *,inputPars *,blend *);
+void  	photon(int, struct grid *, molData *, int, const gsl_rng *,inputPars *,blend *,gridPointData *,double *);
 void	parseInput(inputPars *, image **, molData **);
 double 	planckfunc(int, double, molData *, int);
 int     pointEvaluation(inputPars *,double, double, double, double);
@@ -221,7 +237,7 @@ void	sourceFunc(double *, double *, double, molData *,double,struct grid *,int,i
 void    sourceFunc_line(double *,double *,molData *, double, struct grid *, int, int,int);
 void    sourceFunc_cont(double *,double *, struct grid *, int, int,int);
 void    sourceFunc_pol(double *, double *, double, molData *, double, struct grid *, int, int, int, double);
-void   	stateq(int, struct grid *, molData *, double *, int, inputPars *);
+void   	stateq(int, struct grid *, molData *, int, inputPars *,gridPointData *,double *);
 void	statistics(int, molData *, struct grid *, int *, double *, double *, int *);
 void    stokesangles(double, double, double, double, double *);
 void    traceray(rayData, int, int, inputPars *, struct grid *, molData *, image *, int, int *, int *, double);
@@ -240,6 +256,7 @@ inline double	FastExp(const float negarg);
 /* Curses functions */
 
 void 	greetings();
+void 	greetings_parallel(int);
 void	screenInfo();
 void 	done(int);
 void 	progressbar(double,int);

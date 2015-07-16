@@ -42,6 +42,7 @@ parseInput(inputPars *par, image **img, molData **m){
   par->pIntensity=0;
   par->sinkPoints=0;
   par->doPregrid=0;
+  par->nThreads=0;
 
   /* Allocate space for output fits images */
   (*img)=malloc(sizeof(image)*MAX_NSPECIES);
@@ -96,6 +97,10 @@ parseInput(inputPars *par, image **img, molData **m){
     (*img)[i].bandwidth=-1.;
   }
   input(par,*img);
+
+  if(par->nThreads == 0){ // Hmm. Really ought to have a separate boolean parameter.
+    par->nThreads = NTHREADS;
+  }
 
   par->ncell=par->pIntensity+par->sinkPoints;
   par->radiusSqu=par->radius*par->radius;
@@ -217,12 +222,8 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
       (*m)[i].down = NULL;
       (*m)[i].eterm = NULL;
       (*m)[i].gstat = NULL;
-      (*m)[i].jbar = NULL;
       (*m)[i].cmb = NULL;
       (*m)[i].local_cmb = NULL;
-      (*m)[i].phot = NULL;
-      (*m)[i].ds = NULL;
-      (*m)[i].vfac = NULL;
     }
 }
 
@@ -286,10 +287,6 @@ freeInput( inputPars *par, image* img, molData* mol )
             {
               free(mol[i].gstat);
             }
-          if( mol[i].jbar != NULL )
-            {
-              free(mol[i].jbar);
-            }
           if( mol[i].cmb != NULL )
             {
               free(mol[i].cmb);
@@ -297,18 +294,6 @@ freeInput( inputPars *par, image* img, molData* mol )
           if( mol[i].local_cmb != NULL )
             {
               free(mol[i].local_cmb);
-            }
-          if( mol[i].phot != NULL )
-            {
-              free(mol[i].phot);
-            }
-          if( mol[i].ds != NULL )
-            {
-              free(mol[i].ds);
-            }
-          if( mol[i].vfac != NULL )
-            {
-              free(mol[i].vfac);
             }
         }
       free(mol);
@@ -330,6 +315,24 @@ freeInput( inputPars *par, image* img, molData* mol )
     }
 }
 
+void
+freeGridPointData(inputPars *par, gridPointData *mol){
+  int i;
+  if (mol!= 0){
+    for (i=0;i<par->nSpecies;i++){
+      if (mol[i].jbar != NULL){
+        free(mol[i].jbar);
+      }
+      if (mol[i].phot != NULL){
+        free(mol[i].phot);
+      }
+      if (mol[i].vfac != NULL){
+        free(mol[i].vfac);
+      }
+    }
+    free(mol);
+  }
+}
 
 
 float
@@ -370,8 +373,8 @@ lineCount(int n,molData *m,int **counta,int **countb,int *nlinetot){
   *nlinetot=0;
   for(ispec=0;ispec<n;ispec++) *nlinetot+=m[ispec].nline;
   if(*nlinetot > 0){
-  *counta=malloc(sizeof(int)* *nlinetot);
-  *countb=malloc(sizeof(int)* *nlinetot);
+  *counta=malloc(sizeof(*counta)* *nlinetot);
+  *countb=malloc(sizeof(*countb)* *nlinetot);
   } else {
     if(!silent) bail_out("Error: Line count finds no lines");
     exit(0);
@@ -427,10 +430,11 @@ lineBlend(molData *m, inputPars *par, blend **matrix){
 
 void
 levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
-  int id,conv=0,iter,ilev,prog=0,ispec,c=0,n;
-  double percent=0.,pstate,*median,result1=0,result2=0,snr,delta_pop;
+  int id,conv=0,iter,ilev,prog=0,ispec,c=0,n,i,threadI,nVerticesDone;
+  double percent=0.,*median,result1=0,result2=0,snr,delta_pop;
   blend *matrix;
   struct statistics { double *pop, *ave, *sigma; } *stat;
+  const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
 
   stat=malloc(sizeof(struct statistics)*par->pIntensity);
 
@@ -448,12 +452,20 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
   }
 
   /* Random number generator */
-  gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);
+  gsl_rng *ran = gsl_rng_alloc(ranNumGenType);
 #ifdef TEST
   gsl_rng_set(ran, 1237106) ;
 #else 
   gsl_rng_set(ran,time(0));
 #endif
+
+  gsl_rng **threadRans;
+  threadRans = malloc(sizeof(gsl_rng *)*par->nThreads);
+
+  for (i=0;i<par->nThreads;i++){
+    threadRans[i] = gsl_rng_alloc(ranNumGenType);
+    gsl_rng_set(threadRans[i],(int)gsl_rng_uniform(ran)*1e6);
+  }
 
   /* Read in all molecular data */
   for(id=0;id<par->nSpecies;id++) molinit(m,par,g,id);
@@ -483,20 +495,53 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
   if(par->lte_only==0){
     do{
       if(!silent) progressbar2(prog++, 0, result1, result2);
-      pstate=0.;
 
       for(id=0;id<par->ncell && !g[id].sink;id++){
-        if(!silent) progressbar((double)id/par->pIntensity,10);
         for(ilev=0;ilev<m[0].nlev;ilev++) {
           for(iter=0;iter<4;iter++) stat[id].pop[ilev+m[0].nlev*iter]=stat[id].pop[ilev+m[0].nlev*(iter+1)];
           stat[id].pop[ilev+m[0].nlev*4]=g[id].mol[0].pops[ilev];
         }
-        if(g[id].dens[0] > 0 && g[id].t[0] > 0){
-          photon(id,g,m,0,ran,par,matrix);
-          for(ispec=0;ispec<par->nSpecies;ispec++) stateq(id,g,m,&pstate,ispec,par);
-        }
-        if(!silent) warning("");
+      }
 
+      nVerticesDone=0;
+      omp_set_dynamic(0);
+#pragma omp parallel private(i,id,ispec,threadI) num_threads(par->nThreads)
+      {
+        threadI = omp_get_thread_num();
+
+        /* Declare and allocate thread-private variables */
+        gridPointData *mp;	// Could have declared them earlier
+        double *halfFirstDs;	// and included them in private() I guess.
+        mp=malloc(sizeof(gridPointData)*par->nSpecies);
+        for (i=0;i<par->nSpecies;i++){
+          mp[i].phot = malloc(sizeof(double)*m[i].nline*max_phot);
+          mp[i].vfac = malloc(sizeof(double)*           max_phot);
+          mp[i].jbar = malloc(sizeof(double)*m[i].nline);
+        }
+        halfFirstDs = malloc(sizeof(*halfFirstDs)*max_phot);
+
+#pragma omp for
+        for(id=0;id<par->pIntensity;id++){
+#pragma omp atomic
+          ++nVerticesDone;
+
+          if (threadI == 0){ // i.e., is master thread
+            if(!silent) progressbar((double)nVerticesDone/par->pIntensity,10);
+          }
+          if(g[id].dens[0] > 0 && g[id].t[0] > 0){
+            photon(id,g,m,0,threadRans[threadI],par,matrix,mp,halfFirstDs);
+            for(ispec=0;ispec<par->nSpecies;ispec++) stateq(id,g,m,ispec,par,mp,halfFirstDs);
+          }
+          if (threadI == 0){ // i.e., is master thread
+            if(!silent) warning("");
+          }
+        }
+
+        freeGridPointData(par, mp);
+        free(halfFirstDs);
+      } // end parallel block.
+
+      for(id=0;id<par->ncell && !g[id].sink;id++){
         snr=0;
         n=0;
         for(ilev=0;ilev<m[0].nlev;ilev++) {
@@ -522,7 +567,7 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
         if(snr <= 3 && g[id].conv==2) g[id].conv=1;
       }
 
-      median=malloc(sizeof(double)*gsl_max(c,1));
+      median=malloc(sizeof(*median)*gsl_max(c,1));
       c=0;
       for(id=0;id<par->pIntensity;id++){
         for(ilev=0;ilev<m[0].nlev;ilev++){
@@ -542,6 +587,11 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
     } while(conv++<NITERATIONS);
     if(par->binoutputfile) binpopsout(par,g,m);
   }
+
+  for (i=0;i<par->nThreads;i++){
+    gsl_rng_free(threadRans[i]);
+  }
+  free(threadRans);
   gsl_rng_free(ran);
   for(id=0;id<par->pIntensity;id++){
     free(stat[id].pop);
