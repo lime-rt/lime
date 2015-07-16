@@ -105,18 +105,18 @@ If you have the older version of either qhull or cfitsio, set the respective env
 Running the code
 ----------------
 
-Source the file called source.me using the following commands.
-
-For bash:
-
-```
- $ . sourceme.bash
-```
-
-For csh:
+The path to the `lime` script needs to be in your `PATH`
+environment variable. If you are using bash, do:
 
 ```
-$ source sourceme.csh
+ $ export PATH=/path/to/lime/:${PATH}
+```
+
+where `/path/to/lime/` is the directory where the LIME source code
+is located. If you are using csh, do:
+
+```
+$ setenv PATH /path/to/lime/:${PATH}
 ```
 
 To find out whether you use bash or csh, do
@@ -124,10 +124,6 @@ To find out whether you use bash or csh, do
 ```
 $ echo $SHELL
 ```
-
-The source command needs to be executed for each new session. The content of 
-the file source.me can be placed in .bashrc or .cshrc for convenience in which 
-case there is no need to source the source.me file before each session.
 
 The code runs simply by typing
 
