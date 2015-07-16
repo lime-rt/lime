@@ -1,13 +1,9 @@
 /*
  *  popsin.c
- *  LIME, The versatile 3D line modeling environment
+ *  This file is part of LIME, the versatile line modeling engine
  *
- *  Created by Christian Brinch on 08/26/10.
- *  Copyright 2006-2014, Christian Brinch,
- *  <brinch@nbi.dk>
- *  Niels Bohr institutet
- *  University of Copenhagen
- *	All rights reserved.
+ *  Copyright (C) 2006-2014 Christian Brinch
+ *  Copyright (C) 2015 The LIME development team
  *
  */
 
@@ -44,14 +40,7 @@ popsin(inputPars *par, struct grid **g, molData **m, int *popsdone){
     (*m)[i].down = NULL;
     (*m)[i].eterm = NULL;
     (*m)[i].gstat = NULL;
-    (*m)[i].jbar = NULL;
-    (*m)[i].ds = NULL;
-    (*m)[i].vfac = NULL;
-    (*m)[i].jbar = NULL;
     (*m)[i].cmb = NULL;
-    (*m)[i].phot = NULL;
-    (*m)[i].ds = NULL;
-    (*m)[i].vfac = NULL;
     fread(&(*m)[i].nlev,  sizeof(int),        1,fp);
     fread(&(*m)[i].nline, sizeof(int),        1,fp);
     fread(&(*m)[i].npart, sizeof(int),        1,fp);

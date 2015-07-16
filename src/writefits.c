@@ -1,13 +1,9 @@
 /*
  *  writefits.c
- *  LIME, The versatile 3D line modeling environment 
+ *  This file is part of LIME, the versatile line modeling engine
  *
- *  Created by Christian Brinch on 24/04/08.
- *  Copyright 2006-2014, Christian Brinch, 
- *  <brinch@nbi.dk>
- *  Niels Bohr institutet
- *  University of Copenhagen
- *	All rights reserved.
+ *  Copyright (C) 2006-2014 Christian Brinch
+ *  Copyright (C) 2015 The LIME development team
  *
  */
 
@@ -28,7 +24,7 @@ writefits(int im, inputPars *par, molData *m, image *img){
   long int fpixels[3],lpixels[3];
   char negfile[100]="! ";
 
-  row = malloc(sizeof(float)*img[im].pxls);
+  row = malloc(sizeof(*row)*img[im].pxls);
 
   naxes[0]=img[im].pxls;
   naxes[1]=img[im].pxls;

@@ -1,13 +1,9 @@
 /*
  *  stokesangles.c
- *  LIME, The versatile 3D line modeling environment 
+ *  This file is part of LIME, the versatile line modeling engine
  *
- *  Created by Marco Padovani on 06/04/10.
- *  Copyright 2006-2012, Marco Padovani 
- *
- *  Institut de Ciències de l'Espai (IEEC-CSIC) - 
- *  UAB - Catalunya, Spain. 
- *  All rights reserved.
+ *  Copyright (C) 2006-2014 Christian Brinch
+ *  Copyright (C) 2015 The LIME development team
  *
  */
 

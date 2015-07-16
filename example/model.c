@@ -1,13 +1,9 @@
 /*
  *  model.c
- *  LIME, The versatile 3D line modeling tool
+ *  This file is part of LIME, the versatile line modeling engine
  *
- *  Created by Christian Brinch on 11/05/07.
- *  Copyright 2006-2013, Christian Brinch,
- *  <brinch@nbi.dk>
- *  Niels Bohr institutet
- *  University of Copenhagen
- *	All rights reserved.
+ *  Copyright (C) 2006-2014 Christian Brinch
+ *  Copyright (C) 2015 The LIME development team
  *
  */
 

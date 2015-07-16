@@ -1,13 +1,9 @@
 /*
  *  molinit.c
- *  LIME, The versatile 3D line modeling environment
+ *  This file is part of LIME, the versatile line modeling engine
  *
- *  Created by Christian Brinch on 16/11/06.
- *  Copyright 2006-2014, Christian Brinch,
- *  <brinch@nbi.dk>
- *  Niels Bohr institutet
- *  University of Copenhagen
- *	All rights reserved.
+ *  Copyright (C) 2006-2014 Christian Brinch
+ *  Copyright (C) 2015 The LIME development team
  *
  */
 
@@ -21,8 +17,8 @@ kappa(molData *m, struct grid *g, inputPars *par, int s){
   double loglam, *lamtab, *kaptab, *kappatab, gtd;
   gsl_spline *spline;
 
-  kappatab   	 = malloc(sizeof(double)*m[s].nline);
-  m[s].cmb	     = malloc(sizeof(double)*m[s].nline);
+  kappatab   	 = malloc(sizeof(*kappatab)*m[s].nline);
+  m[s].cmb	 = malloc(sizeof(double)*m[s].nline);
   m[s].local_cmb = malloc(sizeof(double)*m[s].nline);
 
   if(par->dust == NULL){
@@ -39,10 +35,11 @@ kappa(molData *m, struct grid *g, inputPars *par, int s){
     }
     rewind(fp);
     if(i>0){
-      lamtab=malloc(sizeof(double)*i);
-      kaptab=malloc(sizeof(double)*i);
+      lamtab=malloc(sizeof(*lamtab)*i);
+      kaptab=malloc(sizeof(*kaptab)*i);
     } else {
       if(!silent) bail_out("No opacities read");
+      exit(1);
     }
     for(k=0;k<i;k++){
       fscanf(fp,"%lf %lf\n", &lamtab[k], &kaptab[k]);
@@ -142,16 +139,12 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
   fscanf(fp, "%d\n", &m[i].nline);
   fgets(string, 80, fp);
 
-  m[i].lal		= malloc(sizeof(int)*m[i].nline);
-  m[i].lau		= malloc(sizeof(int)*m[i].nline);
-  m[i].aeinst	= malloc(sizeof(double)*m[i].nline);
-  m[i].freq		= malloc(sizeof(double)*m[i].nline);
-  m[i].beinstu	= malloc(sizeof(double)*m[i].nline);
-  m[i].beinstl	= malloc(sizeof(double)*m[i].nline);
-  m[i].phot     = malloc(sizeof(double)*m->nline*max_phot);
-  m[i].ds       = malloc(sizeof(double)*max_phot);
-  m[i].vfac     = malloc(sizeof(double)*max_phot);
-  m[i].jbar     = malloc(sizeof(double)*m[i].nline);
+  m[i].lal     = malloc(sizeof(int)*m[i].nline);
+  m[i].lau     = malloc(sizeof(int)*m[i].nline);
+  m[i].aeinst  = malloc(sizeof(double)*m[i].nline);
+  m[i].freq    = malloc(sizeof(double)*m[i].nline);
+  m[i].beinstu = malloc(sizeof(double)*m[i].nline);
+  m[i].beinstl = malloc(sizeof(double)*m[i].nline);
 
   /* Read transitions, Einstein A, and frequencies */
   for(iline=0;iline<m[i].nline;iline++){
@@ -179,7 +172,7 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
   if(par->lte_only==0){
     fgets(string, 80, fp);
     fscanf(fp,"%d\n", &m[i].npart);
-    count=malloc(sizeof(int)*m[i].npart);
+    count=malloc(sizeof(*count)*m[i].npart);
     /* collision partner sanity check */
 
     if(m[i].npart > par->collPart) flag=1;
@@ -190,7 +183,7 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
 
 
     m[i].ntrans = malloc(sizeof(int)*m[i].npart);
-    ntemp = malloc(sizeof(int)*m[i].npart);
+    ntemp = malloc(sizeof(*ntemp)*m[i].npart);
     part = malloc(sizeof(struct data) * m[i].npart);
 
     for(ipart=0;ipart<m[i].npart;ipart++){

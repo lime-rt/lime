@@ -1,13 +1,9 @@
 /*
  *  grid.c
- *  LIME, The versatile 3D line modeling environment
+ *  This file is part of LIME, the versatile line modeling engine
  *
- *  Created by Christian Brinch on 11/16/06.
- *  Copyright 2006-2014, Christian Brinch,
- *  <brinch@nbi.dk>
- *  Niels Bohr institutet
- *  University of Copenhagen
- *	All rights reserved.
+ *  Copyright (C) 2006-2014 Christian Brinch
+ *  Copyright (C) 2015 The LIME development team
  *
  */
 
@@ -355,7 +351,7 @@ getArea(inputPars *par, struct grid *g, const gsl_rng *ran){
   /* Lots of circles approach -- badly broken, needs to be fixed  */
   /*
      for(i=0;i<par->pIntensity;i++){
-     angle=malloc(sizeof(double)*g[i].numNeigh);
+     angle=malloc(sizeof(*angle)*g[i].numNeigh);
      g[i].w=malloc(sizeof(double)*g[i].numNeigh);
      for(k=0;k<g[i].numNeigh;k++){
      best=0;
@@ -378,7 +374,7 @@ getArea(inputPars *par, struct grid *g, const gsl_rng *ran){
 
 
   for(i=0;i<par->pIntensity;i++){
-    angle=malloc(sizeof(double)*g[i].numNeigh);
+    angle=malloc(sizeof(*angle)*g[i].numNeigh);
     g[i].w=malloc(sizeof(double)*g[i].numNeigh);
     memset(g[i].w, 0, sizeof(double) * g[i].numNeigh);
     for(k=0;k<1000;k++){
@@ -475,7 +471,7 @@ getMass(inputPars *par, struct grid *g, const gsl_rng *ran){
     suma=0.;
     // farea=malloc(sizeof(double)*pts[i].vps);
     if(pts[i].vps>0){
-      farea=malloc(sizeof(double)*pts[i].vps);
+      farea=malloc(sizeof(*farea)*pts[i].vps);
     } else {
       if(!silent) bail_out("Qhull error");
       exit(0);
@@ -594,7 +590,7 @@ buildGrid(inputPars *par, struct grid *g){
     if(!silent) progressbar((double) k/((double)par->pIntensity-1), 4);
   }
   /* end model grid point assignment */
-
+  if(!silent) done(4);
 
   /* Add surface sink particles */
   for(i=0;i<par->sinkPoints;i++){

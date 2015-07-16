@@ -1,3 +1,12 @@
+ /*
+ *  fastexp.c
+ *  This file is part of LIME, the versatile line modeling engine
+ *
+ *  Copyright (C) 2006-2014 Christian Brinch
+ *  Copyright (C) 2015 The LIME development team
+ *
+ */
+
 #include "lime.h"
 
 
@@ -184,13 +193,6 @@ See description of the lookup algorithm in function calcFastExpRange(). ****NOTE
 This value should be calculated from 127+lowestExponent, where 127 is the offset for an exponent of zero laid down in the IEEE 754 standard, and both lowestExponent and numExponentsUsed can be calculated via calcFastExpRange().
 
   exponentOffset = ieee754ExpOffset + lowestExponent;
-  */
-
-  int numJs=256;
-  /*
-Should be equal to 2^B, where B is the maximum number of bits in a mantissa mask (hardwired here to 8).
-
-  numJs = (int)pow(2.,maxNumBitsPerMantField);
   */
 
   int mantMask0=0x007f0000, mantMask1=0x0000ff00, mantMask2=0x000000ff;

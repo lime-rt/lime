@@ -1,13 +1,9 @@
 /*
  *  report.c
- *  LIME, The versatile 3D line modeling environment
+ *  This file is part of LIME, the versatile line modeling engine
  *
- *  Created by Christian Brinch on 17/06/09.
- *  Copyright 2006-2014, Christian Brinch,
- *  <brinch@strw.leidenuniv.nl>
- *  Sterrewacht Leiden
- *  Leiden University
- *	All rights reserved.
+ *  Copyright (C) 2006-2014 Christian Brinch
+ *  Copyright (C) 2015 The LIME development team
  *
  */
 

@@ -1,13 +1,9 @@
 /*
  *  curses.c
- *  LIME, The versatile 3D line modeling environment 
+ *  This file is part of LIME, the versatile line modeling engine
  *
- *  Created by Christian Brinch on 29/10/08.
- *  Copyright 2006-2014, Christian Brinch, 
- *  <brinch@nbi.dk>
- *  Niels Bohr institutet
- *  University of Copenhagen
- *	All rights reserved.
+ *  Copyright (C) 2006-2014 Christian Brinch
+ *  Copyright (C) 2015 The LIME development team
  *
  */
 
@@ -26,6 +22,23 @@ greetings(){
   printw(">>> NOTE! Fast-exponential routine is enabled. <<<\n");
 #endif
   refresh();	
+}
+
+void
+greetings_parallel(numThreads){
+  initscr();
+  if (numThreads>1){
+    printw("*** LIME, The versatile line modeling engine, Ver. 1.5 (parallel running, %d threads)\n", numThreads);
+  } else {
+    printw("*** LIME, The versatile line modeling engine, Ver. 1.5\n");
+  }
+#ifdef TEST
+  printw(">>> NOTE! Test flag is set in the Makefile. <<<\n");
+#endif
+#ifdef FASTEXP
+  printw(">>> NOTE! Fast-exponential routine is enabled. <<<\n");
+#endif
+  refresh();
 }
 
 void

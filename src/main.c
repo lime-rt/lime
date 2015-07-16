@@ -1,22 +1,9 @@
 /*
  *  main.c
- *  LIME, The versatile 3D line modeling environment
+ *  This file is part of LIME, the versatile line modeling engine
  *
- *  Created by Christian Brinch on 16/11/06.
- *  Copyright 2006-2014, Christian Brinch,
- *  <brinch@nbi.dk>
- *  Niels Bohr institutet
- *  University of Copenhagen
- *	All rights reserved.
- *
- *  LIME is derived from RATRAN by Michiel Hogerheijde and Floris van der Tak,
- *  Copyright 2000, Hogerheijde and van der Tak, A&A, 362, 697, 2000.
- *
- *  DISCLAIMER: LIME is provided as is and the author does not accept any 
- *  responsibility for erroneous results due to bugs in the code.
- *
- *  Any publication with results obtain using LIME should refer to
- *  Brinch & Hogerheijde, A&A, 523, A25, 2010
+ *  Copyright (C) 2006-2014 Christian Brinch
+ *  Copyright (C) 2015 The LIME development team
  *
  */
 
