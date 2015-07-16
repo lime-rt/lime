@@ -77,11 +77,19 @@ if [ $# -ne 1 ]; then
     exit 1
 fi
 
+# Set up the PATHTOLIME, LD_LIBRARY_PATH and WORKDIR variables
+export PATHTOLIME=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${PATHTOLIME}/lib
 export WORKDIR=$PWD
-cd $PATHTOLIME
+
+# Compile the code
+pushd ${PATHTOLIME} >> /dev/null
 make EXTRACPPFLAGS="${cpp_flags}" MODELS=$WORKDIR/$1 TARGET=$WORKDIR/lime_$$.x
 make clean
-cd $WORKDIR
+
+# Run the code
+popd >> /dev/null
 ./lime_$$.x
 rm -rf lime_$$.x
+
 exit 0
