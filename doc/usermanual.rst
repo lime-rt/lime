@@ -97,20 +97,19 @@ Setting up LIME
 
 LIME is compiled at run time, so there is no need to make any kind of
 pre-installation of the code. The only requirement for the code to run
-is to set up a few system PATH variables. This is done by sourcing the
-file sourceme.bash (or sourceme.csh depending on the SHELL type).
+is that the path to `lime` script is in the PATH environment
+variable.
 
-::
+.. note::
 
-    bash$ source sourceme.bash
-
-The content of the sourceme file can be placed in .bashrc (or .cshrc)
-for convenience (make sure to change $PWD to the path to LimePackage).
+   Starting with LIME 1.5, sourcing the `sourceme.bash` or
+   `sourceme.bash` (depending on your SHELL type) is not needed
+   anymore.
 
 Running LIME
 ~~~~~~~~~~~~
 
-Once the path variables have been set, LIME can be run from the command
+Once the PATH variable is set, LIME can be run from the command
 line
 
 ::
