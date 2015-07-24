@@ -10,7 +10,7 @@
 #include "lime.h"
 
 void
-predefinedGrid(inputPars *par, struct grid *g){
+predefinedGrid(configInfo *par, struct grid *g){
   FILE *fp;
   int i;
   double x,y,z,scale;

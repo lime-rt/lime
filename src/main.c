@@ -21,11 +21,11 @@ double EXP_TABLE_3D[1][1][1];
 #endif
 
 int main () {
-  int i;
+  int i,nSpecies,nImages;
   int initime=time(0);
   int popsdone=0;
   molData*     m = NULL;
-  inputPars    par;
+  configInfo   par;
   struct grid* g = NULL;
   image*       img = NULL;
 
@@ -36,7 +36,7 @@ int main () {
   calcTableEntries(FAST_EXP_MAX_TAYLOR, FAST_EXP_NUM_BITS);
 #endif
 
-  parseInput(&par,&img,&m);
+  setUpConfig(&par,&img,&m);
 
   if(par.doPregrid)
     {

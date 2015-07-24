@@ -13,7 +13,7 @@
 
 
 void
-stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par, gridPointData *mp, double *halfFirstDs){
+stateq(int id, struct grid *g, molData *m, int ispec, configInfo *par, gridPointData *mp, double *halfFirstDs){
   int t,s,iter;
   double *opop, *oopop;
   double diff;

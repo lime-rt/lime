@@ -62,7 +62,7 @@ line_plane_intersect(struct grid *g, double *ds, int posn, int *nposn, double *d
 
 
 void
-traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molData *m, image *img, int nlinetot, int *counta, int *countb, double cutoff){
+traceray(rayData ray, int tmptrans, int im, configInfo *par, struct grid *g, molData *m, image *img, int nlinetot, int *counta, int *countb, double cutoff){
   int ichan,posn,nposn,i,iline;
   double vfac=0.,x[3],dx[3],vThisChan;
   double deltav,ds,dist2,ndist2,xp,yp,zp,col,shift,jnu,alpha,remnantSnu,dtau,expDTau,snu_pol[3];
@@ -169,7 +169,7 @@ traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molD
 
 
 void
-raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
+raytrace(int im, configInfo *par, struct grid *g, molData *m, image *img){
   int *counta, *countb,nlinetot,aa;
   int ichan,px,iline,tmptrans,i,threadI,nRaysDone;
   double size,minfreq,absDeltaFreq,totalNumPixelsMinus1=(double)(img[im].pxls*img[im].pxls-1);
@@ -280,7 +280,7 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
 
 
 void
-raytrace_1_4(int im, inputPars *par, struct grid *g, molData *m, image *img){
+raytrace_1_4(int im, configInfo *par, struct grid *g, molData *m, image *img){
   /*
 This is an alternative raytracing algorithm which was implemented by
 C Brinch in version 1.4 (the original parallelized version) of LIME.

@@ -10,7 +10,7 @@
 #include "lime.h"
 
 void
-kappa(molData *m, struct grid *g, inputPars *par, int s){
+kappa(molData *m, struct grid *g, configInfo *par, int s){
   FILE *fp;
   char string[80];
   int i=0,k,j,iline,id;
@@ -102,7 +102,7 @@ planckfunc(int iline, double temp, molData *m,int s){
 }
 
 void
-molinit(molData *m, inputPars *par, struct grid *g,int i){
+molinit(molData *m, configInfo *par, struct grid *g, int i){
   int id, ilev, iline, itrans, ispec, itemp, *ntemp, tnint=-1, idummy, ipart, *count,flag=0;
   char *collpartname[] = {"H2","p-H2","o-H2","electrons","H","He","H+"}; /* definition from LAMDA */
   double fac, uprate, downrate=0, dummy, amass;

@@ -12,7 +12,7 @@
 
 /* Based on Lloyds Algorithm (Lloyd, S. IEEE, 1982) */	
 void
-smooth(inputPars *par, struct grid *g){
+smooth(configInfo *par, struct grid *g){
   double mindist;	/* Distance to closest neighbor				*/
   int k=0,j,i;		/* counters									*/
   int sg;		/* counter for smoothing the grid			*/

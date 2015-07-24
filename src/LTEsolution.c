@@ -10,7 +10,7 @@
 #include "lime.h"
 
 void
-LTE(inputPars *par, struct grid *g, molData *m){
+LTE(configInfo *par, struct grid *g, molData *m){
   int id,ilev,ispec;
   double z;
 
