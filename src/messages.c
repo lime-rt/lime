@@ -15,7 +15,7 @@ void
 greetings(){
 #ifdef NO_NCURSES
 
-  printf("*** LIME, The versatile line modeling engine, Ver. %s\n", VERSION);
+  printf("*** LIME, The versatile line modeling engine, version %s\n", VERSION);
 #ifdef TEST
   printf(">>> NOTE! Test flag is set in the Makefile. <<<\n");
 #endif
@@ -26,7 +26,7 @@ greetings(){
 #else
 
   initscr();
-  printw("*** LIME, The versatile line modeling engine, Ver. %s\n", VERSION);
+  printw("*** LIME, The versatile line modeling engine, version %s\n", VERSION);
 #ifdef TEST
   printw(">>> NOTE! Test flag is set in the Makefile. <<<\n");
 #endif
@@ -148,32 +148,11 @@ progressbar(double percent, int line){
 }
 
 void
-progressbar2(int prog, double percent, double minsnr, double median){
-#ifndef NO_NCURSES
-  move(7,38); printw("                    ");            
-  move(8,38); printw("                    ");
-  if(minsnr<1000){
-    move(7,25); printw("Min(SNR)    %3.3f", minsnr);
-  } else {
-    move(7,25); printw("Min(SNR)    %.3e", minsnr);
-  }
-  if(median<1000){
-    move(8,25);	printw("Median(SNR) %3.3f", median);
-  } else {
-    move(8,25); printw("Median(SNR) %.3e", median);
-  }
-  move(9,25+prog); printw("#");
-  if(percent<100) {
-    move(10,25);	 printw("                         ");
-  }
-  refresh();	
-#endif
-}
-
-void
-progressbar2_new(int flag, int prog, double percent, double minsnr, double median){
+progressbar2(int flag, int prog, double percent, double minsnr, double median){
 #ifdef NO_NCURSES
-  if (flag == 1){
+  if (flag == 0) {
+    printf("  Iteration %i / max %i: Starting\n", prog + 1, NITERATIONS + 1);
+  } else if (flag == 1){
     if (minsnr < 1000)
       printf("      Statistics: Min(SNR)    %3.3f                     \n", minsnr); 
     else 
@@ -184,28 +163,31 @@ progressbar2_new(int flag, int prog, double percent, double minsnr, double media
     else 
       printf("      Statistics: Median(SNR) %.3e                      \n", median);
 
-    printf("  Iteration %i / %i: DONE\n\n", prog, NITERATIONS + 1);
-  } else if (flag == 0)
-    printf("  Iteration %i / %i: Starting\n", prog + 1, NITERATIONS + 1);
+    printf("  Iteration %i / max %i: DONE\n\n", prog, NITERATIONS + 1);
+  }
 
 #else
-  move(7,38); printw("                    ");            
-  move(8,38); printw("                    ");
-  if(minsnr<1000){
-    move(7,25); printw("Min(SNR)    %3.3f", minsnr);
-  } else {
-    move(7,25); printw("Min(SNR)    %.3e", minsnr);
+  if (flag == 0) {
+    move(9,25+prog); printw("#");
+    if(percent<100) {
+      move(10,25); printw("                         ");
+    }
+    refresh();
+  } else if (flag == 1){
+    move(7,38); printw("                    ");            
+    move(8,38); printw("                    ");
+    if(minsnr<1000){
+      move(7,25); printw("Min(SNR)    %3.3f", minsnr);
+    } else {
+      move(7,25); printw("Min(SNR)    %.3e", minsnr);
+    }
+    if(median<1000){
+      move(8,25); printw("Median(SNR) %3.3f", median);
+    } else {
+      move(8,25); printw("Median(SNR) %.3e", median);
+    }
+    refresh();
   }
-  if(median<1000){
-    move(8,25);	printw("Median(SNR) %3.3f", median);
-  } else {
-    move(8,25); printw("Median(SNR) %.3e", median);
-  }
-  move(9,25+prog); printw("#");
-  if(percent<100) {
-    move(10,25);	 printw("                         ");
-  }
-  refresh();	
 #endif
 }
 
@@ -241,7 +223,7 @@ void
 goodnight(int initime, char filename[80]){
   int runtime=time(0)-initime;
 #ifdef NO_NCURSES
-  printf("Output written to %s", filename);
+  printf("Output written to %s\n", filename);
   printf("*** Program ended successfully               \n");
   printf("    Runtime: %3dh %2dm %2ds\n\n", runtime / 3600, runtime / 60 % 60, runtime % 60);
 
