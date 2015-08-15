@@ -65,11 +65,10 @@ parseInput(inputPars *par, image **img, molData **m, region **rgn){
   }
   *img=realloc(*img, sizeof(image)*par->nImages);
 
-  id=0;
+  id=-1;
   while((*rgn)[++id].crdType!=-1);
   par->nRegions=id;
   if(par->nRegions==0) {
-      if(!silent) bail_out("Warning: no spatial region defined\\ I take everything from minScale to radius");
       *rgn=realloc(*rgn, sizeof(region)*1);
   } else {
       *rgn=realloc(*rgn, sizeof(region)*par->nRegions);
@@ -110,20 +109,23 @@ parseInput(inputPars *par, image **img, molData **m, region **rgn){
     (*img)[i].bandwidth=-1.;
   }
 
-  for(i=0;i<par->nRegions;i++){
-      (*rgn)[i].crdType=-1;
-      (*rgn)[i].sampling=-1;
-      (*rgn)[i].nPoints=-1;
-      (*rgn)[i].xmin=0.;
-      (*rgn)[i].xmax=0.;
-      (*rgn)[i].ymin=0.;
-      (*rgn)[i].ymax=0.;
-      (*rgn)[i].zmin=0.;
-      (*rgn)[i].zmax=0.;
-      (*rgn)[i].xref=0.;
-      (*rgn)[i].yref=0.;
-      (*rgn)[i].zref=0.;
+  if( par->nRegions>0 ){
+      for(i=0;i<par->nRegions;i++){
+          (*rgn)[i].crdType=-1;
+          (*rgn)[i].sampling=-1;
+          (*rgn)[i].nPoints=-1;
+          (*rgn)[i].xmin=0.;
+          (*rgn)[i].xmax=0.;
+          (*rgn)[i].ymin=0.;
+          (*rgn)[i].ymax=0.;
+          (*rgn)[i].zmin=0.;
+          (*rgn)[i].zmax=0.;
+          (*rgn)[i].xref=0.;
+          (*rgn)[i].yref=0.;
+          (*rgn)[i].zref=0.;
+      }
   }
+
   input(par,*img, *rgn);
 
   if(par->nRegions==0) {
@@ -132,10 +134,10 @@ parseInput(inputPars *par, image **img, molData **m, region **rgn){
       (*rgn)[0].sampling=par->sampling;
       (*rgn)[0].xmin=par->minScale;
       (*rgn)[0].xmax=par->radius;
-      (*rgn)[0].ymin=0;
+      (*rgn)[0].ymin=0.;
       (*rgn)[0].ymax=PI;
-      (*rgn)[0].ymin=0;
-      (*rgn)[0].ymax=2.0*PI;
+      (*rgn)[0].zmin=0.;
+      (*rgn)[0].zmax=2.0*PI;
       (*rgn)[0].xref=par->minScale*1.5;
       (*rgn)[0].yref=PI/2.;
       (*rgn)[0].zref=0.;

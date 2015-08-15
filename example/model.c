@@ -23,7 +23,7 @@ input(inputPars *par, image *img, region *rgn){
   par->dust				= "jena_thin_e6.tab";
   par->moldatfile[0] 	= "hco+@xpol.dat";
   par->antialias		= 4;
-  par->sampling			= 2; // log distr. for radius, directions distr. uniformly on a sphere.
+  par->sampling			= 0; // log distr. for radius, directions distr. uniformly on a sphere.
   par->lte_only         = 0;
 
   par->outputfile 		= "populations.pop";
@@ -33,7 +33,6 @@ input(inputPars *par, image *img, region *rgn){
   /*
    * Spatial regions
    */
-
   rgn[0].crdType       = 0;
   rgn[0].sampling      = 0;
   rgn[0].xmin          = 0.5*AU;
