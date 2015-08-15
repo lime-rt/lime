@@ -305,7 +305,7 @@ write_VTK_unstructured_Points(inputPars *par, struct grid *g){
   qh_memfreeshort (&curlong, &totlong);
   fprintf(fp,"\nCELL_TYPES %d\n",l);
   for(i=0;i<l;i++){
-    fprintf(fp, "10\n");
+    fprintf(fp, "9\n");
   }
   fprintf(fp,"POINT_DATA %d\n",par->ncell);
   fprintf(fp,"SCALARS H2_density float 1\n");
