@@ -69,6 +69,6 @@ int main () {
   if(!silent) goodnight(initime,img[0].filename);
 
   freeGrid( &par, m, g);
-  freeInput(&par, img, m);
+  freeInput(&par, img, m, rgn);
   return 0;
 }

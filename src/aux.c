@@ -277,7 +277,7 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
 }
 
 void
-freeInput( inputPars *par, image* img, molData* mol )
+freeInput( inputPars *par, image* img, molData* mol, region* rgn)
 {
   int i,id;
   if( mol!= 0 )
@@ -361,6 +361,10 @@ freeInput( inputPars *par, image* img, molData* mol )
   if( par->moldatfile != NULL )
     {
       free(par->moldatfile);
+    }
+  if( rgn != NULL )
+    {
+      free(rgn);
     }
 }
 

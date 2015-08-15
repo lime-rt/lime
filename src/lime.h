@@ -215,7 +215,7 @@ void    fit_fi(double, double, double*);
 void    fit_rr(double, double, double*);
 void   	input(inputPars *, image *, region *);
 float  	invSqrt(float);
-void    freeInput(inputPars *, image*, molData* m );
+void    freeInput(inputPars *, image*, molData* m, region*);
 void   	freeGrid(const inputPars * par, const molData* m, struct grid * g);
 void   	freePopulation(const inputPars * par, const molData* m, struct populations * pop);
 double 	gaussline(double, double);
