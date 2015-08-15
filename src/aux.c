@@ -14,7 +14,7 @@
 
 
 void
-parseInput(inputPars *par, image **img, molData **m){
+parseInput(inputPars *par, image **img, molData **m, region **rgn){
   FILE *fp;
   int i,id;
   double BB[3];
@@ -47,7 +47,15 @@ parseInput(inputPars *par, image **img, molData **m){
     (*img)[id].filename=NULL;
     par->moldatfile[id]=NULL;
   }
-  input(par, *img);
+  /* Allocate space for spatial regions */
+
+  (*rgn)=malloc(sizeof(region)*MAX_REGIONS);
+  for(id=0;id<MAX_REGIONS;id++){
+      (*rgn)[id].crdType=-1;
+  }
+
+  input(par, *img, *rgn);
+
   id=-1;
   while((*img)[++id].filename!=NULL);
   par->nImages=id;
@@ -55,9 +63,18 @@ parseInput(inputPars *par, image **img, molData **m){
     if(!silent) bail_out("Error: no images defined");
     exit(1);
   }
-
   *img=realloc(*img, sizeof(image)*par->nImages);
 
+  id=0;
+  while((*rgn)[++id].crdType!=-1);
+  par->nRegions=id;
+  if(par->nRegions==0) {
+      if(!silent) bail_out("Warning: no spatial region defined\\ I take everything from minScale to radius");
+      *rgn=realloc(*rgn, sizeof(region)*1);
+  } else {
+      *rgn=realloc(*rgn, sizeof(region)*par->nRegions);
+      refresh();
+  }
   id=-1;
   while(par->moldatfile[++id]!=NULL);
   par->nSpecies=id;
@@ -92,7 +109,43 @@ parseInput(inputPars *par, image **img, molData **m){
     (*img)[i].freq=-1.;
     (*img)[i].bandwidth=-1.;
   }
-  input(par,*img);
+
+  for(i=0;i<par->nRegions;i++){
+      (*rgn)[i].crdType=-1;
+      (*rgn)[i].sampling=-1;
+      (*rgn)[i].nPoints=-1;
+      (*rgn)[i].xmin=0.;
+      (*rgn)[i].xmax=0.;
+      (*rgn)[i].ymin=0.;
+      (*rgn)[i].ymax=0.;
+      (*rgn)[i].zmin=0.;
+      (*rgn)[i].zmax=0.;
+      (*rgn)[i].xref=0.;
+      (*rgn)[i].yref=0.;
+      (*rgn)[i].zref=0.;
+  }
+  input(par,*img, *rgn);
+
+  if(par->nRegions==0) {
+      par->nRegions=1;
+      (*rgn)[0].crdType=0;
+      (*rgn)[0].sampling=par->sampling;
+      (*rgn)[0].xmin=par->minScale;
+      (*rgn)[0].xmax=par->radius;
+      (*rgn)[0].ymin=0;
+      (*rgn)[0].ymax=PI;
+      (*rgn)[0].ymin=0;
+      (*rgn)[0].ymax=2.0*PI;
+      (*rgn)[0].xref=par->minScale*1.5;
+      (*rgn)[0].yref=PI/2.;
+      (*rgn)[0].zref=0.;
+      (*rgn)[0].nPoints=par->pIntensity;
+  } else {
+      par->pIntensity = 0;
+      for (i=0;i<par->nRegions;i++){
+          par->pIntensity += (*rgn)[i].nPoints;
+      }
+  }
 
   if(par->nThreads == 0){ // Hmm. Really ought to have a separate boolean parameter.
     par->nThreads = NTHREADS;

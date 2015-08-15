@@ -12,7 +12,7 @@
 /******************************************************************************/
 
 void
-input(inputPars *par, image *img){
+input(inputPars *par, image *img, region *rgn){
   /*
    * Basic parameters. See cheat sheet for details.
    */
@@ -24,10 +24,28 @@ input(inputPars *par, image *img){
   par->moldatfile[0] 	= "hco+@xpol.dat";
   par->antialias		= 4;
   par->sampling			= 2; // log distr. for radius, directions distr. uniformly on a sphere.
+  par->lte_only         = 1;
 
   par->outputfile 		= "populations.pop";
   par->binoutputfile 	= "restart.pop";
   par->gridfile			= "grid.vtk";
+
+  /*
+   * Spatial regions
+   */
+
+  rgn[0].crdType       = 0;
+  rgn[0].sampling      = 0;
+  rgn[0].xmin          = 0.5*AU;
+  rgn[0].xmax          = 2000.0*AU;
+  rgn[0].ymin          = 0.;
+  rgn[0].ymax          = PI;
+  rgn[0].zmin          = 0.;
+  rgn[0].zmax          = 2.*PI;
+  rgn[0].xref          = 0.5*AU;
+  rgn[0].yref          = PI/2.;
+  rgn[0].zref          = 0.;
+  rgn[0].nPoints       = 4000;
 
   /*
    * Definitions for image #0. Add blocks for additional images.
@@ -147,21 +165,25 @@ velocity(double x, double y, double z, double *vel){
 
 /******************************************************************************/
 int
-pointEvaluation(inputPars *par,double ran, double x, double y, double z){
+pointEvaluation(inputPars *par,double ran, double x, double y, double z, double xref, double yref, double zref, int pid){
   double weight1, weight2, val[99],normalizer=0.0,totalDensity=0.0;
   int i;
 
-  density(par->minScale,par->minScale,par->minScale,val);
-  for (i=0;i<par->collPart;i++) normalizer += val[i];
-  if (normalizer<=0.){
-    if(!silent) bail_out("Error: Sum of reference densities equals 0");
-    exit(1);
-  }
-  //abundance(par->minScale,par->minScale,par->minScale,val2);
-  density(x,y,z,val);
-  for (i=0;i<par->collPart;i++) totalDensity += val[i];
-  //abundance(x,y,z,val2);
-  weight1=pow(totalDensity/normalizer,0.2);
+  if (pid<4000){
+      /*density(par->minScale,par->minScale,par->minScale,val);*/
+      density(xref, yref, zref, val);
+      for (i=0;i<par->collPart;i++) normalizer += val[i];
+      if (normalizer<=0.){
+        if(!silent) bail_out("Error: Sum of reference densities equals 0");
+        exit(1);
+      }
+      //abundance(par->minScale,par->minScale,par->minScale,val2);
+      density(x,y,z,val);
+      for (i=0;i<par->collPart;i++) totalDensity += val[i];
+      //abundance(x,y,z,val2);
+      weight1=pow(totalDensity/normalizer,0.2);
+  } else
+      weight1 = 1.;
 
   weight2=0.;
 
