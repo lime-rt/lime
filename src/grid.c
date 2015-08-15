@@ -305,7 +305,7 @@ write_VTK_unstructured_Points(inputPars *par, struct grid *g){
   qh_memfreeshort (&curlong, &totlong);
   fprintf(fp,"\nCELL_TYPES %d\n",l);
   for(i=0;i<l;i++){
-    fprintf(fp, "10\n");
+    fprintf(fp, "9\n");
   }
   fprintf(fp,"POINT_DATA %d\n",par->ncell);
   fprintf(fp,"SCALARS H2_density float 1\n");
@@ -325,12 +325,7 @@ write_VTK_unstructured_Points(inputPars *par, struct grid *g){
   }
   fprintf(fp,"VECTORS velocity float\n");
   for(i=0;i<par->ncell;i++){
-    length=sqrt(g[i].vel[0]*g[i].vel[0]+g[i].vel[1]*g[i].vel[1]+g[i].vel[2]*g[i].vel[2]);
-    if(length > 0.){
-      fprintf(fp, "%e %e %e\n", g[i].vel[0]/length,g[i].vel[1]/length,g[i].vel[2]/length);
-    } else {
-      fprintf(fp, "%e %e %e\n", g[i].vel[0],g[i].vel[1],g[i].vel[2]);
-    }
+    fprintf(fp, "%e %e %e\n", g[i].vel[0],g[i].vel[1],g[i].vel[2]);
   }
 
   fclose(fp);
@@ -515,13 +510,16 @@ getMass(inputPars *par, struct grid *g, const gsl_rng *ran){
 
 
 void
-buildGrid(inputPars *par, struct grid *g){
+buildGrid(inputPars *par, struct grid *g, region *rgn){
   double lograd;		/* The logarithm of the model radius		*/
   double logmin;	    /* Logarithm of par->minScale				*/
   double r,theta,phi,sinPhi,x,y,z,semiradius;	/* Coordinates								*/
   double temp;
   int k=0,i;            /* counters									*/
   int flag;
+  int ip, j;
+  double xmin, xmax, ymin, ymax ; /* Coordinate boundaries */
+  double cos_theta, sin_theta ;
 
   gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
 #ifdef TEST
@@ -530,65 +528,189 @@ buildGrid(inputPars *par, struct grid *g){
   gsl_rng_set(ran,time(0));
 #endif  
   
-  lograd=log10(par->radius);
-  logmin=log10(par->minScale);
+  ip = 0;
+  for (i=0;i<par->nRegions;i++) {
+      for (k=0;k<rgn[i].nPoints;k++){
+          temp=gsl_rng_uniform(ran);
+          flag=0;
+          /*If we're in spherical coordinate system */
+          if (rgn[i].crdType==0){
+              if (rgn[i].sampling==0) {
+                  xmin = log10(rgn[i].xmin);
+                  xmax = log10(rgn[i].xmax);
+                  ymin = cos(rgn[i].ymin);
+                  ymax = cos(rgn[i].ymax);
+                  /* Pick a point and check if we like it or not */
+                  do {
+                      r         = pow(10,xmin+gsl_rng_uniform(ran)*(xmax-xmin));
+                      phi       = rgn[i].zmin + gsl_rng_uniform(ran)*(rgn[i].zmax-rgn[i].zmin);
+                      cos_theta = ymin + gsl_rng_uniform(ran)*(ymax-ymin);
+                      sin_theta = sqrt(1.0 - cos_theta*cos_theta);
+                      x         = r*sin_theta * cos(phi);
+                      y         = r*sin_theta * sin(phi);
+                      if (DIM==3) z         = r*cos_theta;
+                      else z = 0.;
+                      flag = pointEvaluation(par,temp,x,y,z,rgn[i].xref,rgn[i].yref,rgn[i].zref,ip);
+                  } while (!flag);
+                  /* Now pointEvaluation has decided that we like the point */
+                  /* Assign values to the k'th grid point */
+                  /* I don't think we actually need to do this here... */
 
-  /* Sample pIntensity number of points */
-  for(k=0;k<par->pIntensity;k++){
-    temp=gsl_rng_uniform(ran);
-    flag=0;
-    /* Pick a point and check if we like it or not */
-    do{
-      if(par->sampling==0){
-        r=pow(10,logmin+gsl_rng_uniform(ran)*(lograd-logmin));
-        theta=2.*PI*gsl_rng_uniform(ran);
-        phi=PI*gsl_rng_uniform(ran);
-        sinPhi=sin(phi);
-        x=r*cos(theta)*sinPhi;
-        y=r*sin(theta)*sinPhi;
-        if(DIM==3) z=r*cos(phi);
-        else z=0.;
-      } else if(par->sampling==1){
-        x=(2*gsl_rng_uniform(ran)-1)*par->radius;
-        y=(2*gsl_rng_uniform(ran)-1)*par->radius;
-        if(DIM==3) z=(2*gsl_rng_uniform(ran)-1)*par->radius;
-        else z=0;
-      } else if(par->sampling==2){
-        r=pow(10,logmin+gsl_rng_uniform(ran)*(lograd-logmin));
-        theta=2.*PI*gsl_rng_uniform(ran);
-        if(DIM==3) {
-          z=2*gsl_rng_uniform(ran)-1.;
-          semiradius=r*sqrt(1.-z*z);
-          z*=r;
-        } else {
-          z=0.;
-          semiradius=r;
-        }
-        x=semiradius*cos(theta);
-        y=semiradius*sin(theta);
-      } else {
-        if(!silent) bail_out("Don't know how to sample model");
-        exit(1);
+                  g[ip].id   = ip;
+                  g[ip].x[0] = x;
+                  g[ip].x[1] = y;
+                  g[ip].x[2] = z;
+                  g[ip].sink = 0;
+                  /* This next step needs to be done, even though it looks stupid */
+                  g[ip].dir  = malloc(sizeof(point)*1);
+                  g[ip].ds   = malloc(sizeof(point)*1);
+                  g[ip].neigh = malloc(sizeof(int)*1);
+                  if(!silent) progressbar((double) ip/((double)par->pIntensity-1), 4);
+
+              } else if (rgn[i].sampling==1) {
+                  xmin = rgn[i].xmin;
+                  xmax = rgn[i].xmax;
+                  ymin = cos(rgn[i].ymin);
+                  ymax = cos(rgn[i].ymax);
+                  /* Pick a point and check if we like it or not */
+                  do {
+
+                      r         = xmin+gsl_rng_uniform(ran)*(xmax-xmin);
+                      phi       = rgn[i].zmin + gsl_rng_uniform(ran)*(rgn[i].zmax-rgn[i].zmin);
+                      cos_theta = ymin + gsl_rng_uniform(ran)*(ymax-ymin);
+                      sin_theta = sqrt(1.0 - cos_theta*cos_theta);
+                      x         = r*sin_theta * cos(phi);
+                      y         = r*sin_theta * sin(phi);
+                      if (DIM==3) z         = r*cos_theta;
+                      else z = 0.;
+                      flag = pointEvaluation(par,temp,x,y,z,rgn[i].xref,rgn[i].yref,rgn[i].zref,ip);
+                  } while (!flag);
+                  /* Now pointEvaluation has decided that we like the point */
+                  /* Assign values to the k'th grid point */
+                  /* I don't think we actually need to do this here... */
+
+                  g[ip].id   = ip;
+                  g[ip].x[0] = x;
+                  g[ip].x[1] = y;
+                  g[ip].x[2] = z;
+                  g[ip].sink = 0;
+                  /* This next step needs to be done, even though it looks stupid */
+                  g[ip].dir  = malloc(sizeof(point)*1);
+                  g[ip].ds   = malloc(sizeof(point)*1);
+                  g[ip].neigh = malloc(sizeof(int)*1);
+                  if(!silent) progressbar((double) ip/((double)par->pIntensity-1), 4);
+              } else {
+                  if(!silent) bail_out("Don't know how to sample model");
+                  exit(1);
+              }
+          } else if (rgn[i].crdType==1){
+          /*Cartesian coordinate system*/
+              if (rgn[i].sampling==1){
+                  xmin = rgn[i].xmin;
+                  xmax = rgn[i].xmax;
+                  ymin = cos(rgn[i].ymin);
+                  ymax = cos(rgn[i].ymax);
+                  /* Pick a point and check if we like it or not */
+                  do {
+                      x = xmin + gsl_rng_uniform(ran)*(xmax-xmin);
+                      y = ymin + gsl_rng_uniform(ran)*(ymax-ymin);
+                      z = zmin + gsl_rng_uniform(ran)*(zmax-zmin);
+                      flag = pointEvaluation(par,temp,x,y,z,rgn[i].xref,rgn[i].yref,rgn[i].zref,ip);
+                  } while(!flag);
+                  /* Now pointEvaluation has decided that we like the point */
+                  /* Assign values to the k'th grid point */
+                  /* I don't think we actually need to do this here... */
+
+                  g[ip].id   = ip;
+                  g[ip].x[0] = x;
+                  g[ip].x[1] = y;
+                  g[ip].x[2] = z;
+                  g[ip].sink = 0;
+
+                  /* This next step needs to be done, even though it looks stupid */
+                  g[ip].dir  = malloc(sizeof(point)*1);
+                  g[ip].ds   = malloc(sizeof(point)*1);
+                  g[ip].neigh = malloc(sizeof(int)*1);
+                  if(!silent) progressbar((double) ip/((double)par->pIntensity-1), 4);
+              } else {
+                  if (!silent) bail_out("If the region boundares are set in cartesian coordinates only sampling=1 is allowed");
+                  exit(1);
+              }
+
+          } else {
+              if (!silent) bail_out("Unkown coordinate system type in regions");
+              exit(1);
+          }
+          ip += 1;
       }
-      if((x*x+y*y+z*z)<par->radiusSqu) flag=pointEvaluation(par,temp,x,y,z);
-    } while(!flag);
-    /* Now pointEvaluation has decided that we like the point */
-
-    /* Assign values to the k'th grid point */
-    /* I don't think we actually need to do this here... */
-    g[k].id=k;
-    g[k].x[0]=x;
-    g[k].x[1]=y;
-    if(DIM==3) g[k].x[2]=z;
-    else g[k].x[2]=0.;
-
-    g[k].sink=0;
-    /* This next step needs to be done, even though it looks stupid */
-    g[k].dir=malloc(sizeof(point)*1);
-    g[k].ds =malloc(sizeof(double)*1);
-    g[k].neigh =malloc(sizeof(struct grid *)*1);
-    if(!silent) progressbar((double) k/((double)par->pIntensity-1), 4);
   }
+
+  k = ip;
+
+
+
+
+  /*lograd=log10(par->radius);*/
+  /*logmin=log10(par->minScale);*/
+
+  /*[> Sample pIntensity number of points <]*/
+  /*for(k=0;k<par->pIntensity;k++){*/
+    /*temp=gsl_rng_uniform(ran);*/
+    /*flag=0;*/
+    /*[> Pick a point and check if we like it or not <]*/
+    /*do{*/
+      /*if(par->sampling==0){*/
+        /*r=pow(10,logmin+gsl_rng_uniform(ran)*(lograd-logmin));*/
+        /*theta=2.*PI*gsl_rng_uniform(ran);*/
+        /*phi=PI*gsl_rng_uniform(ran);*/
+        /*sinPhi=sin(phi);*/
+        /*x=r*cos(theta)*sinPhi;*/
+        /*y=r*sin(theta)*sinPhi;*/
+        /*if(DIM==3) z=r*cos(phi);*/
+        /*else z=0.;*/
+      /*} else if(par->sampling==1){*/
+        /*x=(2*gsl_rng_uniform(ran)-1)*par->radius;*/
+        /*y=(2*gsl_rng_uniform(ran)-1)*par->radius;*/
+        /*if(DIM==3) z=(2*gsl_rng_uniform(ran)-1)*par->radius;*/
+        /*else z=0;*/
+      /*} else if(par->sampling==2){*/
+        /*r=pow(10,logmin+gsl_rng_uniform(ran)*(lograd-logmin));*/
+        /*theta=2.*PI*gsl_rng_uniform(ran);*/
+        /*if(DIM==3) {*/
+          /*z=2*gsl_rng_uniform(ran)-1.;*/
+          /*semiradius=r*sqrt(1.-z*z);*/
+          /*z*=r;*/
+        /*} else {*/
+          /*z=0.;*/
+          /*semiradius=r;*/
+        /*}*/
+        /*x=semiradius*cos(theta);*/
+        /*y=semiradius*sin(theta);*/
+      /*} else {*/
+        /*if(!silent) bail_out("Don't know how to sample model");*/
+        /*exit(1);*/
+      /*}*/
+      /*if((x*x+y*y+z*z)<par->radiusSqu) flag=pointEvaluation(par,temp,x,y,z);*/
+    /*} while(!flag);*/
+    /*[> Now pointEvaluation has decided that we like the point <]*/
+
+    /*[> Assign values to the k'th grid point <]*/
+    /*[> I don't think we actually need to do this here... <]*/
+    /*g[k].id=k;*/
+    /*g[k].x[0]=x;*/
+    /*g[k].x[1]=y;*/
+    /*if(DIM==3) g[k].x[2]=z;*/
+    /*else g[k].x[2]=0.;*/
+
+    /*g[k].sink=0;*/
+    /*[> This next step needs to be done, even though it looks stupid <]*/
+    /*g[k].dir=malloc(sizeof(point)*1);*/
+    /*g[k].ds =malloc(sizeof(double)*1);*/
+    /*g[k].neigh =malloc(sizeof(struct grid *)*1);*/
+    /*if(!silent) progressbar((double) k/((double)par->pIntensity-1), 4);*/
+  /*}*/
+
+
   /* end model grid point assignment */
   if(!silent) done(4);
 
