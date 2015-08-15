@@ -24,7 +24,7 @@ input(inputPars *par, image *img, region *rgn){
   par->moldatfile[0] 	= "hco+@xpol.dat";
   par->antialias		= 4;
   par->sampling			= 2; // log distr. for radius, directions distr. uniformly on a sphere.
-  par->lte_only         = 1;
+  par->lte_only         = 0;
 
   par->outputfile 		= "populations.pop";
   par->binoutputfile 	= "restart.pop";
