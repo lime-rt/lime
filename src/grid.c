@@ -570,7 +570,7 @@ buildGrid(inputPars *par, struct grid *g, region *rgn){
                   g[ip].dir  = malloc(sizeof(point)*1);
                   g[ip].ds   = malloc(sizeof(point)*1);
                   g[ip].neigh = malloc(sizeof(int)*1);
-                  if(!silent) progressbar((double) k/((double)par->pIntensity-1), 4);
+                  if(!silent) progressbar((double) ip/((double)par->pIntensity-1), 4);
 
               } else if (rgn[i].sampling==1) {
                   xmin = rgn[i].xmin;
@@ -603,7 +603,7 @@ buildGrid(inputPars *par, struct grid *g, region *rgn){
                   g[ip].dir  = malloc(sizeof(point)*1);
                   g[ip].ds   = malloc(sizeof(point)*1);
                   g[ip].neigh = malloc(sizeof(int)*1);
-                  if(!silent) progressbar((double) k/((double)par->pIntensity-1), 4);
+                  if(!silent) progressbar((double) ip/((double)par->pIntensity-1), 4);
               } else {
                   if(!silent) bail_out("Don't know how to sample model");
                   exit(1);
@@ -636,7 +636,7 @@ buildGrid(inputPars *par, struct grid *g, region *rgn){
                   g[ip].dir  = malloc(sizeof(point)*1);
                   g[ip].ds   = malloc(sizeof(point)*1);
                   g[ip].neigh = malloc(sizeof(int)*1);
-                  if(!silent) progressbar((double) k/((double)par->pIntensity-1), 4);
+                  if(!silent) progressbar((double) ip/((double)par->pIntensity-1), 4);
               } else {
                   if (!silent) bail_out("If the region boundares are set in cartesian coordinates only sampling=1 is allowed");
                   exit(1);
