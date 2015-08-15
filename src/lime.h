@@ -76,6 +76,7 @@
 #define N_RAN_PER_SEGMENT       3
 #define FAST_EXP_MAX_TAYLOR	3
 #define FAST_EXP_NUM_BITS	8
+#define MAX_REGIONS     30
 
 
 /* input parameters */
@@ -89,6 +90,7 @@ typedef struct {
   char *dust;
   int sampling,collPart,lte_only,antialias,polarization,doPregrid,nThreads;
   char **moldatfile;
+  int nRegions;
 } inputPars;
 
 /* Molecular data: shared attributes */
@@ -149,6 +151,23 @@ typedef struct {
   double stokes[3];
 } spec;
 
+/* Spatial regions */
+typedef struct {
+    int crdType;
+    int sampling;
+    double xmin;
+    double xmax;
+    double ymin;
+    double ymax;
+    double zmin;
+    double zmax;
+    double xref;
+    double yref;
+    double zref;
+    int nPoints;
+} region;
+
+
 /* Image information */
 typedef struct {
   int doline;
@@ -187,14 +206,14 @@ void gasIIdust(double,double,double,double *);
 /* More functions */
 
 void   	binpopsout(inputPars *, struct grid *, molData *);
-void   	buildGrid(inputPars *, struct grid *);
+void   	buildGrid(inputPars *, struct grid *, region *);
 void    calcSourceFn(double dTau, const inputPars *par, double *remnantSnu, double *expDTau);
 void	continuumSetup(int, image *, molData *, inputPars *, struct grid *);
 void	distCalc(inputPars *, struct grid *);
 void	fit_d1fi(double, double, double*);
 void    fit_fi(double, double, double*);
 void    fit_rr(double, double, double*);
-void   	input(inputPars *, image *);
+void   	input(inputPars *, image *, region *);
 float  	invSqrt(float);
 void    freeInput(inputPars *, image*, molData* m );
 void   	freeGrid(const inputPars * par, const molData* m, struct grid * g);
@@ -218,9 +237,9 @@ void   	molinit(molData *, inputPars *, struct grid *,int);
 void    openSocket(inputPars *par, int);
 void	qhull(inputPars *, struct grid *);
 void  	photon(int, struct grid *, molData *, int, const gsl_rng *,inputPars *,blend *,gridPointData *,double *);
-void	parseInput(inputPars *, image **, molData **);
+void	parseInput(inputPars *, image **, molData **, region **);
 double 	planckfunc(int, double, molData *, int);
-int     pointEvaluation(inputPars *,double, double, double, double);
+int     pointEvaluation(inputPars *,double, double, double, double, double, double, double, int);
 void   	popsin(inputPars *, struct grid **, molData **, int *);
 void   	popsout(inputPars *, struct grid *, molData *);
 void	predefinedGrid(inputPars *, struct grid *);
