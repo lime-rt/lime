@@ -256,7 +256,7 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
       }
     }
 
-    for(id=0;id<par->ncell;id++){
+    for(id=0;id<par->par->pIntensity;id++){
       g[id].mol[i].partner=malloc(sizeof(struct rates)*m[i].npart);
       for(ipart=0;ipart<m[i].npart;ipart++){
         g[id].mol[i].partner[ipart].up = malloc(sizeof(double)*m[i].ntrans[ipart]);
@@ -264,7 +264,7 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
       }
     }
 
-    for(id=0;id<par->ncell;id++){
+    for(id=0;id<par->pIntensity;id++){
       for(ipart=0;ipart<m[i].npart;ipart++){
         for(itrans=0;itrans<m[i].ntrans[ipart];itrans++){
           if((g[id].t[0]>part[ipart].temp[0])&&(g[id].t[0]<part[ipart].temp[ntemp[ipart]-1])){
@@ -297,10 +297,12 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
 
   /* Allocate space for populations and opacities */
   for(id=0;id<par->ncell; id++){
-    g[id].mol[i].pops = malloc(sizeof(double)*m[i].nlev);
+    if(!g[id].sink){
+      g[id].mol[i].pops = malloc(sizeof(double)*m[i].nlev);
+      for(ilev=0;ilev<m[i].nlev;ilev++) g[id].mol[i].pops[ilev]=0.0;
+    }
     g[id].mol[i].dust = malloc(sizeof(double)*m[i].nline);
     g[id].mol[i].knu  = malloc(sizeof(double)*m[i].nline);
-    for(ilev=0;ilev<m[i].nlev;ilev++) g[id].mol[i].pops[ilev]=0.0;
   }
 
   /* Get dust opacities */
