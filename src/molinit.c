@@ -256,7 +256,7 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
       }
     }
 
-    for(id=0;id<par->par->pIntensity;id++){
+    for(id=0;id<par->pIntensity;id++){
       g[id].mol[i].partner=malloc(sizeof(struct rates)*m[i].npart);
       for(ipart=0;ipart<m[i].npart;ipart++){
         g[id].mol[i].partner[ipart].up = malloc(sizeof(double)*m[i].ntrans[ipart]);
