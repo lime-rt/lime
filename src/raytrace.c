@@ -294,6 +294,7 @@ kept it.
   int ichan,i,px,iline,tmptrans,count;
   double size,xp,yp,minfreq,absDeltaFreq;
   double cutoff;
+  int qhullShortMem1, qhullShortMem2;
 
   gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
 #ifdef TEST
@@ -517,6 +518,9 @@ This part works great! This is "Shepard's method" with a weight of 8. Slow, unfo
   free(rays);
   free(counta);
   free(countb);
+  qh_freeqhull(qh_ALL);
+  qh_memfreeshort(&qhullShortMem1, &qhullShortMem2);  /* free short memory */
+  if(!silent && (qhullShortMem1 || qhullShortMem2)) warning("Qhull failed to free all short memory");
 }
 
 
