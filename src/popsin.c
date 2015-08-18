@@ -88,8 +88,10 @@ popsin(inputPars *par, struct grid **g, molData **m, int *popsdone){
     fread(&(*g)[i].dopb, sizeof (*g)[i].dopb, 1, fp);
     (*g)[i].mol=malloc(par->nSpecies*sizeof(struct populations));
     for(j=0;j<par->nSpecies;j++){
-      (*g)[i].mol[j].pops=malloc(sizeof(double)*(*m)[j].nlev);
-      for(k=0;k<(*m)[j].nlev;k++) fread(&(*g)[i].mol[j].pops[k], sizeof(double), 1, fp);
+      if(!(*g)[i].sink){
+        (*g)[i].mol[j].pops=malloc(sizeof(double)*(*m)[j].nlev);
+        for(k=0;k<(*m)[j].nlev;k++) fread(&(*g)[i].mol[j].pops[k], sizeof(double), 1, fp);
+      }
       (*g)[i].mol[j].knu=malloc(sizeof(double)*(*m)[j].nline);
       for(k=0;k<(*m)[j].nline;k++) fread(&(*g)[i].mol[j].knu[k], sizeof(double), 1, fp);
       (*g)[i].mol[j].dust=malloc(sizeof(double)*(*m)[j].nline);
