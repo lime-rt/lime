@@ -100,7 +100,22 @@ LIME needs to be able to find both shared-object libraries (files which usually 
 
 If you have the older version of either qhull or cfitsio, set the respective environment variables OLD_QHULL and/or OLD_FITSIO to T.
 
+### Support of LAPACK or Intel MKL linear equation solvers
 
+The code optionally support using of LAPACK or MKL (Math Kernel Library) linear equation solver instead of one provided by gsl. To use LAPACK solver in Mac OS X one needs to install BLAS and LAPACK packages. These packages can be installed by typing in a terminal
+
+```
+$ port install blas
+$ port install lapack
+```
+
+Alternatively these packages can be compiled from the source code that can be downloaded from the following links. Make sure to get the latest version of LAPACK which inludes LAPACKE C interface to LAPACK.
+
+- [blas](http://www.netlib.org/blas/)
+- [lapack](http://www.netlib.org/lapack/)
+
+The LAPACK package is present on most modern Unix and Linux systems.
+Intel Math Kernel Library (MKL) can be installed following its installation guide.
 
 Running the code
 ----------------
