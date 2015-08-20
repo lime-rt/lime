@@ -10,7 +10,14 @@
 #include "lime.h"
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_permutation.h>
+#ifdef USE_MKL
+#include "mkl_lapacke.h"
+#endif
+#ifdef USE_LAPACK
+#include "lapacke/lapacke.h"
+#endif
 
+#if ! defined USE_MKL && ! defined USE_LAPACK
 
 void
 stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par, gridPointData *mp, double *halfFirstDs){
@@ -85,6 +92,95 @@ stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par, gridPointD
   free(oopop);
 }
 
+#else
+
+void
+stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par, gridPointData *mp, double *halfFirstDs){
+  int t,s,iter;
+  double *opop, *oopop,*jbar;
+  double diff, diff_t;
+  lapack_int n = m[ispec].nlev, nrhs = 1, lda = n, ldb = 1, info; //row-major
+  
+  gsl_matrix *matrix = gsl_matrix_alloc(m[ispec].nlev+1, m[ispec].nlev+1);
+  double *reduc  = malloc(sizeof(double)*lda*n);
+  double *newpop = malloc(sizeof(double)*ldb*n);
+  double *oldpop = malloc(sizeof(double)*ldb*n);
+  lapack_int *ipiv = malloc(sizeof(lapack_int)*n);
+    
+  opop	 = malloc(sizeof(double)*m[ispec].nlev);
+  oopop	 = malloc(sizeof(double)*m[ispec].nlev);
+  jbar	 = malloc(sizeof(double)*m[ispec].nline);
+
+  for(t=0;t<m[ispec].nlev;t++){
+    opop[t]=0.;
+    oopop[t]=0.;
+  }
+  diff=1;
+  iter=0;
+  
+  while((diff>TOL && iter<MAXITER) || iter<5){
+    getjbar(id,m,g,par,mp,halfFirstDs);
+    getmatrix(id,matrix,m,g,ispec,mp);
+    for(s=0;s<m[ispec].nlev;s++){
+      for(t=0;t<m[ispec].nlev-1;t++){
+	      reduc[t*lda+s] = gsl_matrix_get(matrix,t,s);
+      }
+      reduc[(n-1)*lda+s] = 1.;
+      oldpop[s] = 0.;
+    }
+    oldpop[m[ispec].nlev-1] = 1.;
+    
+    info = LAPACKE_dgesv( LAPACK_ROW_MAJOR, n, nrhs, reduc, lda, ipiv,oldpop, ldb );
+    if(info > 0){
+      double rcond = -1.e0;
+      double *sing_val = malloc(sizeof(double)*n);
+      lapack_int rank;
+      
+      for(s=0;s<m[ispec].nlev;s++){
+        for(t=0;t<m[ispec].nlev-1;t++){
+	        reduc[t*lda+s] = gsl_matrix_get(matrix,t,s);
+        }
+        reduc[(n-1)*lda+s] = 1.;
+	      oldpop[s] = 0.;
+      }
+      oldpop[m[ispec].nlev-1] = 1.;
+      
+      info = LAPACKE_dgelss( LAPACK_ROW_MAJOR, n, n, nrhs, reduc, lda, oldpop, ldb, sing_val, rcond, &rank);
+      if(!silent) warning("Matrix is singular. Switching to SVD.");
+      free(sing_val);
+      if (info > 0 && !silent) warning("There are problems with dgelss");
+    }
+
+    diff=0.;
+    for(t=0;t<m[ispec].nlev;t++){
+      newpop[t] = gsl_max(oldpop[t],1e-30);
+      oopop[t]=opop[t];
+      opop[t]=g[id].mol[ispec].pops[t];
+
+#pragma omp critical
+      {
+	      g[id].mol[ispec].pops[t]=newpop[t];
+      }
+      
+      diff_t = fabs(g[id].mol[ispec].pops[t]-opop[t])/g[id].mol[ispec].pops[t];
+      if(gsl_min(g[id].mol[ispec].pops[t],gsl_min(opop[t],oopop[t]))>minpop){
+        diff=gsl_max(fabs(g[id].mol[ispec].pops[t]-opop[t])/g[id].mol[ispec].pops[t],gsl_max(fabs(g[id].mol[ispec].pops[t]-oopop[t])/g[id].mol[ispec].pops[t],diff));
+      }
+    }
+    iter++;
+  }
+
+  gsl_matrix_free(matrix);
+  free(reduc);
+  free(oldpop);
+  free(newpop);
+  free(ipiv);
+  free(opop);
+  free(oopop);
+  free(jbar);
+}
+
+#endif
 
 void
 getmatrix(int id, gsl_matrix *matrix, molData *m, struct grid *g, int ispec, gridPointData *mp){
