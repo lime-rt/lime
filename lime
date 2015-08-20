@@ -23,6 +23,8 @@ function usage {
     echo "   -f           Use fast exponential computation"
     echo "   -n           Turn off ncurses output"
     echo "   -p NTHREADS  Run in parallel with NTHREADS threads (default: 1)"
+    echo "   -M           Use Intel MKL solver"
+    echo "   -L           Use LAPACK solver"
     echo ""
     echo "See <http://lime.readthedocs.org> for more information."
     echo "Report bugs to <http://github.com/lime-rt/lime/issues>."
@@ -32,8 +34,9 @@ function tip {
     echo "Try 'lime -h' for more information."
 }
 
-options=":Vfnp:h"
+options=":Vfnp:hML"
 cpp_flags=""
+ld_flags=""
 
 while getopts ${options} opt; do
     case $opt in
@@ -61,6 +64,14 @@ while getopts ${options} opt; do
 		exit 1
 	    fi
 	    ;;
+	M)
+	    cpp_flags+="-DUSE_MKL "
+	    ld_flags+="-lmkl_lapack95_lp64 -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread "
+	    ;;
+	L)
+	    cpp_flags+="-DUSE_LAPACK "
+	    ld_flags+="-llapack -llapacke "
+	    ;;
 	\?)
 	    echo "lime: error: unknown option" >&2
 	    tip
@@ -84,7 +95,7 @@ export WORKDIR=$PWD
 
 # Compile the code
 pushd ${PATHTOLIME} >> /dev/null
-make EXTRACPPFLAGS="${cpp_flags}" MODELS=$WORKDIR/$1 TARGET=$WORKDIR/lime_$$.x
+make EXTRACPPFLAGS="${cpp_flags}" EXTRALDFLAGS="${ld_flags}" MODELS=$WORKDIR/$1 TARGET=$WORKDIR/lime_$$.x
 make clean
 
 # Run the code
