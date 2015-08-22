@@ -125,7 +125,7 @@ traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molD
               vThisChan=(ichan-(img[im].nchan-1)/2.)*img[im].velres; // Consistent with the WCS definition in writefits().
               deltav = vThisChan - img[im].source_vel + shift;
 
-              if(!par->pregrid) velocityspline2(x,dx,ds,g[posn].mol[counta[iline]].binv,deltav,&vfac);
+              if(!par->pregrid || !par->pregridVel) velocityspline2(x,dx,ds,g[posn].mol[counta[iline]].binv,deltav,&vfac);
               else vfac=gaussline(deltav+veloproject(dx,g[posn].vel),g[posn].mol[counta[iline]].binv);
 
               sourceFunc_line(&jnu,&alpha,m,vfac,g,posn,counta[iline],countb[iline]);
