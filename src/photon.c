@@ -217,7 +217,7 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
         ds=g[here].ds[dir]/2.;
         halfFirstDs[iphot]=ds;
         for(l=0;l<par->nSpecies;l++){
-          if(!par->doPregrid) velocityspline(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
+          if(!par->doPregrid  || !par->pregridVel) velocityspline(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
           else velocityspline_lin(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
           mp[l].vfac[iphot]=vfac[0];
         }
@@ -228,7 +228,7 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
       }
       
       for(l=0;l<par->nSpecies;l++){
-        if(!par->doPregrid) velocityspline(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
+        if(!par->doPregrid || !par->pregridVel) velocityspline(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
         else velocityspline_lin(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
       }
       
@@ -259,7 +259,7 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
           alpha=0.;
           for(jline=0;jline<sizeof(matrix)/sizeof(blend);jline++){
             if(matrix[jline].line1 == jline || matrix[jline].line2 == jline){	
-              if(!par->doPregrid) velocityspline(g,here,dir,g[id].mol[counta[jline]].binv,deltav-matrix[jline].deltav,&vblend);
+              if(!par->doPregrid || !par->pregridVel) velocityspline(g,here,dir,g[id].mol[counta[jline]].binv,deltav-matrix[jline].deltav,&vblend);
               else velocityspline_lin(g,here,dir,g[id].mol[counta[jline]].binv,deltav-matrix[jline].deltav,&vblend);	
               sourceFunc_line(&jnu,&alpha,m,vblend,g,here,counta[jline],countb[jline]);
               dtau=alpha*ds;

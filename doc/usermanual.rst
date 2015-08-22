@@ -409,6 +409,11 @@ If this option is used, LIME will not generate its own grid, but rather
 use the grid defined in this file. The file needs to contain all
 physical properties of the grid points, i.e., density, temperature,
 abundance, velocity etc. There is no default value.
+An experienced user can change what physical properties will be taken 
+from the input file. This can be done modifying the predefinedGrid 
+function in the predefgrid.c file. The physical properties that will not 
+be taken from the input file will be computed with the model 
+functions (see below).
 
 .. code:: c
 

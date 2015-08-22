@@ -25,6 +25,13 @@ predefinedGrid(inputPars *par, struct grid *g){
   par->ncell=par->pIntensity+par->sinkPoints;
 
   for(i=0;i<par->pIntensity;i++){
+    g[i].id = -1;
+    g[i].dens[0] = -1.0;
+    g[i].t[0] = -1.0;
+    g[i].dopb = -1.0;
+    g[i].abun[0] = -1.0;
+    g[i].vel[0] = 1.e40; g[i].vel[1] = 1.e40; g[i].vel[2] = 1.e40;
+    //    fscanf(fp,"%lf %lf %lf\n", &g[i].x[0], &g[i].x[1], &g[i].x[2]);
     //    fscanf(fp,"%d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &g[i].id, &g[i].x[0], &g[i].x[1], &g[i].x[2],  &g[i].dens[0], &g[i].t[0], &abun, &g[i].dopb, &g[i].vel[0], &g[i].vel[1], &g[i].vel[2]);
     //    fscanf(fp,"%d %lf %lf %lf %lf %lf %lf %lf\n", &g[i].id, &g[i].x[0], &g[i].x[1], &g[i].x[2],  &g[i].dens[0], &g[i].t[0], &abun, &g[i].dopb);
     int nRead = fscanf(fp,"%d %lf %lf %lf %lf %lf %lf %lf %lf\n", &g[i].id, &g[i].x[0], &g[i].x[1], &g[i].x[2],  &g[i].dens[0], &g[i].t[0], &g[i].vel[0], &g[i].vel[1], &g[i].vel[2]);
@@ -34,19 +41,22 @@ predefinedGrid(inputPars *par, struct grid *g){
         exit(0);
       }
 
-    g[i].dopb=200;
-    g[i].abun[0]=1e-9;
-
+    if(g[i].id==-1) g[i].id = i;
+    if(g[i].dens[0]==-1.0) density(g[i].x[0],g[i].x[1],g[i].x[2],g[i].dens);
+    if(g[i].t[0]==-1.0) temperature(g[i].x[0],g[i].x[1],g[i].x[2],g[i].t);
+    if(g[i].dopb==-1.0) doppler(g[i].x[0],g[i].x[1],g[i].x[2],&g[i].dopb);
+    if(g[i].abun[0]==-1.0) abundance(g[i].x[0],g[i].x[1],g[i].x[2],g[i].abun);
+    if(g[i].vel[0]!=1.e40 && g[i].vel[1]!=1.e40 && g[i].vel[2]!=1.e40) par->pregridVel = 1;
 
     g[i].sink=0;
-	g[i].t[1]=g[i].t[0];
-	g[i].nmol[0]=g[i].abun[0]*g[i].dens[0];
+    g[i].t[1]=g[i].t[0];
+    g[i].nmol[0]=g[i].abun[0]*g[i].dens[0];
 		
-	/* This next step needs to be done, even though it looks stupid */
-	g[i].dir=malloc(sizeof(point)*1);
-	g[i].ds =malloc(sizeof(double)*1);
-	g[i].neigh =malloc(sizeof(struct grid *)*1);
-	if(!silent) progressbar((double) i/((double)par->pIntensity-1), 4);	
+    /* This next step needs to be done, even though it looks stupid */
+    g[i].dir=malloc(sizeof(point)*1);
+    g[i].ds =malloc(sizeof(double)*1);
+    g[i].neigh =malloc(sizeof(struct grid *)*1);
+    if(!silent) progressbar((double) i/((double)par->pIntensity-1), 4);	
   }
 
   for(i=par->pIntensity;i<par->ncell;i++){
@@ -73,7 +83,8 @@ predefinedGrid(inputPars *par, struct grid *g){
   distCalc(par,g);
   //  getArea(par,g, ran);
   //  getMass(par,g, ran);
-  getVelosplines_lin(par,g);
+  if(par->pregridVel) getVelosplines_lin(par,g);
+  else getVelosplines(par,g);
   if(par->gridfile) write_VTK_unstructured_Points(par, g);
   gsl_rng_free(ran);
 }
