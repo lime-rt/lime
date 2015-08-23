@@ -31,6 +31,7 @@ parseInput(inputPars *par, image **img, molData **m){
 
   par->tcmb = 2.728;
   par->lte_only=0;
+  par->init_lte=0;
   par->sampling=2;
   par->blend=0;
   par->antialias=1;
@@ -469,7 +470,7 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
   /* Check for blended lines */
   lineBlend(m,par,&matrix);
 
-  if(par->lte_only) LTE(par,g,m);
+  if(par->lte_only || par->init_lte) LTE(par,g,m);
 
   for(id=0;id<par->pIntensity;id++){
     stat[id].pop=malloc(sizeof(double)*m[0].nlev*5);
