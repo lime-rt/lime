@@ -26,6 +26,5 @@ LTE(inputPars *par, struct grid *g, molData *m){
       }
     }
   }
-  if(par->outputfile) popsout(par,g,m);
 }
 
