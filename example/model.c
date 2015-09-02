@@ -51,7 +51,7 @@ density(double x, double y, double z, double *density){
   /*
    * Define variable for radial coordinate
    */
-  double r;
+  double r, rMin=0.5*AU;
   /*
    * Calculate radial distance from origin
    */
@@ -60,7 +60,10 @@ density(double x, double y, double z, double *density){
    * Calculate a spherical power-law density profile
    * (Multiply with 1e6 to go to SI-units)
    */
-  density[0] = 1.5e6*pow(r/(300*AU),-1.5)*1e6;
+  if(r<rMin)
+    density[0] = 1.5e6*pow(rMin/(300*AU),-1.5)*1e6;
+  else
+    density[0] = 1.5e6*pow(r/(300*AU),-1.5)*1e6;
 }
 
 /******************************************************************************/

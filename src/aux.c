@@ -48,7 +48,7 @@ parseInput(inputPars *par, image **img, molData **m){
     (*img)[id].filename=NULL;
     par->moldatfile[id]=NULL;
   }
-  input(par, *img);
+  input(par, *img); // First call to input().
   id=-1;
   while((*img)[++id].filename!=NULL);
   par->nImages=id;
@@ -93,7 +93,7 @@ parseInput(inputPars *par, image **img, molData **m){
     (*img)[i].freq=-1.;
     (*img)[i].bandwidth=-1.;
   }
-  input(par,*img);
+  input(par,*img); // Second call to input().
 
   if(par->nThreads == 0){ // Hmm. Really ought to have a separate boolean parameter.
     par->nThreads = NTHREADS;
