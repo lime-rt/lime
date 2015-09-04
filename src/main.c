@@ -20,6 +20,10 @@ double EXP_TABLE_2D[1][1]; // nominal definitions so the fastexp.c module will c
 double EXP_TABLE_3D[1][1][1];
 #endif
 
+/* Define the following here so they can be accessed from other functions. */ 
+double modelRadiusSquared=0.0, densityNormalizer=0.0;
+int numCollisionPartners=0;
+
 int main () {
   int i;
   int initime=time(0);

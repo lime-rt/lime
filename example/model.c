@@ -23,6 +23,7 @@ input(inputPars *par, image *img){
   par->dust				= "jena_thin_e6.tab";
   par->moldatfile[0] 	= "hco+@xpol.dat";
   par->antialias		= 4;
+//  par->samplingAlgorithm	= 1; // 0= the previous 'flattened rejection' algorithm; 1= the new 'tree' algorithm.
   par->sampling			= 2; // log distr. for radius, directions distr. uniformly on a sphere.
 
   par->outputfile 		= "populations.pop";

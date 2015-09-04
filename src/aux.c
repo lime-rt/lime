@@ -19,6 +19,7 @@ parseInput(inputPars *par, image **img, molData **m){
   int i,id;
   double BB[3];
   double cosPhi,sinPhi,cosTheta,sinTheta;
+  extern double modelRadiusSquared;
 
   /* Set default values */
   par->dust  	    = NULL;
@@ -31,8 +32,8 @@ parseInput(inputPars *par, image **img, molData **m){
 
   par->tcmb = 2.728;
   par->lte_only=0;
-  par->init_lte=0;
-  par->sampling=2;
+  par->samplingAlgorithm=0;
+  par->sampling=2; // Now only accessed if par->samplingAlgorithm==0.
   par->blend=0;
   par->antialias=1;
   par->polarization=0;
@@ -103,6 +104,8 @@ parseInput(inputPars *par, image **img, molData **m){
   par->radiusSqu=par->radius*par->radius;
   par->minScaleSqu=par->minScale*par->minScale;
   if(par->pregrid!=NULL) par->doPregrid=1;
+
+  modelRadiusSquared = par->radiusSqu; // this value is copied here to an external variable so the random grid generator functions can find it.
 
   /*
 Now we need to calculate the cutoff value used in calcSourceFn(). The issue is to decide between
