@@ -81,6 +81,7 @@
 #define MAX_RECURSION           20	/* >20 is not safe with single-precision arithmetic. */
 #define MAX_N_TRIALS_TREE	1000	/* Arbitrary - experiment to find a good value. */
 #define TREE_DITHER		0.1	/* must be >=0, <1. */
+#define MAX_N_HIGH		10
 
 
 // This should replace the 'point' type. Rather than have x[] as well as xn[], better to have two sorts of dir, both of type locus, in struct grid.
@@ -90,15 +91,17 @@ typedef struct {
 
 /* input parameters */
 typedef struct {
-  double radius,radiusSqu,minScale,minScaleSqu,tcmb,taylorCutoff;
+  double radius,radiusSqu,minScale,minScaleSqu,tcmb,taylorCutoff,densityMaxValue[MAX_N_HIGH];
   int ncell,sinkPoints,pIntensity,nImages,nSpecies,blend;
-  int samplingAlgorithm,sampling,collPart,lte_only,antialias,polarization,doPregrid,nThreads;
+  int samplingAlgorithm,sampling,collPart,lte_only,antialias,polarization;
+  int doPregrid,nThreads,numDensityMaxima;
   char *outputfile, *binoutputfile, *inputfile;
   char *gridfile;
   char *pregrid;
   char *restart;
   char *dust;
   char **moldatfile;
+  locusType densityMaxLoc[MAX_N_HIGH];
 } inputPars;
 
 /* Molecular data: shared attributes */

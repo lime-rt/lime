@@ -41,6 +41,7 @@ parseInput(inputPars *par, image **img, molData **m){
   par->sinkPoints=0;
   par->doPregrid=0;
   par->nThreads=0;
+  par->numDensityMaxima=0;
 
   /* Allocate space for output fits images */
   (*img)=malloc(sizeof(image)*MAX_NSPECIES);
@@ -104,6 +105,7 @@ parseInput(inputPars *par, image **img, molData **m){
   par->radiusSqu=par->radius*par->radius;
   par->minScaleSqu=par->minScale*par->minScale;
   if(par->pregrid!=NULL) par->doPregrid=1;
+  if(par->numDensityMaxima>MAX_N_HIGH) par->numDensityMaxima=MAX_N_HIGH;
 
   modelRadiusSquared = par->radiusSqu; // this value is copied here to an external variable so the random grid generator functions can find it.
 

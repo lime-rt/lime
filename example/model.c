@@ -30,6 +30,17 @@ input(inputPars *par, image *img){
   par->binoutputfile 	= "restart.pop";
   par->gridfile			= "grid.vtk";
 
+//  par->numDensityMaxima = 1;
+//  par->densityMaxLoc[0].x[0] = 0.0;
+//  par->densityMaxLoc[0].x[1] = 0.0;
+//  par->densityMaxLoc[0].x[2] = 0.0;
+
+//  double *vals;
+//  vals=malloc(sizeof(double)*1);
+//  density(0.0,0.0,0.0,vals);
+//  par->densityMaxValue[0] = vals[0];
+//  free(vals);
+
   /*
    * Definitions for image #0. Add blocks for additional images.
    */
