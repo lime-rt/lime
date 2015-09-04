@@ -518,12 +518,12 @@ void
 buildGrid(inputPars *par, struct grid *g){
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
   int i, desiredNumPoints=par->pIntensity, k, di, numSubFields, levelI=0, startI=0;
-  double theta,semiradius,x,y,z,fieldVolume,sumDensity,maxDensity;
+  double theta,semiradius,x,y,z,fieldVolume,sumDensity,maxDensity,minNumDensity,nToP,sphereVolume;
   double vals[99]; //**** define MAX_N_COLL_PARTNERS in lime.h and dimension it to that rather than 99.
   double *fieldOrigin=NULL, *fieldDimensions=NULL, *randomDensities=NULL;
   double *outRandDensities=NULL, *highPointDensities=NULL;
   locusType *outRandLocations=NULL, *randomLocations=NULL, *highPointLocations=NULL;
-  extern double densityNormalizer;
+  extern double densityNormalizer, minDensity;
   extern int numCollisionPartners;
 
   gsl_rng *randGen = gsl_rng_alloc(ranNumGenType);	/* Random number generator */
@@ -575,6 +575,44 @@ buildGrid(inputPars *par, struct grid *g){
       , randGen, densityFunc3D, &numSubFields, &fieldVolume, &sumDensity, &maxDensity\
       , par->numDensityMaxima, highPointLocations, highPointDensities\
       , N_TREE_RANDOMS, &randomLocations, &randomDensities);
+
+    /*
+We calculate now the value of the extern (i.e. globally-visible) variable minDensity which is accessed by densityFunc3D(). The aim of this is to implement the user-specified value of the minimum number density of grid points. It can be desirable to set such a minimum in the case of a strongly-peaked density function, in order to avoid too-sparse points in the periphery of the model. We are not set up directly to generate grid points according to a number-density function: we have to use the user-supplied physical or material density function. Thus we work the calculation by estimating the proportionality constant between the point number density (points per volume) and the material density (in mass per volume), and using this to convert from the user-specified value of par->minPointNumDensity to the value of minDensity.
+
+Density p and number-density n are related as follows:
+
+	         P
+	p = n * ---
+	         N
+
+where N is the total number of grid points and P is the total density integral
+
+	    /
+	P = |dr_ p(r_).
+	    /
+
+P in turn can be estimated from
+	        __
+	     V  \
+	P ~ ---  >  p(r_j)
+	     N  /_j
+
+where the r_j are evenly distributed throughout the volume V. The relation between p and n can thus be written
+
+	p ~ k*n
+
+where	          __
+	      V   \
+	k = -----  >  p(r_j).
+	     N^2  /_j
+   */
+
+    nToP = fieldVolume * sumDensity / (double)desiredNumPoints / (double)desiredNumPoints;
+    sphereVolume = 4.0/3.0*PI*par->radius*par->radius*par->radius;
+    minNumDensity = par->minPointNumDensity / sphereVolume;
+    minDensity = nToP*minNumDensity;
+
+    //*** Formally speaking we should now really recalculate randomDensities plus sumDensity and &maxDensity, because we have changed the density function by setting minDensity. I'm going to leave this for now, it probably isn't too important.
 
     randomsViaTree(levelI, numSubFields, fieldOrigin, fieldDimensions\
       , fieldVolume, desiredNumPoints, startI\

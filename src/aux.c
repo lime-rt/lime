@@ -42,6 +42,7 @@ parseInput(inputPars *par, image **img, molData **m){
   par->doPregrid=0;
   par->nThreads=0;
   par->numDensityMaxima=0;
+  par->minPointNumDensity=0;
 
   /* Allocate space for output fits images */
   (*img)=malloc(sizeof(image)*MAX_NSPECIES);
