@@ -515,7 +515,7 @@ void randomsViaRejection(inputPars *par, unsigned int desiredNumPoints, gsl_rng 
 }
 
 double densityFunc3D(locusType location){
-  extern double modelRadiusSquared;
+  extern double modelRadiusSquared, minDensity;
   double rSquared=0.0;
   int i;
   double vals[99],totalDensity=0.0; //**** define MAX_N_COLL_PARTNERS in lime.h and dimension vals to that rather than 99.
@@ -529,7 +529,11 @@ double densityFunc3D(locusType location){
 
   density(location.x[0],location.x[1],location.x[2],vals);//****** Unsafe to assume DIM==3 like this.
   for (i=0;i<numCollisionPartners;i++) totalDensity += vals[i];
-  return totalDensity;
+
+  if(totalDensity<minDensity)
+    return minDensity;
+  else
+    return totalDensity;
 }
 
 

@@ -29,6 +29,7 @@ input(inputPars *par, image *img){
   par->outputfile 		= "populations.pop";
   par->binoutputfile 	= "restart.pop";
   par->gridfile			= "grid.vtk";
+//  par->minPointNumDensity	= 1000; // You should specify this in terms of the number of points in the spherical model volume.
 
 //  par->numDensityMaxima = 1;
 //  par->densityMaxLoc[0].x[0] = 0.0;

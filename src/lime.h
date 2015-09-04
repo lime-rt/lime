@@ -92,7 +92,7 @@ typedef struct {
 /* input parameters */
 typedef struct {
   double radius,radiusSqu,minScale,minScaleSqu,tcmb,taylorCutoff,densityMaxValue[MAX_N_HIGH];
-  int ncell,sinkPoints,pIntensity,nImages,nSpecies,blend;
+  int ncell,sinkPoints,pIntensity,nImages,nSpecies,blend,minPointNumDensity;
   int samplingAlgorithm,sampling,collPart,lte_only,antialias,polarization;
   int doPregrid,nThreads,numDensityMaxima;
   char *outputfile, *binoutputfile, *inputfile;

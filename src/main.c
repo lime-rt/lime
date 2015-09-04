@@ -21,7 +21,7 @@ double EXP_TABLE_3D[1][1][1];
 #endif
 
 /* Define the following here so they can be accessed from other functions. */ 
-double modelRadiusSquared=0.0, densityNormalizer=0.0;
+double modelRadiusSquared=0.0, densityNormalizer=0.0, minDensity=0.0;
 int numCollisionPartners=0;
 
 int main () {
