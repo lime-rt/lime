@@ -517,11 +517,12 @@ getMass(inputPars *par, struct grid *g, const gsl_rng *ran){
 void
 buildGrid(inputPars *par, struct grid *g){
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
-  int i, desiredNumPoints=par->pIntensity, k;
-  double theta, semiradius, x, y, z;
+  int i, desiredNumPoints=par->pIntensity, k, di, numSubFields, levelI=0, startI=0;
+  double theta,semiradius,x,y,z,fieldVolume,sumDensity,maxDensity;
   double vals[99]; //**** define MAX_N_COLL_PARTNERS in lime.h and dimension it to that rather than 99.
+  double *fieldOrigin=NULL, *fieldDimensions=NULL, *randomDensities=NULL;
   double *outRandDensities=NULL;
-  locusType *outRandLocations=NULL;
+  locusType *outRandLocations=NULL, *randomLocations=NULL;
   extern double densityNormalizer;
   extern int numCollisionPartners;
 
@@ -548,6 +549,33 @@ buildGrid(inputPars *par, struct grid *g){
     }
 
     randomsViaRejection(par, desiredNumPoints, randGen, densityFunc3D, outRandLocations, outRandDensities);
+
+  } else if(par->samplingAlgorithm==1){
+//    printf("Grid point sampling by 2^D tree.\n");
+
+    fieldOrigin     = malloc(sizeof(double)*DIM);
+    fieldDimensions = malloc(sizeof(double)*DIM);
+    for(di=0;di<DIM;di++){
+      fieldOrigin[di] = -par->radius;
+      fieldDimensions[di] = 2.0*par->radius;
+    }
+
+    initializeTree(fieldOrigin, fieldDimensions, desiredNumPoints\
+      , randGen, densityFunc3D, &numSubFields, &fieldVolume, &sumDensity, &maxDensity\
+      , 0, NULL, NULL\
+      , N_TREE_RANDOMS, &randomLocations, &randomDensities);
+
+    randomsViaTree(levelI, numSubFields, fieldOrigin, fieldDimensions\
+      , fieldVolume, desiredNumPoints, startI\
+      , 0, NULL, NULL\
+      , N_TREE_RANDOMS, randomLocations, randomDensities, sumDensity, maxDensity\
+      , randGen, densityFunc3D, NULL, outRandLocations\
+      , outRandDensities, 0);
+
+    free(randomDensities);
+    free(randomLocations);
+    free(fieldDimensions);
+    free(fieldOrigin);
 
   } else {
     if(!silent) bail_out("Unrecognized sampling algorithm.");
