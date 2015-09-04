@@ -76,7 +76,13 @@
 #define N_RAN_PER_SEGMENT       3
 #define FAST_EXP_MAX_TAYLOR	3
 #define FAST_EXP_NUM_BITS	8
+#define DENSITY_POWER		0.2
 
+
+// This should replace the 'point' type. Rather than have x[] as well as xn[], better to have two sorts of dir, both of type locus, in struct grid.
+typedef struct {
+  double x[DIM];
+} locusType;
 
 /* input parameters */
 typedef struct {
@@ -87,7 +93,7 @@ typedef struct {
   char *pregrid;
   char *restart;
   char *dust;
-  int sampling,collPart,lte_only,init_lte,antialias,polarization,doPregrid,nThreads;
+  int samplingAlgorithm,sampling,collPart,lte_only,antialias,polarization,doPregrid,nThreads;
   char **moldatfile;
 } inputPars;
 
@@ -190,6 +196,7 @@ void   	binpopsout(inputPars *, struct grid *, molData *);
 void   	buildGrid(inputPars *, struct grid *);
 void    calcSourceFn(double dTau, const inputPars *par, double *remnantSnu, double *expDTau);
 void	continuumSetup(int, image *, molData *, inputPars *, struct grid *);
+double	densityFunc3D(locusType location);
 void	distCalc(inputPars *, struct grid *);
 void	fit_d1fi(double, double, double*);
 void    fit_fi(double, double, double*);
@@ -220,10 +227,11 @@ void	qhull(inputPars *, struct grid *);
 void  	photon(int, struct grid *, molData *, int, const gsl_rng *,inputPars *,blend *,gridPointData *,double *);
 void	parseInput(inputPars *, image **, molData **);
 double 	planckfunc(int, double, molData *, int);
-int     pointEvaluation(inputPars *,double, double, double, double);
 void   	popsin(inputPars *, struct grid **, molData **, int *);
 void   	popsout(inputPars *, struct grid *, molData *);
 void	predefinedGrid(inputPars *, struct grid *);
+void	randomsViaRejection(inputPars*, unsigned int, gsl_rng*, double (*numberDensyFunc)(locusType), locusType*\
+  , double*);
 double 	ratranInput(char *, char *, double, double, double);
 void   	raytrace(int, inputPars *, struct grid *, molData *, image *);
 void	report(int, inputPars *, struct grid *);
