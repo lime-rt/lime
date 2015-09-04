@@ -521,8 +521,8 @@ buildGrid(inputPars *par, struct grid *g){
   double theta,semiradius,x,y,z,fieldVolume,sumDensity,maxDensity;
   double vals[99]; //**** define MAX_N_COLL_PARTNERS in lime.h and dimension it to that rather than 99.
   double *fieldOrigin=NULL, *fieldDimensions=NULL, *randomDensities=NULL;
-  double *outRandDensities=NULL;
-  locusType *outRandLocations=NULL, *randomLocations=NULL;
+  double *outRandDensities=NULL, *highPointDensities=NULL;
+  locusType *outRandLocations=NULL, *randomLocations=NULL, *highPointLocations=NULL;
   extern double densityNormalizer;
   extern int numCollisionPartners;
 
@@ -560,18 +560,31 @@ buildGrid(inputPars *par, struct grid *g){
       fieldDimensions[di] = 2.0*par->radius;
     }
 
+    if(par->numDensityMaxima>0){
+      highPointLocations = malloc(sizeof(locusType)*par->numDensityMaxima);
+      highPointDensities = malloc(sizeof(double   )*par->numDensityMaxima);
+      for(i=0;i<par->numDensityMaxima;i++){
+        for(di=0;di<DIM;di++){
+          highPointLocations[i].x[di] = par->densityMaxLoc[i].x[di];
+        }
+        highPointDensities[i] = par->densityMaxValue[i];
+      }
+    }
+
     initializeTree(fieldOrigin, fieldDimensions, desiredNumPoints\
       , randGen, densityFunc3D, &numSubFields, &fieldVolume, &sumDensity, &maxDensity\
-      , 0, NULL, NULL\
+      , par->numDensityMaxima, highPointLocations, highPointDensities\
       , N_TREE_RANDOMS, &randomLocations, &randomDensities);
 
     randomsViaTree(levelI, numSubFields, fieldOrigin, fieldDimensions\
       , fieldVolume, desiredNumPoints, startI\
-      , 0, NULL, NULL\
+      , par->numDensityMaxima, highPointLocations, highPointDensities\
       , N_TREE_RANDOMS, randomLocations, randomDensities, sumDensity, maxDensity\
       , randGen, densityFunc3D, NULL, outRandLocations\
       , outRandDensities, 0);
 
+    if(highPointLocations!=NULL) free(highPointLocations);
+    if(highPointDensities!=NULL) free(highPointDensities);
     free(randomDensities);
     free(randomLocations);
     free(fieldDimensions);
