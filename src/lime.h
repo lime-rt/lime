@@ -77,6 +77,10 @@
 #define FAST_EXP_MAX_TAYLOR	3
 #define FAST_EXP_NUM_BITS	8
 #define DENSITY_POWER		0.2
+#define N_TREE_RANDOMS		1000	/* Arbitrary - experiment around a bit to find a good value. */
+#define MAX_RECURSION           20	/* >20 is not safe with single-precision arithmetic. */
+#define MAX_N_TRIALS_TREE	1000	/* Arbitrary - experiment to find a good value. */
+#define TREE_DITHER		0.1	/* must be >=0, <1. */
 
 
 // This should replace the 'point' type. Rather than have x[] as well as xn[], better to have two sorts of dir, both of type locus, in struct grid.
@@ -88,12 +92,12 @@ typedef struct {
 typedef struct {
   double radius,radiusSqu,minScale,minScaleSqu,tcmb,taylorCutoff;
   int ncell,sinkPoints,pIntensity,nImages,nSpecies,blend;
+  int samplingAlgorithm,sampling,collPart,lte_only,antialias,polarization,doPregrid,nThreads;
   char *outputfile, *binoutputfile, *inputfile;
   char *gridfile;
   char *pregrid;
   char *restart;
   char *dust;
-  int samplingAlgorithm,sampling,collPart,lte_only,antialias,polarization,doPregrid,nThreads;
   char **moldatfile;
 } inputPars;
 
@@ -215,6 +219,8 @@ void	getclosest(double, double, double, long *, long *, double *, double *, doub
 void	getVelosplines(inputPars *, struct grid *);
 void	getVelosplines_lin(inputPars *, struct grid *);
 void	gridAlloc(inputPars *, struct grid **);
+void	initializeTree(double*, double*, unsigned int, gsl_rng*\
+  , double (*numberDensyFunc)(locusType), int*, double*, double*, double*, int, locusType*, double*, int, locusType**, double **);
 void   	kappa(molData *, struct grid *, inputPars *,int);
 void	levelPops(molData *, inputPars *, struct grid *, int *);
 void	line_plane_intersect(struct grid *, double *, int , int *, double *, double *, double);
@@ -230,6 +236,9 @@ double 	planckfunc(int, double, molData *, int);
 void   	popsin(inputPars *, struct grid **, molData **, int *);
 void   	popsout(inputPars *, struct grid *, molData *);
 void	predefinedGrid(inputPars *, struct grid *);
+void	randomsViaTree(int, int, double*, double*, double, unsigned int, unsigned int, int\
+  , locusType*, double*, int, locusType*, double*, double, double, gsl_rng*, double (*numberDensyFunc)(locusType)\
+  , void (*monitorFunc)(locusType*, double*, unsigned int, unsigned int, double*, double*), locusType*, double*, int);
 void	randomsViaRejection(inputPars*, unsigned int, gsl_rng*, double (*numberDensyFunc)(locusType), locusType*\
   , double*);
 double 	ratranInput(char *, char *, double, double, double);
