@@ -62,7 +62,7 @@ int main () {
     }
 
     raytrace(i,&par,g,m,img);
-    writefits(i,&par,m,img);
+    write3Dfits(i,&par,m,img);
   }
 
   if(!silent) goodnight(initime,img[0].filename);

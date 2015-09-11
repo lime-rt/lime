@@ -10,10 +10,10 @@
 #include "lime.h"
 
 void 
-writefits(int im, inputPars *par, molData *m, image *img){
+write3Dfits(int im, inputPars *par, molData *m, image *img){
   double bscale,bzero,epoch,lonpole,equinox,restfreq;
   double cdelt1,crpix1,crval1,cdelt2,crpix2,crval2;
-  double cdelt3,crpix3,crval3,ru3;
+  double cdelt3,crpix3,crval3,ru3,scale;
   int velref;
   float *row;
   int px,py,ichan;
@@ -23,6 +23,7 @@ writefits(int im, inputPars *par, molData *m, image *img){
   long naxes[3];
   long int fpixels[3],lpixels[3];
   char negfile[100]="! ";
+  unsigned long ppi;
 
   row = malloc(sizeof(*row)*img[im].pxls);
 
@@ -30,7 +31,7 @@ writefits(int im, inputPars *par, molData *m, image *img){
   naxes[1]=img[im].pxls;
   if(img[im].doline==1) naxes[2]=img[im].nchan;
   else if(img[im].doline==0 && par->polarization) naxes[2]=3;
-  else naxes[2]=1;
+  else naxes[2]=1;//********** should call write2Dfits for this.
 
   fits_create_file(&fptr, img[im].filename, &status);
 
@@ -88,20 +89,33 @@ writefits(int im, inputPars *par, molData *m, image *img){
   if(img[im].unit==1) fits_write_key(fptr, TSTRING, "BUNIT", &"JY/PIXEL", "", &status);
   if(img[im].unit==2) fits_write_key(fptr, TSTRING, "BUNIT", &"WM2HZSR ", "", &status);
   if(img[im].unit==3) fits_write_key(fptr, TSTRING, "BUNIT", &"Lsun/PX ", "", &status);
-  if(img[im].unit==3) fits_write_key(fptr, TSTRING, "BUNIT", &"        ", "", &status);
+  if(img[im].unit==4) fits_write_key(fptr, TSTRING, "BUNIT", &"        ", "", &status);
+
+  if(     img[im].unit==0)
+    scale=(CLIGHT/img[im].freq)*(CLIGHT/img[im].freq)/2./KBOLTZ*m[0].norm; 
+  else if(img[im].unit==1)
+    scale=1e26*img[im].imgres*img[im].imgres*m[0].norm;
+  else if(img[im].unit==2)
+    scale=m[0].norm;
+  else if(img[im].unit==3) {
+    ru3 = img[im].distance/1.975e13;
+    scale=4.*PI*ru3*ru3*img[im].freq*img[im].imgres*img[im].imgres*m[0].norm;
+  }
+  else if(img[im].unit!=4) {
+    if(!silent) bail_out("Image unit number invalid");
+    exit(0);
+  }
 
   /* Write FITS data */
-  for(py=0;py<img[im].pxls;py++){
-    for(ichan=0;ichan<img[im].nchan;ichan++){
+  for(ichan=0;ichan<img[im].nchan;ichan++){
+    for(py=0;py<img[im].pxls;py++){
       for(px=0;px<img[im].pxls;px++){
-        if(img[im].unit==0) row[px]=(float) img[im].pixel[px+py*img[im].pxls].intense[ichan]*(CLIGHT/img[im].freq)*(CLIGHT/img[im].freq)/2./KBOLTZ*m[0].norm; 
-        else if(img[im].unit==1) row[px]=(float) img[im].pixel[px+py*img[im].pxls].intense[ichan]*1e26*img[im].imgres*img[im].imgres*m[0].norm;
-        else if(img[im].unit==2) row[px]=(float) img[im].pixel[px+py*img[im].pxls].intense[ichan]*m[0].norm;
-        else if(img[im].unit==3) {
-          ru3 = img[im].distance/1.975e13;
-          row[px]=(float) img[im].pixel[px+py*img[im].pxls].intense[ichan]*4.*PI*ru3*ru3*img[im].freq*img[im].imgres*img[im].imgres*m[0].norm;
-        }
-        else if(img[im].unit==4) row[px]=(float) img[im].pixel[px+py*img[im].pxls].tau[ichan];
+        ppi = py*img[im].pxls + px;
+
+        if(img[im].unit>-1 && img[im].unit<4)
+          row[px]=(float) img[im].pixel[ppi].intense[ichan]*scale;
+        else if(img[im].unit==4)
+          row[px]=(float) img[im].pixel[ppi].tau[ichan];
         else {
           if(!silent) bail_out("Image unit number invalid");
           exit(0);
@@ -123,3 +137,4 @@ writefits(int im, inputPars *par, molData *m, image *img){
 
   if(!silent) done(13);
 }
+

@@ -241,7 +241,7 @@ void    traceray(rayData, int, int, inputPars *, struct grid *, molData *, image
 void   	velocityspline(struct grid *, int, int, double, double, double*);
 void   	velocityspline2(double *, double *, double, double, double, double*);
 double 	veloproject(double *, double *);
-void	writefits(int, inputPars *, molData *, image *);
+void	write3Dfits(int, inputPars *, molData *, image *);
 void    write_VTK_unstructured_Points(inputPars *, struct grid *);
 int	factorial(const int n);
 double	taylor(const int maxOrder, const float x);
