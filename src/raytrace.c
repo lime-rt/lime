@@ -170,17 +170,20 @@ traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molD
 
 void
 raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
-  int *counta, *countb,nlinetot,aa;
-  int ichan,px,iline,tmptrans,i,threadI,nRaysDone;
-  double size,minfreq,absDeltaFreq,totalNumPixelsMinus1=(double)(img[im].pxls*img[im].pxls-1);
+  int *counta,*countb,nlinetot,aa,numRaysThisPixel;
+  int ichan,gi,iline,tmptrans,i,threadI,nRaysDone;
+  double size,minfreq,absDeltaFreq;
   double cutoff;
+  unsigned int totalNumImagePixels,ppi;
+  double imgXiCentre,imgYiCentre,x[3];
+  int xi,yi,ri,j;
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
 
-  gsl_rng *ran = gsl_rng_alloc(ranNumGenType);	/* Random number generator */
+  gsl_rng *randGen = gsl_rng_alloc(ranNumGenType);	/* Random number generator */
 #ifdef TEST
-  gsl_rng_set(ran,178490);
+  gsl_rng_set(randGen,178490);
 #else
-  gsl_rng_set(ran,time(0));
+  gsl_rng_set(randGen,time(0));
 #endif
 
   gsl_rng **threadRans;
@@ -188,10 +191,13 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
 
   for (i=0;i<par->nThreads;i++){
     threadRans[i] = gsl_rng_alloc(ranNumGenType);
-    gsl_rng_set(threadRans[i],(int)gsl_rng_uniform(ran)*1e6);
+    gsl_rng_set(threadRans[i],(int)gsl_rng_uniform(randGen)*1e6);
   }
 
   size=img[im].distance*img[im].imgres;
+  totalNumImagePixels = img[im].pxls*img[im].pxls;
+  imgXiCentre = img[im].pxls/2.0;
+  imgYiCentre = img[im].pxls/2.0;
 
   /* Determine whether there are blended lines or not */
   lineCount(par->nSpecies, m, &counta, &countb, &nlinetot);
@@ -218,48 +224,61 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
     }
   } else tmptrans=img[im].trans;
 
-  cutoff = par->minScale*1.0e-7;
-
-  for(px=0;px<(img[im].pxls*img[im].pxls);px++){
+  for(ppi=0;ppi<totalNumImagePixels;ppi++){
     for(ichan=0;ichan<img[im].nchan;ichan++){
-      img[im].pixel[px].intense[ichan]=0.0;
-      img[im].pixel[px].tau[ichan]=0.0;
+      img[im].pixel[ppi].intense[ichan]=0.0;
+      img[im].pixel[ppi].tau[ichan]=0.0;
     }
   }
 
+  for(ppi=0;ppi<totalNumImagePixels;ppi++){
+    img[im].pixel[ppi].numRays=par->antialias;
+  }
+
+  cutoff = par->minScale*1.0e-7;
+
   nRaysDone=0;
   omp_set_dynamic(0);
-  #pragma omp parallel private(px,aa,threadI) num_threads(par->nThreads)
+  #pragma omp parallel private(ppi,aa,threadI) num_threads(par->nThreads)
   {
     threadI = omp_get_thread_num();
 
     /* Declaration of thread-private pointers */
     rayData ray;
-    ray.intensity=malloc(sizeof(double) * img[im].nchan);
-    ray.tau=malloc(sizeof(double) * img[im].nchan);
+    ray.intensity= malloc(sizeof(double)*img[im].nchan);
+    ray.tau      = malloc(sizeof(double)*img[im].nchan);
 
     #pragma omp for
-    /* Main loop through pixel grid */
-    for(px=0;px<(img[im].pxls*img[im].pxls);px++){
+    /* Main loop through pixel grid. ***NOTE*** though that the division of labour between threads can be uneven if par->raytraceAlgorithm==1. Probably should rearrange the code, maybe so there is only 1 'for' loop over all the rays?
+   */
+    for(ppi=0;ppi<totalNumImagePixels;ppi++){
+      xi = ppi%img[im].pxls;
+      yi = ppi/img[im].pxls;
+
+      if(img[im].pixel[ppi].numRays>par->antialias)
+        numRaysThisPixel = img[im].pixel[ppi].numRays;
+      else
+        numRaysThisPixel = par->antialias;
+
       #pragma omp atomic
       ++nRaysDone;
 
-      for(aa=0;aa<par->antialias;aa++){
-        ray.x = size*(gsl_rng_uniform(threadRans[threadI])+px%img[im].pxls)-size*img[im].pxls/2.;
-        ray.y = size*(gsl_rng_uniform(threadRans[threadI])+px/img[im].pxls)-size*img[im].pxls/2.;
+      for(aa=0;aa<numRaysThisPixel;aa++){
+        ray.x = size*(gsl_rng_uniform(threadRans[threadI]) + xi - imgXiCentre);
+        ray.y = size*(gsl_rng_uniform(threadRans[threadI]) + yi - imgYiCentre);
 
         traceray(ray, tmptrans, im, par, g, m, img, nlinetot, counta, countb, cutoff);
 
         #pragma omp critical
         {
           for(ichan=0;ichan<img[im].nchan;ichan++){
-            img[im].pixel[px].intense[ichan] += ray.intensity[ichan]/(double) par->antialias;
-            img[im].pixel[px].tau[ichan] += ray.tau[ichan]/(double) par->antialias;
+            img[im].pixel[ppi].intense[ichan] += ray.intensity[ichan]/(double)numRaysThisPixel;
+            img[im].pixel[ppi].tau[    ichan] += ray.tau[      ichan]/(double)numRaysThisPixel;
           }
         }
       }
       if (threadI == 0){ // i.e., is master thread
-        if(!silent) progressbar((double)(nRaysDone)/totalNumPixelsMinus1, 13);
+        if(!silent) progressbar((double)(nRaysDone)/(double)(totalNumImagePixels-1), 13);
       }
     }
 
@@ -275,9 +294,8 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
     gsl_rng_free(threadRans[i]);
   }
   free(threadRans);
-  gsl_rng_free(ran);
+  gsl_rng_free(randGen);
 }
-
 
 void
 raytrace_1_4(int im, inputPars *par, struct grid *g, molData *m, image *img){
