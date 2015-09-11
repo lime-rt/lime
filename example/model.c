@@ -40,7 +40,7 @@ input(inputPars *par, image *img){
   img[0].theta			= 0.0;		  // 0: face-on, pi/2: edge-on
   img[0].distance		= 140*PC;	  // source distance in m
   img[0].source_vel		= 0;          // source velocity in m/s
-  img[0].unit			= 0;		  // 0:Kelvin 1:Jansky/pixel 2:SI 3:Lsun/pixel 4:tau
+  img[0].unit			= 0;		  // 0:Kelvin 1:Jansky/pixel 2:SI 3:Lsun/pixel 4:tau 5:numRays
   img[0].filename		= "image0.fits";	// Output filename
 }
 

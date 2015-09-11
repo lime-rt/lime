@@ -147,6 +147,7 @@ typedef struct {
   double *intense;
   double *tau;
   double stokes[3];
+  int numRays;
 } spec;
 
 /* Image information */
