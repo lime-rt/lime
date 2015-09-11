@@ -81,7 +81,7 @@
 /* input parameters */
 typedef struct {
   double radius,radiusSqu,minScale,minScaleSqu,tcmb,taylorCutoff;
-  int ncell,sinkPoints,pIntensity,nImages,nSpecies,blend;
+  int ncell,sinkPoints,pIntensity,nImages,nSpecies,blend,raytraceAlgorithm;
   char *outputfile, *binoutputfile, *inputfile;
   char *gridfile;
   char *pregrid;

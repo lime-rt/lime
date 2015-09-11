@@ -40,6 +40,7 @@ parseInput(inputPars *par, image **img, molData **m){
   par->sinkPoints=0;
   par->doPregrid=0;
   par->nThreads=0;
+  par->raytraceAlgorithm=0;
 
   /* Allocate space for output fits images */
   (*img)=malloc(sizeof(image)*MAX_NSPECIES);

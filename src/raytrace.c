@@ -231,8 +231,41 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
     }
   }
 
-  for(ppi=0;ppi<totalNumImagePixels;ppi++){
-    img[im].pixel[ppi].numRays=par->antialias;
+  if(par->raytraceAlgorithm==0){
+    for(ppi=0;ppi<totalNumImagePixels;ppi++){
+      img[im].pixel[ppi].numRays=par->antialias;
+    }
+
+  } else if(par->raytraceAlgorithm==1){
+    /*
+In this algorithm we attempt to deal better with image pixels which cover areas of the model where grid points are packed much more densely than the pixel spacing. In algorithm 0, such regions are sampled by only at par->antialias rays per pixel, which risks missing extreme values. The approach here is to generate approximately the same number of rays per pixel as the number of projected grid points in that pixel (with par->antialias providing a minimum floor). The set of values per pixel are then averaged to obtain the image value for that pixel.
+    */
+
+    for(ppi=0;ppi<totalNumImagePixels;ppi++){
+      img[im].pixel[ppi].numRays=0;
+    }
+
+    for(gi=0;gi<par->pIntensity;gi++){
+      /* Apply the inverse (i.e. transpose) rotation matrix. (We use the inverse matrix here because here we want to rotate grid coordinates to the observer frame, whereas inside traceray() we rotate observer coordinates to the grid frame.)
+      */
+      for(i=0;i<2;i++){
+        x[i]=0.0;
+        for(j=0;j<DIM;j++){
+          x[i] += g[gi].x[j]*img[im].rotMat[j][i];
+        }
+      }
+
+      /* Calculate which pixel the projected position (x[0],x[1]) falls within. */
+      xi = floor(x[0]/size + imgXiCentre);
+      yi = floor(x[1]/size + imgYiCentre);
+      ppi = yi*img[im].pxls + xi;
+      if(ppi>=0 && ppi<totalNumImagePixels)
+        img[im].pixel[ppi].numRays++;
+    }
+
+  } else {
+    if(!silent) bail_out("Unrecognized value of par.raytraceAlgorithm");
+    exit(1);
   }
 
   cutoff = par->minScale*1.0e-7;
