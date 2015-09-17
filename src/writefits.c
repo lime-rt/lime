@@ -84,11 +84,11 @@ writefits(int im, inputPars *par, molData *m, image *img){
   fits_write_key(fptr, TSTRING, "CUNIT3  ", &"M/S     ",    "", &status);
   fits_write_key(fptr, TDOUBLE, "BSCALE  ", &bscale,        "", &status);
   fits_write_key(fptr, TDOUBLE, "BZERO   ", &bzero,         "", &status);
-  if(img[im].unit==0) fits_write_key(fptr, TSTRING, "BUNIT", &"K       ", "", &status);
-  if(img[im].unit==1) fits_write_key(fptr, TSTRING, "BUNIT", &"JY/PIXEL", "", &status);
-  if(img[im].unit==2) fits_write_key(fptr, TSTRING, "BUNIT", &"WM2HZSR ", "", &status);
-  if(img[im].unit==3) fits_write_key(fptr, TSTRING, "BUNIT", &"Lsun/PX ", "", &status);
-  if(img[im].unit==3) fits_write_key(fptr, TSTRING, "BUNIT", &"        ", "", &status);
+  if(img[im].unit==0 || img[im].unit==10) fits_write_key(fptr, TSTRING, "BUNIT", &"K       ", "", &status); //cont
+  if(img[im].unit==1 || img[im].unit==11) fits_write_key(fptr, TSTRING, "BUNIT", &"JY/PIXEL", "", &status); //cont
+  if(img[im].unit==2 || img[im].unit==12) fits_write_key(fptr, TSTRING, "BUNIT", &"WM2HZSR ", "", &status); //cont
+  if(img[im].unit==3 || img[im].unit==13) fits_write_key(fptr, TSTRING, "BUNIT", &"Lsun/PX ", "", &status); //cont
+  if(img[im].unit==4 || img[im].unit==14) fits_write_key(fptr, TSTRING, "BUNIT", &"        ", "", &status); //cont
 
   /* Write FITS data */
   for(py=0;py<img[im].pxls;py++){
@@ -102,6 +102,19 @@ writefits(int im, inputPars *par, molData *m, image *img){
           row[px]=(float) img[im].pixel[px+py*img[im].pxls].intense[ichan]*4.*PI*ru3*ru3*img[im].freq*img[im].imgres*img[im].imgres*m[0].norm;
         }
         else if(img[im].unit==4) row[px]=(float) img[im].pixel[px+py*img[im].pxls].tau[ichan];
+        else if(img[im].unit==10) row[px]=(float) img[im].pixel[px+py*img[im].pxls].intense[ichan]*(CLIGHT/img[im].freq)*(CLIGHT/img[im].freq)/2./KBOLTZ*m[0].norm -
+                                          (float) img[im].pixel[px+py*img[im].pxls].intense_cont[ichan]*(CLIGHT/img[im].freq)*(CLIGHT/img[im].freq)/2./KBOLTZ*m[0].norm; 
+        else if(img[im].unit==11) row[px]=(float) img[im].pixel[px+py*img[im].pxls].intense[ichan]*1e26*img[im].imgres*img[im].imgres*m[0].norm -
+                                          (float) img[im].pixel[px+py*img[im].pxls].intense_cont[ichan]*1e26*img[im].imgres*img[im].imgres*m[0].norm ;
+        else if(img[im].unit==12) row[px]=(float) img[im].pixel[px+py*img[im].pxls].intense[ichan]*m[0].norm -
+                                          (float) img[im].pixel[px+py*img[im].pxls].intense_cont[ichan]*m[0].norm;
+        else if(img[im].unit==13) {
+          ru3 = img[im].distance/1.975e13;
+          row[px]=(float) img[im].pixel[px+py*img[im].pxls].intense[ichan]*4.*PI*ru3*ru3*img[im].freq*img[im].imgres*img[im].imgres*m[0].norm -
+                  (float) img[im].pixel[px+py*img[im].pxls].intense_cont[ichan]*4.*PI*ru3*ru3*img[im].freq*img[im].imgres*img[im].imgres*m[0].norm;
+        }
+        else if(img[im].unit==14) row[px]=(float) img[im].pixel[px+py*img[im].pxls].tau[ichan] -
+                                          (float) img[im].pixel[px+py*img[im].pxls].tau_cont[ichan];
         else {
           if(!silent) bail_out("Image unit number invalid");
           exit(0);
