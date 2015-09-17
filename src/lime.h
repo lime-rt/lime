@@ -146,6 +146,8 @@ struct grid {
 typedef struct {
   double *intense;
   double *tau;
+  double *intense_cont;
+  double *tau_cont;
   double stokes[3];
 } spec;
 
@@ -171,7 +173,7 @@ typedef struct {
   double deltav;
 } blend;
 
-typedef struct {double x,y, *intensity, *tau;} rayData;
+typedef struct {double x,y, *intensity, *tau, *intensity_cont, *tau_cont;} rayData;
 
 
 
