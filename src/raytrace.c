@@ -66,10 +66,13 @@ traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molD
   int ichan,posn,nposn,i,iline;
   double vfac=0.,x[3],dx[3],vThisChan;
   double deltav,ds,dist2,ndist2,xp,yp,zp,col,shift,jnu,alpha,remnantSnu,dtau,expDTau,snu_pol[3];
+  double dtau_cont,jnu_cont,alpha_cont,remnantSnu_cont,expDTau_cont;
 
   for(ichan=0;ichan<img[im].nchan;ichan++){
     ray.tau[ichan]=0.0;
     ray.intensity[ichan]=0.0;
+    ray.tau_cont[ichan]=0.0;
+    ray.intensity_cont[ichan]=0.0;
   }
 
   xp=ray.x;
@@ -113,6 +116,8 @@ traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molD
         for(ichan=0;ichan<img[im].nchan;ichan++){
           jnu=.0;
           alpha=0.;
+          jnu_cont=.0;
+          alpha_cont=0.;
 
           for(iline=0;iline<nlinetot;iline++){
             if(img[im].doline && m[counta[iline]].freq[countb[iline]] > img[im].freq-img[im].bandwidth/2.
@@ -135,16 +140,27 @@ traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molD
           if(img[im].doline && img[im].trans > -1) sourceFunc_cont(&jnu,&alpha,g,posn,0,img[im].trans);
           else if(img[im].doline && img[im].trans == -1) sourceFunc_cont(&jnu,&alpha,g,posn,0,tmptrans);
           else sourceFunc_cont(&jnu,&alpha,g,posn,0,0);
+          
+          if(img[im].doline && img[im].trans > -1) sourceFunc_cont(&jnu_cont,&alpha_cont,g,posn,0,img[im].trans);
+          else if(img[im].doline && img[im].trans == -1) sourceFunc_cont(&jnu_cont,&alpha_cont,g,posn,0,tmptrans);
+          else sourceFunc_cont(&jnu_cont,&alpha_cont,g,posn,0,0);
+          
           dtau=alpha*ds;
+          dtau_cont=alpha_cont*ds;
 //???          if(dtau < -30) dtau = -30; // as in photon()?
           calcSourceFn(dtau, par, &remnantSnu, &expDTau);
+          calcSourceFn(dtau_cont, par, &remnantSnu_cont, &expDTau_cont);
           remnantSnu *= jnu*m[0].norminv*ds;
+          remnantSnu_cont *= jnu_cont*m[0].norminv*ds;
 #ifdef FASTEXP
           ray.intensity[ichan]+=FastExp(ray.tau[ichan])*remnantSnu;
+          ray.intensity_cont[ichan]+=FastExp(ray.tau_cont[ichan])*remnantSnu_cont;
 #else
           ray.intensity[ichan]+=   exp(-ray.tau[ichan])*remnantSnu;
+          ray.intensity_cont[ichan]+=   exp(-ray.tau_cont[ichan])*remnantSnu_cont;
 #endif
           ray.tau[ichan]+=dtau;
+          ray.tau_cont[ichan]+=dtau_cont;
         }
       }
 
@@ -158,10 +174,12 @@ traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molD
 #ifdef FASTEXP
     for(ichan=0;ichan<img[im].nchan;ichan++){
       ray.intensity[ichan]+=(FastExp(ray.tau[ichan])-1.)*m[0].local_cmb[tmptrans];
+      ray.intensity_cont[ichan]+=(FastExp(ray.tau_cont[ichan])-1.)*m[0].local_cmb[tmptrans];
     }
 #else
     for(ichan=0;ichan<img[im].nchan;ichan++){
       ray.intensity[ichan]+=(exp(-ray.tau[ichan])-1.)*m[0].local_cmb[tmptrans];
+      ray.intensity_cont[ichan]+=(exp(-ray.tau_cont[ichan])-1.)*m[0].local_cmb[tmptrans];
     }
 #endif
   }
@@ -224,6 +242,8 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
     for(ichan=0;ichan<img[im].nchan;ichan++){
       img[im].pixel[px].intense[ichan]=0.0;
       img[im].pixel[px].tau[ichan]=0.0;
+      img[im].pixel[px].intense_cont[ichan]=0.0;
+      img[im].pixel[px].tau_cont[ichan]=0.0;
     }
   }
 
@@ -237,6 +257,8 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
     rayData ray;
     ray.intensity=malloc(sizeof(double) * img[im].nchan);
     ray.tau=malloc(sizeof(double) * img[im].nchan);
+    ray.intensity_cont=malloc(sizeof(double) * img[im].nchan);
+    ray.tau_cont=malloc(sizeof(double) * img[im].nchan);
 
     #pragma omp for
     /* Main loop through pixel grid */
@@ -255,16 +277,20 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
           for(ichan=0;ichan<img[im].nchan;ichan++){
             img[im].pixel[px].intense[ichan] += ray.intensity[ichan]/(double) par->antialias;
             img[im].pixel[px].tau[ichan] += ray.tau[ichan]/(double) par->antialias;
+            img[im].pixel[px].intense_cont[ichan] += ray.intensity_cont[ichan]/(double) par->antialias;
+            img[im].pixel[px].tau_cont[ichan] += ray.tau_cont[ichan]/(double) par->antialias;
           }
         }
       }
-    }
-    if (threadI == 0){ // i.e., is master thread
-      if(!silent) progressbar((double)(nRaysDone)/(double)(img[im].pxls*img[im].pxls-1), 13);
+      if (threadI == 0){ // i.e., is master thread
+        if(!silent) progressbar((double)(nRaysDone)/(double)(img[im].pxls*img[im].pxls-1), 13);
+      }
     }
 
     free(ray.tau);
     free(ray.intensity);
+    free(ray.tau_cont);
+    free(ray.intensity_cont);
   } // end of parallel block.
 
   img[im].trans=tmptrans;
@@ -356,9 +382,13 @@ kept it.
     rays[i].y=g[i].x[1];
     rays[i].tau=malloc(sizeof(double) * img[im].nchan);
     rays[i].intensity=malloc(sizeof(double) * img[im].nchan);
+    rays[i].tau_cont=malloc(sizeof(double) * img[im].nchan);
+    rays[i].intensity_cont=malloc(sizeof(double) * img[im].nchan);
     for(ichan=0;ichan<img[im].nchan;ichan++) {
       rays[i].tau[ichan]=0.0;
       rays[i].intensity[ichan]=0.0;
+      rays[i].tau_cont[ichan]=0.0;
+      rays[i].intensity_cont[ichan]=0.0;
     }
   }
   
@@ -441,6 +471,8 @@ kept it.
       for(ichan=0;ichan<img[im].nchan;ichan++){
         img[im].pixel[px].intense[ichan]=0.0;
         img[im].pixel[px].tau[ichan]=0.0;
+        img[im].pixel[px].intense_cont[ichan]=0.0;
+        img[im].pixel[px].tau_cont[ichan]=0.0;
       }
       xp=size*(0.5+px%img[im].pxls)-size*img[im].pxls/2.;
       yp=size*(0.5+px/img[im].pxls)-size*img[im].pxls/2.;
@@ -450,16 +482,19 @@ This part works great! This is "Shepard's method" with a weight of 8. Slow, unfo
 
       for(ichan=0;ichan<img[im].nchan;ichan++){
         img[im].pixel[px].intense[ichan] = 0.;
+        img[im].pixel[px].intense_cont[ichan] = 0.;
         di=0;
         for(i=0;i<par->pIntensity;i++){
           // d[i]=1./pow(sqrt(pow(xp-rays[i].x,2)+ pow(yp-rays[i].y,2)),8.);
           temp1 = (xp-rays[i].x)*(xp-rays[i].x)+ (yp-rays[i].y)*(yp-rays[i].y)
           d[i]=1./(temp1*temp1*temp1*temp1);
           img[im].pixel[px].intense[ichan] += rays[i].intensity[ichan]*d[i];
+          img[im].pixel[px].intense_cont[ichan] += rays[i].intensity_cont[ichan]*d[i];
 **** how to handle img[im].pixel[px].tau[ichan]?
           di+=d[i];
         }
         img[im].pixel[px].intense[ichan] /= di;
+        img[im].pixel[px].intense_cont[ichan] /= di;
       }
 */
       
@@ -497,6 +532,9 @@ This part works great! This is "Shepard's method" with a weight of 8. Slow, unfo
 
         di=d1+d2+d3;
         img[im].pixel[px].intense[ichan] = 1./di * (z1*d1 + z2*d2 + z3*d3);
+        
+        z1=rays[zt[2]].intensity_cont[ichan];z2=rays[zt[1]].intensity_cont[ichan];z3=rays[zt[2]].intensity_cont[ichan];
+        img[im].pixel[px].intense_cont[ichan] = 1./di * (z1*d1 + z2*d2 + z3*d3);
 //**** how to handle img[im].pixel[px].tau[ichan]?
       }
 
@@ -513,6 +551,8 @@ This part works great! This is "Shepard's method" with a weight of 8. Slow, unfo
   for(i=0;i<par->pIntensity;i++){
     free(rays[i].tau);
     free(rays[i].intensity);
+    free(rays[i].tau_cont);
+    free(rays[i].intensity_cont);
   }
   free(rays);
   free(counta);
