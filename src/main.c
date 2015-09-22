@@ -12,12 +12,14 @@
 #ifdef FASTEXP
 double EXP_TABLE_2D[128][10];
 double EXP_TABLE_3D[256][2][10];
+double INV_TABLE[FAST_EXP_MAX_TAYLOR];
 /* I've hard-wired the dimensions of these arrays, but it would be better perhaps to declare them as pointers, and calculate the dimensions with the help of the function call:
   calcFastExpRange(FAST_EXP_MAX_TAYLOR, FAST_EXP_NUM_BITS, &numMantissaFields, &lowestExponent, &numExponentsUsed)
 */
 #else
 double EXP_TABLE_2D[1][1]; // nominal definitions so the fastexp.c module will compile.
 double EXP_TABLE_3D[1][1][1];
+double INV_TABLE[1];
 #endif
 
 int main () {
