@@ -11,9 +11,9 @@
 
 int
 sortangles(double *inidir, int id, struct grid *g, const gsl_rng *ran) {
+#ifdef OLD_RT
   int i,n[2];
   double angle,exitdir[2];
-
   exitdir[0]=1e30;
   exitdir[1]=1e31;
   n[0]=-1;
@@ -45,17 +45,48 @@ sortangles(double *inidir, int id, struct grid *g, const gsl_rng *ran) {
     }
     return n[1];
   }
+#else
+  // the old method finds the edge with the lowest dir\cdot inidir,
+  // i.e. the edge closest to the direction opposite to the inidir
+  // this has been changed, because it makes things cleaner
+  // when, e.g., calculating projections
+
+  int i,n;
+  double cos_angle,exit_cos;
+  exit_cos=-1e30;
+  n=-1;
+
+  for(i=0;i<g[id].numNeigh;i++){
+    cos_angle=( inidir[0]*g[id].dir[i].xn[0]
+           +inidir[1]*g[id].dir[i].xn[1]
+           +inidir[2]*g[id].dir[i].xn[2]);
+    if(cos_angle>exit_cos){
+      exit_cos=cos_angle;
+      n=i;
+    }
+  }
+  if(n==-1){
+    if(!silent) bail_out("Photon propagation error");
+    exit(1);
+  }
+  return n;
+#endif
 }
 
 
 
 void
-velocityspline(struct grid *g, int id, int k, double binv, double deltav, double *vfac){
+velocityspline(struct grid *g, int id, int k, double binv, double deltav, double *vfac, double *oridir){
   int nspline,ispline,naver,iaver;
   double v1,v2,s1,s2,sd,v,vfacsub,d;
-  
+
+#ifdef OLD_RT
   v1=deltav-veloproject(g[id].dir[k].xn,g[id].vel);
   v2=deltav-veloproject(g[id].dir[k].xn,g[id].neigh[k]->vel);
+#else
+  v1=deltav-veloproject(oridir,g[id].vel);
+  v2=deltav-veloproject(oridir,g[id].neigh[k]->vel);
+#endif
 
   nspline=(fabs(v1-v2)*binv < 1) ? 1 : (int)(fabs(v1-v2)*binv);
   *vfac=0.;
@@ -83,12 +114,17 @@ velocityspline(struct grid *g, int id, int k, double binv, double deltav, double
 
 
 void
-velocityspline_lin(struct grid *g, int id, int k, double binv, double deltav, double *vfac){
+velocityspline_lin(struct grid *g, int id, int k, double binv, double deltav, double *vfac, double *oridir){
   int nspline,ispline,naver,iaver;
   double v1,v2,s1,s2,sd,v,vfacsub,d;
   
+#ifdef OLD_RT
   v1=deltav-veloproject(g[id].dir[k].xn,g[id].vel);
   v2=deltav-veloproject(g[id].dir[k].xn,g[id].neigh[k]->vel);
+#else
+  v1=deltav-veloproject(oridir,g[id].vel);
+  v2=deltav-veloproject(oridir,g[id].neigh[k]->vel);
+#endif
 
   nspline=(fabs(v1-v2)*binv < 1) ? 1 : (int)(fabs(v1-v2)*binv);
   *vfac=0.;
@@ -168,7 +204,7 @@ void
 photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPars *par,blend *matrix, gridPointData *mp, double *halfFirstDs){
   int iphot,iline,jline,here,there,firststep,dir,np_per_line,ip_at_line,l;
   int *counta, *countb,nlinetot;
-  double deltav,segment,vblend,dtau,expDTau,jnu,alpha,ds,vfac[par->nSpecies],pt_theta,pt_z,semiradius;
+  double deltav,segment,vblend,dtau,expDTau,jnu,alpha,ds,ds_prev,vfac[par->nSpecies],pt_theta,pt_z,semiradius;
   double *tau,*expTau,vel[3],x[3], inidir[3];
   double remnantSnu;
 
@@ -194,7 +230,7 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
     inidir[0]=semiradius*cos(pt_theta);
     inidir[1]=semiradius*sin(pt_theta);
     inidir[2]=pt_z;
-    
+
     iter=(int) (gsl_rng_uniform(ran)*(double)N_RAN_PER_SEGMENT); // can have values in [0,1,..,N_RAN_PER_SEGMENT-1]
     ip_at_line=(int) iphot/g[id].numNeigh;
     segment=(N_RAN_PER_SEGMENT*(ip_at_line-np_per_line/2.)+iter)/(double)(np_per_line*N_RAN_PER_SEGMENT);
@@ -208,28 +244,42 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
     dir=sortangles(inidir,id,g,ran);
     here=g[id].id;
     there=g[here].neigh[dir]->id;
+#ifdef OLD_RT
     deltav=segment*4.3*g[id].dopb+veloproject(g[id].dir[dir].xn,vel);
-    
+#else
+    deltav=segment*4.3*g[id].dopb+veloproject(inidir,vel);
+#endif
     /* Photon propagation loop */
     do{
       if(firststep){
         firststep=0;				
-        ds=g[here].ds[dir]/2.;
+#ifdef OLD_RT
+        ds=0.5*g[here].ds[dir];
+#else
+	ds=0.5*g[here].ds[dir]*(inidir[0]*g[here].dir[dir].xn[0]+inidir[1]*g[here].dir[dir].xn[1]+inidir[2]*g[here].dir[dir].xn[2]);
+        ds_prev=ds;
+#endif
         halfFirstDs[iphot]=ds;
         for(l=0;l<par->nSpecies;l++){
-          if(!par->doPregrid) velocityspline(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
-          else velocityspline_lin(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
+          if(!par->doPregrid) velocityspline(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l],inidir);
+          else velocityspline_lin(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l],inidir);
           mp[l].vfac[iphot]=vfac[0];
         }
-        for(l=0;l<3;l++) x[l]=g[here].x[l]+(g[here].dir[dir].xn[l] * g[id].ds[dir]/2.);
+        for(l=0;l<3;l++) x[l]=g[here].x[l]+(g[here].dir[dir].xn[l] * 0.5*g[id].ds[dir]);
       } else {
+#ifdef OLD_RT
         ds=g[here].ds[dir];
+#else
+	ds=ds_prev;
+	ds_prev=0.5*g[here].ds[dir]*(inidir[0]*g[here].dir[dir].xn[0]+inidir[1]*g[here].dir[dir].xn[1]+inidir[2]*g[here].dir[dir].xn[2]);
+        ds+=ds_prev;
+#endif
         for(l=0;l<3;l++) x[l]=g[here].x[l];
       }
       
       for(l=0;l<par->nSpecies;l++){
-        if(!par->doPregrid) velocityspline(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
-        else velocityspline_lin(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
+        if(!par->doPregrid) velocityspline(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l],inidir);
+        else velocityspline_lin(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l],inidir);
       }
       
       for(iline=0;iline<nlinetot;iline++){
@@ -259,8 +309,8 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
           alpha=0.;
           for(jline=0;jline<sizeof(matrix)/sizeof(blend);jline++){
             if(matrix[jline].line1 == jline || matrix[jline].line2 == jline){	
-              if(!par->doPregrid) velocityspline(g,here,dir,g[id].mol[counta[jline]].binv,deltav-matrix[jline].deltav,&vblend);
-              else velocityspline_lin(g,here,dir,g[id].mol[counta[jline]].binv,deltav-matrix[jline].deltav,&vblend);	
+              if(!par->doPregrid) velocityspline(g,here,dir,g[id].mol[counta[jline]].binv,deltav-matrix[jline].deltav,&vblend,inidir);
+              else velocityspline_lin(g,here,dir,g[id].mol[counta[jline]].binv,deltav-matrix[jline].deltav,&vblend,inidir);
               sourceFunc_line(&jnu,&alpha,m,vblend,g,here,counta[jline],countb[jline]);
               dtau=alpha*ds;
               if(dtau < -30) dtau = -30;
@@ -281,11 +331,19 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
         /* End of line blending part */
       }
       
+#ifdef OLD_RT
       dir=sortangles(inidir,there,g,ran);
       here=there;
       there=g[here].neigh[dir]->id;
     } while(!g[there].sink);
-    
+#else
+      if (!g[here].sink) {
+         dir=sortangles(inidir,there,g,ran);
+         here=there;
+         there=g[here].neigh[dir]->id;
+      }
+    } while(!g[here].sink);
+#endif
     /* Add cmb contribution */
     if(m[0].cmb[0]>0.){
       for(iline=0;iline<nlinetot;iline++){

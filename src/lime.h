@@ -236,7 +236,6 @@ void   	stateq(int, struct grid *, molData *, int, inputPars *,gridPointData *,d
 void	statistics(int, molData *, struct grid *, int *, double *, double *, int *);
 void    stokesangles(double, double, double, double, double *);
 void    traceray(rayData, int, int, inputPars *, struct grid *, molData *, image *, int, int *, int *, double);
-void   	velocityspline(struct grid *, int, int, double, double, double*);
 void   	velocityspline2(double *, double *, double, double, double, double*);
 double 	veloproject(double *, double *);
 void	writefits(int, inputPars *, molData *, image *);
