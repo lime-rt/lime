@@ -47,21 +47,26 @@
 #endif
 
 /* Physical constants */
-#define PI		3.14159265358979323846
-#define SPI		1.77245385
-#define CLIGHT		2.997924562e8
-#define HPLANCK		6.626196e-34
-#define KBOLTZ		1.380622e-23
-#define AMU		1.6605402e-27
-#define HPIP		HPLANCK*CLIGHT/4.0/PI/SPI
-#define HCKB		100.*HPLANCK*CLIGHT/KBOLTZ
-#define PC		3.08568025e16
-#define AU		1.49598e11
-#define maxp		0.15
-#define OtoP		3.
-#define GRAV		6.67428e-11
+// - NIST values as of 23 Sept 2015:
+#define AMU		1.66053904e-27		// atomic mass unit             [kg]
+#define CLIGHT		2.99792458e8		// speed of light in vacuum     [m / s]
+#define HPLANCK		6.626070040e-34		// Planck constant              [J * s]
+#define KBOLTZ		1.38064852e-23		// Boltzmann constant           [J / K]
+
+// From IAU 2009:
+#define GRAV		6.67428e-11		// gravitational constant       [m^3 / kg / s^2]
+#define AU		1.495978707e11		// astronomical unit            [m]
+
+// Derived:
+#define PC		3.08567758e16		// parsec (~3600*180*AU/PI)     [m]
+#define HPIP		8.918502221e-27		// HPLANCK*CLIGHT/4.0/PI/SPI
+#define HCKB		1.43877735		// 100.*HPLANCK*CLIGHT/KBOLTZ
 
 /* Other constants */
+#define PI			3.14159265358979323846	// pi
+#define SPI			1.77245385091		// sqrt(pi)
+#define maxp			0.15
+#define OtoP			3.
 #define NITERATIONS 		16
 #define max_phot		10000		/* don't set this value higher unless you have enough memory. */
 #define ininphot		9
