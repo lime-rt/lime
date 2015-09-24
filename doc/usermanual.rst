@@ -203,50 +203,6 @@ LIME accepts several command line options:
    The number of threads may also be set with the :ref:`par->nThreads <par-nthreads>`
    parameter.
 
-.. _lime-options:
-
-Command line options
---------------------
-
-.. note::
-
-   Starting with LIME 1.5, command line options can be used to change
-   LIME default behavior without editing the source code.
-
-LIME accepts several command line options:
-
-.. option:: -V
-
-   Display version information
-
-.. option:: -h
-
-   Display help message
-
-.. option:: -f
-
-   Use fast exponential computation. When this option is set, LIME
-   uses a lookup-table replacement for the exponential function, which
-   however (due to cunning use of the properties of the function)
-   returns a value with full floating-point precision, indeed with
-   better precision than that for much of the range. Use of this
-   option reduces the run time by 25%.
-
-.. option:: -n
-
-   Turn off `ncurses` messages. This is useful when running LIME in a
-   non-interactive way.
-
-.. option:: -p nthreads
-
-   Run in parallel mode with `nthreads`. The default a single thread,
-   i.e. serial execution.
-
-.. note::
-
-   The number of threads may also be set with the :ref:`par->nThreads <par-nthreads>`
-   parameter.
-
 Setting up models
 -----------------
 
