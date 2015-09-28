@@ -78,21 +78,22 @@ sortangles(double *inidir, int id, struct grid *g, const gsl_rng *ran) {
 void
 velocityspline(struct grid *g, int id, int k, double binv, double deltav, double *vfac, double *oridir){
   int nspline,ispline,naver,iaver;
-  double v1,v2,s1,s2,sd,v,vfacsub,d;
+  double v1,v2,s1,s2,sd,v,vfacsub,d,proj;
 
-#ifdef OLD_RT
   v1=deltav-veloproject(g[id].dir[k].xn,g[id].vel);
   v2=deltav-veloproject(g[id].dir[k].xn,g[id].neigh[k]->vel);
-#else
-  v1=deltav-veloproject(oridir,g[id].vel);
-  v2=deltav-veloproject(oridir,g[id].neigh[k]->vel);
-#endif
 
   nspline=(fabs(v1-v2)*binv < 1) ? 1 : (int)(fabs(v1-v2)*binv);
   *vfac=0.;
   s2=0;
   v2=v1;
-  
+
+#ifdef OLD_RT
+  proj=1.0;
+#else
+  proj=oridir[0]*g[id].dir[k].xn[0]+oridir[1]*g[id].dir[k].xn[1]+oridir[2]*g[id].dir[k].xn[2];  
+#endif
+
   for(ispline=0;ispline<nspline;ispline++){
     s1=s2;
     s2=((double)(ispline+1))/(double)nspline;
@@ -103,7 +104,7 @@ velocityspline(struct grid *g, int id, int k, double binv, double deltav, double
     for(iaver=0;iaver<naver;iaver++){
       sd=s1+(s2-s1)*((double)iaver-0.5)/(double)naver;
       d=sd*g[id].ds[k];
-      v=deltav-((((g[id].a4[k]*d+g[id].a3[k])*d+g[id].a2[k])*d+g[id].a1[k])*d+g[id].a0[k]);
+      v=deltav-proj*((((g[id].a4[k]*d+g[id].a3[k])*d+g[id].a2[k])*d+g[id].a1[k])*d+g[id].a0[k]);
       vfacsub=gaussline(v,binv);
       *vfac+=vfacsub/(double)naver;
     }
@@ -116,21 +117,22 @@ velocityspline(struct grid *g, int id, int k, double binv, double deltav, double
 void
 velocityspline_lin(struct grid *g, int id, int k, double binv, double deltav, double *vfac, double *oridir){
   int nspline,ispline,naver,iaver;
-  double v1,v2,s1,s2,sd,v,vfacsub,d;
+  double v1,v2,s1,s2,sd,v,vfacsub,d,proj;
   
-#ifdef OLD_RT
   v1=deltav-veloproject(g[id].dir[k].xn,g[id].vel);
   v2=deltav-veloproject(g[id].dir[k].xn,g[id].neigh[k]->vel);
-#else
-  v1=deltav-veloproject(oridir,g[id].vel);
-  v2=deltav-veloproject(oridir,g[id].neigh[k]->vel);
-#endif
 
   nspline=(fabs(v1-v2)*binv < 1) ? 1 : (int)(fabs(v1-v2)*binv);
   *vfac=0.;
   s2=0;
   v2=v1;
   
+#ifdef OLD_RT
+  proj=1.0;
+#else
+  proj=oridir[0]*g[id].dir[k].xn[0]+oridir[1]*g[id].dir[k].xn[1]+oridir[2]*g[id].dir[k].xn[2];  
+#endif
+
   for(ispline=0;ispline<nspline;ispline++){
     s1=s2;
     s2=((double)(ispline+1))/(double)nspline;
@@ -141,7 +143,7 @@ velocityspline_lin(struct grid *g, int id, int k, double binv, double deltav, do
     for(iaver=0;iaver<naver;iaver++){
       sd=s1+(s2-s1)*((double)iaver-0.5)/(double)naver;
       d=sd*g[id].ds[k];
-      v=deltav-(g[id].a1[k]*d+g[id].a0[k]);
+      v=deltav-proj*(g[id].a1[k]*d+g[id].a0[k]);
       vfacsub=gaussline(v,binv);
       *vfac+=vfacsub/(double)naver;
     }
