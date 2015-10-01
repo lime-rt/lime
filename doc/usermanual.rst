@@ -515,10 +515,12 @@ luminosity distance.
 
     (integer) img[i]->unit (required)
 
-The unit of the image. This variable can take values between 0 and 4. 0
-for Kelvin, 1 for Jansky per pixel, 2 for SI units, and 3 for Solar
-luminosity per pixel. The value 4 is a special option that will create
-an optical depth image cube (dimensionless).
+The unit of the image. This variable can take values between 0 and 4 or between 10 and 14. 0 or 10
+for Kelvin, 1 or 11 for Jansky per pixel, 2 or 12 for SI units, and 3 or 13 for Solar
+luminosity per pixel. The value 4 (or 14) is a special option that will create
+an optical depth image cube (dimensionless). If the unit is between 0 and 4 then the image is the sum
+of line and continuum intensities (or optical depths). If the unit is between 10 and 14 then 
+the image is continuum subtracted.
 
 .. code:: c
 

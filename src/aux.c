@@ -169,6 +169,8 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
     for(id=0;id<((*img)[i].pxls*(*img)[i].pxls);id++){
       (*img)[i].pixel[id].intense = malloc(sizeof(double)*(*img)[i].nchan);
       (*img)[i].pixel[id].tau = malloc(sizeof(double)*(*img)[i].nchan);
+      (*img)[i].pixel[id].intense_cont = malloc(sizeof(double)*(*img)[i].nchan);
+      (*img)[i].pixel[id].tau_cont = malloc(sizeof(double)*(*img)[i].nchan);
     }
 
     /* Rotation matrix
@@ -299,6 +301,8 @@ freeInput( inputPars *par, image* img, molData* mol )
     for(id=0;id<(img[i].pxls*img[i].pxls);id++){
       free( img[i].pixel[id].intense );
       free( img[i].pixel[id].tau );
+      free( img[i].pixel[id].intense_cont );
+      free( img[i].pixel[id].tau_cont );
     }
     free(img[i].pixel);
   }
