@@ -11,8 +11,7 @@
 
 /******************************************************************************/
 
-void
-input(inputPars *par, image *img){
+void input(inputPars *par, image *img){
   /*
    * Basic parameters. See cheat sheet for details.
    */
