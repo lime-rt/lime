@@ -48,26 +48,26 @@
 
 /* Physical constants */
 #define PI			3.14159265358979323846
-#define SPI			1.77245385
-#define CLIGHT	    2.997924562e8
-#define HPLANCK	    6.626196e-34
-#define KBOLTZ	    1.380622e-23
-#define AMU			1.6605402e-27
-#define HPIP		HPLANCK*CLIGHT/4.0/PI/SPI
-#define HCKB		100.*HPLANCK*CLIGHT/KBOLTZ
-#define PC			3.08568025e16
-#define AU			1.49598e11
-#define maxp		0.15
-#define OtoP		3.
-#define GRAV		6.67428e-11
+#define SPI			1.77245385090552
+#define CLIGHT	    		299792458.0
+#define HPLANCK	    		6.626070040e-34
+#define KBOLTZ	    		1.3806488e-23
+#define AMU			1.660538921e-27
+#define HPIP			(HPLANCK*CLIGHT/4.0/PI/SPI)
+#define HCKB			(100.*HPLANCK*CLIGHT/KBOLTZ)
+#define PC			3.085677581e16
+#define AU			149597870700.0
+#define maxp			0.15
+#define OtoP			3.
+#define GRAV			6.67384e-11
 
 /* Other constants */
-#define NITERATIONS 	16
+#define NITERATIONS 		16
 #define max_phot		10000		/* don't set this value higher unless you have enough memory. */
 #define ininphot		9
 #define minpop			1.e-6
-#define eps				1.0e-30
-#define TOL				1e-6
+#define eps			1.0e-30
+#define TOL			1e-6
 #define MAXITER			50
 #define goal			50
 #define fixset			1e-6
@@ -76,7 +76,6 @@
 #define N_RAN_PER_SEGMENT       3
 #define FAST_EXP_MAX_TAYLOR	3
 #define FAST_EXP_NUM_BITS	8
-
 
 /* input parameters */
 typedef struct {
@@ -237,7 +236,6 @@ void   	stateq(int, struct grid *, molData *, int, inputPars *,gridPointData *,d
 void	statistics(int, molData *, struct grid *, int *, double *, double *, int *);
 void    stokesangles(double, double, double, double, double *);
 void    traceray(rayData, int, int, inputPars *, struct grid *, molData *, image *, int, int *, int *, double);
-void   	velocityspline(struct grid *, int, int, double, double, double*);
 void   	velocityspline2(double *, double *, double, double, double, double*);
 double 	veloproject(double *, double *);
 void	writefits(int, inputPars *, molData *, image *);
@@ -246,7 +244,8 @@ int	factorial(const int n);
 double	taylor(const int maxOrder, const float x);
 void	calcFastExpRange(const int maxTaylorOrder, const int maxNumBitsPerMantField, int *numMantissaFields, int *lowestExponent, int *numExponentsUsed);
 void	calcTableEntries(const int maxTaylorOrder, const int maxNumBitsPerMantField);
-inline double	FastExp(const float negarg);
+double FastExp(const float negarg);
+
 
 
 /* Curses functions */
