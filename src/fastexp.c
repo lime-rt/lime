@@ -12,6 +12,7 @@
 
 extern double EXP_TABLE_2D[128][10];
 extern double EXP_TABLE_3D[256][2][10];
+extern double INV_TABLE[FAST_EXP_MAX_TAYLOR];
 
 
 int factorial(const int n){
@@ -181,9 +182,10 @@ See description of the lookup algorithm in function calcFastExpRange().
       }
     }
   }
+  for (l=0;l<FAST_EXP_MAX_TAYLOR;l++) INV_TABLE[l]=1.0/(l+1.0);
 }
 
-inline double FastExp(const float negarg){
+double FastExp(const float negarg){
   /*
 See description of the lookup algorithm in function calcFastExpRange(). ****NOTE!**** Most numbers here are hard-wired for the sake of speed. If need be, they can be verified (or recalculated for different conditions) via calcTableEntries().
   */
@@ -216,7 +218,7 @@ This value should be calculated from 127+lowestExponent, where 127 is the offset
   if (l<0){ // do the Taylor approximation.
     result = 1.0;
     for (i=FAST_EXP_MAX_TAYLOR;i>0;i--){
-      result = 1.0 - negarg*result/(double)i;
+      result = 1.0 - negarg*INV_TABLE[i-1]*result;
     }
     return result;
 
@@ -232,4 +234,3 @@ This value should be calculated from 127+lowestExponent, where 127 is the offset
           EXP_TABLE_3D[j1][0][l]*
           EXP_TABLE_3D[j2][1][l]);
 }
-
