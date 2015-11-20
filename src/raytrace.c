@@ -172,7 +172,7 @@ void
 raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
   int *counta, *countb,nlinetot,aa;
   int ichan,px,iline,tmptrans,i,threadI,nRaysDone;
-  double size,minfreq,absDeltaFreq;
+  double size,minfreq,absDeltaFreq,totalNumPixelsMinus1=(double)(img[im].pxls*img[im].pxls-1);
   double cutoff;
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
 
@@ -258,9 +258,9 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
           }
         }
       }
-    }
-    if (threadI == 0){ // i.e., is master thread
-      if(!silent) progressbar((double)(nRaysDone)/(double)(img[im].pxls*img[im].pxls-1), 13);
+      if (threadI == 0){ // i.e., is master thread
+        if(!silent) progressbar((double)(nRaysDone)/totalNumPixelsMinus1, 13);
+      }
     }
 
     free(ray.tau);
