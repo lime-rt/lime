@@ -419,13 +419,6 @@ default lte\_only=0, i.e., full non-LTE calculation.
 
 .. code:: c
 
-    (integer) par->init_lte (optional)
-
-If set, LIME use LTE approximation as initial one for subsequent non-LTE calculations. The
-default init\_lte=0, i.e., the code will use constant value for level populations as initial solution.
-
-.. code:: c
-
     (integer) par->blend (optional)
 
 If set, LIME takes line blending into account, however, only if there
