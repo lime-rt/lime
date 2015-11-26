@@ -491,7 +491,7 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
 
   if(par->lte_only==0){
     do{
-      if(!silent) progressbar2(prog++, 0, result1, result2);
+      if(!silent) progressbar2(0, prog++, 0, result1, result2);
 
       for(id=0;id<par->ncell && !g[id].sink;id++){
         for(ilev=0;ilev<m[0].nlev;ilev++) {
@@ -579,7 +579,7 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
       }
       free(median);
 
-      if(!silent) progressbar2(prog, percent, result1, result2);
+      if(!silent) progressbar2(1, prog, percent, result1, result2);
       if(par->outputfile) popsout(par,g,m);
     } while(conv++<NITERATIONS);
     if(par->binoutputfile) binpopsout(par,g,m);

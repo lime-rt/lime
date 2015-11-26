@@ -256,7 +256,7 @@ void 	greetings_parallel(int);
 void	screenInfo();
 void 	done(int);
 void 	progressbar(double,int);
-void 	progressbar2(int,double,double,double);
+void 	progressbar2(int,int,double,double,double);
 void	casaStyleProgressBar(const int,int);
 void 	goodnight(int, char *);
 void	quotemass(double);
