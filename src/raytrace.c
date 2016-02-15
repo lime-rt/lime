@@ -19,7 +19,7 @@ velocityspline2(double x[3], double dx[3], double ds, double binv, double deltav
   for(i=0;i<steps;i++){
     d=i*ds/steps;
     velocity(x[0]+(dx[0]*d),x[1]+(dx[1]*d),x[2]+(dx[2]*d),vel);
-    v=deltav+veloproject(dx,vel);
+    v=deltav-veloproject(dx,vel);
     val=fabs(v)*binv;
     if(val <=  2500.){
 #ifdef FASTEXP
@@ -76,11 +76,11 @@ traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molD
   yp=ray.y;
 
   if((xp*xp+yp*yp)/par->radiusSqu <= 1 ) {
-    zp=sqrt(par->radiusSqu-(xp*xp+yp*yp));
+    zp=-sqrt(par->radiusSqu-(xp*xp+yp*yp));
 
     for(i=0;i<3;i++){
       x[i]=xp*img[im].rotMat[i][0] + yp*img[im].rotMat[i][1] + zp*img[im].rotMat[i][2];
-      dx[i]= -img[im].rotMat[i][2];
+      dx[i]= img[im].rotMat[i][2];
     }
 
     i=0;
@@ -96,7 +96,7 @@ traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molD
 
     col=0;
     do{
-      ds=2.*zp-col;
+      ds=-2.*zp-col;
       nposn=-1;
       line_plane_intersect(g,&ds,posn,&nposn,dx,x,cutoff);
       if(par->polarization){
@@ -152,16 +152,16 @@ traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molD
       for(i=0;i<3;i++) x[i]+=ds*dx[i];
       col+=ds;
       posn=nposn;
-    } while(col < 2*zp);
+    } while(col < 2.0*fabs(zp));
 
     /* add or subtract cmb */
 #ifdef FASTEXP
     for(ichan=0;ichan<img[im].nchan;ichan++){
-      ray.intensity[ichan]+=(FastExp(ray.tau[ichan])-1.)*m[0].local_cmb[tmptrans];
+      ray.intensity[ichan]+=FastExp(ray.tau[ichan])*m[0].local_cmb[tmptrans];
     }
 #else
     for(ichan=0;ichan<img[im].nchan;ichan++){
-      ray.intensity[ichan]+=(exp(-ray.tau[ichan])-1.)*m[0].local_cmb[tmptrans];
+      ray.intensity[ichan]+=exp(-ray.tau[ichan])*m[0].local_cmb[tmptrans];
     }
 #endif
   }
