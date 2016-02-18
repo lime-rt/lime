@@ -72,6 +72,7 @@
 #define goal			50
 #define fixset			1e-6
 #define blendmask		1.e4
+#define NUM_VEL_COEFFS		5
 #define MAX_NSPECIES            100
 #define N_RAN_PER_SEGMENT       3
 #define FAST_EXP_MAX_TAYLOR	3
@@ -97,6 +98,7 @@ typedef struct {
   int *lal,*lau,*lcl,*lcu;
   double *aeinst,*freq,*beinstu,*beinstl,*up,*down,*eterm,*gstat;
   double norm,norminv,*cmb,*local_cmb;
+  char *molName;
 } molData;
 
 /* Data concerning a single grid vertex which is passed from photon() to stateq(). This data needs to be thread-safe. */
@@ -141,6 +143,12 @@ struct grid {
   double *dens,t[2],*nmol,*abun, dopb;
   double *ds;
   struct populations* mol;
+};
+
+struct linkType {
+  unsigned int id;
+  struct grid *g[2];
+  double aCoeffs[NUM_VEL_COEFFS];
 };
 
 typedef struct {
@@ -189,7 +197,12 @@ void gasIIdust(double,double,double,double *);
 void   	binpopsout(inputPars *, struct grid *, molData *);
 void   	buildGrid(inputPars *, struct grid *);
 void    calcSourceFn(double dTau, const inputPars *par, double *remnantSnu, double *expDTau);
+void	constructLinkArrays(unsigned int, struct grid *, struct linkType **\
+  , unsigned int *, struct linkType ***, unsigned int **, unsigned int *);
 void	continuumSetup(int, image *, molData *, inputPars *, struct grid *);
+void	defineGridExtColumns(unsigned short, unsigned short\
+  , unsigned short, unsigned short, char *ttype[]\
+  , char *tform[], char *tunit[], int dataTypes[]);
 void	distCalc(inputPars *, struct grid *);
 void	fit_d1fi(double, double, double*);
 void    fit_fi(double, double, double*);
@@ -213,6 +226,7 @@ void	levelPops(molData *, inputPars *, struct grid *, int *);
 void	line_plane_intersect(struct grid *, double *, int , int *, double *, double *, double);
 void	lineBlend(molData *, inputPars *, blend **);
 void    lineCount(int,molData *,int **, int **, int *);
+void	loadNnIntoGrid(unsigned int *, struct linkType **, struct linkType *, unsigned int, struct grid **);
 void	LTE(inputPars *, struct grid *, molData *);
 void   	molinit(molData *, inputPars *, struct grid *,int);
 void    openSocket(inputPars *par, int);
@@ -224,8 +238,16 @@ int     pointEvaluation(inputPars *,double, double, double, double);
 void   	popsin(inputPars *, struct grid **, molData **, int *);
 void   	popsout(inputPars *, struct grid *, molData *);
 void	predefinedGrid(inputPars *, struct grid *);
+void	processFitsError(int);
 double 	ratranInput(char *, char *, double, double, double);
 void   	raytrace(int, inputPars *, struct grid *, molData *, image *);
+void	readGridExtFromFits(fitsfile *, inputPars, unsigned short\
+  , struct grid **, unsigned int **, _Bool *, char ***, int *);
+void	readGridFromFits(char *, inputPars, unsigned short, unsigned short\
+  , struct grid **, _Bool *, _Bool *, _Bool *, molData *, char ***, int *);
+void	readLinksExtFromFits(fitsfile *, _Bool, unsigned short, struct grid *, struct linkType **);
+void	readNnIndicesExtFromFits(fitsfile *, struct linkType *, struct linkType ***);
+void	readPopsExtFromFits(fitsfile *, unsigned int, molData *, unsigned short, struct grid **);
 void	report(int, inputPars *, struct grid *);
 void	smooth(inputPars *, struct grid *);
 int     sortangles(double *, int, struct grid *, const gsl_rng *);
@@ -240,7 +262,12 @@ void    traceray(rayData, int, int, inputPars *, struct grid *, molData *, image
 void   	velocityspline(struct grid *, int, int, double, double, double*);
 void   	velocityspline2(double *, double *, double, double, double, double*);
 double 	veloproject(double *, double *);
+void	writeGridExtToFits(fitsfile *, inputPars, unsigned short, struct grid *, unsigned int *, char **);
+int	writeGridToFits(char *, inputPars, unsigned short, unsigned short, struct grid *, molData *, char **);
 void	writefits(int, inputPars *, molData *, image *);
+void	writeLinksExtToFits(fitsfile *, _Bool, unsigned int, unsigned short, struct linkType *);
+void	writeNnIndicesExtToFits(fitsfile *, unsigned int, struct linkType **, struct linkType *);
+void	writePopsExtToFits(fitsfile *, unsigned int, molData *, unsigned short, struct grid *);
 void    write_VTK_unstructured_Points(inputPars *, struct grid *);
 int	factorial(const int n);
 double	taylor(const int maxOrder, const float x);

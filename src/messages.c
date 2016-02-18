@@ -331,3 +331,24 @@ collpartmesg3(int number, int flag){
   refresh();
 #endif
 }
+
+void
+processFitsError(int status){
+  /*****************************************************/
+  /* Print out cfitsio error messages and exit program */
+  /*****************************************************/
+
+  char message[80];
+
+  if (status){
+#ifdef NO_NCURSES
+    fits_report_error(stderr, status); /* print error report */
+#else
+    sprintf(message, "Error in cfitsio: status=%d", status);
+    bail_out(message);
+#endif
+    exit( status );    /* terminate the program, returning error status */
+  }
+  return;
+}
+
