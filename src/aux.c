@@ -19,6 +19,7 @@ parseInput(inputPars *par, image **img, molData **m){
   int i,id;
   double BB[3];
   double cosPhi,sinPhi,cosTheta,sinTheta;
+  extern double modelRadiusSquared;
 
   /* Set default values */
   par->dust  	    = NULL;
@@ -31,8 +32,8 @@ parseInput(inputPars *par, image **img, molData **m){
 
   par->tcmb = 2.728;
   par->lte_only=0;
-  par->init_lte=0;
-  par->sampling=2;
+  par->samplingAlgorithm=0;
+  par->sampling=2; // Now only accessed if par->samplingAlgorithm==0.
   par->blend=0;
   par->antialias=1;
   par->polarization=0;
@@ -40,6 +41,8 @@ parseInput(inputPars *par, image **img, molData **m){
   par->sinkPoints=0;
   par->doPregrid=0;
   par->nThreads=0;
+  par->numDensityMaxima=0;
+  par->minPointNumDensity=0;
 
   /* Allocate space for output fits images */
   (*img)=malloc(sizeof(image)*MAX_NSPECIES);
@@ -48,7 +51,7 @@ parseInput(inputPars *par, image **img, molData **m){
     (*img)[id].filename=NULL;
     par->moldatfile[id]=NULL;
   }
-  input(par, *img);
+  input(par, *img); // First call to input().
   id=-1;
   while((*img)[++id].filename!=NULL);
   par->nImages=id;
@@ -93,7 +96,7 @@ parseInput(inputPars *par, image **img, molData **m){
     (*img)[i].freq=-1.;
     (*img)[i].bandwidth=-1.;
   }
-  input(par,*img);
+  input(par,*img); // Second call to input().
 
   if(par->nThreads == 0){ // Hmm. Really ought to have a separate boolean parameter.
     par->nThreads = NTHREADS;
@@ -103,6 +106,9 @@ parseInput(inputPars *par, image **img, molData **m){
   par->radiusSqu=par->radius*par->radius;
   par->minScaleSqu=par->minScale*par->minScale;
   if(par->pregrid!=NULL) par->doPregrid=1;
+  if(par->numDensityMaxima>MAX_N_HIGH) par->numDensityMaxima=MAX_N_HIGH;
+
+  modelRadiusSquared = par->radiusSqu; // this value is copied here to an external variable so the random grid generator functions can find it.
 
   /*
 Now we need to calculate the cutoff value used in calcSourceFn(). The issue is to decide between

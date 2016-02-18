@@ -516,86 +516,145 @@ getMass(inputPars *par, struct grid *g, const gsl_rng *ran){
 
 void
 buildGrid(inputPars *par, struct grid *g){
-  double lograd;		/* The logarithm of the model radius		*/
-  double logmin;	    /* Logarithm of par->minScale				*/
-  double r,theta,phi,sinPhi,x,y,z,semiradius;	/* Coordinates								*/
-  double temp;
-  int k=0,i;            /* counters									*/
-  int flag;
+  const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
+  int i, desiredNumPoints=par->pIntensity, k, di, numSubFields, levelI=0, startI=0;
+  double theta,semiradius,x,y,z,fieldVolume,sumDensity,maxDensity,minNumDensity,nToP,sphereVolume;
+  double vals[99]; //**** define MAX_N_COLL_PARTNERS in lime.h and dimension it to that rather than 99.
+  double *fieldOrigin=NULL, *fieldDimensions=NULL, *randomDensities=NULL;
+  double *outRandDensities=NULL, *highPointDensities=NULL;
+  locusType *outRandLocations=NULL, *randomLocations=NULL, *highPointLocations=NULL;
+  extern double densityNormalizer, minDensity;
+  extern int numCollisionPartners;
 
-  gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
+  gsl_rng *randGen = gsl_rng_alloc(ranNumGenType);	/* Random number generator */
 #ifdef TEST
-  gsl_rng_set(ran,342971);
+  gsl_rng_set(randGen,342971);
 #else
-  gsl_rng_set(ran,time(0));
+  gsl_rng_set(randGen,time(0));
 #endif  
-  
-  lograd=log10(par->radius);
-  logmin=log10(par->minScale);
 
-  /* Sample pIntensity number of points */
-  for(k=0;k<par->pIntensity;k++){
-    temp=gsl_rng_uniform(ran);
-    flag=0;
-    /* Pick a point and check if we like it or not */
-    do{
-      if(par->sampling==0){
-        r=pow(10,logmin+gsl_rng_uniform(ran)*(lograd-logmin));
-        theta=2.*PI*gsl_rng_uniform(ran);
-        phi=PI*gsl_rng_uniform(ran);
-        sinPhi=sin(phi);
-        x=r*cos(theta)*sinPhi;
-        y=r*sin(theta)*sinPhi;
-        if(DIM==3) z=r*cos(phi);
-        else z=0.;
-      } else if(par->sampling==1){
-        x=(2*gsl_rng_uniform(ran)-1)*par->radius;
-        y=(2*gsl_rng_uniform(ran)-1)*par->radius;
-        if(DIM==3) z=(2*gsl_rng_uniform(ran)-1)*par->radius;
-        else z=0;
-      } else if(par->sampling==2){
-        r=pow(10,logmin+gsl_rng_uniform(ran)*(lograd-logmin));
-        theta=2.*PI*gsl_rng_uniform(ran);
-        if(DIM==3) {
-          z=2*gsl_rng_uniform(ran)-1.;
-          semiradius=r*sqrt(1.-z*z);
-          z*=r;
-        } else {
-          z=0.;
-          semiradius=r;
+  outRandDensities = malloc(sizeof(double   )*desiredNumPoints); // Not used at present; and in fact they are not useful outside this routine, because they are not the values of the physical density at that point, just what densityFunc3D() returns, which is not necessarily the same thing.
+  outRandLocations = malloc(sizeof(locusType)*desiredNumPoints);
+
+  numCollisionPartners = par->collPart; // set here so densityFunc3D() can access it.
+
+  if(par->samplingAlgorithm==0){
+//    printf("Grid point sampling by rejection.\n");
+
+    density(par->minScale,par->minScale,par->minScale,vals);
+    for (i=0;i<par->collPart;i++) densityNormalizer += vals[i];
+    if (densityNormalizer<=0.){
+      if(!silent) bail_out("Error: Sum of reference densities equals 0");
+      exit(1);
+    }
+
+    randomsViaRejection(par, desiredNumPoints, randGen, densityFunc3D, outRandLocations, outRandDensities);
+
+  } else if(par->samplingAlgorithm==1){
+//    printf("Grid point sampling by 2^D tree.\n");
+
+    fieldOrigin     = malloc(sizeof(double)*DIM);
+    fieldDimensions = malloc(sizeof(double)*DIM);
+    for(di=0;di<DIM;di++){
+      fieldOrigin[di] = -par->radius;
+      fieldDimensions[di] = 2.0*par->radius;
+    }
+
+    if(par->numDensityMaxima>0){
+      highPointLocations = malloc(sizeof(locusType)*par->numDensityMaxima);
+      highPointDensities = malloc(sizeof(double   )*par->numDensityMaxima);
+      for(i=0;i<par->numDensityMaxima;i++){
+        for(di=0;di<DIM;di++){
+          highPointLocations[i].x[di] = par->densityMaxLoc[i].x[di];
         }
-        x=semiradius*cos(theta);
-        y=semiradius*sin(theta);
-      } else {
-        if(!silent) bail_out("Don't know how to sample model");
-        exit(1);
+        highPointDensities[i] = par->densityMaxValue[i];
       }
-      if((x*x+y*y+z*z)<par->radiusSqu) flag=pointEvaluation(par,temp,x,y,z);
-    } while(!flag);
-    /* Now pointEvaluation has decided that we like the point */
+    }
 
+    initializeTree(fieldOrigin, fieldDimensions, desiredNumPoints\
+      , randGen, densityFunc3D, &numSubFields, &fieldVolume, &sumDensity, &maxDensity\
+      , par->numDensityMaxima, highPointLocations, highPointDensities\
+      , N_TREE_RANDOMS, &randomLocations, &randomDensities);
+
+    /*
+We calculate now the value of the extern (i.e. globally-visible) variable minDensity which is accessed by densityFunc3D(). The aim of this is to implement the user-specified value of the minimum number density of grid points. It can be desirable to set such a minimum in the case of a strongly-peaked density function, in order to avoid too-sparse points in the periphery of the model. We are not set up directly to generate grid points according to a number-density function: we have to use the user-supplied physical or material density function. Thus we work the calculation by estimating the proportionality constant between the point number density (points per volume) and the material density (in mass per volume), and using this to convert from the user-specified value of par->minPointNumDensity to the value of minDensity.
+
+Density p and number-density n are related as follows:
+
+	         P
+	p = n * ---
+	         N
+
+where N is the total number of grid points and P is the total density integral
+
+	    /
+	P = |dr_ p(r_).
+	    /
+
+P in turn can be estimated from
+	        __
+	     V  \
+	P ~ ---  >  p(r_j)
+	     N  /_j
+
+where the r_j are evenly distributed throughout the volume V. The relation between p and n can thus be written
+
+	p ~ k*n
+
+where	          __
+	      V   \
+	k = -----  >  p(r_j).
+	     N^2  /_j
+   */
+
+    nToP = fieldVolume * sumDensity / (double)desiredNumPoints / (double)desiredNumPoints;
+    sphereVolume = 4.0/3.0*PI*par->radius*par->radius*par->radius;
+    minNumDensity = par->minPointNumDensity / sphereVolume;
+    minDensity = nToP*minNumDensity;
+
+    //*** Formally speaking we should now really recalculate randomDensities plus sumDensity and &maxDensity, because we have changed the density function by setting minDensity. I'm going to leave this for now, it probably isn't too important.
+
+    randomsViaTree(levelI, numSubFields, fieldOrigin, fieldDimensions\
+      , fieldVolume, desiredNumPoints, startI\
+      , par->numDensityMaxima, highPointLocations, highPointDensities\
+      , N_TREE_RANDOMS, randomLocations, randomDensities, sumDensity, maxDensity\
+      , randGen, densityFunc3D, NULL, outRandLocations\
+      , outRandDensities, 0);
+
+    if(highPointLocations!=NULL) free(highPointLocations);
+    if(highPointDensities!=NULL) free(highPointDensities);
+    free(randomDensities);
+    free(randomLocations);
+    free(fieldDimensions);
+    free(fieldOrigin);
+
+  } else {
+    if(!silent) bail_out("Unrecognized sampling algorithm.");
+    exit(1);
+  }
+
+  for(k=0;k<desiredNumPoints;k++){
     /* Assign values to the k'th grid point */
-    /* I don't think we actually need to do this here... */
     g[k].id=k;
-    g[k].x[0]=x;
-    g[k].x[1]=y;
-    if(DIM==3) g[k].x[2]=z;
+    g[k].x[0]=outRandLocations[k].x[0];
+    g[k].x[1]=outRandLocations[k].x[1];
+    if(DIM==3) g[k].x[2]=outRandLocations[k].x[2];
     else g[k].x[2]=0.;
-
     g[k].sink=0;
+
     /* This next step needs to be done, even though it looks stupid */
     g[k].dir=malloc(sizeof(point)*1);
     g[k].ds =malloc(sizeof(double)*1);
     g[k].neigh =malloc(sizeof(struct grid *)*1);
-    if(!silent) progressbar((double) k/((double)par->pIntensity-1), 4);
   }
+
   /* end model grid point assignment */
   if(!silent) done(4);
 
   /* Add surface sink particles */
   for(i=0;i<par->sinkPoints;i++){
-    theta=gsl_rng_uniform(ran)*2*PI;
-    if(DIM==3) z=2*gsl_rng_uniform(ran)-1.;
+    theta=gsl_rng_uniform(randGen)*2*PI;
+    if(DIM==3) z=2*gsl_rng_uniform(randGen)-1.;
     else z=0.;
     semiradius=sqrt(1.-z*z);
     x=semiradius*cos(theta);
@@ -624,12 +683,15 @@ buildGrid(inputPars *par, struct grid *g){
     abundance(  g[i].x[0],g[i].x[1],g[i].x[2], g[i].abun);
   }
 
-  //	getArea(par,g, ran);
-  //	getMass(par,g, ran);
+  //	getArea(par,g, randGen);
+  //	getMass(par,g, randGen);
   getVelosplines(par,g);
   dumpGrid(par,g);
 
-  gsl_rng_free(ran);
+  free(outRandLocations);
+  free(outRandDensities);
+  gsl_rng_free(randGen);
+
   if(!silent) done(5);
 }
 

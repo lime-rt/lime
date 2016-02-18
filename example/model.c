@@ -23,11 +23,24 @@ input(inputPars *par, image *img){
   par->dust				= "jena_thin_e6.tab";
   par->moldatfile[0] 	= "hco+@xpol.dat";
   par->antialias		= 4;
+//  par->samplingAlgorithm	= 1; // 0= the previous 'flattened rejection' algorithm; 1= the new 'tree' algorithm.
   par->sampling			= 2; // log distr. for radius, directions distr. uniformly on a sphere.
 
   par->outputfile 		= "populations.pop";
   par->binoutputfile 	= "restart.pop";
   par->gridfile			= "grid.vtk";
+//  par->minPointNumDensity	= 1000; // You should specify this in terms of the number of points in the spherical model volume.
+
+//  par->numDensityMaxima = 1;
+//  par->densityMaxLoc[0].x[0] = 0.0;
+//  par->densityMaxLoc[0].x[1] = 0.0;
+//  par->densityMaxLoc[0].x[2] = 0.0;
+
+//  double *vals;
+//  vals=malloc(sizeof(double)*1);
+//  density(0.0,0.0,0.0,vals);
+//  par->densityMaxValue[0] = vals[0];
+//  free(vals);
 
   /*
    * Definitions for image #0. Add blocks for additional images.
@@ -51,7 +64,7 @@ density(double x, double y, double z, double *density){
   /*
    * Define variable for radial coordinate
    */
-  double r;
+  double r, rMin=0.5*AU;
   /*
    * Calculate radial distance from origin
    */
@@ -60,7 +73,10 @@ density(double x, double y, double z, double *density){
    * Calculate a spherical power-law density profile
    * (Multiply with 1e6 to go to SI-units)
    */
-  density[0] = 1.5e6*pow(r/(300*AU),-1.5)*1e6;
+  if(r<rMin)
+    density[0] = 1.5e6*pow(rMin/(300*AU),-1.5)*1e6;
+  else
+    density[0] = 1.5e6*pow(r/(300*AU),-1.5)*1e6;
 }
 
 /******************************************************************************/
