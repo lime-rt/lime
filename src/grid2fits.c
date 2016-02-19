@@ -30,7 +30,7 @@ Describing the format of the FITS file is complicated by the fact that the amoun
 	B) This stage is entered after the Delaunay neighbours of each grid point have been determined. The following further struct elements are expected to have been malloc'd (in the case of pointers) and given values:
 		numNeigh
 		neigh
-	This stage is flagged by the element 'vel' of the first grid point being set to NULL.
+	This stage is flagged by the element 'dens' of the first grid point being set to NULL.
 
 	C) This stage is entered after sampling the user-supplied functions for density, velocity etc. The following further struct elements are expected to have been malloc'd (in the case of pointers) and given values:
 		vel
@@ -154,7 +154,7 @@ The pseudo-code is as follows:
 #			GRID_I_0
 #			GRID_I_1
 
-      if (g[0].vel!=NULL){ # = at least stage C, write:
+      if (g[0].dens!=NULL){ # = at least stage C, write:
 #		GRID
 #			COLLPARn
 #			--------
@@ -182,15 +182,23 @@ The pseudo-code is as follows:
   fitsfile *fptr;
   int status = 0;
   unsigned short speciesI;
-  char negfile[100]="! ";
+  char negfile[100]="! ", message[80];
   struct linkType *links=NULL, **nnLinks=NULL;
   unsigned int totalNumLinks, totalNumNeigh, *firstNearNeigh=NULL;
   _Bool stageC=0;
 
-  if (g==NULL){
-    warning("Cannot write grid list to file, there are no entries in it.");
+  if (outFileName==""){
+    if(!silent) warning("Cannot write grid list to file, filename is blank.");
     return 1;
   }
+
+  if (g==NULL){
+    if(!silent) warning("Cannot write grid list to file, there are no entries in it.");
+    return 2;
+  }
+
+  sprintf(message, "Writing grid list to file %s", outFileName);
+  if(!silent) printMessage(message);
 
   /* If we get to here, we have at least stage A info in the grid. */
 
@@ -219,7 +227,7 @@ The pseudo-code is as follows:
 
     /* LINKS
     */
-    if(g[0].vel!=NULL) stageC = 1;
+    if(g[0].dens!=NULL) stageC = 1;
     writeLinksExtToFits(fptr, stageC, totalNumLinks, numACoeffs, links);
 
     if (g[0].mol!=NULL){ /* => stage D. */
@@ -321,7 +329,7 @@ See the comment at the beginning of the present module for a description of how 
 
   *links = realloc(*links, sizeof(struct linkType)*(*totalNumLinks));
 
-  if(g[0].vel!=NULL){ /* => at least stage C. */
+  if(g[0].dens!=NULL){ /* => at least stage C. */
     for(li=0;li<*totalNumLinks;li++){
       gAPtr = (*links)[li].g[0];
       /* Find which neighbour of gAPtr corresponds to the link: */
@@ -497,7 +505,6 @@ void writeGridExtToFits(fitsfile *fptr, inputPars par, unsigned short numDims\
   LONGLONG firstRow=1, firstElem=1;
   int numCols = 7 + numDims*2 + par.collPart + par.nSpecies;
   char extname[] = "GRID";
-//  char *genericComment;
   char genericComment[80];
   char genericKwd[numKwdChars], message[80];
 
@@ -558,7 +565,7 @@ void writeGridExtToFits(fitsfile *fptr, inputPars par, unsigned short numDims\
     fits_write_col(fptr, dataTypes[colI], colI+1, firstRow, firstElem, (LONGLONG)par.ncell, firstNearNeigh, &status);
     processFitsError(status);
 
-    if (g[0].vel!=NULL){ /* => at least stage C. */
+    if (g[0].dens!=NULL){ /* => at least stage C. */
       velj = malloc(sizeof(*velj)*par.ncell);
       for(j=0;j<numDims;j++){
         colI++;
@@ -626,7 +633,6 @@ void writeGridExtToFits(fitsfile *fptr, inputPars par, unsigned short numDims\
     for(i=0;i<localNumCollPart;i++){
       sprintf(genericKwd, "COLLPAR%d", i+1);
       sprintf(genericComment, "Collision partner %d", i+1);
-//      fits_write_key(fptr, TSTRING, genericKwd, &collPartNames[i], genericComment, &status);
       fits_write_key(fptr, TSTRING, genericKwd, collPartNames[i], genericComment, &status);
       processFitsError(status);
     }

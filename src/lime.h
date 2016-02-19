@@ -77,6 +77,7 @@
 #define N_RAN_PER_SEGMENT       3
 #define FAST_EXP_MAX_TAYLOR	3
 #define FAST_EXP_NUM_BITS	8
+#define NUM_GRID_STAGES		4
 
 
 /* input parameters */
@@ -90,6 +91,8 @@ typedef struct {
   char *dust;
   int sampling,collPart,lte_only,init_lte,antialias,polarization,doPregrid,nThreads;
   char **moldatfile;
+  _Bool writeGridAtStage[NUM_GRID_STAGES];
+  char *gridFitsOutSets[NUM_GRID_STAGES];
 } inputPars;
 
 /* Molecular data: shared attributes */
@@ -195,7 +198,7 @@ void gasIIdust(double,double,double,double *);
 /* More functions */
 
 void   	binpopsout(inputPars *, struct grid *, molData *);
-void   	buildGrid(inputPars *, struct grid *);
+void   	buildGrid(inputPars *, struct grid *, molData *);
 void    calcSourceFn(double dTau, const inputPars *par, double *remnantSnu, double *expDTau);
 void	constructLinkArrays(unsigned int, struct grid *, struct linkType **\
   , unsigned int *, struct linkType ***, unsigned int **, unsigned int *);
@@ -287,6 +290,7 @@ void 	progressbar2(int,int,double,double,double);
 void	casaStyleProgressBar(const int,int);
 void 	goodnight(int, char *);
 void	quotemass(double);
+void	printMessage(char *);
 void 	warning(char *);
 void	bail_out(char *);
 void    collpartmesg(char *, int);

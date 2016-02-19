@@ -21,13 +21,15 @@ double EXP_TABLE_3D[1][1][1];
 #endif
 
 int main () {
-  int i;
+  int i,stageI,status=0;
   int initime=time(0);
   int popsdone=0;
   molData*     m = NULL;
   inputPars    par;
   struct grid* g = NULL;
   image*       img = NULL;
+  char **collPartNames=NULL; /*** this is a placeholder until we start reading these. */
+  char message[80];
 
   if(!silent) greetings();
   if(!silent) screenInfo();
@@ -37,6 +39,11 @@ int main () {
 #endif
 
   parseInput(&par,&img,&m);
+
+  if(!silent && par.nThreads>1){
+    sprintf(message, "Number of threads used: %d", par.nThreads);
+    printMessage(message);
+  }
 
   if(par.doPregrid)
     {
@@ -50,7 +57,7 @@ int main () {
   else
     {
       gridAlloc(&par,&g);
-      buildGrid(&par,g);
+      buildGrid(&par,g,m);
     }
 
   for(i=0;i<par.nImages;i++){
@@ -64,6 +71,11 @@ int main () {
     raytrace(i,&par,g,m,img);
     writefits(i,&par,m,img);
   }
+
+  stageI = 3;
+  if(par.writeGridAtStage[stageI])
+    status = writeGridToFits(par.gridFitsOutSets[stageI], par, (unsigned short)DIM\
+      , (unsigned short)NUM_VEL_COEFFS, g, m, collPartNames);
 
   if(!silent) goodnight(initime,img[0].filename);
 

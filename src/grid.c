@@ -515,13 +515,14 @@ getMass(inputPars *par, struct grid *g, const gsl_rng *ran){
 
 
 void
-buildGrid(inputPars *par, struct grid *g){
+buildGrid(inputPars *par, struct grid *g, molData *md){
   double lograd;		/* The logarithm of the model radius		*/
   double logmin;	    /* Logarithm of par->minScale				*/
   double r,theta,phi,sinPhi,x,y,z,semiradius;	/* Coordinates								*/
   double temp;
   int k=0,i;            /* counters									*/
-  int flag;
+  int flag,stageI,status=0;
+  char **collPartNames=NULL; /*** this is a placeholder until we start reading these. */
 
   gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
 #ifdef TEST
@@ -617,6 +618,13 @@ buildGrid(inputPars *par, struct grid *g){
   distCalc(par, g);
   smooth(par,g);
 
+/* Can't do this yet because .dens is not NULL, but .a0, .a1 etc are. Have to rearrange the mallocs of g elements first. Simply set g[0].dens=NULL to kluge around this?
+  stageI = 1;
+  if(par->writeGridAtStage[stageI])
+    status = writeGridToFits(par->gridFitsOutSets[stageI], *par, (unsigned short)DIM\
+      , (unsigned short)NUM_VEL_COEFFS, g, md, collPartNames);
+*/
+
   for(i=0;i<par->pIntensity;i++){
     density(    g[i].x[0],g[i].x[1],g[i].x[2], g[i].dens);
     temperature(g[i].x[0],g[i].x[1],g[i].x[2], g[i].t);
@@ -631,6 +639,11 @@ buildGrid(inputPars *par, struct grid *g){
 
   gsl_rng_free(ran);
   if(!silent) done(5);
+
+  stageI = 2;
+  if(par->writeGridAtStage[stageI])
+    status = writeGridToFits(par->gridFitsOutSets[stageI], *par, (unsigned short)DIM\
+      , (unsigned short)NUM_VEL_COEFFS, g, md, collPartNames);
 }
 
 

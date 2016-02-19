@@ -41,9 +41,14 @@ parseInput(inputPars *par, image **img, molData **m){
   par->doPregrid=0;
   par->nThreads=0;
 
+  for(i=0;i<NUM_GRID_STAGES;i++){
+    par->writeGridAtStage[i] = 0;
+    par->gridFitsOutSets[i] = "";
+  };
+
   /* Allocate space for output fits images */
   (*img)=malloc(sizeof(image)*MAX_NSPECIES);
-  par->moldatfile=malloc(sizeof(char *) * MAX_NSPECIES);
+  par->moldatfile=malloc(sizeof(char *)*MAX_NSPECIES);
   for(id=0;id<MAX_NSPECIES;id++){
     (*img)[id].filename=NULL;
     par->moldatfile[id]=NULL;

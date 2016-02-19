@@ -5,6 +5,10 @@
  *  Copyright (C) 2006-2014 Christian Brinch
  *  Copyright (C) 2015 The LIME development team
  *
+TODOs:
+	- Define a max line length in lime.h, don't just have multiple hardwired 80s.
+	- Print a blank line of this len before each curses-style warning or message?
+	- Wouldn't it be better if 'silent' was tested inside these functions rather than at every single point in the rest of the code where they are called?
  */
 
 #include "lime.h"
@@ -251,6 +255,19 @@ quotemass(double mass){
 
 
 void
+printMessage(char message[80]){
+#ifdef NO_NCURSES
+  if(strlen(message)>0)
+    {
+      printf("%s\n", message );
+    }
+#else
+  move(22,0); printw("*** %s\n",message);
+  refresh();
+#endif
+}
+
+void
 warning(char message[80]){
 #ifdef NO_NCURSES
   if(strlen(message)>0)
@@ -341,12 +358,14 @@ processFitsError(int status){
   char message[80];
 
   if (status){
+    if(!silent){
 #ifdef NO_NCURSES
-    fits_report_error(stderr, status); /* print error report */
+      fits_report_error(stderr, status); /* print error report */
 #else
-    sprintf(message, "Error in cfitsio: status=%d", status);
-    bail_out(message);
+      sprintf(message, "Error in cfitsio: status=%d", status);
+      bail_out(message);
 #endif
+    }
     exit( status );    /* terminate the program, returning error status */
   }
   return;
