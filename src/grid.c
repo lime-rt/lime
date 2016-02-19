@@ -618,7 +618,7 @@ buildGrid(inputPars *par, struct grid *g, molData *md){
   distCalc(par, g);
   smooth(par,g);
 
-/* Can't do this yet because .dens is not NULL, but .a0, .a1 etc are. Have to rearrange the mallocs of g elements first. Simply set g[0].dens=NULL to kluge around this?
+/* Can't do this yet because .dens is not NULL, but .a0, .a1 etc are. Have to rearrange the mallocs of g elements first. Simply set g[0].dens=NULL to kluge around this? But then have to malloc it again (sigh).
   stageI = 1;
   if(par->writeGridAtStage[stageI])
     status = writeGridToFits(par->gridFitsOutSets[stageI], *par, (unsigned short)DIM\

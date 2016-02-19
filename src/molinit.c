@@ -108,7 +108,7 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
   double fac, uprate, downrate=0, dummy, amass;
   struct data { double *colld, *temp; } *part;
 
-  char string[200], specref[90], partstr[90];
+  char string[200], partstr[90];
   FILE *fp;
 
   if((fp=fopen(par->moldatfile[i], "r"))==NULL) {
@@ -118,12 +118,14 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
 
   /* Read the header of the data file */
   fgets(string, 80, fp);
-  fgets(specref, 90, fp);
+  fgets(m[i].molName, 80, fp);
   fgets(string, 80, fp);
   fscanf(fp, "%lf\n", &amass);
   fgets(string, 80, fp);
   fscanf(fp, "%d\n", &m[i].nlev);
   fgets(string, 80, fp);
+
+  m[i].molName[strlen(m[i].molName)-1] = 0; /* Lops the carriage return from the end. */
 
   m[i].eterm=malloc(sizeof(double)*m[i].nlev);
   m[i].gstat=malloc(sizeof(double)*m[i].nlev);
@@ -232,7 +234,7 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
       strcat( partstr, collpartname[count[ipart]-1]);
     }
     if(!silent) {
-      collpartmesg(specref, m[i].npart);
+      collpartmesg(m[i].molName, m[i].npart);
       collpartmesg2(partstr, ipart);
       collpartmesg3(par->collPart, flag);
     }

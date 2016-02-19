@@ -294,7 +294,7 @@ bail_out(char message[80]){
 }
 
 void
-collpartmesg(char molecule[90], int partners){//, int specnumber){
+collpartmesg(char molecule[80], int partners){//, int specnumber){
 #ifdef NO_NCURSES
   printf("   Molecule: %.25s\n", molecule);
   if (partners==1)

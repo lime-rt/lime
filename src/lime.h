@@ -101,7 +101,7 @@ typedef struct {
   int *lal,*lau,*lcl,*lcu;
   double *aeinst,*freq,*beinstu,*beinstl,*up,*down,*eterm,*gstat;
   double norm,norminv,*cmb,*local_cmb;
-  char *molName;
+  char molName[80];
 } molData;
 
 /* Data concerning a single grid vertex which is passed from photon() to stateq(). This data needs to be thread-safe. */
