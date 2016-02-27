@@ -4,7 +4,7 @@
 # Ignore MacOS files
 .DS_Store
 
-# Ignore example files
-example/grid.vtk
-example/*.pop
-example/*.fits
+# Ignore example and benchmark result files
+*.vtk
+*.pop
+*.fits
