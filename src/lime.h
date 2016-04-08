@@ -120,16 +120,15 @@ struct rates {
 
 
 struct populations {
-  double * pops, *knu, *dust;
-  double dopb, binv;
+  double *pops, *knu, *dust;
+  double dopb, binv, nmol;
   struct rates *partner;
 };
 
 /* Grid properties */
 struct grid {
   int id;
-  double x[3];
-  double vel[3];
+  double x[DIM], vel[DIM], B[3]; /* B field only makes physical sense in 3 dimensions. */
   double *a0,*a1,*a2,*a3,*a4;
   int numNeigh;
   point *dir;
@@ -138,9 +137,9 @@ struct grid {
   int sink;
   int nphot;
   int conv;
-  double *dens,t[2],*nmol,*abun, dopb;
+  double *dens,t[2],*abun, dopb;
   double *ds;
-  struct populations* mol;
+  struct populations *mol;
 };
 
 typedef struct {

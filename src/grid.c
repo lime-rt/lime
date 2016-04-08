@@ -40,7 +40,6 @@ gridAlloc(inputPars *par, struct grid **g){
     (*g)[i].ds = NULL;
     (*g)[i].dens=malloc(sizeof(double)*par->collPart);
     (*g)[i].abun=malloc(sizeof(double)*par->nSpecies);
-    (*g)[i].nmol=malloc(sizeof(double)*par->nSpecies);
     (*g)[i].t[0]=-1;
     (*g)[i].t[1]=-1;
   }
@@ -92,7 +91,7 @@ freeGrid(const inputPars *par, const molData* m ,struct grid* g){
   int i;
   if( g != NULL )
     {
-      for(i=0;i<(par->pIntensity+par->sinkPoints); i++){
+      for(i=0;i<(par->ncell); i++){
         if(g[i].a0 != NULL)
           {
             free(g[i].a0);
@@ -128,10 +127,6 @@ freeGrid(const inputPars *par, const molData* m ,struct grid* g){
         if(g[i].dens != NULL)
           {
             free(g[i].dens);
-          }
-        if(g[i].nmol != NULL)
-          {
-            free(g[i].nmol);
           }
         if(g[i].abun != NULL)
           {

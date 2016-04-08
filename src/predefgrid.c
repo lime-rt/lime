@@ -40,7 +40,7 @@ predefinedGrid(inputPars *par, struct grid *g){
 
     g[i].sink=0;
 	g[i].t[1]=g[i].t[0];
-	g[i].nmol[0]=g[i].abun[0]*g[i].dens[0];
+	g[i].mol[0].nmol=g[i].abun[0]*g[i].dens[0];
 		
 	/* This next step needs to be done, even though it looks stupid */
 	g[i].dir=malloc(sizeof(point)*1);
