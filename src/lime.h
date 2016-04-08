@@ -287,6 +287,8 @@ int     sortangles(double *, int, struct grid *, const gsl_rng *);
 void	sourceFunc(double *, double *, double, molData *,double,struct grid *,int,int, int,int);
 void    sourceFunc_line(const molData, const double, const struct populations, const int, double*, double*);
 void    sourceFunc_cont(const struct populations, const int, double*, double*);
+void    sourceFunc_line_raytrace(const molData, const double, const struct pop2, const int, double*, double*);
+void    sourceFunc_cont_raytrace(const struct pop2, const int, double*, double*);
 void	sourceFunc_pol(const double, const double*, const molData, const struct pop2, const int, const double, double*, double*);
 void   	stateq(int, struct grid *, molData *, int, inputPars *,gridPointData *,double *);
 void	statistics(int, molData *, struct grid *, int *, double *, double *, int *);

@@ -5,6 +5,8 @@
  *  Copyright (C) 2006-2014 Christian Brinch
  *  Copyright (C) 2015 The LIME development team
  *
+TODO:
+  - Merge sourceFunc_*_raytrace() and sourceFunc_*() after changes to the way grid data is stored makes this possible.
  */
 
 #include "lime.h"
@@ -60,7 +62,38 @@ sourceFunc_line(const molData md, const double vfac, const struct populations gm
 
 /*....................................................................*/
 void
+sourceFunc_line_raytrace(const molData md, const double vfac\
+  , const struct pop2 gm, const int lineI, double *jnu, double *alpha){
+
+  /* Line part:		j_nu = v*consts*1/b*rho*n_i*A_ij */
+  *jnu   += vfac*HPIP*gm.specNumDens[md.lau[lineI]]*md.aeinst[lineI];
+
+  /* Line part: alpha_nu = v*const*1/b*rho*(n_j*B_ij-n_i*B_ji) */
+  *alpha += vfac*HPIP*(gm.specNumDens[md.lal[lineI]]*md.beinstl[lineI]
+                      -gm.specNumDens[md.lau[lineI]]*md.beinstu[lineI]);
+
+  return;
+}
+
+/*....................................................................*/
+void
 sourceFunc_cont(const struct populations gm, const int lineI, double *jnu\
+  , double *alpha){
+
+  /* Emission */
+  /* Continuum part:	j_nu = T_dust * kappa_nu */
+  *jnu   += gm.dust[lineI]*gm.knu[lineI];
+
+  /* Absorption */
+  /* Continuum part: Dust opacity */
+  *alpha += gm.knu[lineI];
+
+  return;
+}
+
+/*....................................................................*/
+void
+sourceFunc_cont_raytrace(const struct pop2 gm, const int lineI, double *jnu\
   , double *alpha){
 
   /* Emission */
