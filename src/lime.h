@@ -226,6 +226,8 @@ void	intersectLineTriangle(double*, double*, faceType, intersectType*);
 triangle2D calcTriangle2D(faceType face);
 void	doBaryInterp(const intersectType, struct grid*, struct gAuxType*, double*, unsigned long*, molData*, const int, gridInterp*);
 void	doSegmentInterp(gridInterp*, const int, molData*, const int, const double, const int);
+void	freePop2(const int, struct pop2*);
+void	freeGAux(const unsigned long, const int, struct gAuxType*);
 
 
 /* Some functions */

@@ -86,6 +86,40 @@ freePopulation(const inputPars *par, const molData* m, struct populations* pop )
       free(pop);
     }
 }
+
+/*....................................................................*/
+void
+freePop2(const int numSpecies, struct pop2 *mol){
+  int i;
+
+  if(mol !=NULL){
+    for(i=0;i<numSpecies;i++){
+      if(mol[i].specNumDens != NULL)
+        free(mol[i].specNumDens);
+      if(mol[i].knu != NULL)
+        free(mol[i].knu);
+      if(mol[i].dust != NULL)
+        free(mol[i].dust);
+    }
+    free(mol);
+  }
+}
+
+
+/*....................................................................*/
+void
+freeGAux(const unsigned long numPoints, const int numSpecies, struct gAuxType *gAux) {
+  unsigned long ppi;
+
+  if(gAux !=NULL){
+    for(ppi=0;ppi<numPoints;ppi++){
+      freePop2(numSpecies, gAux[ppi].mol);
+    }
+    free(gAux);
+  }
+}
+
+/*....................................................................*/
 void
 freeGrid(const inputPars *par, const molData* m ,struct grid* g){
   int i;
