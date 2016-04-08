@@ -5,6 +5,7 @@
  *  Copyright (C) 2006-2014 Christian Brinch
  *  Copyright (C) 2015 The LIME development team
  *
+TODO: sort out snu_pol in traceray().
  */
 
 #include "lime.h"
@@ -75,7 +76,7 @@ For a given image pixel position, this function evaluates the intensity of the t
 
 Note that the algorithm employed here is similar to that employed in the function photon() which calculates the average radiant flux impinging on a grid cell: namely the notional photon is started at the side of the model near the observer and 'propagated' in the receding direction until it 'reaches' the far side. This is rather non-physical in conception but it makes the calculation easier.
   */
-  int ichan,posn,nposn,i,iline,molI,lineI,contMolI,contLineI;
+  int ichan,di,i,posn,nposn,polMolI,polLineI,contMolI,contLineI,iline,molI,lineI;
   double vfac=0.,x[3],dx[3],vThisChan;
   double deltav,ds,dist2,ndist2,xp,yp,zp,col,lineRedShift,jnu,alpha,remnantSnu,dtau,expDTau,snu_pol[3];
 
@@ -95,9 +96,9 @@ Note that the algorithm employed here is similar to that employed in the functio
   zp=-sqrt(par->radiusSqu-(xp*xp+yp*yp)); /* There are two points of intersection between the line of sight and the spherical model surface; this is the Z coordinate (in the unrotated frame) of the one nearer to the observer. */
 
   /* Rotate the line of sight as desired. */
-  for(i=0;i<3;i++){
-    x[i]=xp*img[im].rotMat[i][0] + yp*img[im].rotMat[i][1] + zp*img[im].rotMat[i][2];
-    dx[i]= img[im].rotMat[i][2]; /* This points away from the observer. */
+  for(di=0;di<DIM;di++){
+    x[di]=xp*img[im].rotMat[di][0] + yp*img[im].rotMat[di][1] + zp*img[im].rotMat[di][2];
+    dx[di]= img[im].rotMat[di][2]; /* This points away from the observer. */
   }
 
   contMolI = 0; /****** Always?? */
@@ -125,12 +126,15 @@ Note that the algorithm employed here is similar to that employed in the functio
   do{
     ds=-2.*zp-col; /* This default value is chosen to be as large as possible given the spherical model boundary. */
     nposn=-1;
-    line_plane_intersect(gp,&ds,posn,&nposn,dx,x,cutoff); /* Returns a new ds equal to the distance to the next Voronoi face, and nposn, the ID of the grid cell that abuts that face. */ 
+    line_plane_intersect(gp,&ds,posn,&nposn,dx,x,cutoff); /* Returns a new ds equal to the distance to the next Voronoi face, and nposn, the ID of the grid cell that abuts that face. */
+
     if(par->polarization){
+      polMolI = 0; /****** Always?? */
+      polLineI = 0; /****** Always?? */
       for(ichan=0;ichan<img[im].nchan;ichan++){
-        sourceFunc_pol(ds, gp[posn].B, md[0], gAux[posn].mol[0], 0, img[im].theta, snu_pol, &dtau);
+        sourceFunc_pol(ds, gp[posn].B, md[polMolI], gAux[posn].mol[polMolI], polLineI, img[im].theta, snu_pol, &dtau);
 #ifdef FASTEXP
-        ray.intensity[ichan]+=FastExp(ray.tau[ichan])*(1.-exp(-dtau))*snu_pol[ichan];
+        ray.intensity[ichan]+=FastExp(ray.tau[ichan])*(1.-exp(-dtau))*snu_pol[ichan]; /**** Can't ref snu_pol[ichan] because snu_pol is only dimensioned to size 3. */
 #else
         ray.intensity[ichan]+=   exp(-ray.tau[ichan])*(1.-exp(-dtau))*snu_pol[ichan];
 #endif
@@ -146,7 +150,8 @@ Note that the algorithm employed here is similar to that employed in the functio
           lineI = countb[iline];
           if(img[im].doline && md[molI].freq[lineI] > img[im].freq-img[im].bandwidth/2.
           && md[molI].freq[lineI] < img[im].freq+img[im].bandwidth/2.){
-            /* Calculate the red shift of the transition wrt to the frequency specified for the image. */
+            /* Calculate the red shift of the transition wrt to the frequency specified for the image.
+            */
             if(img[im].trans > -1){
               lineRedShift=(md[molI].freq[img[im].trans]-md[molI].freq[lineI])/md[molI].freq[img[im].trans]*CLIGHT;
             } else {
@@ -162,11 +167,11 @@ Note that the algorithm employed here is similar to that employed in the functio
             else vfac=gaussline(deltav+veloproject(dx,gp[posn].vel),gp[posn].mol[molI].binv);
 
             /* Increment jnu and alpha for this Voronoi cell by the amounts appropriate to the spectral line. */
-            sourceFunc_line(md[molI], vfac, gp[posn].mol[molI], lineI, &jnu, &alpha);
+            sourceFunc_line_raytrace(md[molI],vfac,gAux[posn].mol[molI],lineI,&jnu,&alpha);
           }
         }
 
-        sourceFunc_cont(gp[posn].mol[contMolI], contLineI, &jnu, &alpha);
+        sourceFunc_cont_raytrace(gAux[posn].mol[contMolI], contLineI, &jnu, &alpha);
         dtau=alpha*ds;
         calcSourceFn(dtau, par, &remnantSnu, &expDTau);
         remnantSnu *= jnu*md[0].norminv*ds;
