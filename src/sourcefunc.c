@@ -43,30 +43,34 @@ sourceFunc(double *snu, double *dtau, double ds, molData *m,double vfac,struct g
 }
 
 
+/*....................................................................*/
 void
-sourceFunc_line(double *jnu, double *alpha, molData *m,double vfac,struct grid *g,int pos,int ispec, int iline){
-  
+sourceFunc_line(const molData md, const double vfac, const struct populations gm\
+  , const int lineI, double *jnu, double *alpha){
+
   /* Line part:		j_nu = v*consts*1/b*rho*n_i*A_ij */
-  *jnu   += vfac*HPIP*g[pos].mol[ispec].binv*g[pos].mol[ispec].nmol*g[pos].mol[ispec].pops[m[ispec].lau[iline]]*m[ispec].aeinst[iline];
-  
+  *jnu   += vfac*HPIP*gm.binv*gm.nmol*gm.pops[md.lau[lineI]]*md.aeinst[lineI];
+
   /* Line part: alpha_nu = v*const*1/b*rho*(n_j*B_ij-n_i*B_ji) */
-  *alpha += vfac*HPIP*g[pos].mol[ispec].binv*g[pos].mol[ispec].nmol*(g[pos].mol[ispec].pops[m[ispec].lal[iline]]*m[ispec].beinstl[iline]
-                                                                -g[pos].mol[ispec].pops[m[ispec].lau[iline]]*m[ispec].beinstu[iline]);
-  
+  *alpha += vfac*HPIP*gm.binv*gm.nmol*(gm.pops[md.lal[lineI]]*md.beinstl[lineI]
+                                      -gm.pops[md.lau[lineI]]*md.beinstu[lineI]);
+
   return;
 }
 
+/*....................................................................*/
 void
-sourceFunc_cont(double *jnu, double *alpha,struct grid *g,int pos,int ispec, int iline){
-  
+sourceFunc_cont(const struct populations gm, const int lineI, double *jnu\
+  , double *alpha){
+
   /* Emission */
   /* Continuum part:	j_nu = T_dust * kappa_nu */
-  *jnu   += g[pos].mol[ispec].dust[iline]*g[pos].mol[ispec].knu[iline];
-  
+  *jnu   += gm.dust[lineI]*gm.knu[lineI];
+
   /* Absorption */
   /* Continuum part: Dust opacity */
-  *alpha += g[pos].mol[ispec].knu[iline];
-  
+  *alpha += gm.knu[lineI];
+
   return;
 }
 

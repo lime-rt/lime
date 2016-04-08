@@ -75,7 +75,7 @@ For a given image pixel position, this function evaluates the intensity of the t
 
 Note that the algorithm employed here is similar to that employed in the function photon() which calculates the average radiant flux impinging on a grid cell: namely the notional photon is started at the side of the model near the observer and 'propagated' in the receding direction until it 'reaches' the far side. This is rather non-physical in conception but it makes the calculation easier.
   */
-  int ichan,posn,nposn,i,iline,molI,lineI;
+  int ichan,posn,nposn,i,iline,molI,lineI,contMolI,contLineI;
   double vfac=0.,x[3],dx[3],vThisChan;
   double deltav,ds,dist2,ndist2,xp,yp,zp,col,lineRedShift,jnu,alpha,remnantSnu,dtau,expDTau,snu_pol[3];
 
@@ -95,6 +95,15 @@ Note that the algorithm employed here is similar to that employed in the functio
       x[i]=xp*img[im].rotMat[i][0] + yp*img[im].rotMat[i][1] + zp*img[im].rotMat[i][2];
       dx[i]= img[im].rotMat[i][2]; /* This points away from the observer. */
     }
+
+    contMolI = 0; /****** Always?? */
+
+    if(img[im].doline && img[im].trans > -1)
+      contLineI = img[im].trans;
+    else if(img[im].doline && img[im].trans == -1)
+      contLineI = tmptrans;
+    else
+      contLineI = 0;
 
     /* Find the grid point nearest to the starting x. */
     i=0;
@@ -149,13 +158,11 @@ Note that the algorithm employed here is similar to that employed in the functio
               else vfac=gaussline(deltav+veloproject(dx,g[posn].vel),g[posn].mol[molI].binv);
 
               /* Increment jnu and alpha for this Voronoi cell by the amounts appropriate to the spectral line. */
-              sourceFunc_line(&jnu,&alpha,m,vfac,g,posn,molI,lineI);
+              sourceFunc_line(m[molI], vfac, g[posn].mol[molI], lineI, &jnu, &alpha);
             }
           }
 
-          if(img[im].doline && img[im].trans > -1) sourceFunc_cont(&jnu,&alpha,g,posn,0,img[im].trans);
-          else if(img[im].doline && img[im].trans == -1) sourceFunc_cont(&jnu,&alpha,g,posn,0,tmptrans);
-          else sourceFunc_cont(&jnu,&alpha,g,posn,0,0);
+          sourceFunc_cont(g[posn].mol[contMolI], contLineI, &jnu, &alpha);
           dtau=alpha*ds;
           calcSourceFn(dtau, par, &remnantSnu, &expDTau);
           remnantSnu *= jnu*m[0].norminv*ds;

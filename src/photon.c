@@ -240,8 +240,8 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
         jnu=0.;
         alpha=0.;
         
-        sourceFunc_line(&jnu,&alpha,m,vfac[counta[iline]],g,here,counta[iline],countb[iline]);
-        sourceFunc_cont(&jnu,&alpha,g,here,counta[iline],countb[iline]);
+        sourceFunc_line(m[counta[iline]],vfac[counta[iline]],g[here].mol[counta[iline]],countb[iline],&jnu,&alpha);
+        sourceFunc_cont(g[here].mol[counta[iline]],countb[iline],&jnu,&alpha);
 
         dtau=alpha*ds;
         if(dtau < -30) dtau = -30;
@@ -265,7 +265,7 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
             if(matrix[jline].line1 == jline || matrix[jline].line2 == jline){	
               if(!par->doPregrid) calcLineAmpSpline(g,here,dir,g[id].mol[counta[jline]].binv,deltav-matrix[jline].deltav,&vblend);
               else calcLineAmpLinear(g,here,dir,g[id].mol[counta[jline]].binv,deltav-matrix[jline].deltav,&vblend);	
-              sourceFunc_line(&jnu,&alpha,m,vblend,g,here,counta[jline],countb[jline]);
+              sourceFunc_line(m[counta[jline]],vblend,g[here].mol[counta[jline]],countb[jline],&jnu,&alpha);
               dtau=alpha*ds;
               if(dtau < -30) dtau = -30;
               calcSourceFn(dtau, par, &remnantSnu, &expDTau);
@@ -318,8 +318,8 @@ getjbar(int posn, molData *m, struct grid *g, inputPars *par, gridPointData *mp,
         jnu=0.;
         alpha=0.;
         
-        sourceFunc_line(&jnu,&alpha,m,mp[0].vfac[iphot],g,posn,counta[iline],countb[iline]);
-        sourceFunc_cont(&jnu,&alpha,g,posn,counta[iline],countb[iline]);
+        sourceFunc_line(m[counta[iline]],mp[0].vfac[iphot],g[posn].mol[counta[iline]],countb[iline],&jnu,&alpha);
+        sourceFunc_cont(g[posn].mol[counta[iline]],countb[iline],&jnu,&alpha);
         tau=alpha*halfFirstDs[iphot];
         calcSourceFn(tau, par, &remnantSnu, &expTau);
         remnantSnu *= jnu*m[0].norminv*halfFirstDs[iphot];
