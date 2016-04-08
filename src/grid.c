@@ -151,11 +151,12 @@ delaunay(const int numDims, struct grid *g, const unsigned long numPoints\
   int i,j,k;
   char flags[255];
   boolT ismalloc = False;
-  facetT *facet;
+  facetT *facet, *neighbor, **neighborp;
   vertexT *vertex,**vertexp;
   coordT *pt_array;
   int curlong, totlong;
-  unsigned long ppi,id,pointIdsThisFacet[numDims+1],idI,idJ;
+  unsigned long ppi,id,pointIdsThisFacet[numDims+1],idI,idJ,fi,ffi;
+  _Bool neighbourNotFound;
 
   pt_array=malloc(sizeof(coordT)*numDims*numPoints);
   for(ppi=0;ppi<numPoints;ppi++) {
@@ -185,6 +186,7 @@ delaunay(const int numDims, struct grid *g, const unsigned long numPoints\
   }
     
   /* Identify neighbors */
+  *numCells = 0;
   FORALLfacets {
     if (!facet->upperdelaunay) {
       j=0;
@@ -204,6 +206,7 @@ delaunay(const int numDims, struct grid *g, const unsigned long numPoints\
           }
         }
       }
+      (*numCells)++;
     }
   }
 
@@ -215,6 +218,55 @@ delaunay(const int numDims, struct grid *g, const unsigned long numPoints\
     }
     g[ppi].numNeigh=j;
   }
+
+  if(getCells){
+    (*dc) = malloc(sizeof(**dc)*(*numCells));
+    fi = 0;
+    FORALLfacets {
+      if (!facet->upperdelaunay) {
+        (*dc)[fi].id = (unsigned long)facet->id; /* Do NOT expect this to be equal to fi. */
+        fi++;
+      }
+    }
+
+    fi = 0;
+    FORALLfacets {
+      if (!facet->upperdelaunay) {
+        i = 0;
+        FOREACHneighbor_(facet) {
+          if(neighbor->upperdelaunay){
+            (*dc)[fi].neigh[i] = NULL;
+          }else{
+            /* Have to find the member of *dc with the same id as neighbour.*/
+            ffi = 0;
+            neighbourNotFound=1;
+            while(ffi<(*numCells) && neighbourNotFound){
+              if((*dc)[ffi].id==(unsigned long)neighbor->id){
+                (*dc)[fi].neigh[i] = &(*dc)[ffi];
+                neighbourNotFound = 0;
+              }
+              ffi++;
+            }
+            if(ffi>=(*numCells) && neighbourNotFound){
+              if(!silent) bail_out("Something weird going on.");
+              exit(1);
+            }
+          }
+          i++;
+        }
+
+        i = 0;
+        FOREACHvertex_( facet->vertices ) {
+          id = (unsigned long)qh_pointid(vertex->point);
+          (*dc)[fi].vertx[i] = &g[id];
+          i++;
+        }
+
+        fi++;
+      }
+    }
+  }
+
   qh_freeqhull(!qh_ALL);
   qh_memfreeshort (&curlong, &totlong);
   free(pt_array);
