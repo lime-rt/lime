@@ -25,6 +25,9 @@ LTE(inputPars *par, struct grid *g, molData *m){
         g[id].mol[ispec].pops[ilev]=m[ispec].gstat[ilev]*exp(-100*CLIGHT*HPLANCK*m[ispec].eterm[ilev]/(KBOLTZ*g[id].t[0]))/z;
       }
     }
+    for(id=par->pIntensity;id<par->ncell;id++){
+      g[id].mol[ispec].nmol=0.0;
+    }
   }
   if(par->outputfile) popsout(par,g,m);
 }
