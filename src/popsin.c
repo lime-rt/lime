@@ -105,7 +105,7 @@ popsin(inputPars *par, struct grid **g, molData **m, int *popsdone){
   }
   fclose(fp);
 
-  qhull(par, *g);
+  delaunay(par, *g);
   distCalc(par, *g);
   getVelosplines(par,*g);
   *popsdone=1;

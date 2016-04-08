@@ -68,7 +68,7 @@ smooth(inputPars *par, struct grid *g){
       }	
     }
 		
-    qhull(par, g);	
+    delaunay(par, g);	
     distCalc(par, g);	    
     if(!silent) progressbar((double)(sg+1)/(double)smooth, 5);	
   }	

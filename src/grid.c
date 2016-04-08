@@ -146,7 +146,7 @@ freeGrid(const inputPars *par, const molData* m ,struct grid* g){
 }
 
 void
-qhull(inputPars *par, struct grid *g){
+delaunay(inputPars *par, struct grid *g){
   int i,j,k,id;
   char flags[255];
   boolT ismalloc = False;
@@ -608,7 +608,7 @@ buildGrid(inputPars *par, struct grid *g){
   }
   /* end grid allocation */
 
-  qhull(par, g);
+  delaunay(par, g);
   distCalc(par, g);
   smooth(par,g);
 
