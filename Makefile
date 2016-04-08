@@ -56,7 +56,7 @@ SRCS    = src/aux.c src/messages.c src/grid.c src/LTEsolution.c   \
           src/raytrace.c src/smooth.c src/sourcefunc.c          \
 		  src/stateq.c src/statistics.c src/magfieldfit.c       \
 		  src/stokesangles.c src/writefits.c src/weights.c      \
-		  src/velospline.c src/getclosest.c  \
+		  src/velospline.c src/getclosest.c src/raythrucells.c  \
 		  src/tcpsocket.c src/defaults.c src/fastexp.c
 MODELS  = model.c
 OBJS    = src/aux.o src/messages.o src/grid.o src/LTEsolution.o   \
@@ -65,7 +65,7 @@ OBJS    = src/aux.o src/messages.o src/grid.o src/LTEsolution.o   \
 		  src/ratranInput.o src/smooth.o src/sourcefunc.o       \
 		  src/stateq.o src/statistics.o src/magfieldfit.o       \
 		  src/stokesangles.o src/writefits.o src/weights.o      \
-		  src/velospline.o src/getclosest.o  \
+		  src/velospline.o src/getclosest.o src/raythrucells.o  \
 		  src/tcpsocket.o src/defaults.o src/fastexp.o
 MODELO 	= src/model.o
 

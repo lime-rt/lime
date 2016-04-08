@@ -218,6 +218,15 @@ typedef struct {
 } triangle2D;
 
 
+int	followRayThroughDelCells(double*, double*, struct grid*, struct cell*, const unsigned long, const double, intersectType*, unsigned long**, intersectType**, int*);
+int	buildRayCellChain(double*, double*, struct grid*, struct cell*, _Bool**, unsigned long, int, int, int, const double, unsigned long**, intersectType**, int*);
+int	getNewEntryFaceI(const unsigned long, const struct cell);
+faceType extractFace(struct grid*, struct cell*, const unsigned long, const int);
+void	intersectLineTriangle(double*, double*, faceType, intersectType*);
+triangle2D calcTriangle2D(faceType face);
+void	doBaryInterp(const intersectType, struct grid*, struct gAuxType*, double*, unsigned long*, molData*, const int, gridInterp*);
+void	doSegmentInterp(gridInterp*, const int, molData*, const int, const double, const int);
+
 
 /* Some functions */
 void density(double,double,double,double *);
