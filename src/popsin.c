@@ -17,6 +17,8 @@ popsin(inputPars *par, struct grid **g, molData **m, int *popsdone){
   FILE *fp;
   int i,j,k;
   double dummy;
+  struct cell *dc=NULL; /* Not used at present. */
+  unsigned long numCells;
 
   if((fp=fopen(par->restart, "rb"))==NULL){
     if(!silent) bail_out("Error reading binary output populations file!");
@@ -105,9 +107,11 @@ popsin(inputPars *par, struct grid **g, molData **m, int *popsdone){
   }
   fclose(fp);
 
-  delaunay(DIM, *g, (unsigned long)par->ncell);
+  delaunay(DIM, *g, (unsigned long)par->ncell, 0, &dc, &numCells);
   distCalc(par, *g);
   getVelosplines(par,*g);
   *popsdone=1;
+
+  if(dc!=NULL) free(dc);
 }
 

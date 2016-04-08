@@ -146,7 +146,8 @@ freeGrid(const inputPars *par, const molData* m ,struct grid* g){
 }
 
 void
-delaunay(const int numDims, struct grid *g, const unsigned long numPoints){
+delaunay(const int numDims, struct grid *g, const unsigned long numPoints\
+  , const _Bool getCells, struct cell **dc, unsigned long *numCells){
   int i,j,k;
   char flags[255];
   boolT ismalloc = False;
@@ -518,6 +519,8 @@ buildGrid(inputPars *par, struct grid *g){
   double temp;
   int k=0,i;            /* counters									*/
   int flag;
+  struct cell *dc=NULL; /* Not used at present. */
+  unsigned long numCells;
 
   gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
 #ifdef TEST
@@ -609,7 +612,7 @@ buildGrid(inputPars *par, struct grid *g){
   }
   /* end grid allocation */
 
-  delaunay(DIM, g, (unsigned long)par->ncell);
+  delaunay(DIM, g, (unsigned long)par->ncell, 0, &dc, &numCells);
   distCalc(par, g);
   smooth(par,g);
 
@@ -624,6 +627,7 @@ buildGrid(inputPars *par, struct grid *g){
   //	getMass(par,g, ran);
   getVelosplines(par,g);
   dumpGrid(par,g);
+  if(dc!=NULL) free(dc);
 
   gsl_rng_free(ran);
   if(!silent) done(5);

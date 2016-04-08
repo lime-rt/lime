@@ -14,6 +14,9 @@ predefinedGrid(inputPars *par, struct grid *g){
   FILE *fp;
   int i;
   double x,y,z,scale;
+  struct cell *dc=NULL; /* Not used at present. */
+  unsigned long numCells;
+
   gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);
 #ifdef TEST
   gsl_rng_set(ran,6611304);
@@ -69,11 +72,12 @@ predefinedGrid(inputPars *par, struct grid *g){
   }
   fclose(fp);
 
-  delaunay(DIM, g, (unsigned long)par->ncell);
+  delaunay(DIM, g, (unsigned long)par->ncell, 0, &dc, &numCells);
   distCalc(par,g);
   //  getArea(par,g, ran);
   //  getMass(par,g, ran);
   getVelosplines_lin(par,g);
   if(par->gridfile) write_VTK_unstructured_Points(par, g);
   gsl_rng_free(ran);
+  if(dc!=NULL) free(dc);
 }

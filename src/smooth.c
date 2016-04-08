@@ -20,7 +20,9 @@ smooth(inputPars *par, struct grid *g){
   int smooth=20;	/* Amount of grid smoothing					*/
   double move[3];	/* Auxillary array for smoothing the grid	*/
   double dist;		/* Distance to a neighbor					*/
-  	
+  struct cell *dc=NULL; /* Not used at present. */
+  unsigned long numCells;
+
   for(sg=0;sg<smooth;sg++){
     for(i=0;i<par->ncell && !g[i].sink;i++){
       mindist=1e30;
@@ -68,9 +70,10 @@ smooth(inputPars *par, struct grid *g){
       }	
     }
 		
-    delaunay(DIM, g, (unsigned long)par->ncell);	
+    delaunay(DIM, g, (unsigned long)par->ncell, 0, &dc, &numCells);	
     distCalc(par, g);	    
     if(!silent) progressbar((double)(sg+1)/(double)smooth, 5);	
+    if(dc!=NULL) free(dc);
   }	
 }
 
