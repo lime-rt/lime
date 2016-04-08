@@ -735,6 +735,17 @@ buildGrid(inputPars *par, struct grid *g){
     abundance(  g[i].x[0],g[i].x[1],g[i].x[2], g[i].abun);
   }
 
+  if(par->polarization){
+    for(i=0;i<par->pIntensity;i++)
+      magfield(g[i].x[0],g[i].x[1],g[i].x[2], g[i].B);
+  }else{
+    for(i=0;i<par->pIntensity;i++){
+      g[i].B[0]=0.0;
+      g[i].B[1]=0.0;
+      g[i].B[2]=0.0;
+    }
+  }
+
   //	getArea(par,g, ran);
   //	getMass(par,g, ran);
   getVelosplines(par,g);

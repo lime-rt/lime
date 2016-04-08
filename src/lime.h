@@ -290,7 +290,7 @@ void    sourceFunc_cont(double *,double *, struct grid *, int, int,int);
 void    sourceFunc_pol(double *, double *, double, molData *, double, struct grid *, int, int, int, double);
 void   	stateq(int, struct grid *, molData *, int, inputPars *,gridPointData *,double *);
 void	statistics(int, molData *, struct grid *, int *, double *, double *, int *);
-void    stokesangles(double, double, double, double, double *);
+void    stokesangles(const double B[3], const double, double *);
 void    traceray(rayData, int, int, inputPars *, struct grid *, molData *, image *, int, int *, int *, double);
 void	calcLineAmpLinear(struct grid*, const int, const int, const double, const double, double*);
 void   	calcLineAmpSample(double*, double*, const double, const double, const double, double*);

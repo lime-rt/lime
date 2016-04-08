@@ -75,7 +75,7 @@ sourceFunc_pol(double *snu, double *dtau, double ds, molData *m,double vfac,stru
   double dSigma, dSigma2, dI, dQ, dU, alpha;
   double angle[3];
   
-  stokesangles(g[pos].x[0],g[pos].x[1],g[pos].x[2],incl,angle);
+  stokesangles(g[pos].B, incl, angle);
   
   /* Emission */
   /* Continuum part:	j_nu = rho_dust * kappa_nu */
