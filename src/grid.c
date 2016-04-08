@@ -145,17 +145,38 @@ freeGrid(const inputPars *par, const molData* m ,struct grid* g){
     }
 }
 
-void
-delaunay(const int numDims, struct grid *gp, const unsigned long numPoints\
+/*....................................................................*/
+void delaunay(const int numDims, struct grid *gp, const unsigned long numPoints\
   , const _Bool getCells, struct cell **dc, unsigned long *numCells){
+  /*
+The principal purpose of this function is to perform a Delaunay triangulation for the set of points defined by the input argument 'g'. This is achieved via routines in the 3rd-party package qhull.
+
+A note about qhull nomenclature: a vertex is what you think it is - i.e., a point; but a facet means in this context a Delaunay triangle (in 2D) or tetrahedron (in 3D).
+
+Required elements of structs:
+	struct grid *gp:
+		.id
+		.x
+
+Elements of structs are set as follows:
+	struct grid *gp:
+		.numNeigh
+		.neigh (this is malloc'd too large and at present not realloc'd.)
+
+	cellType *dc (if getCells>0):
+		.id
+		.neigh
+		.vertx
+  */
+
+  coordT *pt_array=NULL;
+  unsigned long ppi,id,pointIdsThisFacet[numDims+1],idI,idJ,fi,ffi;
   int i,j,k;
   char flags[255];
   boolT ismalloc = False;
-  facetT *facet, *neighbor, **neighborp;
   vertexT *vertex,**vertexp;
-  coordT *pt_array;
+  facetT *facet, *neighbor, **neighborp;
   int curlong, totlong;
-  unsigned long ppi,id,pointIdsThisFacet[numDims+1],idI,idJ,fi,ffi;
   _Bool neighbourNotFound;
 
   pt_array=malloc(sizeof(coordT)*numDims*numPoints);
@@ -173,22 +194,27 @@ delaunay(const int numDims, struct grid *gp, const unsigned long numPoints\
 
   /* Identify points */
   FORALLvertices {
-    id=qh_pointid(vertex->point);
+    id=(unsigned long)qh_pointid(vertex->point);
+    /* Note this is NOT the same value as vertex->id. Only the id gained via the call to qh_pointid() is the same as the index of the point in the input list. */
+
     gp[id].numNeigh=qh_setsize(vertex->neighbors);
-    if(  gp[id].neigh != NULL )
-      {
-        free( gp[id].neigh );
-      }
+    /* Note that vertex->neighbors refers to facets abutting the vertex, not other vertices. In general there seem to be more facets surrounding a point than vertices (in fact there seem to be exactly 2x as many). In any case, mallocing to N_facets gives extra room. */
+
+    if(gp[id].neigh!=NULL)
+      free( gp[id].neigh );
     gp[id].neigh=malloc(sizeof(struct grid *)*gp[id].numNeigh);
     for(k=0;k<gp[id].numNeigh;k++) {
       gp[id].neigh[k]=NULL;
     }
   }
-    
-  /* Identify neighbors */
+
+  /* Identify the Delaunay neighbors of each point. This is a little involved, because the only direct information we have about which vertices are linked to which others is stored in qhull's facetT objects.
+  */
   *numCells = 0;
   FORALLfacets {
     if (!facet->upperdelaunay) {
+      /* Store the point IDs in a list for convenience. These ID values are conveniently ordered such that qh_pointid() returns ppi for gp[ppi]. 
+      */
       j=0;
       FOREACHvertex_ (facet->vertices) pointIdsThisFacet[j++]=(unsigned long)qh_pointid(vertex->point);
 
