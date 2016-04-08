@@ -39,7 +39,7 @@ greetings(){
 }
 
 void
-greetings_parallel(numThreads){
+greetings_parallel(int numThreads){
 #ifdef NO_NCURSES
 
   if (numThreads>1){

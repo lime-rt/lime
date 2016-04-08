@@ -81,7 +81,7 @@
 /* input parameters */
 typedef struct {
   double radius,radiusSqu,minScale,minScaleSqu,tcmb,taylorCutoff;
-  int ncell,sinkPoints,pIntensity,nImages,nSpecies,blend;
+  int ncell,sinkPoints,pIntensity,nImages,nSpecies,blend,traceRayAlgorithm;
   char *outputfile, *binoutputfile, *inputfile;
   char *gridfile;
   char *pregrid;
@@ -173,6 +173,51 @@ typedef struct {
 
 typedef struct {double x,y, *intensity, *tau;} rayData;
 
+/* NOTE that it is assumed that vertx[i] is opposite the face that abuts with neigh[i] for all i.
+*/ 
+struct cell {
+  struct grid *vertx[DIM+1];
+  struct cell *neigh[DIM+1]; /* ==NULL flags an external face. */
+  unsigned long id;
+  double centre[DIM];
+};
+
+struct pop2 {
+  double *specNumDens, *knu, *dust;
+  double binv;
+};
+
+typedef struct{
+  double x[DIM], xCmpntRay, B[3];
+  struct pop2 *mol;
+} gridInterp;
+
+struct gAuxType{
+  struct pop2 *mol;
+};
+
+/* This struct is meant to record all relevant information about the intersection between a ray (defined by a direction unit vector 'dir' and a starting position 'r') and a face of a Delaunay cell.
+*/
+typedef struct {
+  int fi;
+  /* The index (in the range {0...DIM}) of the face (and thus of the opposite vertex, i.e. the one 'missing' from the bary[] list of this face).
+  */
+  int orientation;
+  /* >0 means the ray exits, <0 means it enters, ==0 means the face is parallel to ray.
+  */
+  double bary[DIM], dist, collPar;
+  /* 'dist' is defined via r_int = r + dist*dir. 'collPar' is a measure of how close to any edge of the face r_int lies.
+  */
+} intersectType;
+
+typedef struct {
+  double r[DIM][DIM], centre[DIM];/*, norm[3], mat[1][1], det; */
+} faceType;
+
+typedef struct {
+  double xAxis[DIM], yAxis[DIM], r[3][2];
+} triangle2D;
+
 
 
 /* Some functions */
@@ -246,7 +291,7 @@ int	factorial(const int n);
 double	taylor(const int maxOrder, const float x);
 void	calcFastExpRange(const int maxTaylorOrder, const int maxNumBitsPerMantField, int *numMantissaFields, int *lowestExponent, int *numExponentsUsed);
 void	calcTableEntries(const int maxTaylorOrder, const int maxNumBitsPerMantField);
-inline double	FastExp(const float negarg);
+//inline double	FastExp(const float negarg);
 
 
 /* Curses functions */
