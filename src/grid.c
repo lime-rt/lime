@@ -146,7 +146,7 @@ freeGrid(const inputPars *par, const molData* m ,struct grid* g){
 }
 
 void
-delaunay(inputPars *par, struct grid *g){
+delaunay(const int numDims, struct grid *g, const unsigned long numPoints){
   int i,j,k,id;
   char flags[255];
   boolT ismalloc = False;
@@ -155,17 +155,17 @@ delaunay(inputPars *par, struct grid *g){
   coordT *pt_array;
   int simplex[DIM+1];
   int curlong, totlong;
+  unsigned long ppi;
 
-  pt_array=malloc(DIM*sizeof(coordT)*par->ncell);
-
-  for(i=0;i<par->ncell;i++) {
-    for(j=0;j<DIM;j++) {
-      pt_array[i*DIM+j]=g[i].x[j];
+  pt_array=malloc(sizeof(coordT)*numDims*numPoints);
+  for(ppi=0;ppi<numPoints;ppi++) {
+    for(j=0;j<numDims;j++) {
+      pt_array[ppi*numDims+j]=g[ppi].x[j];
     }
   }
 
   sprintf(flags,"qhull d Qbb");
-  if (!qh_new_qhull(DIM, par->ncell, pt_array, ismalloc, flags, NULL, NULL)) {
+  if (!qh_new_qhull(DIM, (int)numPoints, pt_array, ismalloc, flags, NULL, NULL)) {
     /* Identify points */
     FORALLvertices {
       id=qh_pointid(vertex->point);
@@ -203,15 +203,13 @@ delaunay(inputPars *par, struct grid *g){
     exit(1);
   }
 
-  for(i=0;i<par->ncell;i++){
+  for(ppi=0;ppi<numPoints;ppi++){
     j=0;
-    for(k=0;k<g[i].numNeigh;k++){
-      if(g[i].neigh[k] != NULL)
-        {
-          j++;
-        }
+    for(k=0;k<g[ppi].numNeigh;k++){
+      if(g[ppi].neigh[k] != NULL)
+        j++;
     }
-    g[i].numNeigh=j;
+    g[ppi].numNeigh=j;
   }
   qh_freeqhull(!qh_ALL);
   qh_memfreeshort (&curlong, &totlong);
@@ -608,7 +606,7 @@ buildGrid(inputPars *par, struct grid *g){
   }
   /* end grid allocation */
 
-  delaunay(par, g);
+  delaunay(DIM, g, (unsigned long)par->ncell);
   distCalc(par, g);
   smooth(par,g);
 

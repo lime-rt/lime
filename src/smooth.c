@@ -68,7 +68,7 @@ smooth(inputPars *par, struct grid *g){
       }	
     }
 		
-    delaunay(par, g);	
+    delaunay(DIM, g, (unsigned long)par->ncell);	
     distCalc(par, g);	    
     if(!silent) progressbar((double)(sg+1)/(double)smooth, 5);	
   }	

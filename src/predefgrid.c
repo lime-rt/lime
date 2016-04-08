@@ -69,7 +69,7 @@ predefinedGrid(inputPars *par, struct grid *g){
   }
   fclose(fp);
 
-  delaunay(par,g);
+  delaunay(DIM, g, (unsigned long)par->ncell);
   distCalc(par,g);
   //  getArea(par,g, ran);
   //  getMass(par,g, ran);
