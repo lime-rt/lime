@@ -147,15 +147,14 @@ freeGrid(const inputPars *par, const molData* m ,struct grid* g){
 
 void
 delaunay(const int numDims, struct grid *g, const unsigned long numPoints){
-  int i,j,k,id;
+  int i,j,k;
   char flags[255];
   boolT ismalloc = False;
   facetT *facet;
   vertexT *vertex,**vertexp;
   coordT *pt_array;
-  int simplex[DIM+1];
   int curlong, totlong;
-  unsigned long ppi;
+  unsigned long ppi,id,pointIdsThisFacet[numDims+1],idI,idJ;
 
   pt_array=malloc(sizeof(coordT)*numDims*numPoints);
   for(ppi=0;ppi<numPoints;ppi++) {
@@ -188,15 +187,19 @@ delaunay(const int numDims, struct grid *g, const unsigned long numPoints){
   FORALLfacets {
     if (!facet->upperdelaunay) {
       j=0;
-      FOREACHvertex_ (facet->vertices) simplex[j++]=qh_pointid(vertex->point);
-      for(i=0;i<DIM+1;i++){
-        for(j=0;j<DIM+1;j++){
-          k=0;
+      FOREACHvertex_ (facet->vertices) pointIdsThisFacet[j++]=(unsigned long)qh_pointid(vertex->point);
+
+      for(i=0;i<numDims+1;i++){
+        idI = pointIdsThisFacet[i];
+        for(j=0;j<numDims+1;j++){
+          idJ = pointIdsThisFacet[j];
           if(i!=j){
-            while(g[simplex[i]].neigh[k] != NULL && g[simplex[i]].neigh[k]->id != g[simplex[j]].id) {
+            /* Cycle through all the non-NULL links of g[idI], storing the link if it is new.
+            */
+            k=0;
+            while(g[idI].neigh[k] != NULL && g[idI].neigh[k]->id != g[idJ].id)
               k++;
-            }
-            g[simplex[i]].neigh[k]=&g[simplex[j]];
+            g[idI].neigh[k]=&g[idJ];
           }
         }
       }
