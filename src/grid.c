@@ -165,42 +165,42 @@ delaunay(const int numDims, struct grid *g, const unsigned long numPoints){
   }
 
   sprintf(flags,"qhull d Qbb");
-  if (!qh_new_qhull(DIM, (int)numPoints, pt_array, ismalloc, flags, NULL, NULL)) {
-    /* Identify points */
-    FORALLvertices {
-      id=qh_pointid(vertex->point);
-      g[id].numNeigh=qh_setsize(vertex->neighbors);
-      if(  g[id].neigh != NULL )
-        {
-          free( g[id].neigh );
-        }
-      g[id].neigh=malloc(sizeof(struct grid *)*g[id].numNeigh);
-      for(k=0;k<g[id].numNeigh;k++) {
-        g[id].neigh[k]=NULL;
+  if (qh_new_qhull(numDims, (int)numPoints, pt_array, ismalloc, flags, NULL, NULL)) {
+    if(!silent) bail_out("Qhull failed to triangulate");
+    exit(1);
+  }
+
+  /* Identify points */
+  FORALLvertices {
+    id=qh_pointid(vertex->point);
+    g[id].numNeigh=qh_setsize(vertex->neighbors);
+    if(  g[id].neigh != NULL )
+      {
+        free( g[id].neigh );
       }
+    g[id].neigh=malloc(sizeof(struct grid *)*g[id].numNeigh);
+    for(k=0;k<g[id].numNeigh;k++) {
+      g[id].neigh[k]=NULL;
     }
+  }
     
-    /* Identify neighbors */
-    FORALLfacets {
-      if (!facet->upperdelaunay) {
-        j=0;
-        FOREACHvertex_ (facet->vertices) simplex[j++]=qh_pointid(vertex->point);
-        for(i=0;i<DIM+1;i++){
-          for(j=0;j<DIM+1;j++){
-            k=0;
-            if(i!=j){
-              while(g[simplex[i]].neigh[k] != NULL && g[simplex[i]].neigh[k]->id != g[simplex[j]].id) {
-                k++;
-              }
-              g[simplex[i]].neigh[k]=&g[simplex[j]];
+  /* Identify neighbors */
+  FORALLfacets {
+    if (!facet->upperdelaunay) {
+      j=0;
+      FOREACHvertex_ (facet->vertices) simplex[j++]=qh_pointid(vertex->point);
+      for(i=0;i<DIM+1;i++){
+        for(j=0;j<DIM+1;j++){
+          k=0;
+          if(i!=j){
+            while(g[simplex[i]].neigh[k] != NULL && g[simplex[i]].neigh[k]->id != g[simplex[j]].id) {
+              k++;
             }
+            g[simplex[i]].neigh[k]=&g[simplex[j]];
           }
         }
       }
     }
-  } else {
-    if(!silent) bail_out("Qhull failed to triangulate");
-    exit(1);
   }
 
   for(ppi=0;ppi<numPoints;ppi++){
