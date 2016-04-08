@@ -293,7 +293,9 @@ void	sourceFunc_pol(const double, const double*, const molData, const struct pop
 void   	stateq(int, struct grid *, molData *, int, inputPars *,gridPointData *,double *);
 void	statistics(int, molData *, struct grid *, int *, double *, double *, int *);
 void    stokesangles(const double B[3], const double, double *);
-void    traceray(rayData, int, int, inputPars*, struct grid*, struct gAuxType*, molData*, image*, int, int*, int*, double);
+void	traceray(rayData, inputPars*, const int, image*, const int, struct grid*, struct gAuxType*, molData*, const int, int*, int*, const double);
+void	traceray_smooth(rayData, inputPars*, const int, image*, const int, struct grid*, struct gAuxType*, molData*, const int, int*, int*, struct cell*, const unsigned long, const double, gridInterp gips[3], const int, const double);
+void	calcLineAmpInterp(const double, const double, const double, double*);
 void	calcLineAmpLinear(struct grid*, const int, const int, const double, const double, double*);
 void   	calcLineAmpSample(double*, double*, const double, const double, const double, double*);
 void   	calcLineAmpSpline(struct grid*, const int, const int, const double, const double, double*);
