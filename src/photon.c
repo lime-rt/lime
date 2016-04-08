@@ -49,8 +49,10 @@ sortangles(double *inidir, int id, struct grid *g, const gsl_rng *ran) {
 
 
 
-void
-velocityspline(struct grid *g, int id, int k, double binv, double deltav, double *vfac){
+/*....................................................................*/
+void calcLineAmpSpline(struct grid *g, const int id, const int k\
+  , const double binv, const double deltav, double *vfac){
+
   int nspline,ispline,naver,iaver;
   double v1,v2,s1,s2,sd,v,vfacsub,d;
   
@@ -82,8 +84,10 @@ velocityspline(struct grid *g, int id, int k, double binv, double deltav, double
 }
 
 
-void
-velocityspline_lin(struct grid *g, int id, int k, double binv, double deltav, double *vfac){
+/*....................................................................*/
+void calcLineAmpLinear(struct grid *g, const int id, const int k\
+  , const double binv, const double deltav, double *vfac){
+
   int nspline,ispline,naver,iaver;
   double v1,v2,s1,s2,sd,v,vfacsub,d;
   
@@ -217,8 +221,8 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
         ds=g[here].ds[dir]/2.;
         halfFirstDs[iphot]=ds;
         for(l=0;l<par->nSpecies;l++){
-          if(!par->doPregrid) velocityspline(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
-          else velocityspline_lin(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
+          if(!par->doPregrid) calcLineAmpSpline(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
+          else calcLineAmpLinear(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
           mp[l].vfac[iphot]=vfac[0];
         }
         for(l=0;l<3;l++) x[l]=g[here].x[l]+(g[here].dir[dir].xn[l] * g[id].ds[dir]/2.);
@@ -228,8 +232,8 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
       }
       
       for(l=0;l<par->nSpecies;l++){
-        if(!par->doPregrid) velocityspline(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
-        else velocityspline_lin(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
+        if(!par->doPregrid) calcLineAmpSpline(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
+        else calcLineAmpLinear(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
       }
       
       for(iline=0;iline<nlinetot;iline++){
@@ -259,8 +263,8 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
           alpha=0.;
           for(jline=0;jline<sizeof(matrix)/sizeof(blend);jline++){
             if(matrix[jline].line1 == jline || matrix[jline].line2 == jline){	
-              if(!par->doPregrid) velocityspline(g,here,dir,g[id].mol[counta[jline]].binv,deltav-matrix[jline].deltav,&vblend);
-              else velocityspline_lin(g,here,dir,g[id].mol[counta[jline]].binv,deltav-matrix[jline].deltav,&vblend);	
+              if(!par->doPregrid) calcLineAmpSpline(g,here,dir,g[id].mol[counta[jline]].binv,deltav-matrix[jline].deltav,&vblend);
+              else calcLineAmpLinear(g,here,dir,g[id].mol[counta[jline]].binv,deltav-matrix[jline].deltav,&vblend);	
               sourceFunc_line(&jnu,&alpha,m,vblend,g,here,counta[jline],countb[jline]);
               dtau=alpha*ds;
               if(dtau < -30) dtau = -30;

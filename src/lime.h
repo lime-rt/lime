@@ -281,8 +281,9 @@ void   	stateq(int, struct grid *, molData *, int, inputPars *,gridPointData *,d
 void	statistics(int, molData *, struct grid *, int *, double *, double *, int *);
 void    stokesangles(double, double, double, double, double *);
 void    traceray(rayData, int, int, inputPars *, struct grid *, molData *, image *, int, int *, int *, double);
-void   	velocityspline(struct grid *, int, int, double, double, double*);
-void   	velocityspline2(double *, double *, double, double, double, double*);
+void	calcLineAmpLinear(struct grid*, const int, const int, const double, const double, double*);
+void   	calcLineAmpSample(double*, double*, const double, const double, const double, double*);
+void   	calcLineAmpSpline(struct grid*, const int, const int, const double, const double, double*);
 double 	veloproject(double *, double *);
 void	writefits(int, inputPars *, molData *, image *);
 void    write_VTK_unstructured_Points(inputPars *, struct grid *);

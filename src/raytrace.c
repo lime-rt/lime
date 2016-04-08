@@ -10,8 +10,9 @@
 #include "lime.h"
 
 
-void
-velocityspline2(double x[3], double dx[3], double ds, double binv, double deltav, double *vfac){
+/*....................................................................*/
+void calcLineAmpSample(double x[3], double dx[3], const double ds\
+  , const double binv, const double deltav, double *vfac){
   /*
 The bulk velocity of the model material can vary significantly with position, thus so can the value of the line-shape function at a given frequency and direction. The present function calculates 'vfac', an approximate average of the line-shape function along a path of length ds in the direction of the line of sight.
   */
@@ -144,7 +145,7 @@ Note that the algorithm employed here is similar to that employed in the functio
               /* Line centre occurs when deltav = the recession velocity of the radiating material. Explanation of the signs of the 2nd and 3rd terms on the RHS: (i) A bulk source velocity (which is defined as >0 for the receding direction) should be added to the material velocity field; this is equivalent to subtracting it from deltav, as here. (ii) A positive value of lineRedShift means the line is red-shifted wrt to the frequency specified for the image. The effect is the same as if the line and image frequencies were the same, but the bulk recession velocity were higher. lineRedShift should thus be added to the recession velocity, which is equivalent to subtracting it from deltav, as here. */
 
               /* Calculate an approximate average line-shape function at deltav within the Voronoi cell. */
-              if(!par->pregrid) velocityspline2(x,dx,ds,g[posn].mol[molI].binv,deltav,&vfac);
+              if(!par->pregrid) calcLineAmpSample(x,dx,ds,g[posn].mol[molI].binv,deltav,&vfac);
               else vfac=gaussline(deltav+veloproject(dx,g[posn].vel),g[posn].mol[molI].binv);
 
               /* Increment jnu and alpha for this Voronoi cell by the amounts appropriate to the spectral line. */
