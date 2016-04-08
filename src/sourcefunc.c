@@ -70,34 +70,39 @@ sourceFunc_cont(double *jnu, double *alpha,struct grid *g,int pos,int ispec, int
   return;
 }
 
+/*....................................................................*/
 void
-sourceFunc_pol(double *snu, double *dtau, double ds, molData *m,double vfac,struct grid *g,int pos,int ispec, int iline,double incl){
+sourceFunc_pol(const double ds, const double B[3], const molData md, const struct pop2 gm\
+  , const int lineI, const double incl, double *snu, double *dtau){
+
   double dSigma, dSigma2, dI, dQ, dU, alpha;
-  double angle[3];
-  
-  stokesangles(g[pos].B, incl, angle);
-  
+  double trigFuncs[3];
+
+  stokesangles(B, incl, trigFuncs);
+
   /* Emission */
   /* Continuum part:	j_nu = rho_dust * kappa_nu */
-  dSigma	 = g[pos].mol[ispec].dust[iline]*g[pos].mol[ispec].knu[iline];
-  dSigma2	 = maxp*g[pos].mol[ispec].dust[iline]*g[pos].mol[ispec].knu[iline]*(0.5*angle[2]*angle[2]-1./3.);
-  dI	     = dSigma - dSigma2;
-  dQ		 = maxp*g[pos].mol[ispec].dust[iline]*g[pos].mol[ispec].knu[iline]*(2.*angle[0]*angle[0]-1.)*angle[2]*angle[2];
-  dU		 = maxp*g[pos].mol[ispec].dust[iline]*g[pos].mol[ispec].knu[iline]*(2.*angle[0]*angle[1]*angle[2]*angle[2]);
-  
+  dSigma  = gm.dust[lineI]*gm.knu[lineI];
+  dSigma2 = maxp*gm.dust[lineI]*gm.knu[lineI]*(0.5*trigFuncs[2]*trigFuncs[2]-1./3.);
+  dI      = dSigma - dSigma2;
+  dQ      = maxp*gm.dust[lineI]*gm.knu[lineI]*(2.*trigFuncs[0]*trigFuncs[0]-1.)*trigFuncs[2]*trigFuncs[2];
+  dU      = maxp*gm.dust[lineI]*gm.knu[lineI]*(2.*trigFuncs[0]*trigFuncs[1]*trigFuncs[2]*trigFuncs[2]);
+
   /* Absorption */
   /* Continuum part: Dust opacity */
-  alpha  = g[pos].mol[ispec].knu[iline];
-  
+  alpha  = gm.knu[lineI];
+
   /* Calculate source function and tau */
-  *snu=0.;
+  snu[0] = 0.0;
+  snu[1] = 0.0;
+  snu[2] = 0.0;
   *dtau=0.;
   if(fabs(alpha)>0.){
-    snu[0]=(dI/alpha)*m[ispec].norminv;
-    snu[1]=-(dQ/alpha)*m[ispec].norminv;
-    snu[2]=-(dU/alpha)*m[ispec].norminv;
-    
-    *dtau= alpha*ds;
+    snu[0]= (dI/alpha)*md.norminv;
+    snu[1]=-(dQ/alpha)*md.norminv;
+    snu[2]=-(dU/alpha)*md.norminv;
+
+    *dtau = alpha*ds;
   }
   return;
 }
