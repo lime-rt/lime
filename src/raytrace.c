@@ -77,7 +77,7 @@ For a given image pixel position, this function evaluates the intensity of the t
 Note that the algorithm employed here is similar to that employed in the function photon() which calculates the average radiant flux impinging on a grid cell: namely the notional photon is started at the side of the model near the observer and 'propagated' in the receding direction until it 'reaches' the far side. This is rather non-physical in conception but it makes the calculation easier.
   */
   int ichan,di,i,posn,nposn,polMolI,polLineI,contMolI,contLineI,iline,molI,lineI;
-  double vfac=0.,x[3],dx[3],vThisChan;
+  double vfac=0.,x[3],dx[3],vThisChan,contJnu,contAlpha;
   double deltav,ds,dist2,ndist2,xp,yp,zp,col,lineRedShift,jnu,alpha,remnantSnu,dtau,expDTau,snu_pol[3];
 
   for(ichan=0;ichan<img[im].nchan;ichan++){
@@ -134,16 +134,22 @@ Note that the algorithm employed here is similar to that employed in the functio
       for(ichan=0;ichan<img[im].nchan;ichan++){
         sourceFunc_pol(ds, gp[posn].B, md[polMolI], gAux[posn].mol[polMolI], polLineI, img[im].theta, snu_pol, &dtau);
 #ifdef FASTEXP
-        ray.intensity[ichan]+=FastExp(ray.tau[ichan])*(1.-exp(-dtau))*snu_pol[ichan]; /**** Can't ref snu_pol[ichan] because snu_pol is only dimensioned to size 3. */
+        ray.intensity[ichan]+=FastExp(ray.tau[ichan])*(1.-FastExp(dtau))*snu_pol[ichan]; /**** Can't ref snu_pol[ichan] because snu_pol is only dimensioned to size 3. */
 #else
         ray.intensity[ichan]+=   exp(-ray.tau[ichan])*(1.-exp(-dtau))*snu_pol[ichan];
 #endif
         ray.tau[ichan]+=dtau;
       }
     } else {
+      /* Calculate first the continuum stuff because it is the same for all channels:
+      */
+      contJnu = 0.0;
+      contAlpha = 0.0;
+      sourceFunc_cont_raytrace(gAux[posn].mol[contMolI], contLineI, &contJnu, &contAlpha);
+
       for(ichan=0;ichan<img[im].nchan;ichan++){
-        jnu=.0;
-        alpha=0.;
+        jnu = contJnu;
+        alpha = contAlpha;
 
         for(iline=0;iline<nlinetot;iline++){
           molI = counta[iline];
@@ -171,7 +177,6 @@ Note that the algorithm employed here is similar to that employed in the functio
           }
         }
 
-        sourceFunc_cont_raytrace(gAux[posn].mol[contMolI], contLineI, &jnu, &alpha);
         dtau=alpha*ds;
         calcSourceFn(dtau, par, &remnantSnu, &expDTau);
         remnantSnu *= jnu*md[0].norminv*ds;
@@ -185,7 +190,7 @@ Note that the algorithm employed here is similar to that employed in the functio
     }
 
     /* Move the working point to the edge of the next Voronoi cell. */
-    for(i=0;i<3;i++) x[i]+=ds*dx[i];
+    for(di=0;di<DIM;di++) x[di]+=ds*dx[di];
     col+=ds;
     posn=nposn;
   } while(col < 2.0*fabs(zp));
