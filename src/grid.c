@@ -146,7 +146,7 @@ freeGrid(const inputPars *par, const molData* m ,struct grid* g){
 }
 
 void
-delaunay(const int numDims, struct grid *g, const unsigned long numPoints\
+delaunay(const int numDims, struct grid *gp, const unsigned long numPoints\
   , const _Bool getCells, struct cell **dc, unsigned long *numCells){
   int i,j,k;
   char flags[255];
@@ -161,7 +161,7 @@ delaunay(const int numDims, struct grid *g, const unsigned long numPoints\
   pt_array=malloc(sizeof(coordT)*numDims*numPoints);
   for(ppi=0;ppi<numPoints;ppi++) {
     for(j=0;j<numDims;j++) {
-      pt_array[ppi*numDims+j]=g[ppi].x[j];
+      pt_array[ppi*numDims+j]=gp[ppi].x[j];
     }
   }
 
@@ -174,14 +174,14 @@ delaunay(const int numDims, struct grid *g, const unsigned long numPoints\
   /* Identify points */
   FORALLvertices {
     id=qh_pointid(vertex->point);
-    g[id].numNeigh=qh_setsize(vertex->neighbors);
-    if(  g[id].neigh != NULL )
+    gp[id].numNeigh=qh_setsize(vertex->neighbors);
+    if(  gp[id].neigh != NULL )
       {
-        free( g[id].neigh );
+        free( gp[id].neigh );
       }
-    g[id].neigh=malloc(sizeof(struct grid *)*g[id].numNeigh);
-    for(k=0;k<g[id].numNeigh;k++) {
-      g[id].neigh[k]=NULL;
+    gp[id].neigh=malloc(sizeof(struct grid *)*gp[id].numNeigh);
+    for(k=0;k<gp[id].numNeigh;k++) {
+      gp[id].neigh[k]=NULL;
     }
   }
     
@@ -197,12 +197,12 @@ delaunay(const int numDims, struct grid *g, const unsigned long numPoints\
         for(j=0;j<numDims+1;j++){
           idJ = pointIdsThisFacet[j];
           if(i!=j){
-            /* Cycle through all the non-NULL links of g[idI], storing the link if it is new.
+            /* Cycle through all the non-NULL links of gp[idI], storing the link if it is new.
             */
             k=0;
-            while(g[idI].neigh[k] != NULL && g[idI].neigh[k]->id != g[idJ].id)
+            while(gp[idI].neigh[k] != NULL && gp[idI].neigh[k]->id != gp[idJ].id)
               k++;
-            g[idI].neigh[k]=&g[idJ];
+            gp[idI].neigh[k]=&gp[idJ];
           }
         }
       }
@@ -212,11 +212,11 @@ delaunay(const int numDims, struct grid *g, const unsigned long numPoints\
 
   for(ppi=0;ppi<numPoints;ppi++){
     j=0;
-    for(k=0;k<g[ppi].numNeigh;k++){
-      if(g[ppi].neigh[k] != NULL)
+    for(k=0;k<gp[ppi].numNeigh;k++){
+      if(gp[ppi].neigh[k] != NULL)
         j++;
     }
-    g[ppi].numNeigh=j;
+    gp[ppi].numNeigh=j;
   }
 
   if(getCells){
@@ -258,7 +258,7 @@ delaunay(const int numDims, struct grid *g, const unsigned long numPoints\
         i = 0;
         FOREACHvertex_( facet->vertices ) {
           id = (unsigned long)qh_pointid(vertex->point);
-          (*dc)[fi].vertx[i] = &g[id];
+          (*dc)[fi].vertx[i] = &gp[id];
           i++;
         }
 
