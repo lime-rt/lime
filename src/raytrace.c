@@ -442,8 +442,8 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
   const double epsilon = 1.0e-6; // Needs thinking about. Double precision is much smaller than this.
   const double oneOnNAlias = 1.0/(double)par->antialias;
   const double oneOnTotalNumPixelsMinus1=1.0/(double)(img[im].pxls*img[im].pxls-1);
-  int *counta, *countb,nlinetot,aa,ii,ppi;
-  int ichan,px,iline,tmptrans,i,threadI,nRaysDone,molI,di,vi,li;
+  int *allLineMolIs,*allLineLineIs,nlinetot,aa,ii,ppi;
+  int ichan,px,iline,tmptrans,i,threadI,nPixelsDone,molI,di,vi,li;
   double size,minfreq,absDeltaFreq;
   double cutoff,sum,progress;
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
@@ -515,7 +515,7 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
   }
 
   /* Determine whether there are blended lines or not. */
-  lineCount(par->nSpecies, m, &counta, &countb, &nlinetot);
+  lineCount(par->nSpecies, m, &allLineMolIs, &allLineLineIs, &nlinetot);
   if(img[im].doline==0) nlinetot=1;
 
   /* Fix the image parameters. */
@@ -548,9 +548,9 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
     }
   }
 
-  nRaysDone=0;
+  nPixelsDone=0;
   omp_set_dynamic(0);
-  #pragma omp parallel private(px,aa,threadI) num_threads(par->nThreads)
+  #pragma omp parallel private(px,aa,threadI,ii) num_threads(par->nThreads)
   {
     threadI = omp_get_thread_num();
 
@@ -578,16 +578,16 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
     /* Main loop through pixel grid. */
     for(px=0;px<(img[im].pxls*img[im].pxls);px++){
       #pragma omp atomic
-      ++nRaysDone;
+      ++nPixelsDone;
 
       for(aa=0;aa<par->antialias;aa++){
         ray.x = size*(gsl_rng_uniform(threadRans[threadI])+px%img[im].pxls)-size*img[im].pxls/2.;
         ray.y = size*(gsl_rng_uniform(threadRans[threadI])+px/img[im].pxls)-size*img[im].pxls/2.;
 
         if(par->traceRayAlgorithm==0){
-          traceray(ray, par, tmptrans, img, im, g, gAux, m, nlinetot, counta, countb, cutoff);
+          traceray(ray, par, tmptrans, img, im, g, gAux, m, nlinetot, allLineMolIs, allLineLineIs, cutoff);
         }else if(par->traceRayAlgorithm==1)
-          traceray_smooth(ray, par, tmptrans, img, im, g, gAux, m, nlinetot, counta, countb\
+          traceray_smooth(ray, par, tmptrans, img, im, g, gAux, m, nlinetot, allLineMolIs, allLineLineIs\
             , dc, numCells, epsilon, gips, numSegments, oneOnNumSegments);
 
         #pragma omp critical
@@ -600,7 +600,7 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
       }
       if (threadI == 0){ /* i.e., is master thread */
         if(!silent) {
-          progress = ((double)nRaysDone)*oneOnTotalNumPixelsMinus1;
+          progress = ((double)nPixelsDone)*oneOnTotalNumPixelsMinus1;
           if(progress-lastProgress>0.002){
             lastProgress = progress;
             progressbar(progress, 13);
@@ -622,8 +622,8 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
   img[im].trans=tmptrans;
 
   freeGAux((unsigned long)par->ncell, par->nSpecies, gAux);
-  free(counta);
-  free(countb);
+  free(allLineMolIs);
+  free(allLineLineIs);
   for (i=0;i<par->nThreads;i++){
     gsl_rng_free(threadRans[i]);
   }
