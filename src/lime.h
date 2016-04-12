@@ -246,7 +246,7 @@ int	factorial(const int n);
 double	taylor(const int maxOrder, const float x);
 void	calcFastExpRange(const int maxTaylorOrder, const int maxNumBitsPerMantField, int *numMantissaFields, int *lowestExponent, int *numExponentsUsed);
 void	calcTableEntries(const int maxTaylorOrder, const int maxNumBitsPerMantField);
-inline double	FastExp(const float negarg);
+double	FastExp(const float negarg);
 
 
 /* Curses functions */
