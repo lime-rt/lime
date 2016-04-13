@@ -77,6 +77,15 @@
 #define FAST_EXP_MAX_TAYLOR	3
 #define FAST_EXP_NUM_BITS	8
 
+/* Collision partner ID numbers from LAMDA */
+#define CP_H2			1
+#define CP_p_H2			2
+#define CP_o_H2			3
+#define CP_e			4
+#define CP_H			5
+#define CP_He			6
+#define CP_Hplus		7
+
 
 /* input parameters */
 typedef struct {
