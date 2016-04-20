@@ -71,7 +71,7 @@ sourceFunc_cont(double *jnu, double *alpha,struct grid *g,int pos,int ispec, int
 }
 
 void
-sourceFunc_pol(double *snu, double *dtau, double ds, molData *m,double vfac,struct grid *g,int pos,int ispec, int iline,double incl){
+sourceFunc_pol(double *snu, double *dtau, double ds, molData *m, struct grid *g, int pos, int ispec, int iline, double incl){
   double dSigma, dSigma2, dI, dQ, dU, alpha;
   double angle[3];
   

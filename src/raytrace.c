@@ -78,10 +78,10 @@ For a given image pixel position, this function evaluates the intensity of the t
 
 Note that the algorithm employed here is similar to that employed in the function photon() which calculates the average radiant flux impinging on a grid cell: namely the notional photon is started at the side of the model near the observer and 'propagated' in the receding direction until it 'reaches' the far side. This is rather non-physical in conception but it makes the calculation easier.
   */
-  int ichan,posn,nposn,i,iline,molI,lineI;
+  int ichan,posn,nposn,i,iline,molI,lineI,contMolI,contLineI,polMolI,polLineI,stokesId;
   double vfac=0.,x[DIM],dx[DIM],vThisChan;
   double deltav,ds,dist2,ndist2,xp,yp,zp,col,lineRedShift,jnu,alpha,remnantSnu,dtau,expDTau,snu_pol[3];
-  double projVels[nSteps],d,vel[DIM];
+  double projVels[nSteps],d,vel[DIM],contJnu,contAlpha;
 
   for(ichan=0;ichan<img[im].nchan;ichan++){
     ray.tau[ichan]=0.0;
@@ -100,6 +100,15 @@ Note that the algorithm employed here is similar to that employed in the functio
       dx[i]= img[im].rotMat[i][2]; /* This points away from the observer. */
     }
 
+    contMolI = 0; /****** Always?? */
+
+    if(img[im].doline && img[im].trans > -1)
+      contLineI = img[im].trans;
+    else if(img[im].doline && img[im].trans == -1)
+      contLineI = tmptrans;
+    else
+      contLineI = 0;
+
     /* Find the grid point nearest to the starting x. */
     i=0;
     dist2=(x[0]-g[i].x[0])*(x[0]-g[i].x[0]) + (x[1]-g[i].x[1])*(x[1]-g[i].x[1]) + (x[2]-g[i].x[2])*(x[2]-g[i].x[2]);
@@ -117,15 +126,18 @@ Note that the algorithm employed here is similar to that employed in the functio
       ds=-2.*zp-col; /* This default value is chosen to be as large as possible given the spherical model boundary. */
       nposn=-1;
       line_plane_intersect(g,&ds,posn,&nposn,dx,x,cutoff); /* Returns a new ds equal to the distance to the next Voronoi face, and nposn, the ID of the grid cell that abuts that face. */
+
       if(par->polarization){
-        for(ichan=0;ichan<img[im].nchan;ichan++){
-          sourceFunc_pol(snu_pol,&dtau,ds,m,vfac,g,posn,0,0,img[im].theta);
+        polMolI = 0; /****** Always?? */
+        polLineI = 0; /****** Always?? */
+        for(stokesId=0;stokesId<img[im].nchan;stokesId++){ /* We only loop over I, Q, U because no V? */
+          sourceFunc_pol(snu_pol,&dtau,ds,m,g,posn,polMolI,polLineI,img[im].theta);
 #ifdef FASTEXP
-          ray.intensity[ichan]+=FastExp(ray.tau[ichan])*(1.-exp(-dtau))*snu_pol[ichan];
+          ray.intensity[stokesId]+=FastExp(ray.tau[stokesId])*(1.-exp(-dtau))*snu_pol[stokesId];
 #else
-          ray.intensity[ichan]+=   exp(-ray.tau[ichan])*(1.-exp(-dtau))*snu_pol[ichan];
+          ray.intensity[stokesId]+=   exp(-ray.tau[stokesId])*(1.-exp(-dtau))*snu_pol[stokesId];
 #endif
-          ray.tau[ichan]+=dtau;
+          ray.tau[stokesId]+=dtau;
         }
       } else {
         if(!par->pregrid){
@@ -136,9 +148,15 @@ Note that the algorithm employed here is similar to that employed in the functio
           }
         }
 
+        /* Calculate first the continuum stuff because it is the same for all channels:
+        */
+        contJnu = 0.0;
+        contAlpha = 0.0;
+        sourceFunc_cont(&contJnu,&contAlpha,g,posn,contMolI,contLineI);
+
         for(ichan=0;ichan<img[im].nchan;ichan++){
-          jnu=.0;
-          alpha=0.;
+          jnu = contJnu;
+          alpha = contAlpha;
 
           for(iline=0;iline<nlinetot;iline++){
             molI = counta[iline];
@@ -146,7 +164,8 @@ Note that the algorithm employed here is similar to that employed in the functio
             if(img[im].doline\
             && m[molI].freq[lineI] > img[im].freq-img[im].bandwidth/2.
             && m[molI].freq[lineI] < img[im].freq+img[im].bandwidth/2.){
-              /* Calculate the red shift of the transition wrt to the frequency specified for the image. */
+              /* Calculate the red shift of the transition wrt to the frequency specified for the image.
+              */
               if(img[im].trans > -1){
                 lineRedShift=(m[molI].freq[img[im].trans]-m[molI].freq[lineI])/m[molI].freq[img[im].trans]*CLIGHT;
               } else {
@@ -168,9 +187,6 @@ Note that the algorithm employed here is similar to that employed in the functio
             }
           }
 
-          if(img[im].doline && img[im].trans > -1) sourceFunc_cont(&jnu,&alpha,g,posn,0,img[im].trans);
-          else if(img[im].doline && img[im].trans == -1) sourceFunc_cont(&jnu,&alpha,g,posn,0,tmptrans);
-          else sourceFunc_cont(&jnu,&alpha,g,posn,0,0);
           dtau=alpha*ds;
 //???          if(dtau < -30) dtau = -30; // as in photon()?
           calcSourceFn(dtau, par, &remnantSnu, &expDTau);
@@ -185,7 +201,7 @@ Note that the algorithm employed here is similar to that employed in the functio
       }
 
       /* Move the working point to the edge of the next Voronoi cell. */
-      for(i=0;i<3;i++) x[i]+=ds*dx[i];
+      for(i=0;i<DIM;i++) x[i]+=ds*dx[i];
       col+=ds;
       posn=nposn;
     } while(col < 2.0*fabs(zp));
