@@ -236,9 +236,10 @@ void    sourceFunc_pol(double *, double *, double, molData *, double, struct gri
 void   	stateq(int, struct grid *, molData *, int, inputPars *,gridPointData *,double *);
 void	statistics(int, molData *, struct grid *, int *, double *, double *, int *);
 void    stokesangles(double, double, double, double, double *);
-void    traceray(rayData, int, int, inputPars *, struct grid *, molData *, image *, int, int *, int *, double);
+void	traceray(rayData, int, int, inputPars*, struct grid*, molData*, image*, int, int*, int*, double, const int, const double);
 void   	velocityspline(struct grid *, int, int, double, double, double*);
-void   	velocityspline2(double *, double *, double, double, double, double*);
+void	velocityspline2(const double*, const double*, const double\
+  , const double, double*, const int, const double, const double, double*);
 double 	veloproject(double *, double *);
 void	writefits(int, inputPars *, molData *, image *);
 void    write_VTK_unstructured_Points(inputPars *, struct grid *);
