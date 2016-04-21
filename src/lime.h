@@ -214,6 +214,7 @@ void	line_plane_intersect(struct grid *, double *, int , int *, double *, double
 void	lineBlend(molData *, inputPars *, blend **);
 void    lineCount(int,molData *,int **, int **, int *);
 void	LTE(inputPars *, struct grid *, molData *);
+void	lteOnePoint(inputPars*, molData*, const int, const double, double*);
 void   	molinit(molData *, inputPars *, struct grid *,int);
 void    openSocket(inputPars *par, int);
 void	qhull(inputPars *, struct grid *);
