@@ -226,11 +226,11 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
       } else {
         ds=g[here].ds[neighI];
         for(l=0;l<3;l++) x[l]=g[here].x[l];
-      }
       
-      for(l=0;l<par->nSpecies;l++){
-        if(!par->doPregrid) velocityspline(g,here,neighI,g[id].mol[l].binv,deltav,&vfac[l]);
-        else velocityspline_lin(g,here,neighI,g[id].mol[l].binv,deltav,&vfac[l]);
+        for(l=0;l<par->nSpecies;l++){
+          if(!par->doPregrid) velocityspline(g,here,neighI,g[id].mol[l].binv,deltav,&vfac[l]);
+          else velocityspline_lin(g,here,neighI,g[id].mol[l].binv,deltav,&vfac[l]);
+        }
       }
       
       for(iline=0;iline<nlinetot;iline++){
