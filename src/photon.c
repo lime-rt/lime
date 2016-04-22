@@ -208,7 +208,7 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
     neighI=sortangles(inidir,id,g,ran);
     here=g[id].id;
     there=g[here].neigh[neighI]->id;
-    deltav=segment*4.3*g[id].dopb+veloproject(g[id].dir[neighI].xn,vel);
+    deltav=segment*4.3*g[id].dopb+veloproject(inidir,vel);
     
     /* Photon propagation loop */
     do{
