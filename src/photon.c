@@ -205,13 +205,14 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
     1/(N_RAN_PER_SEGMENT*ininphot).
     */
     
-    neighI=sortangles(inidir,id,g,ran);
     here=g[id].id;
-    there=g[here].neigh[neighI]->id;
     deltav=segment*4.3*g[id].dopb+veloproject(inidir,vel);
     
     /* Photon propagation loop */
     do{
+      neighI=sortangles(inidir,here,g,ran);
+      there=g[here].neigh[neighI]->id;
+
       if(firststep){
         firststep=0;				
         ds=g[here].ds[neighI]/2.;
@@ -281,9 +282,7 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
         /* End of line blending part */
       }
       
-      neighI=sortangles(inidir,there,g,ran);
       here=there;
-      there=g[here].neigh[neighI]->id;
     } while(!g[here].sink);
     
     /* Add cmb contribution */
