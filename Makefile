@@ -49,7 +49,8 @@ endif
 ##
 
 TARGET  = lime.x 
-CC		= gcc -fopenmp
+#CC		= gcc -fopenmp
+CC		= gcc
 SRCS    = src/aux.c src/messages.c src/grid.c src/LTEsolution.c   \
 		  src/main.c src/molinit.c src/photon.c src/popsin.c    \
 		  src/popsout.c src/predefgrid.c src/ratranInput.c      \
@@ -70,7 +71,8 @@ OBJS    = src/aux.o src/messages.o src/grid.o src/LTEsolution.o   \
 MODELO 	= src/model.o
 
 #CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing -DTEST -DFASTEXP -DNO_NCURSES
-CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing
+#CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing
+CCFLAGS = -O3 -fno-strict-aliasing
 LDFLAGS = -lgsl -lgslcblas -l${QHULL} -lcfitsio -lncurses -lm 
 
 .SILENT:
