@@ -12,7 +12,11 @@
 
 
 void __attribute__((weak))
+#ifdef CAVITY_WALLS
+    density(double x, double y, double z, double gastemp, double *density){
+#else
     density(double x, double y, double z, double *density){
+#endif
       if(!silent) bail_out("Density is not defined in model.c but is needed by LIME!");
       exit(1);
     }

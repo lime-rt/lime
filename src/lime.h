@@ -87,6 +87,7 @@ typedef struct {
   char *pregrid;
   char *restart;
   char *dust;
+  char *species;
   int sampling,collPart,lte_only,init_lte,antialias,polarization,doPregrid,nThreads;
   char **moldatfile;
 } inputPars;
@@ -176,13 +177,22 @@ typedef struct {double x,y, *intensity, *tau;} rayData;
 
 
 /* Some functions */
+#ifdef CAVITY_WALLS
+void density(double,double,double,double,double *);
+#else
 void density(double,double,double,double *);
+#endif
 void temperature(double,double,double,double *);
 void abundance(double,double,double,double *);
 void doppler(double,double,double, double *);
 void velocity(double,double,double,double *);
 void magfield(double,double,double,double *);
 void gasIIdust(double,double,double,double *);
+#ifdef CAVITY_WALLS
+int exclude(double,double,double);
+double angletocavity(double,double,double);
+double cavity_phi(double);
+#endif
 
 /* More functions */
 
@@ -221,6 +231,9 @@ void  	photon(int, struct grid *, molData *, int, const gsl_rng *,inputPars *,bl
 void	parseInput(inputPars *, image **, molData **);
 double 	planckfunc(int, double, molData *, int);
 int     pointEvaluation(inputPars *,double, double, double, double);
+#ifdef CAVITY_WALLS
+int     pointEvaluationW(inputPars *,double, double, double, double);
+#endif
 void   	popsin(inputPars *, struct grid **, molData **, int *);
 void   	popsout(inputPars *, struct grid *, molData *);
 void	predefinedGrid(inputPars *, struct grid *);
@@ -246,7 +259,7 @@ int	factorial(const int n);
 double	taylor(const int maxOrder, const float x);
 void	calcFastExpRange(const int maxTaylorOrder, const int maxNumBitsPerMantField, int *numMantissaFields, int *lowestExponent, int *numExponentsUsed);
 void	calcTableEntries(const int maxTaylorOrder, const int maxNumBitsPerMantField);
-inline double	FastExp(const float negarg);
+double	FastExp(const float negarg);
 
 
 /* Curses functions */

@@ -17,7 +17,11 @@ smooth(inputPars *par, struct grid *g){
   int k=0,j,i;		/* counters									*/
   int sg;		/* counter for smoothing the grid			*/
   int cn;
+#ifdef CAVITY_WALLS
+  int smooth=5;	/* Amount of grid smoothing					*/
+#else
   int smooth=20;	/* Amount of grid smoothing					*/
+#endif
   double move[3];	/* Auxillary array for smoothing the grid	*/
   double dist;		/* Distance to a neighbor					*/
   	

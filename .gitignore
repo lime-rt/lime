@@ -8,3 +8,26 @@
 example/grid.vtk
 example/*.pop
 example/*.fits
+
+# Ignore HH46 output files
+hh46-co/abun/
+hh46-co/ori/
+hh46-co/*.eps
+hh46-co/*.fits
+hh46-co/*.msp
+hh46-co/*.pop
+hh46-co/*.xdr
+hh46-co/grid_in.dat
+hh46-co/grid_out.dat
+
+# Ignore IDL routines
+hh46-co/*.pro
+
+# Ignore other HH46 files
+hh46_coflx_final.dat
+outflow-b-057s.c
+shock_co_*txt
+
+# Ignore Simon's convolve script
+convolve_fits/
+hh46-co/convolve_fits

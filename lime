@@ -22,6 +22,7 @@ function usage {
     echo "   -h           Display this message"
     echo "   -f           Use fast exponential computation"
     echo "   -n           Turn off ncurses output"
+    echo "   -w           Use special geometry for outflow cavity walls"
     echo "   -p NTHREADS  Run in parallel with NTHREADS threads (default: 1)"
     echo ""
     echo "See <http://lime.readthedocs.org> for more information."
@@ -32,7 +33,7 @@ function tip {
     echo "Try 'lime -h' for more information."
 }
 
-options=":Vfnp:h"
+options=":Vfnwp:h"
 cpp_flags=""
 
 while getopts ${options} opt; do
@@ -50,6 +51,9 @@ while getopts ${options} opt; do
 	    ;;
 	n)
 	    cpp_flags+="-DNO_NCURSES "
+	    ;;
+	w)
+	    cpp_flags+="-DCAVITY_WALLS "
 	    ;;
 	p)
 	    nthreads=${OPTARG}

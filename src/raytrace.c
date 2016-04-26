@@ -74,7 +74,7 @@ For a given image pixel position, this function evaluates the intensity of the t
 
 Note that the algorithm employed here is similar to that employed in the function photon() which calculates the average radiant flux impinging on a grid cell: namely the notional photon is started at the side of the model near the observer and 'propagated' in the receding direction until it 'reaches' the far side. This is rather non-physical in conception but it makes the calculation easier.
   */
-  int ichan,posn,nposn,i,iline,molI,lineI;
+  int ichan,posn,nposn,i,iline,molI,lineI,exclude_step;
   double vfac=0.,x[3],dx[3],vThisChan;
   double deltav,ds,dist2,ndist2,xp,yp,zp,col,lineRedShift,jnu,alpha,remnantSnu,dtau,expDTau,snu_pol[3];
 
@@ -145,7 +145,7 @@ Note that the algorithm employed here is similar to that employed in the functio
 
               /* Calculate an approximate average line-shape function at deltav within the Voronoi cell. */
               if(!par->pregrid) velocityspline2(x,dx,ds,g[posn].mol[molI].binv,deltav,&vfac);
-              else vfac=gaussline(deltav+veloproject(dx,g[posn].vel),g[posn].mol[molI].binv);
+              else vfac=gaussline(deltav-veloproject(dx,g[posn].vel),g[posn].mol[molI].binv);
 
               /* Increment jnu and alpha for this Voronoi cell by the amounts appropriate to the spectral line. */
               sourceFunc_line(&jnu,&alpha,m,vfac,g,posn,molI,lineI);
@@ -158,10 +158,15 @@ Note that the algorithm employed here is similar to that employed in the functio
           dtau=alpha*ds;
           calcSourceFn(dtau, par, &remnantSnu, &expDTau);
           remnantSnu *= jnu*m[0].norminv*ds;
-#ifdef FASTEXP
-          ray.intensity[ichan]+=FastExp(ray.tau[ichan])*remnantSnu;
+#ifdef CAVITY_WALLS
+          exclude_step = exclude(x[0],x[1],x[2]);
 #else
-          ray.intensity[ichan]+=   exp(-ray.tau[ichan])*remnantSnu;
+          exclude_step = 0;
+#endif
+#ifdef FASTEXP
+          if(exclude_step==0) ray.intensity[ichan]+=FastExp(ray.tau[ichan])*remnantSnu;
+#else
+          if(exclude_step==0) ray.intensity[ichan]+=   exp(-ray.tau[ichan])*remnantSnu;
 #endif
           ray.tau[ichan]+=dtau;
         }
@@ -264,8 +269,8 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
       ++nRaysDone;
 
       for(aa=0;aa<par->antialias;aa++){
-        ray.x = size*(gsl_rng_uniform(threadRans[threadI])+px%img[im].pxls)-size*img[im].pxls/2.;
-        ray.y = size*(gsl_rng_uniform(threadRans[threadI])+px/img[im].pxls)-size*img[im].pxls/2.;
+        ray.x = -size*(gsl_rng_uniform(threadRans[threadI]) + px%img[im].pxls - 0.5*img[im].pxls);
+        ray.y =  size*(gsl_rng_uniform(threadRans[threadI]) + px/img[im].pxls - 0.5*img[im].pxls);
 
         traceray(ray, tmptrans, im, par, g, m, img, nlinetot, counta, countb, cutoff);
 

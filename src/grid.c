@@ -21,7 +21,11 @@ gridAlloc(inputPars *par, struct grid **g){
   if(par->doPregrid || par->restart) par->collPart=1;
   else{
     for(i=0;i<99;i++) temp[i]=-1;
+#ifdef CAVITY_WALLS
+    density(AU,AU,AU,-1.0,temp);
+#else
     density(AU,AU,AU,temp);
+#endif
     i=0;
     par->collPart=0;
     while(temp[i++]>-1) par->collPart++;
@@ -519,9 +523,10 @@ buildGrid(inputPars *par, struct grid *g){
   double lograd;		/* The logarithm of the model radius		*/
   double logmin;	    /* Logarithm of par->minScale				*/
   double r,theta,phi,sinPhi,x,y,z,semiradius;	/* Coordinates								*/
-  double temp;
+  double temp,abun;
   int k=0,i;            /* counters									*/
-  int flag;
+  int flag,interp_abun;
+  FILE *xfile;
 
   gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
 #ifdef TEST
@@ -529,6 +534,8 @@ buildGrid(inputPars *par, struct grid *g){
 #else
   gsl_rng_set(ran,time(0));
 #endif  
+  
+  interp_abun=0;
   
   lograd=log10(par->radius);
   logmin=log10(par->minScale);
@@ -566,11 +573,42 @@ buildGrid(inputPars *par, struct grid *g){
         }
         x=semiradius*cos(theta);
         y=semiradius*sin(theta);
+      } else if(par->sampling==23){
+        if(k<par->pIntensity/3){
+          r=pow(10,logmin+gsl_rng_uniform(ran)*(lograd-logmin));
+          phi=PI*gsl_rng_uniform(ran);
+        }else if(k<2*par->pIntensity/3){
+          r=pow(10,logmin+gsl_rng_uniform(ran)*(lograd-logmin));
+          phi=cavity_phi(r);
+          if(gsl_rng_uniform(ran)>0.5) phi=PI-phi;
+        }else{
+          r=pow(10,logmin+gsl_rng_uniform(ran)*(lograd-logmin));
+          phi=cavity_phi(r);
+          phi=0.5*PI-phi;
+          phi=(gsl_rng_uniform(ran)*0.1+0.9)*phi;
+          phi=0.5*PI-phi;
+          if(gsl_rng_uniform(ran)>0.5) phi=PI-phi;
+        }
+        theta=2.*PI*gsl_rng_uniform(ran);
+        x=r*cos(theta)*sin(phi);
+        y=r*sin(theta)*sin(phi);
+        if(DIM==3) z=r*cos(phi);
+        else z=0.;
       } else {
         if(!silent) bail_out("Don't know how to sample model");
         exit(1);
       }
-      if((x*x+y*y+z*z)<par->radiusSqu) flag=pointEvaluation(par,temp,x,y,z);
+      if(par->sampling!=23){
+        if((x*x+y*y+z*z)<par->radiusSqu) flag=pointEvaluation(par,temp,x,y,z);
+      } else {
+        if(k<par->pIntensity/3){
+          flag=pointEvaluationW(par,temp,x,y,z);
+        } else if(k<2*par->pIntensity/3){
+          flag=1;
+        } else {
+          flag=1;
+        }
+      }
     } while(!flag);
     /* Now pointEvaluation has decided that we like the point */
 
@@ -617,12 +655,68 @@ buildGrid(inputPars *par, struct grid *g){
   distCalc(par, g);
   smooth(par,g);
 
+  /*
+    In case we're doing abundances by interpolation from a
+    chemical grid: write preamble for the input file.
+  */
+#ifdef CAVITY_WALLS
+  xfile = fopen("grid_in.dat","w");
+  fprintf(xfile,"! GRID-INPUTFILE\n");
+  fprintf(xfile,"! SOURCE: lime\n");
+  fprintf(xfile,"%s\n",par->species);
+  fprintf(xfile,"! TIME\n");
+  fprintf(xfile,"1.000E+13\n");
+  fprintf(xfile,"! Nr of Points\n");
+  fprintf(xfile,"%d\n",par->pIntensity);
+  fprintf(xfile,"! N(H_TOT), T, G0 (Alpha), Tau (Beta), Zeta\n");
+  fclose(xfile);
+#endif
+
   for(i=0;i<par->pIntensity;i++){
-    density(    g[i].x[0],g[i].x[1],g[i].x[2], g[i].dens);
     temperature(g[i].x[0],g[i].x[1],g[i].x[2], g[i].t);
+#ifdef CAVITY_WALLS
+    density(    g[i].x[0],g[i].x[1],g[i].x[2], g[i].t[0],g[i].dens);
+#else
+    density(    g[i].x[0],g[i].x[1],g[i].x[2], g[i].dens);
+#endif
     doppler(    g[i].x[0],g[i].x[1],g[i].x[2],&g[i].dopb);	
     abundance(  g[i].x[0],g[i].x[1],g[i].x[2], g[i].abun);
+#ifdef CAVITY_WALLS
+    if(g[i].abun[0]<0.) interp_abun=1;
+#endif
   }
+
+  /*
+    A negative abundance is a flag to get abundances from a chemical
+    grid by interpolation. NOTE: this only works for single species!
+    When doing H2O, the abundance is split into ortho and para in a
+    3:1 ratio.
+  */
+#ifdef CAVITY_WALLS
+  if(interp_abun==1) {
+    system("./grid_interpol.x");
+    xfile = fopen("grid_out.dat","r");
+    for(i=0;i<par->pIntensity;i++) {
+      fscanf(xfile,"%lf",&abun);
+      if(abun<0.) {
+        endwin();
+        printf("x,y,z (AU)     : %8.1e %8.1e %8.1e\n",g[i].x[0]/AU,g[i].x[1]/AU,g[i].x[2]/AU);
+        printf("density (cm^-3): %8.1e\n",1e06*(g[i].dens[0]+g[i].dens[1]));
+        printf("dusttemp (K)   : %5.1f\n",g[i].t[1]);
+        printf("error code     : %5.1f\n",abun);
+        exit(0);
+      }
+      abun = 2.*abun; //from per H atom to per H2 molecule
+      if(strcmp(par->species,"pH2O")==0) abun = 0.25*abun;
+      if(strcmp(par->species,"oH2O")==0) abun = 0.75*abun;
+      if(strcmp(par->species,"13CO")==0) abun = abun/69.;
+      if(strcmp(par->species,"C18O")==0) abun = abun/557.;
+      g[i].abun[0] = abun;
+//      if(g[i].nmol[0]<0.) g[i].nmol[0]=abun*(g[i].dens[0]+g[i].dens[1]);
+    }
+    fclose(xfile);
+  }
+#endif
 
   //	getArea(par,g, ran);
   //	getMass(par,g, ran);
