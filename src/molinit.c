@@ -240,7 +240,7 @@ molinit(molData *m, configInfo *par, struct grid *g, int i){
     /* Calculate molecular density */
     for(id=0;id<par->ncell; id++){
       for(ispec=0;ispec<par->nSpecies;ispec++){
-        if(m[i].npart == 1 && count[0] == 1){
+        if(m[i].npart == 1 && (count[0] == 1 || count[0] == 2 || count[0] == 3)){
           g[id].nmol[ispec]=g[id].abun[ispec]*g[id].dens[0];
         } else if(m[i].npart == 2 && (count[0] == 2 || count[0] == 3) && (count[1] == 2 || count[1] == 3)){
           if(!flag){
