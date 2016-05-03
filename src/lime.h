@@ -210,7 +210,7 @@ void	calcTableEntries(const int maxTaylorOrder, const int maxNumBitsPerMantField
 void	continuumSetup(int, image *, molData *, configInfo *, struct grid *);
 void	distCalc(configInfo *, struct grid *);
 int	factorial(const int n);
-inline double	FastExp(const float negarg);
+double	FastExp(const float negarg);
 void	fit_d1fi(double, double, double*);
 void    fit_fi(double, double, double*);
 void    fit_rr(double, double, double*);
