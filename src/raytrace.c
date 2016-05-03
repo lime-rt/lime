@@ -180,7 +180,7 @@ Note that the algorithm employed here is similar to that employed in the functio
               if(!par->pregrid)
                 velocityspline2(x,dx,ds,g[posn].mol[molI].binv,projVels,nSteps,oneOnNSteps,deltav,&vfac);
               else
-                vfac = gaussline(deltav+veloproject(dx,g[posn].vel),g[posn].mol[molI].binv);
+                vfac = gaussline(deltav-veloproject(dx,g[posn].vel),g[posn].mol[molI].binv);
 
               /* Increment jnu and alpha for this Voronoi cell by the amounts appropriate to the spectral line. */
               sourceFunc_line(&jnu,&alpha,m,vfac,g,posn,molI,lineI);
@@ -299,8 +299,8 @@ void raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
       ++nRaysDone;
 
       for(aa=0;aa<par->antialias;aa++){
-        ray.x = size*(gsl_rng_uniform(threadRans[threadI])+px%img[im].pxls)-size*img[im].pxls/2.;
-        ray.y = size*(gsl_rng_uniform(threadRans[threadI])+px/img[im].pxls)-size*img[im].pxls/2.;
+        ray.x = -size*(gsl_rng_uniform(threadRans[threadI]) + px%img[im].pxls - 0.5*img[im].pxls);
+        ray.y =  size*(gsl_rng_uniform(threadRans[threadI]) + px/img[im].pxls - 0.5*img[im].pxls);
 
         traceray(ray, tmptrans, im, par, g, m, img, nlinetot, counta, countb, cutoff, nStepsThruCell, oneOnNSteps);
 
