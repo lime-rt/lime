@@ -581,8 +581,8 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
       ++nPixelsDone;
 
       for(aa=0;aa<par->antialias;aa++){
-        ray.x = size*(gsl_rng_uniform(threadRans[threadI])+px%img[im].pxls)-size*img[im].pxls/2.;
-        ray.y = size*(gsl_rng_uniform(threadRans[threadI])+px/img[im].pxls)-size*img[im].pxls/2.;
+        ray.x = -size*(gsl_rng_uniform(threadRans[threadI]) + px%img[im].pxls - 0.5*img[im].pxls);
+        ray.y =  size*(gsl_rng_uniform(threadRans[threadI]) + px/img[im].pxls - 0.5*img[im].pxls);
 
         if(par->traceRayAlgorithm==0){
           traceray(ray, par, tmptrans, img, im, g, gAux, m, nlinetot, allLineMolIs, allLineLineIs, cutoff);
