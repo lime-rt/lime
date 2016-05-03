@@ -183,7 +183,7 @@ See description of the lookup algorithm in function calcFastExpRange().
   }
 }
 
-inline double FastExp(const float negarg){
+double FastExp(const float negarg){
   /*
 See description of the lookup algorithm in function calcFastExpRange(). ****NOTE!**** Most numbers here are hard-wired for the sake of speed. If need be, they can be verified (or recalculated for different conditions) via calcTableEntries().
   */
