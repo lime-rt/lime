@@ -201,7 +201,7 @@ void   	freeGrid(const inputPars * par, const molData* m, struct grid * g);
 void   	freePopulation(const inputPars * par, const molData* m, struct populations * pop);
 double 	gaussline(double, double);
 void    getArea(inputPars *, struct grid *, const gsl_rng *);
-void    getjbar(int, molData *, struct grid *, inputPars *,gridPointData *,double *);
+void    getjbar(int, molData*, struct grid*, int, inputPars*, gridPointData*, double*);
 void    getMass(inputPars *, struct grid *, const gsl_rng *);
 void   	getmatrix(int, gsl_matrix *, molData *, struct grid *, int, gridPointData *);
 int	getNextEdge(double*, int, struct grid*, const gsl_rng*);

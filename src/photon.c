@@ -331,32 +331,34 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
 }
 
 void
-getjbar(int posn, molData *m, struct grid *g, inputPars *par, gridPointData *mp, double *halfFirstDs){
-  int iline,iphot;
+getjbar(int posn, molData *m, struct grid *g, int ispec, inputPars *par, gridPointData *mp, double *halfFirstDs){
+  int iline,iphot,molI,lineI;
   double tau, expTau, remnantSnu, vsum=0., jnu, alpha;
   int *counta, *countb,nlinetot;
 
   lineCount(par->nSpecies, m, &counta, &countb, &nlinetot);
   
-  for(iline=0;iline<m[0].nline;iline++) mp[0].jbar[iline]=0.;
+  for(iline=0;iline<m[ispec].nline;iline++) mp[ispec].jbar[iline]=0.;
   for(iphot=0;iphot<g[posn].nphot;iphot++){
-    if(mp[0].vfac[iphot]>0){
+    if(mp[ispec].vfac[iphot]>0){
       for(iline=0;iline<m[0].nline;iline++){
         jnu=0.;
         alpha=0.;
-        
-        sourceFunc_line(&jnu,&alpha,m,mp[0].vfac[iphot],g,posn,counta[iline],countb[iline]);
+        molI  = counta[iline];
+        lineI = countb[iline];
+
+        sourceFunc_line(&jnu,&alpha,m,mp[ispec].vfac[iphot],g,posn,counta[iline],countb[iline]);
         sourceFunc_cont(&jnu,&alpha,g,posn,counta[iline],countb[iline]);
         tau=alpha*halfFirstDs[iphot];
         calcSourceFn(tau, par, &remnantSnu, &expTau);
-        remnantSnu *= jnu*m[0].norminv*halfFirstDs[iphot];
+        remnantSnu *= jnu*m[molI].norminv*halfFirstDs[iphot];
 
-        mp[0].jbar[iline]+=mp[0].vfac[iphot]*(expTau*mp[0].phot[iline+iphot*m[0].nline]+remnantSnu);
+        mp[ispec].jbar[iline]+=mp[ispec].vfac[iphot]*(expTau*mp[molI].phot[iline+iphot*m[molI].nline]+remnantSnu);
       }
-      vsum+=mp[0].vfac[iphot];
+      vsum+=mp[ispec].vfac[iphot];
     }
   }
-  for(iline=0;iline<m[0].nline;iline++) mp[0].jbar[iline] *= m[0].norm/vsum;
+  for(iline=0;iline<m[ispec].nline;iline++) mp[ispec].jbar[iline] *= m[ispec].norm/vsum;
   free(counta);
   free(countb);
 }
