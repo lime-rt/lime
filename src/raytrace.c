@@ -130,7 +130,7 @@ Note that the algorithm employed here is similar to that employed in the functio
           for(iline=0;iline<nlinetot;iline++){
             molI = counta[iline];
             lineI = countb[iline];
-            if(img[im].doline && m[molI].freq[lineI] > img[im].freq-img[im].bandwidth/2.
+            if(m[molI].freq[lineI] > img[im].freq-img[im].bandwidth/2.
             && m[molI].freq[lineI] < img[im].freq+img[im].bandwidth/2.){
               /* Calculate the red shift of the transition wrt to the frequency specified for the image. */
               if(img[im].trans > -1){
@@ -214,7 +214,7 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
 
   /* Determine whether there are blended lines or not. */
   lineCount(par->nSpecies, m, &counta, &countb, &nlinetot);
-  if(img[im].doline==0) nlinetot=1;
+  if(img[im].doline==0) nlinetot=0;
 
   /* Fix the image parameters. */
   if(img[im].freq < 0) img[im].freq=m[0].freq[img[im].trans];
