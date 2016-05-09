@@ -451,6 +451,7 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
   blend *matrix;
   struct statistics { double *pop, *ave, *sigma; } *stat;
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
+  _Bool luWarningGiven=0;
 
   stat=malloc(sizeof(struct statistics)*par->pIntensity);
 
@@ -546,7 +547,8 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
           }
           if(g[id].dens[0] > 0 && g[id].t[0] > 0){
             photon(id,g,m,0,threadRans[threadI],par,matrix,mp,halfFirstDs);
-            for(ispec=0;ispec<par->nSpecies;ispec++) stateq(id,g,m,ispec,par,mp,halfFirstDs);
+            for(ispec=0;ispec<par->nSpecies;ispec++)
+              stateq(id,g,m,ispec,par,mp,halfFirstDs,&luWarningGiven);
           }
           if (threadI == 0){ // i.e., is master thread
             if(!silent) warning("");
