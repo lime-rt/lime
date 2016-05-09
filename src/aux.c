@@ -344,6 +344,25 @@ invSqrt(float x){
   return x;
 }
 
+void checkGridDensities(inputPars *par, struct grid *g){
+  int i;
+  static _Bool warningAlreadyIssued=0;
+  char errStr[80];
+
+  if(!silent){ /* Warn if any densities too low. */
+    i = 0;
+    while(i<par->pIntensity && !warningAlreadyIssued){
+      if(g[i].dens[0]<TYPICAL_ISM_DENS){
+        warningAlreadyIssued = 1;
+        sprintf(errStr, "g[%d].dens[0] at %.1e is below typical values for the ISM (~%.1e).", i, g[i].dens[0], TYPICAL_ISM_DENS);
+        warning(errStr);
+        warning("This could give you convergence problems. NOTE: no further warnings will be issued.");
+      }
+      i++;
+    }
+  }
+}
+
 void
 continuumSetup(int im, image *img, molData *m, inputPars *par, struct grid *g){
   int id;

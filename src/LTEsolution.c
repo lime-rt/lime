@@ -29,3 +29,16 @@ LTE(inputPars *par, struct grid *g, molData *m){
   if(par->outputfile) popsout(par,g,m);
 }
 
+void lteOnePoint(inputPars *par, molData *m, const int ispec, const double temp, double *pops){
+  int ilev;
+  double sum;
+
+  sum = 0.0;
+  for(ilev=0;ilev<m[ispec].nlev;ilev++){
+    pops[ilev] = m[ispec].gstat[ilev]*exp(-100*CLIGHT*HPLANCK*m[ispec].eterm[ilev]/(KBOLTZ*temp));
+    sum += pops[ilev];
+  }
+  for(ilev=0;ilev<m[ispec].nlev;ilev++)
+    pops[ilev] /= sum;
+}
+

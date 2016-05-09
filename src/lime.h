@@ -60,6 +60,7 @@
 #define maxp		0.15
 #define OtoP		3.
 #define GRAV		6.67428e-11
+#define TYPICAL_ISM_DENS	1000.0
 
 /* Other constants */
 #define NITERATIONS 	16
@@ -189,6 +190,7 @@ void gasIIdust(double,double,double,double *);
 void   	binpopsout(inputPars *, struct grid *, molData *);
 void   	buildGrid(inputPars *, struct grid *);
 void    calcSourceFn(double dTau, const inputPars *par, double *remnantSnu, double *expDTau);
+void	checkGridDensities(inputPars*, struct grid*);
 void	continuumSetup(int, image *, molData *, inputPars *, struct grid *);
 void	distCalc(inputPars *, struct grid *);
 void	fit_d1fi(double, double, double*);
@@ -214,6 +216,7 @@ void	line_plane_intersect(struct grid *, double *, int , int *, double *, double
 void	lineBlend(molData *, inputPars *, blend **);
 void    lineCount(int,molData *,int **, int **, int *);
 void	LTE(inputPars *, struct grid *, molData *);
+void	lteOnePoint(inputPars*, molData*, const int, const double, double*);
 void   	molinit(molData *, inputPars *, struct grid *,int);
 void    openSocket(inputPars *par, int);
 void	qhull(inputPars *, struct grid *);
