@@ -23,7 +23,7 @@ stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par\
   gsl_matrix *matrix = gsl_matrix_alloc(m[ispec].nlev+1, m[ispec].nlev+1);
   gsl_matrix *reduc  = gsl_matrix_alloc(m[ispec].nlev, m[ispec].nlev);
   gsl_vector *newpop = gsl_vector_alloc(m[ispec].nlev);
-  gsl_vector *oldpop = gsl_vector_alloc(m[ispec].nlev);
+  gsl_vector *rhVec = gsl_vector_alloc(m[ispec].nlev);
   gsl_matrix *svv    = gsl_matrix_alloc(m[ispec].nlev, m[ispec].nlev);
   gsl_vector *svs    = gsl_vector_alloc(m[ispec].nlev);
   gsl_vector *work   = gsl_vector_alloc(m[ispec].nlev);
@@ -35,9 +35,9 @@ stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par\
   for(t=0;t<m[ispec].nlev;t++){
     opop[t]=0.;
     oopop[t]=0.;
-    gsl_vector_set(oldpop,t,0.);
+    gsl_vector_set(rhVec,t,0.);
   }
-  gsl_vector_set(oldpop,m[ispec].nlev-1,1.);
+  gsl_vector_set(rhVec,m[ispec].nlev-1,1.);
   diff=1;
   iter=0;
 
@@ -54,9 +54,9 @@ stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par\
     gsl_linalg_LU_decomp(reduc,p,&s);
     if(gsl_linalg_LU_det(reduc,s) == 0){
       gsl_linalg_SV_decomp(reduc,svv, svs, work);
-      gsl_linalg_SV_solve(reduc, svv, svs, oldpop, newpop);
+      gsl_linalg_SV_solve(reduc, svv, svs, rhVec, newpop);
       if(!silent) warning("Matrix is singular. Switching to SVD.");
-    } else gsl_linalg_LU_solve(reduc,p,oldpop,newpop);
+    } else gsl_linalg_LU_solve(reduc,p,rhVec,newpop);
 
     diff=0.;
     for(t=0;t<m[ispec].nlev;t++){
@@ -78,7 +78,7 @@ stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par\
   gsl_matrix_free(matrix);
   gsl_matrix_free(reduc);
   gsl_matrix_free(svv);
-  gsl_vector_free(oldpop);
+  gsl_vector_free(rhVec);
   gsl_vector_free(newpop);
   gsl_vector_free(svs);
   gsl_vector_free(work);
