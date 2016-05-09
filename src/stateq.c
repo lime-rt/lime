@@ -16,21 +16,23 @@ void
 stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par\
   , gridPointData *mp, double *halfFirstDs, _Bool *luWarningGiven){
 
-  int t,s,iter;
-  double *opop, *oopop;
+  int t,s,iter,status;
+  double *opop,*oopop,*tempNewPop=NULL;
   double diff;
+  gsl_error_handler_t *defaultErrorHandler=NULL;
+  char errStr[80];
 
   gsl_matrix *matrix = gsl_matrix_alloc(m[ispec].nlev+1, m[ispec].nlev+1);
   gsl_matrix *reduc  = gsl_matrix_alloc(m[ispec].nlev, m[ispec].nlev);
   gsl_vector *newpop = gsl_vector_alloc(m[ispec].nlev);
-  gsl_vector *rhVec = gsl_vector_alloc(m[ispec].nlev);
+  gsl_vector *rhVec  = gsl_vector_alloc(m[ispec].nlev);
   gsl_matrix *svv    = gsl_matrix_alloc(m[ispec].nlev, m[ispec].nlev);
   gsl_vector *svs    = gsl_vector_alloc(m[ispec].nlev);
   gsl_vector *work   = gsl_vector_alloc(m[ispec].nlev);
   gsl_permutation *p = gsl_permutation_alloc (m[ispec].nlev);
 
-  opop	 = malloc(sizeof(*opop)*m[ispec].nlev);
-  oopop	 = malloc(sizeof(*oopop)*m[ispec].nlev);
+  opop	     = malloc(sizeof(*opop)      *m[ispec].nlev);
+  oopop	     = malloc(sizeof(*oopop)     *m[ispec].nlev);
 
   for(t=0;t<m[ispec].nlev;t++){
     opop[t]=0.;
