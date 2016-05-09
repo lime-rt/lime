@@ -190,6 +190,7 @@ void calcSourceFn(double dTau, const inputPars *par, double *remnantSnu, double 
 void
 photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPars *par,blend *matrix, gridPointData *mp, double *halfFirstDs){
   int iphot,iline,jline,here,there,firststep,dir,np_per_line,ip_at_line,l;
+  int molI, lineI;
   int *counta, *countb,nlinetot;
   double deltav,segment,vblend,dtau,expDTau,jnu,alpha,ds,vfac[par->nSpecies],pt_theta,pt_z,semiradius;
   double *tau,*expTau,x[3],inidir[3];
@@ -204,7 +205,9 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
   for(iphot=0;iphot<g[id].nphot;iphot++){
     firststep=1;
     for(iline=0;iline<nlinetot;iline++){
-      mp[0].phot[iline+iphot*m[0].nline]=0.;
+      molI  = counta[iline];
+      lineI = countb[iline];
+      mp[molI].phot[lineI+iphot*m[molI].nline]=0.;
       tau[iline]=0.;
       expTau[iline]=1.;
     }
@@ -238,10 +241,12 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
         firststep=0;				
         ds=g[here].ds[dir]/2.;
         halfFirstDs[iphot]=ds;
-        for(l=0;l<par->nSpecies;l++){
-          if(!par->doPregrid) velocityspline(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
-          else velocityspline_lin(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
-          mp[l].vfac[iphot]=vfac[0];
+        for(molI=0;molI<par->nSpecies;molI++){
+          if(!par->doPregrid)
+            velocityspline(g,here,dir,g[id].mol[molI].binv,deltav,&vfac[molI]);
+          else
+            velocityspline_lin(g,here,dir,g[id].mol[molI].binv,deltav,&vfac[molI]);
+          mp[molI].vfac[iphot]=vfac[0];
         }
         for(l=0;l<3;l++) x[l]=g[here].x[l]+(g[here].dir[dir].xn[l] * g[id].ds[dir]/2.);
       } else {
@@ -257,7 +262,9 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
       for(iline=0;iline<nlinetot;iline++){
         jnu=0.;
         alpha=0.;
-        
+        molI  = counta[iline];
+        lineI = countb[iline];
+
         sourceFunc_line(&jnu,&alpha,m,vfac[counta[iline]],g,here,counta[iline],countb[iline]);
         sourceFunc_cont(&jnu,&alpha,g,here,counta[iline],countb[iline]);
 
@@ -266,7 +273,7 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
         calcSourceFn(dtau, par, &remnantSnu, &expDTau);
         remnantSnu *= jnu*m[0].norminv*ds;
 
-        mp[0].phot[iline+iphot*m[0].nline]+=expTau[iline]*remnantSnu;
+        mp[molI].phot[lineI+iphot*m[molI].nline]+=expTau[iline]*remnantSnu;
         tau[iline]+=dtau;
         expTau[iline]*=expDTau;
         if(tau[iline] < -30.){
@@ -311,7 +318,9 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
     /* Add cmb contribution */
     if(m[0].cmb[0]>0.){
       for(iline=0;iline<nlinetot;iline++){
-        mp[0].phot[iline+iphot*m[0].nline]+=expTau[iline]*m[counta[iline]].cmb[countb[iline]];
+        molI  = counta[iline];
+        lineI = countb[iline];
+        mp[molI].phot[lineI+iphot*m[molI].nline]+=expTau[iline]*m[molI].cmb[lineI];
       }
     }
   }
