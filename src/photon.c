@@ -9,42 +9,65 @@
 
 #include "lime.h"
 
-int
-sortangles(double *inidir, int id, struct grid *g, const gsl_rng *ran) {
-  int i,n[2];
-  double angle,exitdir[2];
+int getNextEdge(double *inidir, int id, struct grid *g, const gsl_rng *ran){
+  int i,iOfLargest,iOfNextLargest,numPositive;
+  double cosAngle,largest,nextLargest,mytest;
 
-  exitdir[0]=1e30;
-  exitdir[1]=1e31;
-  n[0]=-1;
-  n[1]=-1;
+  /* Calculate dot products between inidir and all the edges. Store the largest of these and the next largest.
+  */
+  numPositive = 0;
   for(i=0;i<g[id].numNeigh;i++){
-    angle=( inidir[0]*g[id].dir[i].xn[0]
-           +inidir[1]*g[id].dir[i].xn[1]
-           +inidir[2]*g[id].dir[i].xn[2]);
-    if(angle<exitdir[0]){
-      exitdir[1]=exitdir[0];
-      n[1]=n[0];
-      exitdir[0]=angle;
-      n[0]=i;
-    } else if(angle<exitdir[1]) {
-      exitdir[1]=angle;
-      n[1]=i;
+    cosAngle=( inidir[0]*g[id].dir[i].xn[0]
+              +inidir[1]*g[id].dir[i].xn[1]
+              +inidir[2]*g[id].dir[i].xn[2]);
+
+    if(cosAngle>0.0){
+      numPositive++;
+
+      if(numPositive==1){
+        largest = cosAngle;
+        iOfLargest = i;
+      }else if(numPositive==2){
+        if(cosAngle>largest){
+          nextLargest = largest;
+          iOfNextLargest = iOfLargest;
+          largest = cosAngle;
+          iOfLargest = i;
+        }else{
+          nextLargest = cosAngle;
+          iOfNextLargest = i;
+        }
+      }else{
+        if(cosAngle>largest){
+          nextLargest = largest;
+          iOfNextLargest = iOfLargest;
+          largest = cosAngle;
+          iOfLargest = i;
+        }else if(cosAngle>nextLargest){
+          nextLargest = cosAngle;
+          iOfNextLargest = i;
+        }
+      }
     }
   }
-  if(gsl_rng_uniform(ran)<1./((1-exitdir[0])/(1-exitdir[1])+1) ) {
-    if(n[0]==-1){
-      if(!silent) bail_out("Photon propagation error");
-      exit(1);
-    }
-    return n[0];
-  } else {
-    if(n[1]==-1){
-      if(!silent) bail_out("Photon propagation error");
-      exit(1);
-    }
-    return n[1];
+
+  /* Choose the edge to follow.
+  */
+  if(numPositive<=0){
+    if(!silent) bail_out("Photon propagation error - no forward-going edges.");
+    exit(1);
   }
+
+  if(numPositive==1)
+    return iOfLargest;
+
+  mytest = (1.0 + nextLargest)/(2.0 + nextLargest + largest);
+  /* The addition of the scalars here is I think essentially arbitrary - they just serve to make the choices a bit more even, which tends to scatter the photon a bit more. */
+  if(gsl_rng_uniform(ran)<mytest)
+    return iOfNextLargest;
+  else
+    return iOfLargest;
+
 }
 
 
@@ -204,7 +227,7 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
     1/(N_RAN_PER_SEGMENT*ininphot).
     */
     
-    dir=sortangles(inidir,id,g,ran);
+    dir=getNextEdge(inidir,id,g,ran);
     here=g[id].id;
     there=g[here].neigh[dir]->id;
     deltav=segment*4.3*g[id].dopb+veloproject(g[id].dir[dir].xn,g[id].vel);
@@ -280,7 +303,7 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
         /* End of line blending part */
       }
       
-      dir=sortangles(inidir,there,g,ran);
+      dir=getNextEdge(inidir,there,g,ran);
       here=there;
       there=g[here].neigh[dir]->id;
     } while(!g[there].sink);
