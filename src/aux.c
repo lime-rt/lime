@@ -145,7 +145,7 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
       else
         (*img)[i].nchan=1;
 
-      if((*img)[i].trans>-1 || (*img)[i].bandwidth>-1. || (*img)[i].freq==0 || par->dust==NULL){
+      if((*img)[i].trans>-1 || (*img)[i].bandwidth>-1. || (*img)[i].freq==-1 || par->dust==NULL){
         if(!silent) bail_out("Error: Image keywords are ambiguous"); //*** Not very informative. And why do we need trans or BW?
         exit(1);
       }
