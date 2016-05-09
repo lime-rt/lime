@@ -17,7 +17,7 @@ void
 parseInput(inputPars *par, image **img, molData **m){
   FILE *fp;
   int i,id;
-  double BB[3];
+  double BB[3],normBSquared;
   double cosPhi,sinPhi,cosTheta,sinTheta;
 
   /* Set default values */
@@ -136,14 +136,17 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
       /* Assume continuum image */
 
       /* Check for polarization */
-      BB[0]=0.;
       magfield(par->minScale,par->minScale,par->minScale,BB);
-      if(fabs(BB[0]) > 0.) par->polarization=1;
+      normBSquared = BB[0]*BB[0] + BB[1]*BB[1] + BB[2]*BB[2];
+      if(normBSquared > 0.) par->polarization=1; /* Even with the amendment to use all components of BB, this is a truly crappy test! */
 
-      if(par->polarization) (*img)[i].nchan=3;
-      else (*img)[i].nchan=1;
+      if(par->polarization)
+        (*img)[i].nchan=3;
+      else
+        (*img)[i].nchan=1;
+
       if((*img)[i].trans>-1 || (*img)[i].bandwidth>-1. || (*img)[i].freq==0 || par->dust==NULL){
-        if(!silent) bail_out("Error: Image keywords are ambiguous");
+        if(!silent) bail_out("Error: Image keywords are ambiguous"); //*** Not very informative. And why do we need trans or BW?
         exit(1);
       }
       (*img)[i].doline=0;
