@@ -10,6 +10,7 @@
 #include "lime.h"
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_permutation.h>
+#include <gsl/gsl_errno.h>
 
 
 void
@@ -31,8 +32,9 @@ stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par\
   gsl_vector *work   = gsl_vector_alloc(m[ispec].nlev);
   gsl_permutation *p = gsl_permutation_alloc (m[ispec].nlev);
 
-  opop	     = malloc(sizeof(*opop)      *m[ispec].nlev);
-  oopop	     = malloc(sizeof(*oopop)     *m[ispec].nlev);
+  opop       = malloc(sizeof(*opop)      *m[ispec].nlev);
+  oopop      = malloc(sizeof(*oopop)     *m[ispec].nlev);
+  tempNewPop = malloc(sizeof(*tempNewPop)*m[ispec].nlev);
 
   for(t=0;t<m[ispec].nlev;t++){
     opop[t]=0.;
@@ -42,6 +44,9 @@ stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par\
   gsl_vector_set(rhVec,m[ispec].nlev-1,1.);
   diff=1;
   iter=0;
+
+  defaultErrorHandler = gsl_set_error_handler_off();
+  /* While this is off, the gsl_matrix_* etc calls will not exit if they encounter a problem. However the usual problem they would have is out-of-range indices; the respective code is simple enough though that the likelihood of this sort of problem seems low. */
 
   while((diff>TOL && iter<MAXITER) || iter<5){
     getjbar(id,m,g,par,mp,halfFirstDs);
@@ -53,12 +58,27 @@ stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par\
       gsl_matrix_set(reduc,m[ispec].nlev-1,s,1.);
     }
 
-    gsl_linalg_LU_decomp(reduc,p,&s);
-    if(gsl_linalg_LU_det(reduc,s) == 0){
-      gsl_linalg_SV_decomp(reduc,svv, svs, work);
-      gsl_linalg_SV_solve(reduc, svv, svs, rhVec, newpop);
-      if(!silent) warning("Matrix is singular. Switching to SVD.");
-    } else gsl_linalg_LU_solve(reduc,p,rhVec,newpop);
+    status = gsl_linalg_LU_decomp(reduc,p,&s);
+    if(status){
+      if(!silent){
+        sprintf(errStr, "LU decomposition failed for point %d, iteration %d (GSL error %d).", id, iter, status);
+        bail_out(errStr);
+      }
+      exit(1);
+    }
+
+    status = gsl_linalg_LU_solve(reduc,p,rhVec,newpop);
+    if(status){
+      if(!silent && !(*luWarningGiven)){
+        *luWarningGiven = 1;
+        sprintf(errStr, "LU solver failed for point %d, iteration %d (GSL error %d).", id, iter, status);
+        warning(errStr);
+        warning("Doing LSE for this point. NOTE that no further warnings will be issued.");
+      }
+      lteOnePoint(par, m, ispec, g[id].t[0], tempNewPop);
+      for(s=0;s<m[ispec].nlev;s++)
+        gsl_vector_set(newpop,s,tempNewPop[s]);
+    }
 
     diff=0.;
     for(t=0;t<m[ispec].nlev;t++){
@@ -77,6 +97,9 @@ stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par\
     }
     iter++;
   }
+
+  gsl_set_error_handler(defaultErrorHandler);
+
   gsl_matrix_free(matrix);
   gsl_matrix_free(reduc);
   gsl_matrix_free(svv);
@@ -85,6 +108,7 @@ stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par\
   gsl_vector_free(svs);
   gsl_vector_free(work);
   gsl_permutation_free(p);
+  free(tempNewPop);
   free(opop);
   free(oopop);
 }
