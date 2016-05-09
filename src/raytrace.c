@@ -74,6 +74,7 @@ For a given image pixel position, this function evaluates the intensity of the t
 
 Note that the algorithm employed here is similar to that employed in the function photon() which calculates the average radiant flux impinging on a grid cell: namely the notional photon is started at the side of the model near the observer and 'propagated' in the receding direction until it 'reaches' the far side. This is rather non-physical in conception but it makes the calculation easier.
   */
+  const int stokesIi=0;
   int ichan,posn,nposn,i,iline,molI,lineI;
   double vfac=0.,x[3],dx[3],vThisChan;
   double deltav,ds,dist2,ndist2,xp,yp,zp,col,lineRedShift,jnu,alpha,remnantSnu,dtau,expDTau,snu_pol[3];
@@ -178,15 +179,24 @@ Note that the algorithm employed here is similar to that employed in the functio
     } while(col < 2.0*fabs(zp));
 
     /* Add or subtract cmb. */
+    if(par->polarization){ /* just add it to Stokes I */
 #ifdef FASTEXP
-    for(ichan=0;ichan<img[im].nchan;ichan++){
-      ray.intensity[ichan]+=FastExp(ray.tau[ichan])*m[0].local_cmb[tmptrans];
-    }
+      ray.intensity[stokesIi]+=FastExp(ray.tau[stokesIi])*m[0].local_cmb[tmptrans];
 #else
-    for(ichan=0;ichan<img[im].nchan;ichan++){
-      ray.intensity[ichan]+=exp(-ray.tau[ichan])*m[0].local_cmb[tmptrans];
-    }
+      ray.intensity[stokesIi]+=exp(   -ray.tau[stokesIi])*m[0].local_cmb[tmptrans];
 #endif
+
+    }else{
+#ifdef FASTEXP
+      for(ichan=0;ichan<img[im].nchan;ichan++){
+        ray.intensity[ichan]+=FastExp(ray.tau[ichan])*m[0].local_cmb[tmptrans];
+      }
+#else
+      for(ichan=0;ichan<img[im].nchan;ichan++){
+        ray.intensity[ichan]+=exp(-ray.tau[ichan])*m[0].local_cmb[tmptrans];
+      }
+#endif
+    }
   }
 }
 
