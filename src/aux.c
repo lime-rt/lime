@@ -363,6 +363,95 @@ continuumSetup(int im, image *img, molData *m, inputPars *par, struct grid *g){
   kappa(m,g,par,0);
 }
 
+void freeBlends(struct blendInfo blends){
+  if(blends.blends!=NULL) free(blends.blends);
+  if(blends.lines!=NULL) free(blends.lines);
+}
+
+void lineBlend(molData *m, inputPars *par, struct blendInfo *blends){
+  /*
+This obtains information on all the lines (including all radiating species) which have other lines within some cutoff velocity separation.
+  */
+  int numBlendPairs, molI, lineI, molJ, lineJ;
+  int numLinesWithBlends, totalNumBlendsFound, li, bi;
+  _Bool blendFound;
+  double deltaV;
+
+  /* First find out how many lines have other lines within the blend distance.
+  */
+  numLinesWithBlends = 0;
+  totalNumBlendsFound = 0;
+  for(molI=0;molI<par->nSpecies;molI++){
+    for(lineI=0;lineI<m[molI].nline;lineI++){
+      blendFound = 0;
+      for(molJ=0;molJ<par->nSpecies;molJ++){
+        for(lineJ=0;lineJ<m[molJ].nline;lineJ++){
+          if(!(molI==molJ && lineI==lineJ)){
+            deltaV = (m[molJ].freq[lineJ] - m[molI].freq[lineI])*CLIGHT/m[molI].freq[lineI];
+            if(fabs(deltaV)<maxBlendDeltaV){
+              if(!blendFound) blendFound=1;
+              totalNumBlendsFound++;
+            }
+          }
+        }
+      }
+      if(blendFound) numLinesWithBlends++;
+    }
+  }
+
+  (*blends).numLinesWithBlends = numLinesWithBlends;
+  (*blends).totalNumBlends = totalNumBlendsFound;
+  if(numLinesWithBlends<=0){
+    (*blends).blends = NULL;
+    (*blends).lines  = NULL;
+    return;
+  }
+
+  (*blends).blends = malloc(sizeof(struct blend)*totalNumBlendsFound);
+  (*blends).lines  = malloc(sizeof(struct listLinker)*numLinesWithBlends);
+
+  if(par->blend){
+    if(!silent) warning("There are blended lines (Line blending is switched on)");
+  } else {
+    if(!silent) warning("There are blended lines (Line blending is switched off)");
+  }
+
+  /* Now we load up the info.
+  */
+  li = 0;
+  bi = 0;
+  for(molI=0;molI<par->nSpecies;molI++){
+    for(lineI=0;lineI<m[molI].nline;lineI++){
+      blendFound = 0;
+      for(molJ=0;molJ<par->nSpecies;molJ++){
+        for(lineJ=0;lineJ<m[molJ].nline;lineJ++){
+          if(!(molI==molJ && lineI==lineJ)){
+            deltaV = (m[molJ].freq[lineJ] - m[molI].freq[lineI])*CLIGHT/m[molI].freq[lineI];
+            if(fabs(deltaV)<maxBlendDeltaV){
+              (*blends).blends[bi].molI = molJ;
+              (*blends).blends[bi].lineI = lineJ;
+              (*blends).blends[bi].deltaV = deltaV;
+
+              if(blendFound){
+                (*blends).lines[li].number++;
+              }else{ /* First blend found for line I. */
+                (*blends).lines[li].molI = molI;
+                (*blends).lines[li].lineI = lineI;
+                (*blends).lines[li].first = bi;
+                (*blends).lines[li].number = 1; /* Note that number==0 should not be possible. */
+                blendFound=1;
+              }
+
+              bi++;
+            }
+          }
+        }
+      }
+      if(blendFound) li++;
+    }
+  }
+}
+
 void
 levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
   int id,conv=0,iter,ilev,prog=0,ispec,c=0,n,i,threadI,nVerticesDone,nlinetot;

@@ -71,7 +71,7 @@
 #define MAXITER			50
 #define goal			50
 #define fixset			1e-6
-#define blendmask		1.e4
+#define maxBlendDeltaV		1.e4		/* m/s */
 #define MAX_NSPECIES            100
 #define N_RAN_PER_SEGMENT       3
 #define FAST_EXP_MAX_TAYLOR	3
@@ -173,7 +173,20 @@ typedef struct {
 
 typedef struct {double x,y, *intensity, *tau;} rayData;
 
+struct listLinker{
+  int molI, lineI, first, number;
+};
 
+struct blend{
+  int molI, lineI;
+  double deltaV;
+};
+
+struct blendInfo{
+  int numLinesWithBlends, totalNumBlends;
+  struct blend *blends;
+  struct listLinker *lines;
+};
 
 /* Some functions */
 void density(double,double,double,double *);
@@ -196,6 +209,7 @@ void    fit_fi(double, double, double*);
 void    fit_rr(double, double, double*);
 void   	input(inputPars *, image *);
 float  	invSqrt(float);
+void	freeBlends(struct blendInfo);
 void    freeInput(inputPars *, image*, molData* m );
 void   	freeGrid(const inputPars * par, const molData* m, struct grid * g);
 void   	freePopulation(const inputPars * par, const molData* m, struct populations * pop);
@@ -212,7 +226,7 @@ void	gridAlloc(inputPars *, struct grid **);
 void   	kappa(molData *, struct grid *, inputPars *,int);
 void	levelPops(molData *, inputPars *, struct grid *, int *);
 void	line_plane_intersect(struct grid *, double *, int , int *, double *, double *, double);
-//void	lineBlend(molData *, inputPars *, blend **);
+void	lineBlend(molData*, inputPars*, struct blendInfo*);
 void	LTE(inputPars *, struct grid *, molData *);
 void   	molinit(molData *, inputPars *, struct grid *,int);
 void    openSocket(inputPars *par, int);
