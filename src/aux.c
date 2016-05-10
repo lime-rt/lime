@@ -454,11 +454,13 @@ This obtains information on all the lines (including all radiating species) whic
 
 void
 levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
+
   int id,conv=0,iter,ilev,prog=0,ispec,c=0,n,i,threadI,nVerticesDone,nlinetot;
   double percent=0.,*median,result1=0,result2=0,snr,delta_pop;
-  blend *matrix;
+  int nextLineWithBlend;
   struct statistics { double *pop, *ave, *sigma; } *stat;
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
+  struct blendInfo blends;
 
   stat=malloc(sizeof(struct statistics)*par->pIntensity);
 
@@ -499,8 +501,9 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
     nlinetot += m[id].nline;
   }
 
-  /* Check for blended lines */
-//  lineBlend(m,par,&matrix);
+  /* Check for blended lines.
+  */
+  lineBlend(m, par, &blends);
 
   if(par->lte_only || par->init_lte) LTE(par,g,m);
 
@@ -534,7 +537,7 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
 
       nVerticesDone=0;
       omp_set_dynamic(0);
-#pragma omp parallel private(i,id,ispec,threadI) num_threads(par->nThreads)
+#pragma omp parallel private(id,ispec,threadI,nextLineWithBlend) num_threads(par->nThreads)
       {
         threadI = omp_get_thread_num();
 
@@ -542,10 +545,10 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
         gridPointData *mp;	// Could have declared them earlier
         double *halfFirstDs;	// and included them in private() I guess.
         mp=malloc(sizeof(gridPointData)*par->nSpecies);
-        for (i=0;i<par->nSpecies;i++){
-          mp[i].phot = malloc(sizeof(double)*m[i].nline*max_phot);
-          mp[i].vfac = malloc(sizeof(double)*           max_phot);
-          mp[i].jbar = malloc(sizeof(double)*m[i].nline);
+        for (ispec=0;ispec<par->nSpecies;ispec++){
+          mp[ispec].phot = malloc(sizeof(double)*m[ispec].nline*max_phot);
+          mp[ispec].vfac = malloc(sizeof(double)*               max_phot);
+          mp[ispec].jbar = malloc(sizeof(double)*m[ispec].nline);
         }
         halfFirstDs = malloc(sizeof(*halfFirstDs)*max_phot);
 
@@ -558,8 +561,10 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
             if(!silent) progressbar((double)nVerticesDone/par->pIntensity,10);
           }
           if(g[id].dens[0] > 0 && g[id].t[0] > 0){
-            photon(id,g,m,0,threadRans[threadI],par,nlinetot,matrix,mp,halfFirstDs);
-            for(ispec=0;ispec<par->nSpecies;ispec++) stateq(id,g,m,ispec,par,mp,halfFirstDs);
+            photon(id,g,m,0,threadRans[threadI],par,nlinetot,blends,mp,halfFirstDs);
+            nextLineWithBlend = 0;
+            for(ispec=0;ispec<par->nSpecies;ispec++)
+              stateq(id,g,m,ispec,par,blends,&nextLineWithBlend,mp,halfFirstDs);
           }
           if (threadI == 0){ // i.e., is master thread
             if(!silent) warning("");
@@ -617,17 +622,18 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
     if(par->binoutputfile) binpopsout(par,g,m);
   }
 
-  for (i=0;i<par->nThreads;i++){
-    gsl_rng_free(threadRans[i]);
-  }
-  free(threadRans);
-  gsl_rng_free(ran);
   for(id=0;id<par->pIntensity;id++){
     free(stat[id].pop);
     free(stat[id].ave);
     free(stat[id].sigma);
   }
   free(stat);
+  freeBlends(blends);
+  for (i=0;i<par->nThreads;i++){
+    gsl_rng_free(threadRans[i]);
+  }
+  free(threadRans);
+  gsl_rng_free(ran);
   *popsdone=1;
 }
 

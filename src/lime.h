@@ -166,11 +166,6 @@ typedef struct {
   double rotMat[3][3];
 } image;
 
-typedef struct {
-  int line1, line2;
-  double deltav;
-} blend;
-
 typedef struct {double x,y, *intensity, *tau;} rayData;
 
 struct listLinker{
@@ -215,7 +210,7 @@ void   	freeGrid(const inputPars * par, const molData* m, struct grid * g);
 void   	freePopulation(const inputPars * par, const molData* m, struct populations * pop);
 double 	gaussline(double, double);
 void    getArea(inputPars *, struct grid *, const gsl_rng *);
-void    getjbar(int, molData*, struct grid*, int, inputPars*, gridPointData*, double*);
+void	getjbar(int, molData*, struct grid*, const int, inputPars*, struct blendInfo, int*, gridPointData*, double*);
 void    getMass(inputPars *, struct grid *, const gsl_rng *);
 void   	getmatrix(int, gsl_matrix *, molData *, struct grid *, int, gridPointData *);
 int	getNextEdge(double*, int, struct grid*, const gsl_rng*);
@@ -231,7 +226,7 @@ void	LTE(inputPars *, struct grid *, molData *);
 void   	molinit(molData *, inputPars *, struct grid *,int);
 void    openSocket(inputPars *par, int);
 void	qhull(inputPars *, struct grid *);
-void  	photon(int, struct grid*, molData*, int, const gsl_rng*, inputPars*, const int, blend*, gridPointData*, double*);
+void	photon(int, struct grid*, molData*, int, const gsl_rng*, inputPars*, const int, struct blendInfo, gridPointData*, double*);
 void	parseInput(inputPars *, image **, molData **);
 double 	planckfunc(int, double, molData *, int);
 int     pointEvaluation(inputPars *,double, double, double, double);
@@ -246,10 +241,10 @@ void	sourceFunc(double *, double *, double, molData *,double,struct grid *,int,i
 void    sourceFunc_line(double *,double *,molData *, double, struct grid *, int, int,int);
 void    sourceFunc_cont(double *,double *, struct grid *, int, int,int);
 void    sourceFunc_pol(double *, double *, double, molData *, double, struct grid *, int, int, int, double);
-void   	stateq(int, struct grid *, molData *, int, inputPars *,gridPointData *,double *);
+void	stateq(int, struct grid*, molData*, const int, inputPars*, struct blendInfo, int*, gridPointData*, double*);
 void	statistics(int, molData *, struct grid *, int *, double *, double *, int *);
 void    stokesangles(double, double, double, double, double *);
-void    traceray(rayData, int, int, inputPars*, struct grid*, molData*, image*, double);
+void	traceray(rayData, int, int, inputPars*, struct grid*, molData*, image*, double);
 void   	velocityspline(struct grid *, int, int, double, double, double*);
 void   	velocityspline2(double *, double *, double, double, double, double*);
 double 	veloproject(double *, double *);

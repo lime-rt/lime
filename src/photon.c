@@ -189,14 +189,14 @@ void calcSourceFn(double dTau, const inputPars *par, double *remnantSnu, double 
 
 void
 photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
-  , inputPars *par, const int nlinetot,blend *matrix\
+  , inputPars *par, const int nlinetot, struct blendInfo blends\
   , gridPointData *mp, double *halfFirstDs){
 
   int iphot,iline,here,there,firststep,neighI,np_per_line,ip_at_line,l;
-  int molI, lineI;
+  int nextLineWithBlend, molI, lineI, molJ, lineJ, bi, bbi;
   double deltav,segment,vblend,dtau,expDTau,jnu,alpha,ds,vfac[par->nSpecies],pt_theta,pt_z,semiradius;
   double *tau,*expTau,x[3],inidir[3];
-  double remnantSnu;
+  double remnantSnu, velProj;
 
   tau    = malloc(sizeof(*tau)   *nlinetot);
   expTau = malloc(sizeof(*expTau)*nlinetot);
@@ -263,6 +263,7 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
         }
       }
 
+      nextLineWithBlend = 0;
       iline = 0;
       for(molI=0;molI<par->nSpecies;molI++){
         for(lineI=0;lineI<m[molI].nline;lineI++){
@@ -286,32 +287,41 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
             expTau[iline]=exp(-tau[iline]);
           }
         
-//        /* Line blending part */
-//        if(par->blend){
-//          jnu=0.;
-//          alpha=0.;
-//          for(jline=0;jline<sizeof(matrix)/sizeof(blend);jline++){
-//            if(matrix[jline].line1 == jline || matrix[jline].line2 == jline){	
-//              if(!par->doPregrid) velocityspline(g,here,dir,g[id].mol[counta[jline]].binv,deltav-matrix[jline].deltav,&vblend);
-//              else velocityspline_lin(g,here,dir,g[id].mol[counta[jline]].binv,deltav-matrix[jline].deltav,&vblend);	
-//              sourceFunc_line(&jnu,&alpha,m,vblend,g,here,counta[jline],countb[jline]);
-//              dtau=alpha*ds;
-//              if(dtau < -30) dtau = -30;
-//              calcSourceFn(dtau, par, &remnantSnu, &expDTau);
-//              remnantSnu *= jnu*m[0].norminv*ds;
-//
-//              mp[0].phot[jline+iphot*m[0].nline]+=expTau[jline]*remnantSnu;
-//              tau[jline]+=dtau;
-//              expTau[jline]*=expDTau;
-//              if(tau[jline] < -30.){
-//                if(!silent) warning("Optical depth has dropped below -30");
-//                tau[jline]= -30.; 
-//                expTau[jline]=exp(-tau[jline]);
-//              }
-//            }
-//          }
-//        }
-//        /* End of line blending part */
+          /* Line blending part */
+          if(par->blend\
+          && molI ==blends.lines[nextLineWithBlend].molI\
+          && lineI==blends.lines[nextLineWithBlend].lineI){
+            jnu=0.;
+            alpha=0.;
+            for(bi=0;bi<blends.lines[nextLineWithBlend].number;bi++){
+              bbi = blends.lines[nextLineWithBlend].first + bi;
+              molJ  = blends.blends[bbi].molI;
+              lineJ = blends.blends[bbi].lineI;
+              velProj = deltav - blends.blends[bbi].deltaV;
+
+              if(!par->doPregrid)
+                velocityspline(    g,here,neighI,g[id].mol[molJ].binv,velProj,&vblend);
+              else
+                velocityspline_lin(g,here,neighI,g[id].mol[molJ].binv,velProj,&vblend);
+
+              sourceFunc_line(&jnu,&alpha,m,vblend,g,here,molJ,lineJ);
+              dtau=alpha*ds;
+              if(dtau < -30) dtau = -30;
+              calcSourceFn(dtau, par, &remnantSnu, &expDTau);
+              remnantSnu *= jnu*m[molJ].norminv*ds;
+
+              mp[molI].phot[lineI+iphot*m[molI].nline]+=expTau[iline]*remnantSnu;
+              tau[iline]+=dtau;
+              expTau[iline]*=expDTau;
+              if(tau[iline] < -30.){
+                if(!silent) warning("Optical depth has dropped below -30");
+                tau[iline]= -30.; 
+                expTau[iline]=exp(-tau[iline]);
+              }
+            }
+            nextLineWithBlend++;
+          }
+          /* End of line blending part */
 
           iline++;
         }
@@ -335,10 +345,11 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
 }
 
 void
-getjbar(int posn, molData *m, struct grid *g, int molI, inputPars *par\
+getjbar(int posn, molData *m, struct grid *g, const int molI\
+  , inputPars *par, struct blendInfo blends, int *nextLineWithBlend\
   , gridPointData *mp, double *halfFirstDs){
 
-  int lineI,iphot;
+  int lineI,iphot,bi,bbi,molJ,lineJ;
   double tau, expTau, remnantSnu, vsum=0., jnu, alpha;
   
   for(lineI=0;lineI<m[molI].nline;lineI++) mp[molI].jbar[lineI]=0.;
@@ -356,6 +367,28 @@ getjbar(int posn, molData *m, struct grid *g, int molI, inputPars *par\
         remnantSnu *= jnu*m[molI].norminv*halfFirstDs[iphot];
 
         mp[molI].jbar[lineI]+=mp[molI].vfac[iphot]*(expTau*mp[molI].phot[lineI+iphot*m[molI].nline]+remnantSnu);
+
+        /* Line blending part */
+        if(par->blend\
+        && molI ==blends.lines[*nextLineWithBlend].molI\
+        && lineI==blends.lines[*nextLineWithBlend].lineI){
+          jnu=0.;
+          alpha=0.;
+          for(bi=0;bi<blends.lines[*nextLineWithBlend].number;bi++){
+            bbi = blends.lines[*nextLineWithBlend].first + bi;
+            molJ  = blends.blends[bbi].molI;
+            lineJ = blends.blends[bbi].lineI;
+
+            sourceFunc_line(&jnu,&alpha,m,mp[molI].vfac[iphot],g,posn,molJ,lineJ);
+            tau=alpha*halfFirstDs[iphot];
+            calcSourceFn(tau, par, &remnantSnu, &expTau);
+            remnantSnu *= jnu*m[molJ].norminv*halfFirstDs[iphot];
+
+            mp[molI].jbar[lineI]+=mp[molI].vfac[iphot]*(expTau*mp[molI].phot[lineI+iphot*m[molI].nline]+remnantSnu);
+          }
+          *nextLineWithBlend++;
+        }
+        /* End of line blending part */
       }
       vsum+=mp[molI].vfac[iphot];
     }
