@@ -265,25 +265,25 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
       iline = 0;
       for(molI=0;molI<par->nSpecies;molI++){
         for(lineI=0;lineI<m[molI].nline;lineI++){
-        jnu=0.;
-        alpha=0.;
+          jnu=0.;
+          alpha=0.;
 
-        sourceFunc_line(&jnu,&alpha,m,vfac[molI],g,here,molI,lineI);
-        sourceFunc_cont(&jnu,&alpha,g,here,molI,lineI);
+          sourceFunc_line(&jnu,&alpha,m,vfac[molI],g,here,molI,lineI);
+          sourceFunc_cont(&jnu,&alpha,g,here,molI,lineI);
 
-        dtau=alpha*ds;
-        if(dtau < -30) dtau = -30;
-        calcSourceFn(dtau, par, &remnantSnu, &expDTau);
-        remnantSnu *= jnu*m[0].norminv*ds;
+          dtau=alpha*ds;
+          if(dtau < -30) dtau = -30;
+          calcSourceFn(dtau, par, &remnantSnu, &expDTau);
+          remnantSnu *= jnu*m[0].norminv*ds;
 
-        mp[molI].phot[lineI+iphot*m[molI].nline]+=expTau[iline]*remnantSnu;
-        tau[iline]+=dtau;
-        expTau[iline]*=expDTau;
-        if(tau[iline] < -30.){
-          if(!silent) warning("Maser warning: optical depth has dropped below -30");
-          tau[iline]= -30.; 
-          expTau[iline]=exp(-tau[iline]);
-        }
+          mp[molI].phot[lineI+iphot*m[molI].nline]+=expTau[iline]*remnantSnu;
+          tau[iline]+=dtau;
+          expTau[iline]*=expDTau;
+          if(tau[iline] < -30.){
+            if(!silent) warning("Maser warning: optical depth has dropped below -30");
+            tau[iline]= -30.; 
+            expTau[iline]=exp(-tau[iline]);
+          }
         
 //        /* Line blending part */
 //        if(par->blend){

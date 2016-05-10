@@ -130,25 +130,25 @@ Note that the algorithm employed here is similar to that employed in the functio
           if(img[im].doline){
             for(molI=0;molI<par->nSpecies;molI++){
               for(lineI=0;lineI<m[molI].nline;lineI++){
-            if(m[molI].freq[lineI] > img[im].freq-img[im].bandwidth/2.
-            && m[molI].freq[lineI] < img[im].freq+img[im].bandwidth/2.){
-              /* Calculate the red shift of the transition wrt to the frequency specified for the image. */
-              if(img[im].trans > -1){
-                lineRedShift=(m[molI].freq[img[im].trans]-m[molI].freq[lineI])/m[molI].freq[img[im].trans]*CLIGHT;
-              } else {
-                lineRedShift=(img[im].freq-m[molI].freq[lineI])/img[im].freq*CLIGHT;
-              }
+                if(m[molI].freq[lineI] > img[im].freq-img[im].bandwidth/2.
+                && m[molI].freq[lineI] < img[im].freq+img[im].bandwidth/2.){
+                  /* Calculate the red shift of the transition wrt to the frequency specified for the image. */
+                  if(img[im].trans > -1){
+                    lineRedShift=(m[molI].freq[img[im].trans]-m[molI].freq[lineI])/m[molI].freq[img[im].trans]*CLIGHT;
+                  } else {
+                    lineRedShift=(img[im].freq-m[molI].freq[lineI])/img[im].freq*CLIGHT;
+                  }
 
-              vThisChan=(ichan-(img[im].nchan-1)/2.)*img[im].velres; /* Consistent with the WCS definition in writefits(). */
-              deltav = vThisChan - img[im].source_vel - lineRedShift;
-              /* Line centre occurs when deltav = the recession velocity of the radiating material. Explanation of the signs of the 2nd and 3rd terms on the RHS: (i) A bulk source velocity (which is defined as >0 for the receding direction) should be added to the material velocity field; this is equivalent to subtracting it from deltav, as here. (ii) A positive value of lineRedShift means the line is red-shifted wrt to the frequency specified for the image. The effect is the same as if the line and image frequencies were the same, but the bulk recession velocity were higher. lineRedShift should thus be added to the recession velocity, which is equivalent to subtracting it from deltav, as here. */
+                  vThisChan=(ichan-(img[im].nchan-1)/2.)*img[im].velres; /* Consistent with the WCS definition in writefits(). */
+                  deltav = vThisChan - img[im].source_vel - lineRedShift;
+                  /* Line centre occurs when deltav = the recession velocity of the radiating material. Explanation of the signs of the 2nd and 3rd terms on the RHS: (i) A bulk source velocity (which is defined as >0 for the receding direction) should be added to the material velocity field; this is equivalent to subtracting it from deltav, as here. (ii) A positive value of lineRedShift means the line is red-shifted wrt to the frequency specified for the image. The effect is the same as if the line and image frequencies were the same, but the bulk recession velocity were higher. lineRedShift should thus be added to the recession velocity, which is equivalent to subtracting it from deltav, as here. */
 
-              /* Calculate an approximate average line-shape function at deltav within the Voronoi cell. */
-              if(!par->pregrid) velocityspline2(x,dx,ds,g[posn].mol[molI].binv,deltav,&vfac);
-              else vfac=gaussline(deltav-veloproject(dx,g[posn].vel),g[posn].mol[molI].binv);
+                  /* Calculate an approximate average line-shape function at deltav within the Voronoi cell. */
+                  if(!par->pregrid) velocityspline2(x,dx,ds,g[posn].mol[molI].binv,deltav,&vfac);
+                  else vfac=gaussline(deltav-veloproject(dx,g[posn].vel),g[posn].mol[molI].binv);
 
-              /* Increment jnu and alpha for this Voronoi cell by the amounts appropriate to the spectral line. */
-              sourceFunc_line(&jnu,&alpha,m,vfac,g,posn,molI,lineI);
+                  /* Increment jnu and alpha for this Voronoi cell by the amounts appropriate to the spectral line. */
+                  sourceFunc_line(&jnu,&alpha,m,vfac,g,posn,molI,lineI);
                 }
               }
             }
