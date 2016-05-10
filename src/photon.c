@@ -71,7 +71,6 @@ int getNextEdge(double *inidir, int id, struct grid *g, const gsl_rng *ran){
 }
 
 
-
 void
 velocityspline(struct grid *g, int id, int k, double binv, double deltav, double *vfac){
   int nspline,ispline,naver,iaver;
@@ -186,14 +185,13 @@ void calcSourceFn(double dTau, const inputPars *par, double *remnantSnu, double 
 #endif
 }
 
-
 void
 photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
   , inputPars *par, const int nlinetot, struct blendInfo blends\
   , gridPointData *mp, double *halfFirstDs){
 
-  int iphot,iline,here,there,firststep,neighI,np_per_line,ip_at_line,l;
-  int nextLineWithBlend, molI, lineI, molJ, lineJ, bi, bbi;
+  int iphot,iline,here,there,firststep,neighI,np_per_line,ip_at_line;
+  int nextLineWithBlend, molI, lineI, molJ, lineJ, bi, bbi, di;
   double deltav,segment,vblend,dtau,expDTau,jnu,alpha,ds,vfac[par->nSpecies],pt_theta,pt_z,semiradius;
   double *tau,*expTau,x[3],inidir[3];
   double remnantSnu, velProj;
@@ -214,25 +212,28 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
         iline++;
       }
     }
-    
-    /* Initial velocity, direction and frequency offset  */		
+
+    /* Choose random initial photon direction (the distribution used here is even over the surface of a sphere of radius 1).
+    */		
     pt_theta=gsl_rng_uniform(ran)*2*PI;
     pt_z=2*gsl_rng_uniform(ran)-1;
     semiradius = sqrt(1.-pt_z*pt_z);
     inidir[0]=semiradius*cos(pt_theta);
     inidir[1]=semiradius*sin(pt_theta);
     inidir[2]=pt_z;
-    
-    iter=(int) (gsl_rng_uniform(ran)*(double)N_RAN_PER_SEGMENT); // can have values in [0,1,..,N_RAN_PER_SEGMENT-1]
+
+    /* Choose the photon frequency/velocity offset.
+    */
+    iter=(int) (gsl_rng_uniform(ran)*(double)N_RAN_PER_SEGMENT); /* can have values in [0,1,..,N_RAN_PER_SEGMENT-1]*/
     ip_at_line=(int) iphot/g[id].numNeigh;
-    segment=(N_RAN_PER_SEGMENT*(ip_at_line-np_per_line/2.)+iter)/(double)(np_per_line*N_RAN_PER_SEGMENT);
+    segment=(N_RAN_PER_SEGMENT*(ip_at_line-np_per_line*0.5)+iter)/(double)(np_per_line*N_RAN_PER_SEGMENT);
     /*
     Values of segment should be evenly distributed (considering the
     entire ensemble of photons) between -0.5 and +0.5, and are chosen
     from a sequence of possible values separated by
     1/(N_RAN_PER_SEGMENT*ininphot).
     */
-    
+
     here=g[id].id;
     deltav=segment*4.3*g[id].dopb+veloproject(inidir,g[id].vel);
 
@@ -243,7 +244,7 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
 
       if(firststep){
         firststep=0;				
-        ds=g[here].ds[neighI]/2.;
+        ds=g[here].ds[neighI]*0.5;
         halfFirstDs[iphot]=ds;
         for(molI=0;molI<par->nSpecies;molI++){
           if(!par->doPregrid)
@@ -252,14 +253,16 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
             velocityspline_lin(g,here,neighI,g[id].mol[molI].binv,deltav,&vfac[molI]);
           mp[molI].vfac[iphot]=vfac[0];
         }
-        for(l=0;l<3;l++) x[l]=g[here].x[l]+(g[here].dir[neighI].xn[l] * g[id].ds[neighI]/2.);
+        for(di=0;di<DIM;di++) x[di]=g[here].x[di]+(g[here].dir[neighI].xn[di] * g[id].ds[neighI]*0.5);
       } else {
         ds=g[here].ds[neighI];
-        for(l=0;l<3;l++) x[l]=g[here].x[l];
+        for(di=0;di<DIM;di++) x[di]=g[here].x[di];
       
-        for(l=0;l<par->nSpecies;l++){
-          if(!par->doPregrid) velocityspline(g,here,neighI,g[id].mol[l].binv,deltav,&vfac[l]);
-          else velocityspline_lin(g,here,neighI,g[id].mol[l].binv,deltav,&vfac[l]);
+        for(molI=0;molI<par->nSpecies;molI++){
+          if(!par->doPregrid)
+            velocityspline(g,here,neighI,g[id].mol[molI].binv,deltav,&vfac[molI]);
+          else
+            velocityspline_lin(g,here,neighI,g[id].mol[molI].binv,deltav,&vfac[molI]);
         }
       }
 

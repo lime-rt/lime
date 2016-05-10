@@ -130,8 +130,8 @@ Note that the algorithm employed here is similar to that employed in the functio
           if(img[im].doline){
             for(molI=0;molI<par->nSpecies;molI++){
               for(lineI=0;lineI<m[molI].nline;lineI++){
-                if(m[molI].freq[lineI] > img[im].freq-img[im].bandwidth/2.
-                && m[molI].freq[lineI] < img[im].freq+img[im].bandwidth/2.){
+                if(m[molI].freq[lineI] > img[im].freq-img[im].bandwidth*0.5
+                && m[molI].freq[lineI] < img[im].freq+img[im].bandwidth*0.5){
                   /* Calculate the red shift of the transition wrt to the frequency specified for the image. */
                   if(img[im].trans > -1){
                     lineRedShift=(m[molI].freq[img[im].trans]-m[molI].freq[lineI])/m[molI].freq[img[im].trans]*CLIGHT;
