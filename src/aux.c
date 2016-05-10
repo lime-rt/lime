@@ -364,70 +364,8 @@ continuumSetup(int im, image *img, molData *m, inputPars *par, struct grid *g){
 }
 
 void
-lineCount(int n,molData *m,int **counta,int **countb,int *nlinetot){
-  int ispec,iline,count;
-
-  *nlinetot=0;
-  for(ispec=0;ispec<n;ispec++) *nlinetot+=m[ispec].nline;
-  if(*nlinetot > 0){
-  *counta=malloc(sizeof(*counta)* *nlinetot);
-  *countb=malloc(sizeof(*countb)* *nlinetot);
-  } else {
-    if(!silent) bail_out("Error: Line count finds no lines");
-    exit(0);
-  }
-  count=0;
-  for(ispec=0;ispec<n;ispec++) {
-    for(iline=0;iline<m[ispec].nline;iline++){
-      (*counta)[count]=ispec;
-      (*countb)[count++]=iline;
-    }
-  }
-}
-
-void
-lineBlend(molData *m, inputPars *par, blend **matrix){
-  int iline, jline, nlinetot=0,c;
-  int *counta,*countb;
-
-  lineCount(par->nSpecies, m, &counta, &countb, &nlinetot);
-
-  c=0;
-  for(iline=0;iline<nlinetot;iline++){
-    for(jline=0;jline<nlinetot;jline++){
-      if(fabs((m[counta[jline]].freq[countb[jline]]-m[counta[iline]].freq[countb[iline]])/m[counta[iline]].freq[countb[iline]]*CLIGHT) < blendmask
-         && iline !=jline) c++;
-    }
-  }
-  if(c>0){
-    if(par->blend){
-      if(!silent) warning("There are blended lines (Line blending is switched on)");
-    } else {
-      if(!silent) warning("There are blended lines (Line blending is switched off)");
-    }
-
-    (*matrix)=malloc(sizeof(blend)*c);
-
-    c=0;
-    for(iline=0;iline<nlinetot;iline++){
-      for(jline=0;jline<nlinetot;jline++){
-        if(fabs((m[counta[jline]].freq[countb[jline]]-m[counta[iline]].freq[countb[iline]])/m[counta[iline]].freq[countb[iline]]*CLIGHT) < blendmask
-           && iline != jline){
-          (*matrix)[c].line1=iline;
-          (*matrix)[c].line2=jline;
-          (*matrix)[c++].deltav=-(m[counta[jline]].freq[countb[jline]]-m[counta[iline]].freq[countb[iline]])/m[counta[iline]].freq[countb[iline]]*CLIGHT;
-        }
-      }
-    }
-  }
-  free(counta);
-  free(countb);
-
-}
-
-void
 levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
-  int id,conv=0,iter,ilev,prog=0,ispec,c=0,n,i,threadI,nVerticesDone;
+  int id,conv=0,iter,ilev,prog=0,ispec,c=0,n,i,threadI,nVerticesDone,nlinetot;
   double percent=0.,*median,result1=0,result2=0,snr,delta_pop;
   blend *matrix;
   struct statistics { double *pop, *ave, *sigma; } *stat;
@@ -464,11 +402,16 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
     gsl_rng_set(threadRans[i],(int)(gsl_rng_uniform(ran)*1e6));
   }
 
-  /* Read in all molecular data */
-  for(id=0;id<par->nSpecies;id++) molinit(m,par,g,id);
+  /* Read in all molecular data.
+  */
+  nlinetot = 0;
+  for(id=0;id<par->nSpecies;id++){
+    molinit(m,par,g,id);
+    nlinetot += m[id].nline;
+  }
 
   /* Check for blended lines */
-  lineBlend(m,par,&matrix);
+//  lineBlend(m,par,&matrix);
 
   if(par->lte_only || par->init_lte) LTE(par,g,m);
 
@@ -526,7 +469,7 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
             if(!silent) progressbar((double)nVerticesDone/par->pIntensity,10);
           }
           if(g[id].dens[0] > 0 && g[id].t[0] > 0){
-            photon(id,g,m,0,threadRans[threadI],par,matrix,mp,halfFirstDs);
+            photon(id,g,m,0,threadRans[threadI],par,nlinetot,matrix,mp,halfFirstDs);
             for(ispec=0;ispec<par->nSpecies;ispec++) stateq(id,g,m,ispec,par,mp,halfFirstDs);
           }
           if (threadI == 0){ // i.e., is master thread
