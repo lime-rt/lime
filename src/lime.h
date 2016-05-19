@@ -95,7 +95,7 @@ typedef struct {
 typedef struct {
   int nlev,nline,*ntrans,npart;
   int *lal,*lau,*lcl,*lcu;
-  double *aeinst,*freq,*beinstu,*beinstl,*up,*down,*eterm,*gstat;
+  double *aeinst,*freq,*beinstu,*beinstl,*eterm,*gstat;
   double norm,norminv,*cmb,*local_cmb;
 } molData;
 

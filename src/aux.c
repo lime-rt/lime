@@ -232,8 +232,6 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
       (*m)[i].freq = NULL;
       (*m)[i].beinstu = NULL;
       (*m)[i].beinstl = NULL;
-      (*m)[i].up = NULL;
-      (*m)[i].down = NULL;
       (*m)[i].eterm = NULL;
       (*m)[i].gstat = NULL;
       (*m)[i].cmb = NULL;

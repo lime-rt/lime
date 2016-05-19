@@ -74,14 +74,6 @@ freeMolData( inputPars *par, molData* mol )
             {
               free(mol[i].beinstl);
             }
-          if( mol[i].up != NULL )
-            {
-              free(mol[i].up);
-            }
-          if( mol[i].down != NULL )
-            {
-              free(mol[i].down);
-            }
           if( mol[i].eterm != NULL )
             {
               free(mol[i].eterm);
