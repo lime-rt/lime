@@ -203,9 +203,15 @@ void gasIIdust(double,double,double,double *);
 
 /* More functions */
 
+void	assignMolCollPartsToDensities(inputPars*, molData*);
 void   	binpopsout(inputPars *, struct grid *, molData *);
 void   	buildGrid(inputPars *, struct grid *);
+void	calcGridCollRates(inputPars*, molData*, struct grid*);
+void	calcGridDustOpacity(inputPars*, molData*, struct grid*);
+void	calcGridMolDensities(inputPars*, struct grid*);
+void	calcMolCMBs(inputPars*, molData*);
 void    calcSourceFn(double dTau, const inputPars *par, double *remnantSnu, double *expDTau);
+void	checkUserDensWeights(inputPars*);
 void	continuumSetup(int, image *, molData *, inputPars *, struct grid *);
 void	distCalc(inputPars *, struct grid *);
 void	fit_d1fi(double, double, double*);
@@ -227,6 +233,7 @@ void	getclosest(double, double, double, long *, long *, double *, double *, doub
 void	getVelosplines(inputPars *, struct grid *);
 void	getVelosplines_lin(inputPars *, struct grid *);
 void	gridAlloc(inputPars *, struct grid **);
+void	gridLineInit(inputPars*, molData*, struct grid*);
 void   	kappa(molData *, struct grid *, inputPars *,int);
 void	levelPops(molData *, inputPars *, struct grid *, int *);
 void	line_plane_intersect(struct grid *, double *, int , int *, double *, double *, double);
@@ -245,7 +252,10 @@ void   	popsout(inputPars *, struct grid *, molData *);
 void	predefinedGrid(inputPars *, struct grid *);
 double 	ratranInput(char *, char *, double, double, double);
 void   	raytrace(int, inputPars *, struct grid *, molData *, image *);
+void	readDummyCollPart(FILE*, const int);
+void	readMolData(inputPars*, molData*, int**, int*);
 void	report(int, inputPars *, struct grid *);
+void	setUpDensityAux(inputPars*, int*, const int);
 void	smooth(inputPars *, struct grid *);
 int     sortangles(double *, int, struct grid *, const gsl_rng *);
 void	sourceFunc(double *, double *, double, molData *,double,struct grid *,int,int, int,int);
