@@ -17,7 +17,7 @@ pointEvaluation(inputPars *par,double ran, double x, double y, double z){
   density(par->minScale,par->minScale,par->minScale,val);
   for (i=0;i<par->collPart;i++) normalizer += val[i];
   if (normalizer<=0.){
-    if(!silent) bail_out("Error: Sum of reference densities equals 0");
+    if(!silent) bail_out("Sum of reference densities equals 0");
     exit(1);
   }
   //abundance(par->minScale,par->minScale,par->minScale,val2);

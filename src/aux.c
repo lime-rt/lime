@@ -5,6 +5,11 @@
  *  Copyright (C) 2006-2014 Christian Brinch
  *  Copyright (C) 2015 The LIME development team
  *
+TODO:
+  - Check that par->pIntensity and par->sinkPoints are non-zero.
+  - Why use MAX_NSPECIES to limit the number of images?
+  - The test to run photon() etc in levelPops just tests dens[0]. This is a bit sloppy.
+  - Plug the leak in the img mode-checking test.
  */
 
 #include "lime.h"
@@ -48,7 +53,11 @@ parseInput(inputPars *par, image **img, molData **m){
     (*img)[id].filename=NULL;
     par->moldatfile[id]=NULL;
   }
+
+  /* First call to the user function which sets par, img values. Note that, as far as img is concerned, here we just want to find out how many images the user wants, so we can malloc the array properly. We call input() a second time then to get the actual per-image parameter values.
+  */
   input(par, *img);
+
   id=-1;
   while((*img)[++id].filename!=NULL);
   par->nImages=id;
@@ -83,7 +92,8 @@ parseInput(inputPars *par, image **img, molData **m){
     }
 
 
-  /* Set defaults and read inputPars and img[] */
+  /* Set img defaults and then read the user-supplied values.
+  */
   for(i=0;i<par->nImages;i++) {
     (*img)[i].source_vel=0.0;
     (*img)[i].phi=0.0;
@@ -93,7 +103,12 @@ parseInput(inputPars *par, image **img, molData **m){
     (*img)[i].freq=-1.;
     (*img)[i].bandwidth=-1.;
   }
+
+  /* Second call to the user function which sets par, img values:
+  */
   input(par,*img);
+
+  /* That is the end of the section which reads the user-settable parameters. Now we calculate some other quantities. */
 
   if(par->nThreads == 0){ // Hmm. Really ought to have a separate boolean parameter.
     par->nThreads = NTHREADS;
@@ -142,6 +157,7 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
 
       if(par->polarization) (*img)[i].nchan=3;
       else (*img)[i].nchan=1;
+
       if((*img)[i].trans>-1 || (*img)[i].bandwidth>-1. || (*img)[i].freq==0 || par->dust==NULL){
         if(!silent) bail_out("Error: Image keywords are ambiguous");
         exit(1);
@@ -163,7 +179,8 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
         exit(1);
       }
       (*img)[i].doline=1;
-    }
+    }//************** else??? ((*img)[i].nchan==0 && (*img)[i].velres==0) will not enter either block above.
+
     (*img)[i].imgres=(*img)[i].imgres/206264.806;
     (*img)[i].pixel = malloc(sizeof(spec)*(*img)[i].pxls*(*img)[i].pxls);
     for(id=0;id<((*img)[i].pxls*(*img)[i].pxls);id++){

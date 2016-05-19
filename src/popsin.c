@@ -11,7 +11,7 @@
 
 
 void
-popsin(inputPars *par, struct grid **g, molData **m, int *popsdone){
+popsin(inputPars *par, struct grid **gp, molData **md, int *popsdone){
   FILE *fp;
   int i,j,k;
   double dummy;
@@ -31,72 +31,72 @@ popsin(inputPars *par, struct grid **g, molData **m, int *popsdone){
       exit(1);
     }
 
-  *m=realloc(*m, sizeof(molData)*par->nSpecies);
+  *md=realloc(*md, sizeof(molData)*par->nSpecies);
 
   for(i=0;i<par->nSpecies;i++){
-    (*m)[i].lcl = NULL;
-    (*m)[i].lcu = NULL;
-    (*m)[i].up = NULL;
-    (*m)[i].down = NULL;
-    (*m)[i].eterm = NULL;
-    (*m)[i].gstat = NULL;
-    (*m)[i].cmb = NULL;
-    fread(&(*m)[i].nlev,  sizeof(int),        1,fp);
-    fread(&(*m)[i].nline, sizeof(int),        1,fp);
-    fread(&(*m)[i].npart, sizeof(int),        1,fp);
-    (*m)[i].ntrans=malloc(sizeof(int)*(*m)[i].npart);
-    for(j=0;j<(*m)[i].npart;j++) fread(&(*m)[i].ntrans[j], sizeof(int), 1,fp);
-    (*m)[i].lal=malloc(sizeof(int)*(*m)[i].nline);
-    for(j=0;j<(*m)[i].nline;j++) fread(&(*m)[i].lal[j],    sizeof(int), 1,fp);
-    (*m)[i].lau=malloc(sizeof(int)*(*m)[i].nline);
-    for(j=0;j<(*m)[i].nline;j++) fread(&(*m)[i].lau[j],    sizeof(int), 1,fp);
-    (*m)[i].aeinst=malloc(sizeof(double)*(*m)[i].nline);
-    for(j=0;j<(*m)[i].nline;j++) fread(&(*m)[i].aeinst[j], sizeof(double), 1,fp);
-    (*m)[i].freq=malloc(sizeof(double)*(*m)[i].nline);
-    for(j=0;j<(*m)[i].nline;j++) fread(&(*m)[i].freq[j],   sizeof(double), 1,fp);
-    (*m)[i].beinstl=malloc(sizeof(double)*(*m)[i].nline);
-    for(j=0;j<(*m)[i].nline;j++) fread(&(*m)[i].beinstl[j],sizeof(double), 1,fp);
-    (*m)[i].beinstu=malloc(sizeof(double)*(*m)[i].nline);
-    for(j=0;j<(*m)[i].nline;j++) fread(&(*m)[i].beinstu[j],sizeof(double), 1,fp);
-    (*m)[i].local_cmb = malloc(sizeof(double)*(*m)[i].nline);
-    for(j=0;j<(*m)[i].nline;j++) fread(&(*m)[i].local_cmb[j],sizeof(double), 1,fp);
-    fread(&(*m)[i].norm, sizeof(double),      1,fp);
-    fread(&(*m)[i].norminv, sizeof(double),   1,fp);
+    (*md)[i].lcl = NULL;
+    (*md)[i].lcu = NULL;
+    (*md)[i].up = NULL;
+    (*md)[i].down = NULL;
+    (*md)[i].eterm = NULL;
+    (*md)[i].gstat = NULL;
+    (*md)[i].cmb = NULL;
+    fread(&(*md)[i].nlev,  sizeof(int),        1,fp);
+    fread(&(*md)[i].nline, sizeof(int),        1,fp);
+    fread(&(*md)[i].npart, sizeof(int),        1,fp);
+    (*md)[i].ntrans=malloc(sizeof(int)*(*md)[i].npart);
+    for(j=0;j<(*md)[i].npart;j++) fread(&(*md)[i].ntrans[j], sizeof(int), 1,fp);
+    (*md)[i].lal=malloc(sizeof(int)*(*md)[i].nline);
+    for(j=0;j<(*md)[i].nline;j++) fread(&(*md)[i].lal[j],    sizeof(int), 1,fp);
+    (*md)[i].lau=malloc(sizeof(int)*(*md)[i].nline);
+    for(j=0;j<(*md)[i].nline;j++) fread(&(*md)[i].lau[j],    sizeof(int), 1,fp);
+    (*md)[i].aeinst=malloc(sizeof(double)*(*md)[i].nline);
+    for(j=0;j<(*md)[i].nline;j++) fread(&(*md)[i].aeinst[j], sizeof(double), 1,fp);
+    (*md)[i].freq=malloc(sizeof(double)*(*md)[i].nline);
+    for(j=0;j<(*md)[i].nline;j++) fread(&(*md)[i].freq[j],   sizeof(double), 1,fp);
+    (*md)[i].beinstl=malloc(sizeof(double)*(*md)[i].nline);
+    for(j=0;j<(*md)[i].nline;j++) fread(&(*md)[i].beinstl[j],sizeof(double), 1,fp);
+    (*md)[i].beinstu=malloc(sizeof(double)*(*md)[i].nline);
+    for(j=0;j<(*md)[i].nline;j++) fread(&(*md)[i].beinstu[j],sizeof(double), 1,fp);
+    (*md)[i].local_cmb = malloc(sizeof(double)*(*md)[i].nline);
+    for(j=0;j<(*md)[i].nline;j++) fread(&(*md)[i].local_cmb[j],sizeof(double), 1,fp);
+    fread(&(*md)[i].norm, sizeof(double),      1,fp);
+    fread(&(*md)[i].norminv, sizeof(double),   1,fp);
   }
 
-  *g=malloc(sizeof(struct grid)*par->ncell);
+  *gp=malloc(sizeof(struct grid)*par->ncell);
 
   for(i=0;i<par->ncell;i++){
-    (*g)[i].a0 = NULL;
-    (*g)[i].a1 = NULL;
-    (*g)[i].a2 = NULL;
-    (*g)[i].a3 = NULL;
-    (*g)[i].a4 = NULL;
-    (*g)[i].dens = NULL;
-    (*g)[i].abun = NULL;
-    (*g)[i].nmol = NULL;
-    (*g)[i].dir = NULL;
-    (*g)[i].neigh = NULL;
-    (*g)[i].w = NULL;
-    (*g)[i].ds = NULL;
-    fread(&(*g)[i].id, sizeof (*g)[i].id, 1, fp);
-    fread(&(*g)[i].x, sizeof (*g)[i].x, 1, fp);
-    fread(&(*g)[i].vel, sizeof (*g)[i].vel, 1, fp);
-    fread(&(*g)[i].sink, sizeof (*g)[i].sink, 1, fp);
-    (*g)[i].nmol=malloc(par->nSpecies*sizeof(double));
-    for(j=0;j<par->nSpecies;j++) fread(&(*g)[i].nmol[j], sizeof(double), 1, fp);
-    fread(&(*g)[i].dopb, sizeof (*g)[i].dopb, 1, fp);
-    (*g)[i].mol=malloc(par->nSpecies*sizeof(struct populations));
+    (*gp)[i].a0 = NULL;
+    (*gp)[i].a1 = NULL;
+    (*gp)[i].a2 = NULL;
+    (*gp)[i].a3 = NULL;
+    (*gp)[i].a4 = NULL;
+    (*gp)[i].dens = NULL;
+    (*gp)[i].abun = NULL;
+    (*gp)[i].nmol = NULL;
+    (*gp)[i].dir = NULL;
+    (*gp)[i].neigh = NULL;
+    (*gp)[i].w = NULL;
+    (*gp)[i].ds = NULL;
+    fread(&(*gp)[i].id, sizeof (*gp)[i].id, 1, fp);
+    fread(&(*gp)[i].x, sizeof (*gp)[i].x, 1, fp);
+    fread(&(*gp)[i].vel, sizeof (*gp)[i].vel, 1, fp);
+    fread(&(*gp)[i].sink, sizeof (*gp)[i].sink, 1, fp);
+    (*gp)[i].nmol=malloc(par->nSpecies*sizeof(double));
+    for(j=0;j<par->nSpecies;j++) fread(&(*gp)[i].nmol[j], sizeof(double), 1, fp);
+    fread(&(*gp)[i].dopb, sizeof (*gp)[i].dopb, 1, fp);
+    (*gp)[i].mol=malloc(par->nSpecies*sizeof(struct populations));
     for(j=0;j<par->nSpecies;j++){
-      (*g)[i].mol[j].pops=malloc(sizeof(double)*(*m)[j].nlev);
-      for(k=0;k<(*m)[j].nlev;k++) fread(&(*g)[i].mol[j].pops[k], sizeof(double), 1, fp);
-      (*g)[i].mol[j].knu=malloc(sizeof(double)*(*m)[j].nline);
-      for(k=0;k<(*m)[j].nline;k++) fread(&(*g)[i].mol[j].knu[k], sizeof(double), 1, fp);
-      (*g)[i].mol[j].dust=malloc(sizeof(double)*(*m)[j].nline);
-      for(k=0;k<(*m)[j].nline;k++) fread(&(*g)[i].mol[j].dust[k],sizeof(double), 1, fp);
-      fread(&(*g)[i].mol[j].dopb,sizeof(double), 1, fp);
-      fread(&(*g)[i].mol[j].binv,sizeof(double), 1, fp);
-      (*g)[i].mol[j].partner=NULL;
+      (*gp)[i].mol[j].pops=malloc(sizeof(double)*(*md)[j].nlev);
+      for(k=0;k<(*md)[j].nlev;k++) fread(&(*gp)[i].mol[j].pops[k], sizeof(double), 1, fp);
+      (*gp)[i].mol[j].knu=malloc(sizeof(double)*(*md)[j].nline);
+      for(k=0;k<(*md)[j].nline;k++) fread(&(*gp)[i].mol[j].knu[k], sizeof(double), 1, fp);
+      (*gp)[i].mol[j].dust=malloc(sizeof(double)*(*md)[j].nline);
+      for(k=0;k<(*md)[j].nline;k++) fread(&(*gp)[i].mol[j].dust[k],sizeof(double), 1, fp);
+      fread(&(*gp)[i].mol[j].dopb,sizeof(double), 1, fp);
+      fread(&(*gp)[i].mol[j].binv,sizeof(double), 1, fp);
+      (*gp)[i].mol[j].partner=NULL;
     }
     fread(&dummy, sizeof(double), 1, fp);
     fread(&dummy, sizeof(double), 1, fp);
@@ -104,9 +104,9 @@ popsin(inputPars *par, struct grid **g, molData **m, int *popsdone){
   }
   fclose(fp);
 
-  qhull(par, *g);
-  distCalc(par, *g);
-  getVelosplines(par,*g);
+  qhull(par, *gp);
+  distCalc(par, *gp);
+  getVelosplines(par,*gp);
   *popsdone=1;
 }
 
