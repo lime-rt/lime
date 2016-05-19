@@ -76,4 +76,6 @@ predefinedGrid(inputPars *par, struct grid *g){
   getVelosplines_lin(par,g);
   if(par->gridfile) write_VTK_unstructured_Points(par, g);
   gsl_rng_free(ran);
+
+  par->numDensities = 1;
 }

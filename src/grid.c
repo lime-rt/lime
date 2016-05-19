@@ -15,19 +15,9 @@ TODO:
 void
 gridAlloc(inputPars *par, struct grid **g){
   int i;
-  double temp[99];
 
   *g=malloc(sizeof(struct grid)*(par->pIntensity+par->sinkPoints));
   memset(*g, 0., sizeof(struct grid) * (par->pIntensity+par->sinkPoints));
-
-  if(par->doPregrid || par->restart) par->numDensities=1;
-  else{
-    for(i=0;i<99;i++) temp[i]=-1;
-    density(AU,AU,AU,temp);
-    i=0;
-    par->numDensities=0;
-    while(temp[i++]>-1) par->numDensities++;
-  }
 
   for(i=0;i<(par->pIntensity+par->sinkPoints); i++){
     (*g)[i].a0 = NULL;

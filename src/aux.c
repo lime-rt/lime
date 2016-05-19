@@ -22,7 +22,7 @@ void
 parseInput(inputPars *par, image **img, molData **m){
   FILE *fp;
   int i,id;
-  double BB[3];
+  double BB[3], dens[MAX_N_COLL_PART];
   double cosPhi,sinPhi,cosTheta,sinTheta;
 
   /* Set default values */
@@ -98,6 +98,20 @@ parseInput(inputPars *par, image **img, molData **m){
       }
     }
 
+  if(!(par->doPregrid || par->restart)){ /* These switches cause par->numDensities to be set in routines they call. */
+    /* Find out how many density functions we have (which sets par->numDensities).
+    */
+    for(i=0;i<MAX_N_COLL_PART;i++) dens[i] = -1.0;
+    density(0.0,0.0,0.0,dens); /* Note that the example density function in LIME-1.5 generated a singularity at r==0! Such uglinesses should not be encouraged. I've fixed it now, thus I can use 0s here in (relative) safety. */
+    i = 0;
+    while(i<MAX_N_COLL_PART && dens[i]>=0) i++;
+    par->numDensities = i;
+
+    if(par->numDensities<=0){
+      if(!silent) bail_out("No density values returned.");
+      exit(1);
+    }
+  }
 
   /* Set img defaults and then read the user-supplied values.
   */

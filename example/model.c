@@ -71,7 +71,8 @@ density(double x, double y, double z, double *density){
   /*
    * Define variable for radial coordinate
    */
-  double r;
+  const double minR = 0.5*AU; /* Chosen to be the same as par->minScale. */
+  double r, rToUse;
   /*
    * Calculate radial distance from origin
    */
@@ -80,7 +81,12 @@ density(double x, double y, double z, double *density){
    * Calculate a spherical power-law density profile
    * (Multiply with 1e6 to go to SI-units)
    */
-  density[0] = 1.5e6*pow(r/(300*AU),-1.5)*1e6;
+  if(r>minR)
+    rToUse = r;
+  else
+    rToUse = minR; /* Just to prevent overflows at r==0! */
+
+  density[0] = 1.5e6*pow(rToUse/(300*AU),-1.5)*1e6;
 }
 
 /******************************************************************************/
