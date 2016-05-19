@@ -60,7 +60,10 @@ int main () {
       levelPops(m,&par,g,&popsdone);
     }
     if(!img[i].doline) {
-      continuumSetup(i,img,m,&par,g);
+      if(par.restart)
+        img[i].trans=0;
+      else
+        continuumSetup(i,img,m,&par,g);
     }
 
     raytrace(i,&par,g,m,img);
