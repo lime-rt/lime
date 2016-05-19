@@ -38,9 +38,21 @@ freeMolData( inputPars *par, molData* mol )
     {
       for( i=0; i<par->nSpecies; i++ )
         {
-          if( mol[i].ntrans != NULL )
+          if( mol[i].part != NULL )
             {
-              free(mol[i].ntrans);
+
+              for( j=0; j<mol[i].npart; j++ )
+                {
+                  if( mol[i].part[j].lcl != NULL )
+                    {
+                      free(mol[i].part[j].lcl);
+                    }
+                  if( mol[i].part[j].lcu != NULL )
+                    {
+                      free(mol[i].part[j].lcu);
+                    }
+                }
+              free(mol[i].part);
             }
           if( mol[i].lal != NULL )
             {
@@ -49,14 +61,6 @@ freeMolData( inputPars *par, molData* mol )
           if( mol[i].lau != NULL )
             {
               free(mol[i].lau);
-            }
-          if( mol[i].lcl != NULL )
-            {
-              free(mol[i].lcl);
-            }
-          if( mol[i].lcu != NULL )
-            {
-              free(mol[i].lcu);
             }
           if( mol[i].aeinst != NULL )
             {
@@ -94,7 +98,6 @@ freeMolData( inputPars *par, molData* mol )
       free(mol);
     }
 }
-
 
 void
 freeGridPointData(inputPars *par, gridPointData *mol){

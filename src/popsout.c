@@ -37,8 +37,10 @@ popsout(inputPars *par, struct grid *g, molData *m){
 void
 binpopsout(inputPars *par, struct grid *g, molData *m){
   FILE *fp;
-  int i,j;
-  
+  int i,j,*nTrans=NULL;
+
+  nTrans = malloc(sizeof(int)*1);
+
   if((fp=fopen(par->binoutputfile, "wb"))==NULL){
     if(!silent) bail_out("Error writing binary output populations file!");
     exit(1);
@@ -49,10 +51,15 @@ binpopsout(inputPars *par, struct grid *g, molData *m){
   fwrite(&par->nSpecies, sizeof(int), 1, fp);
   
   for(i=0;i<par->nSpecies;i++){
+    if(m[i].part==NULL)
+      nTrans[0] = 1;
+    else
+      nTrans[0] = m[i].part[0].ntrans;
+
     fwrite(&m[i].nlev,  sizeof(int),               1,fp);
     fwrite(&m[i].nline, sizeof(int),               1,fp);
     fwrite(&m[i].npart, sizeof(int),               1,fp);
-    fwrite(m[i].ntrans, sizeof(int)*m[i].npart,    1,fp);
+    fwrite(nTrans,      sizeof(int)*m[i].npart,    1,fp);
     fwrite(m[i].lal,    sizeof(int)*m[i].nline,    1,fp);
     fwrite(m[i].lau,    sizeof(int)*m[i].nline,    1,fp);
     fwrite(m[i].aeinst, sizeof(double)*m[i].nline, 1,fp);
@@ -86,6 +93,7 @@ binpopsout(inputPars *par, struct grid *g, molData *m){
   
   fclose(fp);
 
+  free(nTrans);
 }
 
   

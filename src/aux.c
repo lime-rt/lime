@@ -223,11 +223,9 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
   (*m)=malloc(sizeof(molData)*par->nSpecies);
   for( i=0; i<par->nSpecies; i++ )
     {
-      (*m)[i].ntrans = NULL;
+      (*m)[i].part = NULL;
       (*m)[i].lal = NULL;
       (*m)[i].lau = NULL;
-      (*m)[i].lcl = NULL;
-      (*m)[i].lcu = NULL;
       (*m)[i].aeinst = NULL;
       (*m)[i].freq = NULL;
       (*m)[i].beinstu = NULL;

@@ -91,12 +91,16 @@ typedef struct {
   char **moldatfile;
 } inputPars;
 
-/* Molecular data: shared attributes */
+struct cpData {
+  int ntrans,*lcl,*lcu;
+};
+
 typedef struct {
-  int nlev,nline,*ntrans,npart;
-  int *lal,*lau,*lcl,*lcu;
+  int nlev,nline,npart;
+  int *lal,*lau;
   double *aeinst,*freq,*beinstu,*beinstl,*eterm,*gstat;
   double norm,norminv,*cmb,*local_cmb;
+  struct cpData *part;
 } molData;
 
 /* Data concerning a single grid vertex which is passed from photon() to stateq(). This data needs to be thread-safe. */
@@ -120,7 +124,7 @@ struct rates {
 
 
 struct populations {
-  double * pops, *knu, *dust;
+  double *pops, *knu, *dust;
   double dopb, binv;
   struct rates *partner;
 };

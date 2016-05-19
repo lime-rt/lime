@@ -124,9 +124,11 @@ getmatrix(int id, gsl_matrix *matrix, molData *m, struct grid *g, int ispec, gri
 
   /* Populate matrix with collisional transitions */
   for(ipart=0;ipart<m[ispec].npart;ipart++){
-    for(t=0;t<m[ispec].ntrans[ipart];t++){
-      gsl_matrix_set(partner[ipart].colli, m[ispec].lcu[t], m[ispec].lcl[t], g[id].mol[ispec].partner[ipart].down[t]);
-      gsl_matrix_set(partner[ipart].colli, m[ispec].lcl[t], m[ispec].lcu[t], g[id].mol[ispec].partner[ipart].up[t]);
+    for(t=0;t<m[ispec].part[ipart].ntrans;t++){
+      gsl_matrix_set(partner[ipart].colli, m[ispec].part[ipart].lcu[t]\
+        , m[ispec].part[ipart].lcl[t], g[id].mol[ispec].partner[ipart].down[t]);
+      gsl_matrix_set(partner[ipart].colli, m[ispec].part[ipart].lcl[t]\
+        , m[ispec].part[ipart].lcu[t], g[id].mol[ispec].partner[ipart].up[t]);
     }
 
     for(p=0;p<m[ispec].nlev;p++){

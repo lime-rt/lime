@@ -13,7 +13,7 @@
 void
 popsin(inputPars *par, struct grid **gp, molData **md, int *popsdone){
   FILE *fp;
-  int i,j,k;
+  int i,j,k,dummyNPart,dummyNTrans;
   double dummy;
 
   if((fp=fopen(par->restart, "rb"))==NULL){
@@ -21,7 +21,7 @@ popsin(inputPars *par, struct grid **gp, molData **md, int *popsdone){
     exit(1);
   }
 
-  par->numDensities=1;
+  par->numDensities = 1;
   fread(&par->radius,   sizeof(double), 1, fp);
   fread(&par->ncell,    sizeof(int), 1, fp);
   fread(&par->nSpecies, sizeof(int), 1, fp);
@@ -34,16 +34,14 @@ popsin(inputPars *par, struct grid **gp, molData **md, int *popsdone){
   *md=realloc(*md, sizeof(molData)*par->nSpecies);
 
   for(i=0;i<par->nSpecies;i++){
-    (*md)[i].lcl = NULL;
-    (*md)[i].lcu = NULL;
+    (*md)[i].part = NULL;
     (*md)[i].eterm = NULL;
     (*md)[i].gstat = NULL;
     (*md)[i].cmb = NULL;
     fread(&(*md)[i].nlev,  sizeof(int),        1,fp);
     fread(&(*md)[i].nline, sizeof(int),        1,fp);
-    fread(&(*md)[i].npart, sizeof(int),        1,fp);
-    (*md)[i].ntrans=malloc(sizeof(int)*(*md)[i].npart);
-    for(j=0;j<(*md)[i].npart;j++) fread(&(*md)[i].ntrans[j], sizeof(int), 1,fp);
+    fread(&dummyNPart,     sizeof(int),        1,fp);
+    for(j=0;j<dummyNPart;j++) fread(&dummyNTrans, sizeof(int), 1,fp);
     (*md)[i].lal=malloc(sizeof(int)*(*md)[i].nline);
     for(j=0;j<(*md)[i].nline;j++) fread(&(*md)[i].lal[j],    sizeof(int), 1,fp);
     (*md)[i].lau=malloc(sizeof(int)*(*md)[i].nline);

@@ -182,26 +182,30 @@ molinit(molData *md, inputPars *par, struct grid *gp, int i){
     }
 
 
-    md[i].ntrans = malloc(sizeof(int)*md[i].npart);
-    ntemp = malloc(sizeof(*ntemp)*md[i].npart);
-    part = malloc(sizeof(struct data) * md[i].npart);
+//    md[i].ntrans = malloc(sizeof(int)*md[i].npart);
+    md[i].part = malloc(sizeof(*(md[i].part))*md[i].npart);
+//    ntemp = malloc(sizeof(*ntemp)*md[i].npart);
+//    part = malloc(sizeof(struct data) * md[i].npart);
 
     for(ipart=0;ipart<md[i].npart;ipart++){
       fgets(string, 80, fp);
       fscanf(fp,"%d\n", &count[ipart]);
       fgets(string, 80, fp);
       fgets(string, 80, fp);
-      fscanf(fp,"%d\n", &md[i].ntrans[ipart]);
+//      fscanf(fp,"%d\n", &md[i].ntrans[ipart]);
+      fscanf(fp,"%d\n", &md[i].part[ipart].ntrans);
       fgets(string, 80, fp);
       fscanf(fp,"%d\n", &ntemp[ipart]);
       fgets(string, 80, fp);
 
       part[ipart].temp=malloc(sizeof(double)*ntemp[ipart]);
 
-      if(ipart==0){
-        md[i].lcl = malloc(sizeof(int)*md[i].ntrans[ipart]);
-        md[i].lcu = malloc(sizeof(int)*md[i].ntrans[ipart]);
-      }
+//      if(ipart==0){
+//        md[i].lcl = malloc(sizeof(int)*md[i].part[ipart].ntrans);
+//        md[i].lcu = malloc(sizeof(int)*md[i].part[ipart].ntrans);
+//      }
+      md[i].part[ipart].lcl = malloc(sizeof(int)*md[i].part[ipart].ntrans);
+      md[i].part[ipart].lcu = malloc(sizeof(int)*md[i].part[ipart].ntrans);
 
       for(itemp=0;itemp<ntemp[ipart];itemp++){
         fscanf(fp, "%lf", &part[ipart].temp[itemp]);
@@ -210,12 +214,12 @@ molinit(molData *md, inputPars *par, struct grid *gp, int i){
       fscanf(fp,"\n");
       fgets(string, 80, fp);
 
-      part[ipart].colld=malloc(sizeof(double)*md[i].ntrans[ipart]*ntemp[ipart]);
+      part[ipart].colld=malloc(sizeof(double)*md[i].part[ipart].ntrans*ntemp[ipart]);
 
-      for(itrans=0;itrans<md[i].ntrans[ipart];itrans++){
-        fscanf(fp, "%d %d %d", &idummy, &md[i].lcu[itrans], &md[i].lcl[itrans]);
-        md[i].lcu[itrans]-=1;
-        md[i].lcl[itrans]-=1;
+      for(itrans=0;itrans<md[i].part[ipart].ntrans;itrans++){
+        fscanf(fp, "%d %d %d", &idummy, &md[i].part[ipart].lcu[itrans], &md[i].part[ipart].lcl[itrans]);
+        md[i].part[ipart].lcu[itrans]-=1;
+        md[i].part[ipart].lcl[itrans]-=1;
         for(itemp=0;itemp<ntemp[ipart];itemp++){
           fscanf(fp, "%lf", &part[ipart].colld[itrans*ntemp[ipart]+itemp]);
           part[ipart].colld[itrans*ntemp[ipart]+itemp]/=1.e6;
@@ -258,14 +262,14 @@ molinit(molData *md, inputPars *par, struct grid *gp, int i){
     for(id=0;id<par->ncell;id++){
       gp[id].mol[i].partner=malloc(sizeof(struct rates)*md[i].npart);
       for(ipart=0;ipart<md[i].npart;ipart++){
-        gp[id].mol[i].partner[ipart].up = malloc(sizeof(double)*md[i].ntrans[ipart]);
-        gp[id].mol[i].partner[ipart].down = malloc(sizeof(double)*md[i].ntrans[ipart]);
+        gp[id].mol[i].partner[ipart].up = malloc(sizeof(double)*md[i].part[ipart].ntrans);
+        gp[id].mol[i].partner[ipart].down = malloc(sizeof(double)*md[i].part[ipart].ntrans);
       }
     }
 
     for(id=0;id<par->ncell;id++){
       for(ipart=0;ipart<md[i].npart;ipart++){
-        for(itrans=0;itrans<md[i].ntrans[ipart];itrans++){
+        for(itrans=0;itrans<md[i].part[ipart].ntrans;itrans++){
           if((gp[id].t[0]>part[ipart].temp[0])&&(gp[id].t[0]<part[ipart].temp[ntemp[ipart]-1])){
             for(itemp=0;itemp<ntemp[ipart]-1;itemp++){
               if((gp[id].t[0]>part[ipart].temp[itemp])&&(gp[id].t[0]<=part[ipart].temp[itemp+1])){
@@ -278,7 +282,7 @@ molinit(molData *md, inputPars *par, struct grid *gp, int i){
             if(gp[id].t[0]<=part[ipart].temp[0]) downrate=part[ipart].colld[itrans*ntemp[ipart]];
             if(gp[id].t[0]>=part[ipart].temp[ntemp[ipart]-1]) downrate=part[ipart].colld[itrans*ntemp[ipart]+ntemp[ipart]-1];
           }
-          uprate=md[i].gstat[md[i].lcu[itrans]]/md[i].gstat[md[i].lcl[itrans]]*downrate*exp(-HCKB*(md[i].eterm[md[i].lcu[itrans]]-md[i].eterm[md[i].lcl[itrans]])/gp[id].t[0]);
+          uprate=md[i].gstat[md[i].part[ipart].lcu[itrans]]/md[i].gstat[md[i].part[ipart].lcl[itrans]]*downrate*exp(-HCKB*(md[i].eterm[md[i].part[ipart].lcu[itrans]]-md[i].eterm[md[i].part[ipart].lcl[itrans]])/gp[id].t[0]);
           gp[id].mol[i].partner[ipart].up[itrans]=uprate;
           gp[id].mol[i].partner[ipart].down[itrans]=downrate;
         }
