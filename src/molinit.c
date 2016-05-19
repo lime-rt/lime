@@ -106,7 +106,7 @@ molinit(molData *md, inputPars *par, struct grid *gp, int i){
   int id, ilev, iline, itrans, ispec, itemp, tnint=-1, idummy, ipart, *count,flag=0;
   char *collpartname[] = {"H2","p-H2","o-H2","electrons","H","He","H+"}; /* definition from LAMDA */
   struct cpData part;
-  double fac, uprate, downrate=0, dummy, amass;
+  double fac, uprate, downrate=0, dummy;
 
   char string[200], specref[90], partstr[90];
   FILE *fp;
@@ -120,7 +120,7 @@ molinit(molData *md, inputPars *par, struct grid *gp, int i){
   fgets(string, 80, fp);
   fgets(specref, 90, fp);
   fgets(string, 80, fp);
-  fscanf(fp, "%lf\n", &amass);
+  fscanf(fp, "%lf\n", &md[i].amass);
   fgets(string, 80, fp);
   fscanf(fp, "%d\n", &md[i].nlev);
   fgets(string, 80, fp);
@@ -162,9 +162,9 @@ molinit(molData *md, inputPars *par, struct grid *gp, int i){
   }
 
   /* Calculate Doppler and thermal line broadening */
-  amass*=AMU;
+  md[i].amass*=AMU;
   for(id=0;id<par->ncell;id++) {
-    gp[id].mol[i].dopb=sqrt(gp[id].dopb*gp[id].dopb+2.*KBOLTZ/amass*gp[id].t[0]);
+    gp[id].mol[i].dopb=sqrt(gp[id].dopb*gp[id].dopb+2.*KBOLTZ/md[i].amass*gp[id].t[0]);
     gp[id].mol[i].binv=1./gp[id].mol[i].dopb;
   }
 
