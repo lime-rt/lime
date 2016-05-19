@@ -175,8 +175,8 @@ molinit(molData *md, inputPars *par, struct grid *gp, int i){
     count=malloc(sizeof(*count)*md[i].npart);
     /* collision partner sanity check */
 
-    if(md[i].npart > par->collPart) flag=1;
-    if(md[i].npart < par->collPart){
+    if(md[i].npart > par->numDensities) flag=1;
+    if(md[i].npart < par->numDensities){
       if(!silent) bail_out("Too many density profiles defined");
       exit(1);
     }
@@ -233,7 +233,7 @@ molinit(molData *md, inputPars *par, struct grid *gp, int i){
     if(!silent) {
       collpartmesg(specref, md[i].npart);
       collpartmesg2(partstr, ipart);
-      collpartmesg3(par->collPart, flag);
+      collpartmesg3(par->numDensities, flag);
     }
 
     /* Calculate molecular density */

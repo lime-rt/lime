@@ -21,7 +21,7 @@ popsin(inputPars *par, struct grid **gp, molData **md, int *popsdone){
     exit(1);
   }
 
-  par->collPart=1;
+  par->numDensities=1;
   fread(&par->radius,   sizeof(double), 1, fp);
   fread(&par->ncell,    sizeof(int), 1, fp);
   fread(&par->nSpecies, sizeof(int), 1, fp);

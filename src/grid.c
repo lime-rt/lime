@@ -20,13 +20,13 @@ gridAlloc(inputPars *par, struct grid **g){
   *g=malloc(sizeof(struct grid)*(par->pIntensity+par->sinkPoints));
   memset(*g, 0., sizeof(struct grid) * (par->pIntensity+par->sinkPoints));
 
-  if(par->doPregrid || par->restart) par->collPart=1;
+  if(par->doPregrid || par->restart) par->numDensities=1;
   else{
     for(i=0;i<99;i++) temp[i]=-1;
     density(AU,AU,AU,temp);
     i=0;
-    par->collPart=0;
-    while(temp[i++]>-1) par->collPart++;
+    par->numDensities=0;
+    while(temp[i++]>-1) par->numDensities++;
   }
 
   for(i=0;i<(par->pIntensity+par->sinkPoints); i++){
@@ -40,7 +40,7 @@ gridAlloc(inputPars *par, struct grid **g){
     (*g)[i].neigh = NULL;
     (*g)[i].w = NULL;
     (*g)[i].ds = NULL;
-    (*g)[i].dens=malloc(sizeof(double)*par->collPart);
+    (*g)[i].dens=malloc(sizeof(double)*par->numDensities);
     (*g)[i].abun=malloc(sizeof(double)*par->nSpecies);
     (*g)[i].nmol=malloc(sizeof(double)*par->nSpecies);
     (*g)[i].t[0]=-1;

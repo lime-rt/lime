@@ -15,14 +15,14 @@ pointEvaluation(inputPars *par,double ran, double x, double y, double z){
   int i;
 
   density(par->minScale,par->minScale,par->minScale,val);
-  for (i=0;i<par->collPart;i++) normalizer += val[i];
+  for (i=0;i<par->numDensities;i++) normalizer += val[i];
   if (normalizer<=0.){
     if(!silent) bail_out("Sum of reference densities equals 0");
     exit(1);
   }
   //abundance(par->minScale,par->minScale,par->minScale,val2);
   density(x,y,z,val);
-  for (i=0;i<par->collPart;i++) totalDensity += val[i];
+  for (i=0;i<par->numDensities;i++) totalDensity += val[i];
   //abundance(x,y,z,val2);
   weight1=pow(totalDensity/normalizer,0.2);
 
