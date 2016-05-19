@@ -223,7 +223,6 @@ molinit(molData *md, inputPars *par, struct grid *gp, int i){
         fscanf(fp,"\n");
       }
     }
-    fclose(fp);
 
     /* Print out collision partner information */
     strcpy(partstr, collpartname[count[0]-1]);
@@ -294,6 +293,8 @@ molinit(molData *md, inputPars *par, struct grid *gp, int i){
     free(count);
   }
   /* End of collision rates */
+
+  fclose(fp);
 
   /* Allocate space for populations and opacities */
   for(id=0;id<par->ncell; id++){
