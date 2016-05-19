@@ -92,7 +92,8 @@ typedef struct {
 } inputPars;
 
 struct cpData {
-  int ntrans,*lcl,*lcu;
+  double *colld,*temp;
+  int collPartId,ntemp,ntrans,*lcl,*lcu,densityIndex;
 };
 
 typedef struct {
