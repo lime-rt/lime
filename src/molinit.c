@@ -177,7 +177,7 @@ molinit(molData *md, inputPars *par, struct grid *gp, int i){
 
     if(md[i].npart > par->collPart) flag=1;
     if(md[i].npart < par->collPart){
-      if(!silent) bail_out("Error: Too many density profiles defined");
+      if(!silent) bail_out("Too many density profiles defined");
       exit(1);
     }
 

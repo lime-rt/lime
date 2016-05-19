@@ -62,7 +62,7 @@ parseInput(inputPars *par, image **img, molData **m){
   while((*img)[++id].filename!=NULL);
   par->nImages=id;
   if(par->nImages==0) {
-    if(!silent) bail_out("Error: no images defined");
+    if(!silent) bail_out("No images defined");
     exit(1);
   }
 
@@ -159,7 +159,7 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
       else (*img)[i].nchan=1;
 
       if((*img)[i].trans>-1 || (*img)[i].bandwidth>-1. || (*img)[i].freq==0 || par->dust==NULL){
-        if(!silent) bail_out("Error: Image keywords are ambiguous");
+        if(!silent) bail_out("Image keywords are ambiguous");
         exit(1);
       }
       (*img)[i].doline=0;
@@ -167,15 +167,15 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
       /* Assume line image */
       par->polarization=0;
       if(par->moldatfile==NULL){
-        if(!silent) bail_out("Error: No data file is specified for line image.");
+        if(!silent) bail_out("No data file is specified for line image.");
         exit(1);
       }
       if(((*img)[i].trans>-1 && (*img)[i].freq>-1) || ((*img)[i].trans<0 && (*img)[i].freq<0)){
-        if(!silent) bail_out("Error: Specify either frequency or transition ");
+        if(!silent) bail_out("Specify either frequency or transition ");
         exit(1);
       }
       if(((*img)[i].nchan==0 && (*img)[i].bandwidth<0) || ((*img)[i].bandwidth<0 && (*img)[i].velres<0)){
-        if(!silent) bail_out("Error: Image keywords are not set properly");
+        if(!silent) bail_out("Image keywords are not set properly");
         exit(1);
       }
       (*img)[i].doline=1;
@@ -241,114 +241,6 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
     }
 }
 
-void
-freeInput( inputPars *par, image* img, molData* mol )
-{
-  int i,id;
-  if( mol!= 0 )
-    {
-      for( i=0; i<par->nSpecies; i++ )
-        {
-          if( mol[i].ntrans != NULL )
-            {
-              free(mol[i].ntrans);
-            }
-          if( mol[i].lal != NULL )
-            {
-              free(mol[i].lal);
-            }
-          if( mol[i].lau != NULL )
-            {
-              free(mol[i].lau);
-            }
-          if( mol[i].lcl != NULL )
-            {
-              free(mol[i].lcl);
-            }
-          if( mol[i].lcu != NULL )
-            {
-              free(mol[i].lcu);
-            }
-          if( mol[i].aeinst != NULL )
-            {
-              free(mol[i].aeinst);
-            }
-          if( mol[i].freq != NULL )
-            {
-              free(mol[i].freq);
-            }
-          if( mol[i].beinstu != NULL )
-            {
-              free(mol[i].beinstu);
-            }
-          if( mol[i].beinstl != NULL )
-            {
-              free(mol[i].beinstl);
-            }
-          if( mol[i].up != NULL )
-            {
-              free(mol[i].up);
-            }
-          if( mol[i].down != NULL )
-            {
-              free(mol[i].down);
-            }
-          if( mol[i].eterm != NULL )
-            {
-              free(mol[i].eterm);
-            }
-          if( mol[i].gstat != NULL )
-            {
-              free(mol[i].gstat);
-            }
-          if( mol[i].cmb != NULL )
-            {
-              free(mol[i].cmb);
-            }
-          if( mol[i].local_cmb != NULL )
-            {
-              free(mol[i].local_cmb);
-            }
-        }
-      free(mol);
-    }
-  for(i=0;i<par->nImages;i++){
-    for(id=0;id<(img[i].pxls*img[i].pxls);id++){
-      free( img[i].pixel[id].intense );
-      free( img[i].pixel[id].tau );
-    }
-    free(img[i].pixel);
-  }
-  if( img != NULL )
-    {
-      free(img);
-    }
-  if( par->moldatfile != NULL )
-    {
-      free(par->moldatfile);
-    }
-}
-
-void
-freeGridPointData(inputPars *par, gridPointData *mol){
-  int i;
-  if (mol!= 0){
-    for (i=0;i<par->nSpecies;i++){
-      if (mol[i].jbar != NULL){
-        free(mol[i].jbar);
-      }
-      if (mol[i].phot != NULL){
-        free(mol[i].phot);
-      }
-      if (mol[i].vfac != NULL){
-        free(mol[i].vfac);
-      }
-    }
-    free(mol);
-  }
-}
-
-
 float
 invSqrt(float x){
   /* The magic Quake(TM) fast inverse square root algorithm   */
@@ -390,7 +282,7 @@ lineCount(int n,molData *m,int **counta,int **countb,int *nlinetot){
   *counta=malloc(sizeof(*counta)* *nlinetot);
   *countb=malloc(sizeof(*countb)* *nlinetot);
   } else {
-    if(!silent) bail_out("Error: Line count finds no lines");
+    if(!silent) bail_out("Line count finds no lines");
     exit(0);
   }
   count=0;

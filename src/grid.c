@@ -5,6 +5,8 @@
  *  Copyright (C) 2006-2014 Christian Brinch
  *  Copyright (C) 2015 The LIME development team
  *
+TODO:
+  - There is no need to malloc nmol if all the images are non-line.
  */
 
 #include "lime.h"
@@ -44,110 +46,6 @@ gridAlloc(inputPars *par, struct grid **g){
     (*g)[i].t[0]=-1;
     (*g)[i].t[1]=-1;
   }
-}
-
-void
-freePopulation(const inputPars *par, const molData* m, struct populations* pop ) {
-  if( pop !=NULL )
-    {
-      int j,k;
-      for( j=0; j<par->nSpecies; j++ )
-        {
-          if( pop[j].pops != NULL )
-            {
-              free( pop[j].pops );
-            }
-          if( pop[j].knu != NULL )
-            {
-              free( pop[j].knu );
-            }
-          if( pop[j].dust != NULL )
-            {
-              free( pop[j].dust );
-            }
-          if( pop[j].partner != NULL )
-            {
-              if( m != NULL )
-                {
-                  for(k=0; k<m[j].npart; k++)
-                    {
-                      if( pop[j].partner[k].up != NULL )
-                        {
-                          free(pop[j].partner[k].up);
-                        }
-                      if( pop[j].partner[k].down != NULL )
-                        {
-                          free(pop[j].partner[k].down);
-                        }
-                    }
-                }
-              free( pop[j].partner );
-            }
-        }
-      free(pop);
-    }
-}
-void
-freeGrid(const inputPars *par, const molData* m ,struct grid* g){
-  int i;
-  if( g != NULL )
-    {
-      for(i=0;i<(par->pIntensity+par->sinkPoints); i++){
-        if(g[i].a0 != NULL)
-          {
-            free(g[i].a0);
-          }
-        if(g[i].a1 != NULL)
-          {
-            free(g[i].a1);
-          }
-        if(g[i].a2 != NULL)
-          {
-            free(g[i].a2);
-          }
-        if(g[i].a3 != NULL)
-          {
-            free(g[i].a3);
-          }
-        if(g[i].a4 != NULL)
-          {
-            free(g[i].a4);
-          }
-        if(g[i].dir != NULL)
-          {
-            free(g[i].dir);
-          }
-        if(g[i].neigh != NULL)
-          {
-            free(g[i].neigh);
-          }
-        if(g[i].w != NULL)
-          {
-            free(g[i].w);
-          }
-        if(g[i].dens != NULL)
-          {
-            free(g[i].dens);
-          }
-        if(g[i].nmol != NULL)
-          {
-            free(g[i].nmol);
-          }
-        if(g[i].abun != NULL)
-          {
-            free(g[i].abun);
-          }
-        if(g[i].ds != NULL)
-          {
-            free(g[i].ds);
-          }
-        if(g[i].mol != NULL)
-          {
-            freePopulation( par, m, g[i].mol );
-          }
-      }
-      free(g);
-    }
 }
 
 void
@@ -606,7 +504,7 @@ buildGrid(inputPars *par, struct grid *g){
     g[k].x[2]=par->radius*z;
     g[k].sink=1;
     g[k].abun[0]=0;
-    g[k].dens[0]=1e-30;
+    g[k].dens[0]=1e-30;//************** what is the low but non zero value for?
     g[k].t[0]=par->tcmb;
     g[k].t[1]=par->tcmb;
     g[k++].dopb=0.;
