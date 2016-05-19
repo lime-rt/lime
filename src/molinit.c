@@ -234,9 +234,9 @@ molinit(molData *md, inputPars *par, struct grid *gp, int i){
     /* Calculate molecular density */
     for(id=0;id<par->ncell; id++){
       for(ispec=0;ispec<par->nSpecies;ispec++){
-        if(md[i].npart == 1 && (count[0] == 1 || count[0] == 2 || count[0] == 3)){
+        if(md[i].npart == 1 && (count[0]==CP_H2 || count[0]==CP_p_H2 || count[0]==CP_o_H2)){
           gp[id].nmol[ispec]=gp[id].abun[ispec]*gp[id].dens[0];
-        } else if(md[i].npart == 2 && (count[0] == 2 || count[0] == 3) && (count[1] == 2 || count[1] == 3)){
+        } else if(md[i].npart == 2 && (count[0]==CP_p_H2 || count[0]==CP_o_H2) && (count[1]==CP_p_H2 || count[1]==CP_o_H2)){
           if(!flag){
             gp[id].nmol[ispec]=gp[id].abun[ispec]*(gp[id].dens[0]+gp[id].dens[1]);
           } else {
