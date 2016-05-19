@@ -43,6 +43,14 @@ freeMolData( inputPars *par, molData* mol )
 
               for( j=0; j<mol[i].npart; j++ )
                 {
+                  if( mol[i].part[j].colld != NULL )
+                    {
+                      free(mol[i].part[j].colld);
+                    }
+                  if( mol[i].part[j].temp != NULL )
+                    {
+                      free(mol[i].part[j].temp);
+                    }
                   if( mol[i].part[j].lcl != NULL )
                     {
                       free(mol[i].part[j].lcl);
