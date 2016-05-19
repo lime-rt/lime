@@ -342,8 +342,6 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
   struct statistics { double *pop, *ave, *sigma; } *stat;
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
 
-  stat=malloc(sizeof(struct statistics)*par->pIntensity);
-
   for(id=0;id<par->ncell;id++) {
     freePopulation( par, m, g[id].mol );
     g[id].mol=malloc(sizeof(struct populations)*par->nSpecies);
@@ -357,48 +355,51 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
       }
   }
 
-  /* Random number generator */
-  gsl_rng *ran = gsl_rng_alloc(ranNumGenType);
-#ifdef TEST
-  gsl_rng_set(ran, 1237106) ;
-#else 
-  gsl_rng_set(ran,time(0));
-#endif
-
-  gsl_rng **threadRans;
-  threadRans = malloc(sizeof(gsl_rng *)*par->nThreads);
-
-  for (i=0;i<par->nThreads;i++){
-    threadRans[i] = gsl_rng_alloc(ranNumGenType);
-    gsl_rng_set(threadRans[i],(int)(gsl_rng_uniform(ran)*1e6));
-  }
-
   /* Read in all molecular data */
   for(id=0;id<par->nSpecies;id++) molinit(m,par,g,id);
 
-  /* Check for blended lines */
-  lineBlend(m,par,&matrix);
+  if(par->lte_only){
+    LTE(par,g,m);
+    if(par->outputfile) popsout(par,g,m);
 
-  if(par->lte_only || par->init_lte) LTE(par,g,m);
+  }else{ /* Non-LTE */
+    stat=malloc(sizeof(struct statistics)*par->pIntensity);
 
-  for(id=0;id<par->pIntensity;id++){
-    stat[id].pop=malloc(sizeof(double)*m[0].nlev*5);
-    stat[id].ave=malloc(sizeof(double)*m[0].nlev);
-    stat[id].sigma=malloc(sizeof(double)*m[0].nlev);
-    for(ilev=0;ilev<m[0].nlev;ilev++) {
-      for(iter=0;iter<5;iter++) stat[id].pop[ilev+m[0].nlev*iter]=g[id].mol[0].pops[ilev];
+    /* Random number generator */
+    gsl_rng *ran = gsl_rng_alloc(ranNumGenType);
+#ifdef TEST
+    gsl_rng_set(ran, 1237106) ;
+#else 
+    gsl_rng_set(ran,time(0));
+#endif
+
+    gsl_rng **threadRans;
+    threadRans = malloc(sizeof(gsl_rng *)*par->nThreads);
+
+    for (i=0;i<par->nThreads;i++){
+      threadRans[i] = gsl_rng_alloc(ranNumGenType);
+      gsl_rng_set(threadRans[i],(int)(gsl_rng_uniform(ran)*1e6));
     }
-  }
 
-  if(par->outputfile) popsout(par,g,m);
+    /* Check for blended lines */
+    lineBlend(m,par,&matrix);
 
+    for(id=0;id<par->pIntensity;id++){
+      stat[id].pop=malloc(sizeof(double)*m[0].nlev*5);
+      stat[id].ave=malloc(sizeof(double)*m[0].nlev);
+      stat[id].sigma=malloc(sizeof(double)*m[0].nlev);
+      for(ilev=0;ilev<m[0].nlev;ilev++) {
+        for(iter=0;iter<5;iter++) stat[id].pop[ilev+m[0].nlev*iter]=g[id].mol[0].pops[ilev];
+      }
+    }
 
-  /* Initialize convergence flag */
-  for(id=0;id<par->ncell;id++){
-    g[id].conv=0;
-  }
+    if(par->outputfile) popsout(par,g,m);
 
-  if(par->lte_only==0){
+    /* Initialize convergence flag */
+    for(id=0;id<par->ncell;id++){
+      g[id].conv=0;
+    }
+
     do{
       if(!silent) progressbar2(0, prog++, 0, result1, result2);
 
@@ -491,20 +492,22 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
       if(!silent) progressbar2(1, prog, percent, result1, result2);
       if(par->outputfile) popsout(par,g,m);
     } while(conv++<NITERATIONS);
-    if(par->binoutputfile) binpopsout(par,g,m);
+
+    for (i=0;i<par->nThreads;i++){
+      gsl_rng_free(threadRans[i]);
+    }
+    free(threadRans);
+    gsl_rng_free(ran);
+    for(id=0;id<par->pIntensity;id++){
+      free(stat[id].pop);
+      free(stat[id].ave);
+      free(stat[id].sigma);
+    }
+    free(stat);
   }
 
-  for (i=0;i<par->nThreads;i++){
-    gsl_rng_free(threadRans[i]);
-  }
-  free(threadRans);
-  gsl_rng_free(ran);
-  for(id=0;id<par->pIntensity;id++){
-    free(stat[id].pop);
-    free(stat[id].ave);
-    free(stat[id].sigma);
-  }
-  free(stat);
+  if(par->binoutputfile) binpopsout(par,g,m);
+
   *popsdone=1;
 }
 
