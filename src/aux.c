@@ -507,6 +507,8 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
     /* Check for blended lines */
     lineBlend(m,par,&matrix);
 
+    if(par->init_lte) LTE(par,g,m);
+
     for(id=0;id<par->pIntensity;id++){
       stat[id].pop=malloc(sizeof(double)*m[0].nlev*5);
       stat[id].ave=malloc(sizeof(double)*m[0].nlev);
