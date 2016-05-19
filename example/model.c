@@ -30,6 +30,26 @@ input(inputPars *par, image *img){
   par->gridfile			= "grid.vtk";
 
   /*
+Setting elements of the following three arrays is optional. NOTE that, if you do set any of their values, you should set as many as the number of elements returned by your function density(). The ith element of the array in question will then be assumed to refer to the ith element in the density function return. The current maximum number of elements allowed is 7, which is the number of types of collision partner recognized in the LAMBDA database.
+
+Note that there is no (longer) a hard connection between the number of density elements and the number of collision-partner species named in the moldata files. This means in practice that, if you set the values for par->collPartIds, you can, if you like, set some for which there are no transition rates supplied in the moldatfiles. This might happen for example if there is a molecule which contributes significantly to the total molecular density but for which there are no measured collision rates for the radiating species you are interested in.
+
+You may also omit to mention in par->collPartIds a collision partner which is specified in the moldatfiles. In this case LIME will assume the density of the respective molecules is zero.
+
+If you don't set any values for any or all of these arrays, i.e. if you omit any mention of them here (we preserve this possibility for purposes of backward compatibility), LIME will attempt to replicate the algorithms employed in version 1.5, which involve guessing which collision partner corresponds to which density element. Since this was not exactly a rigorous procedure, we recommend use of the arrays.
+
+par->nMolWeights: this specifies how you want the number density of each radiating species to be calculated. At each grid point a sum (weighted by par->nMolWeights) of the density values is made, then this is multiplied by the abundance to return the number density.
+
+par->dustWeights: this is similar, but the weighted sum of densities now feeds into the calculation of the dust opacity.
+
+Note that there are convenient macros defined in ../src/lime.h for 7 types of collision partner.
+  */
+//  par->collPartIds[0] 		= CP_H2;
+//  par->nMolWeights[0] 		= 1.0;
+//  par->dustWeights[0] 		= 1.0;
+// Typical values (commented out) given here for the sake of an example.
+
+  /*
    * Definitions for image #0. Add blocks for additional images.
    */
   img[0].nchan			= 61;		  // Number of channels

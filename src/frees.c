@@ -28,6 +28,18 @@ freeInput( inputPars *par, image* img )
     {
       free(par->moldatfile);
     }
+  if( par->collPartIds != NULL )
+    {
+      free(par->collPartIds);
+    }
+  if( par->nMolWeights != NULL )
+    {
+      free(par->nMolWeights);
+    }
+  if( par->dustWeights != NULL )
+    {
+      free(par->dustWeights);
+    }
 }
 
 void

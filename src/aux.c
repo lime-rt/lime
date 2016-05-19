@@ -34,6 +34,13 @@ parseInput(inputPars *par, image **img, molData **m){
   par->pregrid      = NULL;
   par->restart      = NULL;
 
+  par->collPartIds  = malloc(sizeof(int)*MAX_N_COLL_PART);
+  for(i=0;i<MAX_N_COLL_PART;i++) par->collPartIds[i] = 0;
+  par->nMolWeights  = malloc(sizeof(double)*MAX_N_COLL_PART);
+  for(i=0;i<MAX_N_COLL_PART;i++) par->nMolWeights[i] = -1.0;
+  par->dustWeights  = malloc(sizeof(double)*MAX_N_COLL_PART);
+  for(i=0;i<MAX_N_COLL_PART;i++) par->dustWeights[i] = -1.0;
+
   par->tcmb = 2.728;
   par->lte_only=0;
   par->init_lte=0;

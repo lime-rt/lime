@@ -90,15 +90,16 @@
 
 /* input parameters */
 typedef struct {
-  double radius,radiusSqu,minScale,minScaleSqu,tcmb,taylorCutoff;
+  double radius,radiusSqu,minScale,minScaleSqu,tcmb,taylorCutoff,*nMolWeights,*dustWeights;
   int ncell,sinkPoints,pIntensity,nImages,nSpecies,blend;
   char *outputfile, *binoutputfile, *inputfile;
   char *gridfile;
   char *pregrid;
   char *restart;
   char *dust;
-  int sampling,numDensities,lte_only,init_lte,antialias,polarization,doPregrid,nThreads;
+  int sampling,lte_only,init_lte,antialias,polarization,doPregrid,nThreads;
   char **moldatfile;
+  int *collPartIds,numDensities; /* numDensities should equal the number of density function returns (or the number of density values in the respective input files, if pregrid or restart are desired), and also eventually the number of elements in collPartIds and nMolWeights. */
 } inputPars;
 
 struct cpData {
@@ -106,6 +107,7 @@ struct cpData {
   int collPartId,ntemp,ntrans,*lcl,*lcu,densityIndex;
 };
 
+/* Molecular data: shared attributes */
 typedef struct {
   int nlev,nline,npart;
   int *lal,*lau;
