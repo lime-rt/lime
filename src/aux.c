@@ -406,7 +406,9 @@ continuumSetup(int im, image *img, molData *m, inputPars *par, struct grid *g){
     g[id].mol[0].partner = NULL;
   }
   if(par->outputfile) popsout(par,g,m);
-  kappa(m,g,par,0);
+
+  calcMolCMBs(par,m);
+  calcGridDustOpacity(par,m,g);
 }
 
 void
@@ -473,7 +475,8 @@ lineBlend(molData *m, inputPars *par, blend **matrix){
 
 void
 levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
-  int id,conv=0,iter,ilev,prog=0,ispec,c=0,n,i,threadI,nVerticesDone;
+  int id,conv=0,iter,ilev,prog=0,ispec,c=0,n,i,threadI,nVerticesDone,numCollParts;
+  int *allCollPartIds=NULL;
   double percent=0.,*median,result1=0,result2=0,snr,delta_pop;
   blend *matrix;
   struct statistics { double *pop, *ave, *sigma; } *stat;
@@ -492,8 +495,14 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
       }
   }
 
-  /* Read in all molecular data */
-  for(id=0;id<par->nSpecies;id++) molinit(m,par,g,id);
+  readMolData(par,m,&allCollPartIds,&numCollParts);
+  setUpDensityAux(par,allCollPartIds,numCollParts);
+  free(allCollPartIds);
+  assignMolCollPartsToDensities(par,m);
+  calcMolCMBs(par,m);
+  gridLineInit(par,m,g);
+  calcGridMolDensities(par,g);
+  calcGridDustOpacity(par,m,g);
 
   if(par->lte_only){
     LTE(par,g,m);
@@ -517,6 +526,9 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
       threadRans[i] = gsl_rng_alloc(ranNumGenType);
       gsl_rng_set(threadRans[i],(int)(gsl_rng_uniform(ran)*1e6));
     }
+
+    calcGridCollRates(par,m,g);
+//******** could free m[].part[].temp, .colld now.
 
     /* Check for blended lines */
     lineBlend(m,par,&matrix);

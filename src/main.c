@@ -36,12 +36,13 @@ int main () {
   calcTableEntries(FAST_EXP_MAX_TAYLOR, FAST_EXP_NUM_BITS);
 #endif
 
-  parseInput(&par,&img,&m);
+  parseInput(&par,&img,&m); /* Sets par.numDensities for !(par.doPregrid || par.restart) */
 
   if(par.doPregrid)
     {
       gridAlloc(&par,&g);
-      predefinedGrid(&par,g);
+      predefinedGrid(&par,g); /* Sets par.numDensities */
+      checkUserDensWeights(&par); /* Needs par.numDensities */
     }
   else if(par.restart)
     {
@@ -49,15 +50,16 @@ int main () {
     }
   else
     {
+      checkUserDensWeights(&par); /* Needs par.numDensities */
       gridAlloc(&par,&g);
       buildGrid(&par,g);
     }
 
   for(i=0;i<par.nImages;i++){
-    if(img[i].doline==1 && popsdone==0) {
+    if(img[i].doline && !popsdone) {
       levelPops(m,&par,g,&popsdone);
     }
-    if(img[i].doline==0) {
+    if(!img[i].doline) {
       continuumSetup(i,img,m,&par,g);
     }
 
