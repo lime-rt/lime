@@ -200,8 +200,8 @@ The presence of one of these combinations at least is checked here, although the
         if(!silent && (*img)[i].freq > 0)
           warning("You set image trans, so I'm ignoring freq.");
 
-        if(par->nSpecies>1 && (*img)[i].molI < 0){
-          if(!silent) warning("You did not set image molI, so I'm assuming the 1st molecule.");
+        if((*img)[i].molI < 0){
+          if(par->nSpecies>1 && !silent) warning("You did not set image molI, so I'm assuming the 1st molecule.");
           (*img)[i].molI = 0;
         }
       }else if((*img)[i].freq<0){ /* => user has set neither trans nor freq. */
