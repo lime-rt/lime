@@ -14,7 +14,7 @@
 
 void
 stateq(int id, struct grid *g, molData *m, const int ispec, inputPars *par\
-  , struct blendInfo blends, int *nextLineWithBlend, gridPointData *mp, double *halfFirstDs){
+  , struct blendInfo blends, int nextMolWithBlend, gridPointData *mp, double *halfFirstDs){
 
   int t,s,iter;
   double *opop, *oopop;
@@ -42,7 +42,7 @@ stateq(int id, struct grid *g, molData *m, const int ispec, inputPars *par\
   iter=0;
 
   while((diff>TOL && iter<MAXITER) || iter<5){
-    getjbar(id,m,g,ispec,par,blends,nextLineWithBlend,mp,halfFirstDs);
+    getjbar(id,m,g,ispec,par,blends,nextMolWithBlend,mp,halfFirstDs);
 
     getmatrix(id,matrix,m,g,ispec,mp);
     for(s=0;s<m[ispec].nlev;s++){
@@ -87,7 +87,6 @@ stateq(int id, struct grid *g, molData *m, const int ispec, inputPars *par\
   free(opop);
   free(oopop);
 }
-
 
 void
 getmatrix(int id, gsl_matrix *matrix, molData *m, struct grid *g, int ispec, gridPointData *mp){

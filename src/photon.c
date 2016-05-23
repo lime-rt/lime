@@ -191,7 +191,7 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
   , gridPointData *mp, double *halfFirstDs){
 
   int iphot,iline,here,there,firststep,neighI,np_per_line,ip_at_line;
-  int nextLineWithBlend, molI, lineI, molJ, lineJ, bi, bbi, di;
+  int nextMolWithBlend, nextLineWithBlend, molI, lineI, molJ, lineJ, bi, di;
   double deltav,segment,vblend,dtau,expDTau,jnu,alpha,ds,vfac[par->nSpecies],pt_theta,pt_z,semiradius;
   double *tau,*expTau,x[3],inidir[3];
   double remnantSnu, velProj;
@@ -266,9 +266,10 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
         }
       }
 
-      nextLineWithBlend = 0;
+      nextMolWithBlend = 0;
       iline = 0;
       for(molI=0;molI<par->nSpecies;molI++){
+        nextLineWithBlend = 0;
         for(lineI=0;lineI<m[molI].nline;lineI++){
           jnu=0.;
           alpha=0.;
@@ -290,17 +291,16 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
             expTau[iline]=exp(-tau[iline]);
           }
         
-          /* Line blending part */
-          if(par->blend\
-          && molI ==blends.lines[nextLineWithBlend].molI\
-          && lineI==blends.lines[nextLineWithBlend].lineI){
+          /* Line blending part.
+          */
+          if(par->blend && molI==blends.mols[nextMolWithBlend].molI\
+          && lineI==blends.mols[nextMolWithBlend].lines[nextLineWithBlend].lineI){
             jnu=0.;
             alpha=0.;
-            for(bi=0;bi<blends.lines[nextLineWithBlend].number;bi++){
-              bbi = blends.lines[nextLineWithBlend].first + bi;
-              molJ  = blends.blends[bbi].molI;
-              lineJ = blends.blends[bbi].lineI;
-              velProj = deltav - blends.blends[bbi].deltaV;
+            for(bi=0;bi<blends.mols[nextMolWithBlend].lines[nextLineWithBlend].numBlends;bi++){
+              molJ  = blends.mols[nextMolWithBlend].lines[nextLineWithBlend].blends[bi].molJ;
+              lineJ = blends.mols[nextMolWithBlend].lines[nextLineWithBlend].blends[bi].lineJ;
+              velProj = deltav - blends.mols[nextMolWithBlend].lines[nextLineWithBlend].blends[bi].deltaV;
 
               if(!par->doPregrid)
                 velocityspline(    g,here,neighI,g[id].mol[molJ].binv,velProj,&vblend);
@@ -322,12 +322,20 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
                 expTau[iline]=exp(-tau[iline]);
               }
             }
+
             nextLineWithBlend++;
+            if(nextLineWithBlend>=blends.mols[nextMolWithBlend].numLinesWithBlends){
+              nextLineWithBlend = 0;
+              /* The reason for doing this is as follows. Firstly, we only enter the present IF block if molI has at least 1 line which is blended with others; and further, if we have now processed all blended lines for that molecule. Thus no matter what value lineI takes for the present molecule, it won't appear as blends.mols[nextMolWithBlend].lines[i].lineI for any i. Yet we will still test blends.mols[nextMolWithBlend].lines[nextLineWithBlend], thus we want nextLineWithBlend to at least have a sensible value between 0 and blends.mols[nextMolWithBlend].numLinesWithBlends-1. We could set nextLineWithBlend to any number in this range in safety, but zero is simplest. */
+            }
           }
           /* End of line blending part */
 
           iline++;
         }
+
+        if(par->blend && molI==blends.mols[nextMolWithBlend].molI)
+          nextMolWithBlend++;
       }
       
       here=there;
@@ -349,16 +357,17 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
 
 void
 getjbar(int posn, molData *m, struct grid *g, const int molI\
-  , inputPars *par, struct blendInfo blends, int *nextLineWithBlend\
+  , inputPars *par, struct blendInfo blends, int nextMolWithBlend\
   , gridPointData *mp, double *halfFirstDs){
 
-  int lineI,iphot,bi,bbi,molJ,lineJ;
+  int lineI,iphot,bi,molJ,lineJ,nextLineWithBlend;
   double tau, expTau, remnantSnu, vsum=0., jnu, alpha;
   
   for(lineI=0;lineI<m[molI].nline;lineI++) mp[molI].jbar[lineI]=0.;
 
   for(iphot=0;iphot<g[posn].nphot;iphot++){
     if(mp[molI].vfac[iphot]>0){
+      nextLineWithBlend = 0;
       for(lineI=0;lineI<m[molI].nline;lineI++){
         jnu=0.;
         alpha=0.;
@@ -371,16 +380,15 @@ getjbar(int posn, molData *m, struct grid *g, const int molI\
 
         mp[molI].jbar[lineI]+=mp[molI].vfac[iphot]*(expTau*mp[molI].phot[lineI+iphot*m[molI].nline]+remnantSnu);
 
-        /* Line blending part */
-        if(par->blend\
-        && molI ==blends.lines[*nextLineWithBlend].molI\
-        && lineI==blends.lines[*nextLineWithBlend].lineI){
+        /* Line blending part.
+        */
+        if(par->blend && molI==blends.mols[nextMolWithBlend].molI\
+        && lineI==blends.mols[nextMolWithBlend].lines[nextLineWithBlend].lineI){
           jnu=0.;
           alpha=0.;
-          for(bi=0;bi<blends.lines[*nextLineWithBlend].number;bi++){
-            bbi = blends.lines[*nextLineWithBlend].first + bi;
-            molJ  = blends.blends[bbi].molI;
-            lineJ = blends.blends[bbi].lineI;
+          for(bi=0;bi<blends.mols[nextMolWithBlend].lines[nextLineWithBlend].numBlends;bi++){
+            molJ  = blends.mols[nextMolWithBlend].lines[nextLineWithBlend].blends[bi].molJ;
+            lineJ = blends.mols[nextMolWithBlend].lines[nextLineWithBlend].blends[bi].lineJ;
 
             sourceFunc_line(&jnu,&alpha,m,mp[molI].vfac[iphot],g,posn,molJ,lineJ);
             tau=alpha*halfFirstDs[iphot];
@@ -389,7 +397,12 @@ getjbar(int posn, molData *m, struct grid *g, const int molI\
 
             mp[molI].jbar[lineI]+=mp[molI].vfac[iphot]*(expTau*mp[molI].phot[lineI+iphot*m[molI].nline]+remnantSnu);
           }
-          *nextLineWithBlend++;
+
+          nextLineWithBlend++;
+          if(nextLineWithBlend>=blends.mols[nextMolWithBlend].numLinesWithBlends){
+            nextLineWithBlend = 0;
+            /* The reason for doing this is as follows. Firstly, we only enter the present IF block if molI has at least 1 line which is blended with others; and further, if we have now processed all blended lines for that molecule. Thus no matter what value lineI takes for the present molecule, it won't appear as blends.mols[nextMolWithBlend].lines[i].lineI for any i. Yet we will still test blends.mols[nextMolWithBlend].lines[nextLineWithBlend], thus we want nextLineWithBlend to at least have a sensible value between 0 and blends.mols[nextMolWithBlend].numLinesWithBlends-1. We could set nextLineWithBlend to any number in this range in safety, but zero is simplest. */
+          }
         }
         /* End of line blending part */
       }

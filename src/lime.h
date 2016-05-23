@@ -168,19 +168,24 @@ typedef struct {
 
 typedef struct {double x,y, *intensity, *tau;} rayData;
 
-struct listLinker{
-  int molI, lineI, first, number;
-};
-
 struct blend{
-  int molI, lineI;
+  int molJ, lineJ;
   double deltaV;
 };
 
-struct blendInfo{
-  int numLinesWithBlends, totalNumBlends;
+struct lineWithBlends{
+  int lineI, numBlends;
   struct blend *blends;
-  struct listLinker *lines;
+};
+
+struct molWithBlends{
+  int molI, numLinesWithBlends;
+  struct lineWithBlends *lines;
+};
+
+struct blendInfo{
+  int numMolsWithBlends;
+  struct molWithBlends *mols;
 };
 
 /* Some functions */
@@ -210,7 +215,7 @@ void   	freeGrid(const inputPars * par, const molData* m, struct grid * g);
 void   	freePopulation(const inputPars * par, const molData* m, struct populations * pop);
 double 	gaussline(double, double);
 void    getArea(inputPars *, struct grid *, const gsl_rng *);
-void	getjbar(int, molData*, struct grid*, const int, inputPars*, struct blendInfo, int*, gridPointData*, double*);
+void	getjbar(int, molData*, struct grid*, const int, inputPars*, struct blendInfo, int, gridPointData*, double*);
 void    getMass(inputPars *, struct grid *, const gsl_rng *);
 void   	getmatrix(int, gsl_matrix *, molData *, struct grid *, int, gridPointData *);
 int	getNextEdge(double*, int, struct grid*, const gsl_rng*);
@@ -241,7 +246,7 @@ void	sourceFunc(double *, double *, double, molData *,double,struct grid *,int,i
 void    sourceFunc_line(double *,double *,molData *, double, struct grid *, int, int,int);
 void    sourceFunc_cont(double *,double *, struct grid *, int, int,int);
 void    sourceFunc_pol(double *, double *, double, molData *, double, struct grid *, int, int, int, double);
-void	stateq(int, struct grid*, molData*, const int, inputPars*, struct blendInfo, int*, gridPointData*, double*);
+void	stateq(int, struct grid*, molData*, const int, inputPars*, struct blendInfo, int, gridPointData*, double*);
 void	statistics(int, molData *, struct grid *, int *, double *, double *, int *);
 void    stokesangles(double, double, double, double, double *);
 void	traceray(rayData, int, int, inputPars*, struct grid*, molData*, image*, double);

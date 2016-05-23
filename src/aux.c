@@ -364,91 +364,114 @@ continuumSetup(int im, image *img, molData *m, inputPars *par, struct grid *g){
 }
 
 void freeBlends(struct blendInfo blends){
-  if(blends.blends!=NULL) free(blends.blends);
-  if(blends.lines!=NULL) free(blends.lines);
+  int mi, li;
+
+  if(blends.mols != NULL){
+    for(mi=0;mi<blends.numMolsWithBlends;mi++){
+      if(blends.mols[mi].lines != NULL){
+        for(li=0;li<blends.mols[mi].numLinesWithBlends;li++){
+          if(blends.mols[mi].lines[li].blends != NULL){
+            free(blends.mols[mi].lines[li].blends);
+          }
+        }
+        free(blends.mols[mi].lines);
+      }
+    }
+    free(blends.mols);
+  }
 }
 
 void lineBlend(molData *m, inputPars *par, struct blendInfo *blends){
   /*
-This obtains information on all the lines (including all radiating species) which have other lines within some cutoff velocity separation.
+This obtains information on all the lines of all the radiating species which have other lines within some cutoff velocity separation.
+
+A variable of type 'struct blendInfo' has a nested structure which can be illustrated diagrammaticaly as follows.
+
+  Structs:	blendInfo		molWithBlends		lineWithBlends		blend
+
+  Variables:	blends
+		  .numMolsWithBlends     ____________________
+		  .*mols--------------->|.molI               |
+		                        |.numLinesWithBlends |   ___________
+		                        |.*lines--------------->|.lineI     |
+		                        |____________________|  |.numBlends |           ________
+		                        |        etc         |  |.*blends------------->|.molJ   |
+		                                                |___________|          |.lineJ  |
+		                                                |    etc    |          |.deltaV |
+		                                                                       |________|
+		                                                                       |   etc  |
+
+Pointers are indicated by a * before the attribute name and an arrow to the memory location pointed to.
   */
-  int numBlendPairs, molI, lineI, molJ, lineJ;
-  int numLinesWithBlends, totalNumBlendsFound, li, bi;
-  _Bool blendFound;
+  int molI, lineI, molJ, lineJ;
+  int nmwb, nlwb, numBlendsFound, li, bi;
   double deltaV;
+  struct blend *tempBlends=NULL;
+  struct lineWithBlends *tempLines=NULL;
 
-  /* First find out how many lines have other lines within the blend distance.
+  /* Dimension blends.mols first to the total number of species, then realloc later if need be.
   */
-  numLinesWithBlends = 0;
-  totalNumBlendsFound = 0;
+  (*blends).mols = malloc(sizeof(struct molWithBlends)*par->nSpecies);
+  (*blends).numMolsWithBlends = 0;
+
+  nmwb = 0;
   for(molI=0;molI<par->nSpecies;molI++){
+    tempBlends = malloc(sizeof(struct blend)*m[molI].nline);
+    tempLines  = malloc(sizeof(struct lineWithBlends)*m[molI].nline);
+
+    nlwb = 0;
     for(lineI=0;lineI<m[molI].nline;lineI++){
-      blendFound = 0;
+      numBlendsFound = 0;
       for(molJ=0;molJ<par->nSpecies;molJ++){
         for(lineJ=0;lineJ<m[molJ].nline;lineJ++){
           if(!(molI==molJ && lineI==lineJ)){
             deltaV = (m[molJ].freq[lineJ] - m[molI].freq[lineI])*CLIGHT/m[molI].freq[lineI];
             if(fabs(deltaV)<maxBlendDeltaV){
-              if(!blendFound) blendFound=1;
-              totalNumBlendsFound++;
+              tempBlends[numBlendsFound].molJ   = molJ;
+              tempBlends[numBlendsFound].lineJ  = lineJ;
+              tempBlends[numBlendsFound].deltaV = deltaV;
+              numBlendsFound++;
             }
           }
         }
       }
-      if(blendFound) numLinesWithBlends++;
-    }
-  }
 
-  (*blends).numLinesWithBlends = numLinesWithBlends;
-  (*blends).totalNumBlends = totalNumBlendsFound;
-  if(numLinesWithBlends<=0){
-    (*blends).blends = NULL;
-    (*blends).lines  = NULL;
-    return;
-  }
+      if(numBlendsFound>0){
+        tempLines[nlwb].lineI = lineI;
+        tempLines[nlwb].numBlends = numBlendsFound;
+        tempLines[nlwb].blends = malloc(sizeof(struct blend)*numBlendsFound);
+        for(bi=0;bi<numBlendsFound;bi++)
+          tempLines[nlwb].blends[bi] = tempBlends[bi];
 
-  (*blends).blends = malloc(sizeof(struct blend)*totalNumBlendsFound);
-  (*blends).lines  = malloc(sizeof(struct listLinker)*numLinesWithBlends);
-
-  if(par->blend){
-    if(!silent) warning("There are blended lines (Line blending is switched on)");
-  } else {
-    if(!silent) warning("There are blended lines (Line blending is switched off)");
-  }
-
-  /* Now we load up the info.
-  */
-  li = 0;
-  bi = 0;
-  for(molI=0;molI<par->nSpecies;molI++){
-    for(lineI=0;lineI<m[molI].nline;lineI++){
-      blendFound = 0;
-      for(molJ=0;molJ<par->nSpecies;molJ++){
-        for(lineJ=0;lineJ<m[molJ].nline;lineJ++){
-          if(!(molI==molJ && lineI==lineJ)){
-            deltaV = (m[molJ].freq[lineJ] - m[molI].freq[lineI])*CLIGHT/m[molI].freq[lineI];
-            if(fabs(deltaV)<maxBlendDeltaV){
-              (*blends).blends[bi].molI = molJ;
-              (*blends).blends[bi].lineI = lineJ;
-              (*blends).blends[bi].deltaV = deltaV;
-
-              if(blendFound){
-                (*blends).lines[li].number++;
-              }else{ /* First blend found for line I. */
-                (*blends).lines[li].molI = molI;
-                (*blends).lines[li].lineI = lineI;
-                (*blends).lines[li].first = bi;
-                (*blends).lines[li].number = 1; /* Note that number==0 should not be possible. */
-                blendFound=1;
-              }
-
-              bi++;
-            }
-          }
-        }
+        nlwb++;
       }
-      if(blendFound) li++;
     }
+
+    if(nlwb>0){
+      (*blends).mols[nmwb].molI = molI;
+      (*blends).mols[nmwb].numLinesWithBlends = nlwb;
+      (*blends).mols[nmwb].lines = malloc(sizeof(struct lineWithBlends)*nlwb);
+      for(li=0;li<nlwb;li++){
+        (*blends).mols[nmwb].lines[li].lineI     = tempLines[li].lineI;
+        (*blends).mols[nmwb].lines[li].numBlends = tempLines[li].numBlends;
+        (*blends).mols[nmwb].lines[li].blends = malloc(sizeof(struct blend)*tempLines[li].numBlends);
+        for(bi=0;bi<tempLines[li].numBlends;bi++)
+          (*blends).mols[nmwb].lines[li].blends[bi] = tempLines[li].blends[bi];
+      }
+
+      nmwb++;
+    }
+
+    free(tempLines);
+    free(tempBlends);
+  }
+
+  if(nmwb>0){
+    (*blends).numMolsWithBlends = nmwb;
+    (*blends).mols = realloc((*blends).mols, sizeof(struct molWithBlends)*nmwb);
+  }else{
+    freeBlends(*blends);
+    (*blends).mols = NULL;
   }
 }
 
@@ -457,7 +480,7 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
 
   int id,conv=0,iter,ilev,prog=0,ispec,c=0,n,i,threadI,nVerticesDone,nlinetot;
   double percent=0.,*median,result1=0,result2=0,snr,delta_pop;
-  int nextLineWithBlend;
+  int nextMolWithBlend;
   struct statistics { double *pop, *ave, *sigma; } *stat;
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
   struct blendInfo blends;
@@ -537,7 +560,7 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
 
       nVerticesDone=0;
       omp_set_dynamic(0);
-#pragma omp parallel private(id,ispec,threadI,nextLineWithBlend) num_threads(par->nThreads)
+#pragma omp parallel private(id,ispec,threadI,nextMolWithBlend) num_threads(par->nThreads)
       {
         threadI = omp_get_thread_num();
 
@@ -562,9 +585,12 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
           }
           if(g[id].dens[0] > 0 && g[id].t[0] > 0){
             photon(id,g,m,0,threadRans[threadI],par,nlinetot,blends,mp,halfFirstDs);
-            nextLineWithBlend = 0;
-            for(ispec=0;ispec<par->nSpecies;ispec++)
-              stateq(id,g,m,ispec,par,blends,&nextLineWithBlend,mp,halfFirstDs);
+            nextMolWithBlend = 0;
+            for(ispec=0;ispec<par->nSpecies;ispec++){
+              stateq(id,g,m,ispec,par,blends,nextMolWithBlend,mp,halfFirstDs);
+              if(par->blend && ispec==blends.mols[nextMolWithBlend].molI)
+                nextMolWithBlend++;
+            }
           }
           if (threadI == 0){ // i.e., is master thread
             if(!silent) warning("");
