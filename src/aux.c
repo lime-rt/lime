@@ -90,6 +90,7 @@ parseInput(inputPars *par, image **img, molData **m){
     (*img)[i].nchan=0;
     (*img)[i].velres=-1.;
     (*img)[i].trans=-1;
+    (*img)[i].molI=-1;
     (*img)[i].freq=-1.;
     (*img)[i].bandwidth=-1.;
   }
@@ -132,7 +133,7 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
 
   /* Allocate pixel space and parse image information */
   for(i=0;i<par->nImages;i++){
-    if((*img)[i].nchan == 0 && (*img)[i].velres<0 ){
+    if((*img)[i].nchan == 0 && (*img)[i].velres<0 ){ /* => user has set neither nchan nor velres. One of the two is required for a line image. */
       /* Assume continuum image */
 
       /* Check for polarization */
@@ -140,30 +141,78 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
       magfield(par->minScale,par->minScale,par->minScale,BB);
       if(fabs(BB[0]) > 0.) par->polarization=1;
 
-      if(par->polarization) (*img)[i].nchan=3;
-      else (*img)[i].nchan=1;
-      if((*img)[i].trans>-1 || (*img)[i].bandwidth>-1. || (*img)[i].freq==0 || par->dust==NULL){
-        if(!silent) bail_out("Error: Image keywords are ambiguous");
+      if(par->polarization)
+        (*img)[i].nchan=3;
+      else
+        (*img)[i].nchan=1;
+
+      if((*img)[i].freq<0){
+        if(!silent) bail_out("You must set image freq for a continuum image.");
         exit(1);
       }
+
+      if(par->dust==NULL){
+        if(!silent) bail_out("You must point par.dust to a dust opacity file for a continuum image.");
+        exit(1);
+      }
+
+      if((*img)[i].trans>-1 || (*img)[i].bandwidth>-1.)
+        if(!silent) warning("Image bandwidth and trans are ignored for a continuum image.");
+
       (*img)[i].doline=0;
-    } else if (((*img)[i].nchan>0 || (*img)[i].velres > 0)){
+
+    }else{ /* => user has set one of either nchan or velres, or possibly both. */
       /* Assume line image */
-      par->polarization=0;
+
+      /*
+For a valid line image, the user must set one of the following pairs:
+  bandwidth, velres (if they also set nchan, this is overwritten)
+  bandwidth, nchan (if they also set velres, this is overwritten)
+  velres, nchan (if they also set bandwidth, this is overwritten)
+
+The presence of one of these combinations at least is checked here, although the actual calculation is done in raytrace(), because it depends on moldata info which we have not yet got.
+      */
+      if((*img)[i].bandwidth > 0 && (*img)[i].velres > 0){
+        if(!silent && (*img)[i].nchan > 0)
+          warning("Your nchan value will be overwritten.");
+
+      }else if((*img)[i].bandwidth > 0 && (*img)[i].nchan > 0){
+        if(!silent && (*img)[i].velres > 0)
+          warning("Your velres value will be overwritten.");
+
+      }else if((*img)[i].velres > 0 && (*img)[i].nchan > 0){
+        if(!silent && (*img)[i].bandwidth > 0)
+          warning("Your bandwidth value will be overwritten.");
+
+      }else{
+        if(!silent) bail_out("Insufficient info to calculate nchan, velres and bandwidth.");
+        exit(1);
+      }
+
       if(par->moldatfile==NULL){
-        if(!silent) bail_out("Error: No data file is specified for line image.");
+        if(!silent) bail_out("You must point par->moldatfile to a data file for a line image.");
         exit(1);
       }
-      if(((*img)[i].trans>-1 && (*img)[i].freq>-1) || ((*img)[i].trans<0 && (*img)[i].freq<0)){
-        if(!silent) bail_out("Error: Specify either frequency or transition ");
+
+      /* Check that we have keywords which allow us to calculate the image frequency (if necessary) after reading in the moldata file:
+      */
+      if((*img)[i].trans>-1){ /* => user has set trans, possibly also freq. */
+        if(!silent && (*img)[i].freq > 0)
+          warning("You set image trans, so I'm ignoring freq.");
+
+        if(par->nSpecies>1 && (*img)[i].molI < 0){
+          if(!silent) warning("You did not set image molI, so I'm assuming the 1st molecule.");
+          (*img)[i].molI = 0;
+        }
+      }else if((*img)[i].freq<0){ /* => user has set neither trans nor freq. */
+        if(!silent) bail_out("You must set either freq or trans (plus optionally molI).");
         exit(1);
-      }
-      if(((*img)[i].nchan==0 && (*img)[i].bandwidth<0) || ((*img)[i].bandwidth<0 && (*img)[i].velres<0)){
-        if(!silent) bail_out("Error: Image keywords are not set properly");
-        exit(1);
-      }
+      }/* else => the user has set freq. */
+
+      par->polarization=0;
       (*img)[i].doline=1;
     }
+
     (*img)[i].imgres=(*img)[i].imgres/206264.806;
     (*img)[i].pixel = malloc(sizeof(spec)*(*img)[i].pxls*(*img)[i].pxls);
     for(id=0;id<((*img)[i].pxls*(*img)[i].pxls);id++){
