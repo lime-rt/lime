@@ -69,7 +69,7 @@ OBJS    = src/aux.o src/messages.o src/grid.o src/LTEsolution.o \
 	  src/tcpsocket.o src/defaults.o src/fastexp.o
 MODELO 	= src/model.o
 
-#CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing -DTEST -DFASTEXP -DNO_NCURSES
+#CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing -DTEST
 CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing
 LDFLAGS = -lgsl -lgslcblas -l${QHULL} -lcfitsio -lncurses -lm 
 
