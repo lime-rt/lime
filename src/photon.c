@@ -293,7 +293,7 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
         
           /* Line blending part.
           */
-          if(par->blend && molI==blends.mols[nextMolWithBlend].molI\
+          if(par->blend && blends.mols!=NULL && molI==blends.mols[nextMolWithBlend].molI\
           && lineI==blends.mols[nextMolWithBlend].lines[nextLineWithBlend].lineI){
             jnu=0.;
             alpha=0.;
@@ -334,7 +334,7 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
           iline++;
         }
 
-        if(par->blend && molI==blends.mols[nextMolWithBlend].molI)
+        if(par->blend && blends.mols!=NULL && molI==blends.mols[nextMolWithBlend].molI)
           nextMolWithBlend++;
       }
       
@@ -382,7 +382,7 @@ getjbar(int posn, molData *m, struct grid *g, const int molI\
 
         /* Line blending part.
         */
-        if(par->blend && molI==blends.mols[nextMolWithBlend].molI\
+        if(par->blend && blends.mols!=NULL && molI==blends.mols[nextMolWithBlend].molI\
         && lineI==blends.mols[nextMolWithBlend].lines[nextLineWithBlend].lineI){
           jnu=0.;
           alpha=0.;

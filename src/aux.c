@@ -363,21 +363,21 @@ continuumSetup(int im, image *img, molData *m, inputPars *par, struct grid *g){
   kappa(m,g,par,0);
 }
 
-void freeBlends(struct blendInfo blends){
+void freeMolsWithBlends(struct molWithBlends *mols, const int numMolsWithBlends){
   int mi, li;
 
-  if(blends.mols != NULL){
-    for(mi=0;mi<blends.numMolsWithBlends;mi++){
-      if(blends.mols[mi].lines != NULL){
-        for(li=0;li<blends.mols[mi].numLinesWithBlends;li++){
-          if(blends.mols[mi].lines[li].blends != NULL){
-            free(blends.mols[mi].lines[li].blends);
+  if(mols != NULL){
+    for(mi=0;mi<numMolsWithBlends;mi++){
+      if(mols[mi].lines != NULL){
+        for(li=0;li<mols[mi].numLinesWithBlends;li++){
+          if(mols[mi].lines[li].blends != NULL){
+            free(mols[mi].lines[li].blends);
           }
         }
-        free(blends.mols[mi].lines);
+        free(mols[mi].lines);
       }
     }
-    free(blends.mols);
+    free(mols);
   }
 }
 
@@ -466,11 +466,17 @@ Pointers are indicated by a * before the attribute name and an arrow to the memo
     free(tempBlends);
   }
 
+  (*blends).numMolsWithBlends = nmwb;
   if(nmwb>0){
-    (*blends).numMolsWithBlends = nmwb;
+    if(!par->blend)
+      if(!silent) warning("There are blended lines, but line blending is switched off.");
+
     (*blends).mols = realloc((*blends).mols, sizeof(struct molWithBlends)*nmwb);
   }else{
-    freeBlends(*blends);
+    if(par->blend)
+      if(!silent) warning("Line blending is switched on, but no blended lines were found.");
+
+    free((*blends).mols);
     (*blends).mols = NULL;
   }
 }
@@ -588,7 +594,7 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
             nextMolWithBlend = 0;
             for(ispec=0;ispec<par->nSpecies;ispec++){
               stateq(id,g,m,ispec,par,blends,nextMolWithBlend,mp,halfFirstDs);
-              if(par->blend && ispec==blends.mols[nextMolWithBlend].molI)
+              if(par->blend && blends.mols!=NULL && ispec==blends.mols[nextMolWithBlend].molI)
                 nextMolWithBlend++;
             }
           }
@@ -654,7 +660,7 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
     free(stat[id].sigma);
   }
   free(stat);
-  freeBlends(blends);
+  freeMolsWithBlends(blends.mols, blends.numMolsWithBlends);
   for (i=0;i<par->nThreads;i++){
     gsl_rng_free(threadRans[i]);
   }
