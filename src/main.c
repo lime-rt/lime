@@ -21,7 +21,7 @@ double EXP_TABLE_3D[1][1][1];
 #endif
 
 int main () {
-  int i;
+  int i,nLineImages;
   int initime=time(0);
   int popsdone=0;
   molData*     m = NULL;
@@ -53,16 +53,29 @@ int main () {
       buildGrid(&par,g);
     }
 
+  /* Make all the continuum images, and count the non-continuum images at the same time:
+  */
+  nLineImages = 0;
   for(i=0;i<par.nImages;i++){
-    if(img[i].doline==1 && popsdone==0) {
-      levelPops(m,&par,g,&popsdone);
-    }
-    if(img[i].doline==0) {
+    if(img[i].doline)
+      nLineImages++;
+    else{
       continuumSetup(i,img,m,&par,g);
+      raytrace(i,&par,g,m,img);
+      writefits(i,&par,m,img);
     }
+  }
 
-    raytrace(i,&par,g,m,img);
-    writefits(i,&par,m,img);
+  if(nLineImages>0 && !popsdone)
+    levelPops(m,&par,g,&popsdone);
+
+  /* Now make the line images.
+  */
+  for(i=0;i<par.nImages;i++){
+    if(img[i].doline){
+      raytrace(i,&par,g,m,img);
+      writefits(i,&par,m,img);
+    }
   }
 
   if(!silent) goodnight(initime,img[0].filename);
