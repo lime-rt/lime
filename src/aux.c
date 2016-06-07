@@ -3,7 +3,7 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015 The LIME development team
+ *  Copyright (C) 2016 The LIME development team
  *
  */
 
@@ -16,87 +16,19 @@
 void
 parseInput(inputPars *par, image **img, molData **m){
   FILE *fp;
-  int i,id;
+  int i,id, ispec;
   double BB[3];
   double cosPhi,sinPhi,cosTheta,sinTheta;
 
-  /* Set default values */
-  par->dust  	    = NULL;
-  par->inputfile    = NULL;
-  par->outputfile   = NULL;
-  par->binoutputfile= NULL;
-  par->gridfile     = NULL;
-  par->pregrid      = NULL;
-  par->restart      = NULL;
-
-  par->tcmb = 2.728;
-  par->lte_only=0;
-  par->init_lte=0;
-  par->sampling=2;
-  par->blend=0;
-  par->antialias=1;
-  par->polarization=0;
-  par->pIntensity=0;
-  par->sinkPoints=0;
-  par->doPregrid=0;
-  par->nThreads=0;
-
-  /* Allocate space for output fits images */
-  (*img)=malloc(sizeof(image)*MAX_NSPECIES);
-  par->moldatfile=malloc(sizeof(char *) * MAX_NSPECIES);
-  for(id=0;id<MAX_NSPECIES;id++){
-    (*img)[id].filename=NULL;
-    par->moldatfile[id]=NULL;
+  /* Allocate moldata array */
+  if(par->nSpecies > 1) {
+    (*m)=malloc(sizeof(molData)*par->nSpecies);
+    for(ispec=0;ispec<par->nSpecies;ispec++)
+      m[ispec]->nlev=0;
   }
-  input(par, *img);
-  id=-1;
-  while((*img)[++id].filename!=NULL);
-  par->nImages=id;
-  if(par->nImages==0) {
-    if(!silent) bail_out("Error: no images defined");
-    exit(1);
-  }
-
-  *img=realloc(*img, sizeof(image)*par->nImages);
-
-  id=-1;
-  while(par->moldatfile[++id]!=NULL);
-  par->nSpecies=id;
-  if( par->nSpecies == 0 )
-    {
-      par->nSpecies = 1;
-      free(par->moldatfile);
-      par->moldatfile = NULL;
-    }
-  else
-    {
-      par->moldatfile=realloc(par->moldatfile, sizeof(char *)*par->nSpecies);
-      /* Check if files exists */
-      for(id=0;id<par->nSpecies;id++){
-        if((fp=fopen(par->moldatfile[id], "r"))==NULL) {
-          openSocket(par, id);
-        }
-        else {
-          fclose(fp);
-        }
-      }
-    }
-
-
-  /* Set defaults and read inputPars and img[] */
-  for(i=0;i<par->nImages;i++) {
-    (*img)[i].source_vel=0.0;
-    (*img)[i].phi=0.0;
-    (*img)[i].nchan=0;
-    (*img)[i].velres=-1.;
-    (*img)[i].trans=-1;
-    (*img)[i].freq=-1.;
-    (*img)[i].bandwidth=-1.;
-  }
-  input(par,*img);
-
-  if(par->nThreads == 0){ // Hmm. Really ought to have a separate boolean parameter.
-    par->nThreads = NTHREADS;
+  else {
+    (*m)=malloc(sizeof(molData)*1);
+    m[0]->nlev=0;
   }
 
   par->ncell=par->pIntensity+par->sinkPoints;
@@ -225,9 +157,9 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
 }
 
 void
-freeInput( inputPars *par, image* img, molData* mol )
+freeMoldata( inputPars *par, molData* mol )
 {
-  int i,id;
+  int i;
   if( mol!= 0 )
     {
       for( i=0; i<par->nSpecies; i++ )
@@ -294,21 +226,6 @@ freeInput( inputPars *par, image* img, molData* mol )
             }
         }
       free(mol);
-    }
-  for(i=0;i<par->nImages;i++){
-    for(id=0;id<(img[i].pxls*img[i].pxls);id++){
-      free( img[i].pixel[id].intense );
-      free( img[i].pixel[id].tau );
-    }
-    free(img[i].pixel);
-  }
-  if( img != NULL )
-    {
-      free(img);
-    }
-  if( par->moldatfile != NULL )
-    {
-      free(par->moldatfile);
     }
 }
 
