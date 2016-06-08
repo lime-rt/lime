@@ -7,6 +7,9 @@
  *
  */
 
+#ifndef LIME_H
+#define LIME_H
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -267,5 +270,4 @@ void    collpartmesg(char *, int);
 void    collpartmesg2(char *, int);
 void    collpartmesg3(int, int);
 
-
-
+#endif  /* LIME_H */
