@@ -6,6 +6,8 @@
  *  Copyright (C) 2016 The LIME development team
  *
  */
+#include <locale.h>
+
 #include "lime.h"
 
 #ifdef FASTEXP
@@ -159,6 +161,9 @@ run(inputPars *par, image *img)
   int popsdone=0;
   molData*     m = NULL;
   struct grid* g = NULL;
+
+  /*Set locale to avoid trouble when reading files*/
+  setlocale(LC_ALL, "C");
 
   if(!silent) greetings();
   if(!silent) screenInfo();
