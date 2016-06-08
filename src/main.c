@@ -209,6 +209,8 @@ int main () {
   inputPars	par;
   image		*img = NULL;
 
+  silent = 0;
+
   initParImg(&par, &img);
 
   run(&par, img);

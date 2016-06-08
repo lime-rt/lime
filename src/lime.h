@@ -38,7 +38,6 @@
 #define omp_set_dynamic(int) 0
 #endif
 
-#define silent 0
 #define DIM 3
 #define VERSION	"1.5"
 #define DEFAULT_NTHREADS 1
@@ -173,7 +172,8 @@ typedef struct {
 
 typedef struct {double x,y, *intensity, *tau;} rayData;
 
-
+/* Some global variables */
+int silent;
 
 /* Some functions */
 void density(double,double,double,double *);
