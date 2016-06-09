@@ -53,9 +53,7 @@ initParImg(inputPars *par, image **img)
   par->sinkPoints=0;
   par->doPregrid=0;
 
-  if(par->nThreads == 0){ // Hmm. Really ought to have a separate boolean parameter.
-    par->nThreads = NTHREADS;
-  }
+  par->nThreads = NTHREADS;
 
   /* Allocate space for output fits images */
   (*img)=malloc(sizeof(image)*MAX_NSPECIES);
