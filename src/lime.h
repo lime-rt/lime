@@ -62,12 +62,12 @@
 #define GRAV		6.67428e-11
 
 /* Other constants */
-#define NITERATIONS 	16
+#define NITERATIONS 		16
 #define max_phot		10000		/* don't set this value higher unless you have enough memory. */
 #define ininphot		9
 #define minpop			1.e-6
-#define eps				1.0e-30
-#define TOL				1e-6
+#define eps			1.0e-30
+#define TOL			1e-6
 #define MAXITER			50
 #define goal			50
 #define fixset			1e-6
@@ -93,9 +93,10 @@ typedef struct {
 
 /* Molecular data: shared attributes */
 typedef struct {
-  int nlev,nline,*ntrans,npart;
+  int nlev,nline,*ntrans,*ntemp,npart;
   int *lal,*lau,*lcl,*lcu;
-  double *aeinst,*freq,*beinstu,*beinstl,*up,*down,*eterm,*gstat;
+  double *aeinst,*freq,*beinstu,*beinstl,*eterm,*gstat;
+  double **down;
   double norm,norminv,*cmb,*local_cmb;
 } molData;
 
@@ -115,7 +116,8 @@ typedef struct {
 } point;
 
 struct rates {
-  double *up, *down;
+  int t_binlow;
+  double interp_coeff;
 };
 
 

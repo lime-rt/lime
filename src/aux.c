@@ -215,8 +215,8 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
       (*m)[i].freq = NULL;
       (*m)[i].beinstu = NULL;
       (*m)[i].beinstl = NULL;
-      (*m)[i].up = NULL;
       (*m)[i].down = NULL;
+      (*m)[i].ntemp = NULL;
       (*m)[i].eterm = NULL;
       (*m)[i].gstat = NULL;
       (*m)[i].cmb = NULL;
@@ -268,14 +268,6 @@ freeInput( inputPars *par, image* img, molData* mol )
             {
               free(mol[i].beinstl);
             }
-          if( mol[i].up != NULL )
-            {
-              free(mol[i].up);
-            }
-          if( mol[i].down != NULL )
-            {
-              free(mol[i].down);
-            }
           if( mol[i].eterm != NULL )
             {
               free(mol[i].eterm);
@@ -292,6 +284,14 @@ freeInput( inputPars *par, image* img, molData* mol )
             {
               free(mol[i].local_cmb);
             }
+
+          if( mol[i].down != NULL )
+            {
+              for (int j=0;j<mol[i].npart;j++) free(mol[i].down[j]);
+              free(mol[i].down);
+            }
+	 free(mol[i].ntemp);
+
         }
       free(mol);
     }

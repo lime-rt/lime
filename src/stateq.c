@@ -124,9 +124,14 @@ getmatrix(int id, gsl_matrix *matrix, molData *m, struct grid *g, int ispec, gri
 
   /* Populate matrix with collisional transitions */
   for(ipart=0;ipart<m[ispec].npart;ipart++){
+    double *downrates = m[ispec].down[ipart];
     for(t=0;t<m[ispec].ntrans[ipart];t++){
-      gsl_matrix_set(partner[ipart].colli, m[ispec].lcu[t], m[ispec].lcl[t], g[id].mol[ispec].partner[ipart].down[t]);
-      gsl_matrix_set(partner[ipart].colli, m[ispec].lcl[t], m[ispec].lcu[t], g[id].mol[ispec].partner[ipart].up[t]);
+      int trans_offset = t*m[ispec].ntemp[ipart];
+      double down = downrates[trans_offset+g[id].mol[ispec].partner[ipart].t_binlow] + g[id].mol[ispec].partner[ipart].interp_coeff*(downrates[trans_offset+g[id].mol[ispec].partner[ipart].t_binlow+1] -
+        downrates[trans_offset+ g[id].mol[ispec].partner[ipart].t_binlow]);
+      double up = down*m[ispec].gstat[m[ispec].lcu[t]]/m[ispec].gstat[m[ispec].lcl[t]]*exp(-HCKB*(m[ispec].eterm[m[ispec].lcu[t]]-m[ispec].eterm[m[ispec].lcl[t]])/g[id].t[0]);
+      gsl_matrix_set(partner[ipart].colli, m[ispec].lcu[t], m[ispec].lcl[t], down);
+      gsl_matrix_set(partner[ipart].colli, m[ispec].lcl[t], m[ispec].lcu[t], up);
     }
 
     for(p=0;p<m[ispec].nlev;p++){
