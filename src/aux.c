@@ -287,7 +287,8 @@ freeInput( inputPars *par, image* img, molData* mol )
 
           if( mol[i].down != NULL )
             {
-              for (int j=0;j<mol[i].npart;j++) free(mol[i].down[j]);
+              int j=0;
+              for (j=0;j<mol[i].npart;j++) free(mol[i].down[j]);
               free(mol[i].down);
             }
 	 free(mol[i].ntemp);
