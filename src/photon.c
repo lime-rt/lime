@@ -169,7 +169,7 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
   int iphot,iline,jline,here,there,firststep,dir,np_per_line,ip_at_line,l;
   int *counta, *countb,nlinetot;
   double deltav,segment,vblend,dtau,expDTau,jnu,alpha,ds,vfac[par->nSpecies],pt_theta,pt_z,semiradius;
-  double *tau,*expTau,x[3],inidir[3];
+  double *tau,*expTau,inidir[3];
   double remnantSnu;
 
   lineCount(par->nSpecies, m, &counta, &countb, &nlinetot);
@@ -220,10 +220,8 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
           else velocityspline_lin(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
           mp[l].vfac[iphot]=vfac[0];
         }
-        for(l=0;l<3;l++) x[l]=g[here].x[l]+(g[here].dir[dir].xn[l] * g[id].ds[dir]/2.);
       } else {
         ds=g[here].ds[dir];
-        for(l=0;l<3;l++) x[l]=g[here].x[l];
       }
       
       for(l=0;l<par->nSpecies;l++){

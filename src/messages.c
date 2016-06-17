@@ -106,7 +106,7 @@ screenInfo(){
 }
 
 void
-done(int line){
+printDone(int line){
 #ifdef NO_NCURSES
   if (line == 4)
     printf(  "   Building grid: DONE                               \n\n"); 

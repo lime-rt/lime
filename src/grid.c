@@ -13,19 +13,9 @@
 void
 gridAlloc(inputPars *par, struct grid **g){
   int i;
-  double temp[99];
 
   *g=malloc(sizeof(struct grid)*(par->pIntensity+par->sinkPoints));
   memset(*g, 0., sizeof(struct grid) * (par->pIntensity+par->sinkPoints));
-
-  if(par->doPregrid || par->restart) par->collPart=1;
-  else{
-    for(i=0;i<99;i++) temp[i]=-1;
-    density(AU,AU,AU,temp);
-    i=0;
-    par->collPart=0;
-    while(temp[i++]>-1) par->collPart++;
-  }
 
   for(i=0;i<(par->pIntensity+par->sinkPoints); i++){
     (*g)[i].a0 = NULL;
@@ -151,7 +141,7 @@ freeGrid(const inputPars *par, const molData* m ,struct grid* g){
 }
 
 void
-qhull(inputPars *par, struct grid *g){
+qhull(inputPars *par, struct grid *gp){
   int i,j,k,id;
   char flags[255];
   boolT ismalloc = False;
@@ -165,7 +155,7 @@ qhull(inputPars *par, struct grid *g){
 
   for(i=0;i<par->ncell;i++) {
     for(j=0;j<DIM;j++) {
-      pt_array[i*DIM+j]=g[i].x[j];
+      pt_array[i*DIM+j]=gp[i].x[j];
     }
   }
 
@@ -174,14 +164,14 @@ qhull(inputPars *par, struct grid *g){
     /* Identify points */
     FORALLvertices {
       id=qh_pointid(vertex->point);
-      g[id].numNeigh=qh_setsize(vertex->neighbors);
-      if(  g[id].neigh != NULL )
+      gp[id].numNeigh=qh_setsize(vertex->neighbors);
+      if(  gp[id].neigh != NULL )
         {
-          free( g[id].neigh );
+          free( gp[id].neigh );
         }
-      g[id].neigh=malloc(sizeof(struct grid *)*g[id].numNeigh);
-      for(k=0;k<g[id].numNeigh;k++) {
-        g[id].neigh[k]=NULL;
+      gp[id].neigh=malloc(sizeof(struct grid *)*gp[id].numNeigh);
+      for(k=0;k<gp[id].numNeigh;k++) {
+        gp[id].neigh[k]=NULL;
       }
     }
     
@@ -194,10 +184,10 @@ qhull(inputPars *par, struct grid *g){
           for(j=0;j<DIM+1;j++){
             k=0;
             if(i!=j){
-              while(g[simplex[i]].neigh[k] != NULL && g[simplex[i]].neigh[k]->id != g[simplex[j]].id) {
+              while(gp[simplex[i]].neigh[k] != NULL && gp[simplex[i]].neigh[k]->id != gp[simplex[j]].id) {
                 k++;
               }
-              g[simplex[i]].neigh[k]=&g[simplex[j]];
+              gp[simplex[i]].neigh[k]=&gp[simplex[j]];
             }
           }
         }
@@ -210,13 +200,13 @@ qhull(inputPars *par, struct grid *g){
 
   for(i=0;i<par->ncell;i++){
     j=0;
-    for(k=0;k<g[i].numNeigh;k++){
-      if(g[i].neigh[k] != NULL)
+    for(k=0;k<gp[i].numNeigh;k++){
+      if(gp[i].neigh[k] != NULL)
         {
           j++;
         }
     }
-    g[i].numNeigh=j;
+    gp[i].numNeigh=j;
   }
   qh_freeqhull(!qh_ALL);
   qh_memfreeshort (&curlong, &totlong);
@@ -224,28 +214,28 @@ qhull(inputPars *par, struct grid *g){
 }
 
 void
-distCalc(inputPars *par, struct grid *g){
+distCalc(inputPars *par, struct grid *gp){
   int i,k,l;
 
   for(i=0;i<par->ncell;i++){
-    if( g[i].dir != NULL )
+    if( gp[i].dir != NULL )
       {
-        free( g[i].dir );
+        free( gp[i].dir );
       }
-    if( g[i].ds != NULL )
+    if( gp[i].ds != NULL )
       {
-        free( g[i].ds );
+        free( gp[i].ds );
       }
-    g[i].dir=malloc(sizeof(point)*g[i].numNeigh);
-    g[i].ds =malloc(sizeof(double)*g[i].numNeigh);
-    memset(g[i].dir, 0., sizeof(point) * g[i].numNeigh);
-    memset(g[i].ds, 0., sizeof(double) * g[i].numNeigh);
-    for(k=0;k<g[i].numNeigh;k++){
-      for(l=0;l<3;l++) g[i].dir[k].x[l] = g[i].neigh[k]->x[l] - g[i].x[l];
-      g[i].ds[k]=sqrt(g[i].dir[k].x[0]*g[i].dir[k].x[0]+g[i].dir[k].x[1]*g[i].dir[k].x[1]+g[i].dir[k].x[2]*g[i].dir[k].x[2]);
-      for(l=0;l<3;l++) g[i].dir[k].xn[l] = g[i].dir[k].x[l]/g[i].ds[k];
+    gp[i].dir=malloc(sizeof(point)*gp[i].numNeigh);
+    gp[i].ds =malloc(sizeof(double)*gp[i].numNeigh);
+    memset(gp[i].dir, 0., sizeof(point) * gp[i].numNeigh);
+    memset(gp[i].ds, 0., sizeof(double) * gp[i].numNeigh);
+    for(k=0;k<gp[i].numNeigh;k++){
+      for(l=0;l<3;l++) gp[i].dir[k].x[l] = gp[i].neigh[k]->x[l] - gp[i].x[l];
+      gp[i].ds[k]=sqrt(gp[i].dir[k].x[0]*gp[i].dir[k].x[0]+gp[i].dir[k].x[1]*gp[i].dir[k].x[1]+gp[i].dir[k].x[2]*gp[i].dir[k].x[2]);
+      for(l=0;l<3;l++) gp[i].dir[k].xn[l] = gp[i].dir[k].x[l]/gp[i].ds[k];
     }
-    g[i].nphot=ininphot*g[i].numNeigh;
+    gp[i].nphot=ininphot*gp[i].numNeigh;
   }
 }
 
@@ -520,7 +510,7 @@ buildGrid(inputPars *par, struct grid *g, molData *md){
   double logmin;	    /* Logarithm of par->minScale				*/
   double r,theta,phi,sinPhi,x,y,z,semiradius;	/* Coordinates								*/
   double temp;
-  int k=0,i;            /* counters									*/
+  int k=0,i,j;            /* counters									*/
   int flag,stageI,status=0;
   char **collPartNames=NULL; /*** this is a placeholder until we start reading these. */
 
@@ -591,7 +581,7 @@ buildGrid(inputPars *par, struct grid *g, molData *md){
     if(!silent) progressbar((double) k/((double)par->pIntensity-1), 4);
   }
   /* end model grid point assignment */
-  if(!silent) done(4);
+  if(!silent) printDone(4);
 
   /* Add surface sink particles */
   for(i=0;i<par->sinkPoints;i++){
@@ -610,13 +600,15 @@ buildGrid(inputPars *par, struct grid *g, molData *md){
     g[k].dens[0]=1e-30;
     g[k].t[0]=par->tcmb;
     g[k].t[1]=par->tcmb;
-    g[k++].dopb=0.;
+    g[k].dopb=0.;
+    for(j=0;j<DIM;j++) g[k].vel[j]=0.;
+    k++;
   }
   /* end grid allocation */
 
-  qhull(par, g);
-  distCalc(par, g);
   smooth(par,g);
+  qhull(par, g);	
+  distCalc(par, g);	    
 
 /* Can't do this yet because .dens is not NULL, but .a0, .a1 etc are. Have to rearrange the mallocs of g elements first. Simply set g[0].dens=NULL to kluge around this? But then have to malloc it again (sigh).
   stageI = 1;
@@ -630,7 +622,8 @@ buildGrid(inputPars *par, struct grid *g, molData *md){
     temperature(g[i].x[0],g[i].x[1],g[i].x[2], g[i].t);
     doppler(    g[i].x[0],g[i].x[1],g[i].x[2],&g[i].dopb);	
     abundance(  g[i].x[0],g[i].x[1],g[i].x[2], g[i].abun);
-  }
+    velocity(   g[i].x[0],g[i].x[1],g[i].x[2], g[i].vel);
+ }
 
   //	getArea(par,g, ran);
   //	getMass(par,g, ran);
@@ -638,7 +631,7 @@ buildGrid(inputPars *par, struct grid *g, molData *md){
   dumpGrid(par,g);
 
   gsl_rng_free(ran);
-  if(!silent) done(5);
+  if(!silent) printDone(5);
 
   stageI = 2;
   if(par->writeGridAtStage[stageI])

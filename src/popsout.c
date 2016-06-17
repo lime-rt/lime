@@ -10,7 +10,7 @@
 #include "lime.h"
 
 void
-popsout(inputPars *par, struct grid *g, molData *m){
+popsout(inputPars *par, struct grid *gp, molData *md){
   FILE *fp;
   int j,k,l;
   double dens;
@@ -22,13 +22,13 @@ popsout(inputPars *par, struct grid *g, molData *m){
     exit(1);
   }
   fprintf(fp,"# Column definition: x, y, z, H2 density, kinetic gas temperature, molecular abundance, convergence flag, pops_0...pops_n\n");
-  for(j=0;j<par->ncell-par->sinkPoints;j++){
+  for(j=0;j<par->pIntensity;j++){
     dens=0.;
-    for(l=0;l<par->collPart;l++) dens+=g[j].dens[l];
-    fprintf(fp,"%e %e %e %e %e %e %d ", g[j].x[0], g[j].x[1], g[j].x[2], dens, g[j].t[0], g[j].nmol[0]/dens, g[j].conv);
-    for(k=0;k<m[0].nlev;k++) fprintf(fp,"%e ",g[j].mol[0].pops[k]);
+    for(l=0;l<par->collPart;l++) dens+=gp[j].dens[l];
+    fprintf(fp,"%e %e %e %e %e %e %d ", gp[j].x[0], gp[j].x[1], gp[j].x[2], dens, gp[j].t[0], gp[j].nmol[0]/dens, gp[j].conv);
+    for(k=0;k<md[0].nlev;k++) fprintf(fp,"%e ",gp[j].mol[0].pops[k]);
     fprintf(fp,"\n");
-    //fprintf(fp,"%i %lf %lf %lf %lf %lf %lf %lf %lf\n", g[j].id, g[j].x[0], g[j].x[1], g[j].x[2],  g[j].dens[0], g[j].t[0], g[j].vel[0], g[j].vel[1], g[j].vel[2]);
+    //fprintf(fp,"%i %lf %lf %lf %lf %lf %lf %lf %lf\n", gp[j].id, gp[j].x[0], gp[j].x[1], gp[j].x[2],  gp[j].dens[0], gp[j].t[0], gp[j].vel[0], gp[j].vel[1], gp[j].vel[2]);
   }
   fclose(fp);
 }

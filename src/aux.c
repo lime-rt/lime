@@ -19,6 +19,7 @@ parseInput(inputPars *par, image **img, molData **m){
   int i,id;
   double BB[3];
   double cosPhi,sinPhi,cosTheta,sinTheta;
+  double temp[99];
 
   /* Set default values */
   par->dust  	    = NULL;
@@ -79,6 +80,7 @@ parseInput(inputPars *par, image **img, molData **m){
       /* Check if files exists */
       for(id=0;id<par->nSpecies;id++){
         if((fp=fopen(par->moldatfile[id], "r"))==NULL) {
+          if(!silent) warning("Could not find moldata file, attempting to obtain it over the web.");
           openSocket(par, id);
         }
         else {
@@ -108,6 +110,15 @@ parseInput(inputPars *par, image **img, molData **m){
   par->radiusSqu=par->radius*par->radius;
   par->minScaleSqu=par->minScale*par->minScale;
   if(par->pregrid!=NULL) par->doPregrid=1;
+
+  if(par->doPregrid || par->restart) par->collPart=1;
+  else{
+    for(i=0;i<99;i++) temp[i]=-1;
+    density(AU,AU,AU,temp);
+    i=0;
+    par->collPart=0;
+    while(temp[i++]>-1) par->collPart++;
+  }
 
   /*
 Now we need to calculate the cutoff value used in calcSourceFn(). The issue is to decide between
@@ -350,22 +361,22 @@ invSqrt(float x){
 }
 
 void
-continuumSetup(int im, image *img, molData *m, inputPars *par, struct grid *g){
+continuumSetup(int im, image *img, molData *m, inputPars *par, struct grid *gp){
   int id;
   img[im].trans=0;
   m[0].nline=1;
   m[0].freq= malloc(sizeof(double));
   m[0].freq[0]=img[im].freq;
   for(id=0;id<par->ncell;id++) {
-    freePopulation( par, m, g[id].mol );
-    g[id].mol=malloc(sizeof(struct populations)*1);
-    g[id].mol[0].dust = malloc(sizeof(double)*m[0].nline);
-    g[id].mol[0].knu  = malloc(sizeof(double)*m[0].nline);
-    g[id].mol[0].pops = NULL;
-    g[id].mol[0].partner = NULL;
+    freePopulation( par, m, gp[id].mol );
+    gp[id].mol=malloc(sizeof(struct populations)*1);
+    gp[id].mol[0].dust = malloc(sizeof(double)*m[0].nline);
+    gp[id].mol[0].knu  = malloc(sizeof(double)*m[0].nline);
+    gp[id].mol[0].pops = NULL;
+    gp[id].mol[0].partner = NULL;
   }
-  if(par->outputfile) popsout(par,g,m);
-  kappa(m,g,par,0);
+  if(par->outputfile) popsout(par,gp,m);
+  kappa(m,gp,par,0);
 }
 
 void
@@ -432,7 +443,7 @@ lineBlend(molData *m, inputPars *par, blend **matrix){
 
 void
 levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
-  int id,conv=0,iter,ilev,prog=0,ispec,c=0,n,i,threadI,nVerticesDone;
+  int id,iter,ilev,prog=0,ispec,c=0,n,i,threadI,nVerticesDone,nItersDone;
   double percent=0.,*median,result1=0,result2=0,snr,delta_pop;
   blend *matrix;
   struct statistics { double *pop, *ave, *sigma; } *stat;
@@ -486,8 +497,7 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
     }
   }
 
-  if(par->outputfile) popsout(par,g,m);
-
+  if(par->outputfile != NULL) popsout(par,g,m);
 
   /* Initialize convergence flag */
   for(id=0;id<par->ncell;id++){
@@ -495,6 +505,7 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
   }
 
   if(par->lte_only==0){
+    nItersDone=0;
     do{
       if(!silent) progressbar2(0, prog++, 0, result1, result2);
 
@@ -512,8 +523,8 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
         threadI = omp_get_thread_num();
 
         /* Declare and allocate thread-private variables */
-        gridPointData *mp;	// Could have declared them earlier
-        double *halfFirstDs;	// and included them in private() I guess.
+        gridPointData *mp;	/* Could have declared them earlier        */
+        double *halfFirstDs;	/* and included them in private() I guess. */
         mp=malloc(sizeof(gridPointData)*par->nSpecies);
         for (i=0;i<par->nSpecies;i++){
           mp[i].phot = malloc(sizeof(double)*m[i].nline*max_phot);
@@ -527,21 +538,21 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
 #pragma omp atomic
           ++nVerticesDone;
 
-          if (threadI == 0){ // i.e., is master thread
+          if (threadI == 0){ /* i.e., is master thread. */
             if(!silent) progressbar((double)nVerticesDone/par->pIntensity,10);
           }
           if(g[id].dens[0] > 0 && g[id].t[0] > 0){
             photon(id,g,m,0,threadRans[threadI],par,matrix,mp,halfFirstDs);
             for(ispec=0;ispec<par->nSpecies;ispec++) stateq(id,g,m,ispec,par,mp,halfFirstDs);
           }
-          if (threadI == 0){ // i.e., is master thread
+          if (threadI == 0){ /* i.e., is master thread. */
             if(!silent) warning("");
           }
         }
 
         freeGridPointData(par, mp);
         free(halfFirstDs);
-      } // end parallel block.
+      } /* end parallel block. */
 
       for(id=0;id<par->ncell && !g[id].sink;id++){
         snr=0;
@@ -578,16 +589,16 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
       }
 
       gsl_sort(median, 1, c);
-      if(conv>1){
+      if(nItersDone>1){
         result1=median[0];
         result2 =gsl_stats_median_from_sorted_data(median, 1, c);
       }
       free(median);
 
       if(!silent) progressbar2(1, prog, percent, result1, result2);
-      if(par->outputfile) popsout(par,g,m);
-    } while(conv++<NITERATIONS);
-    if(par->binoutputfile) binpopsout(par,g,m);
+      if(par->outputfile != NULL) popsout(par,g,m);
+    } while(nItersDone++<NITERATIONS);
+    if(par->binoutputfile != NULL) binpopsout(par,g,m);
   }
 
   for (i=0;i<par->nThreads;i++){

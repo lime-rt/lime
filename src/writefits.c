@@ -121,5 +121,5 @@ writefits(int im, inputPars *par, molData *m, image *img){
 
   free(row);
 
-  if(!silent) done(13);
+  if(!silent) printDone(15);
 }

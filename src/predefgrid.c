@@ -12,7 +12,7 @@
 void
 predefinedGrid(inputPars *par, struct grid *g){
   FILE *fp;
-  int i;
+  int i,j;
   double x,y,z,scale;
   gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);
 #ifdef TEST
@@ -65,6 +65,7 @@ predefinedGrid(inputPars *par, struct grid *g){
       g[i].t[0]=par->tcmb;
       g[i].t[1]=par->tcmb;
       g[i].dopb=0.;
+      for(j=0;j<DIM;j++) g[i].vel[j]=0.;
     } else i--;
   }
   fclose(fp);

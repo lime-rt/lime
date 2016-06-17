@@ -17,6 +17,7 @@
 #include <gsl/gsl_spline.h>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_linalg.h>
+#include "gridio.h"
 
 #ifdef OLD_QHULL
 #include <qhull/qhull_a.h>
@@ -115,17 +116,16 @@ typedef struct {
 
 /* Point coordinate */
 typedef struct {
-  double x[3];
-  double xn[3];
+  double x[DIM];
+  double xn[DIM];
 } point;
 
 struct rates {
   double *up, *down;
 };
 
-
 struct populations {
-  double * pops, *knu, *dust;
+  double *pops, *knu, *dust;
   double dopb, binv;
   struct rates *partner;
 };
@@ -133,8 +133,8 @@ struct populations {
 /* Grid properties */
 struct grid {
   int id;
-  double x[3];
-  double vel[3];
+  double x[DIM];
+  double vel[DIM];
   double *a0,*a1,*a2,*a3,*a4;
   int numNeigh;
   point *dir;
@@ -148,10 +148,21 @@ struct grid {
   struct populations* mol;
 };
 
+struct molInfoType{
+  char *molName;
+  int nLevels, nLines;
+};
+
+struct gridInfoType{
+  unsigned int nInternalPoints, nSinkPoints, nLinks, nNNIndices;
+  unsigned short nDims, nSpecies, nDensities, nACoeffs;
+  struct molInfoType *mols;
+};
+
 struct linkType {
   unsigned int id;
   struct grid *g[2];
-  double aCoeffs[NUM_VEL_COEFFS];
+  double *aCoeffs;
 };
 
 typedef struct {
@@ -284,7 +295,7 @@ double	FastExp(const float negarg);
 void 	greetings();
 void 	greetings_parallel(int);
 void	screenInfo();
-void 	done(int);
+void 	printDone(int);
 void 	progressbar(double,int);
 void 	progressbar2(int,int,double,double,double);
 void	casaStyleProgressBar(const int,int);

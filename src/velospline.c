@@ -24,7 +24,6 @@ getVelosplines(inputPars *par, struct grid *g){
     g[i].a2=malloc(g[i].numNeigh*sizeof(double));
     g[i].a3=malloc(g[i].numNeigh*sizeof(double));
     g[i].a4=malloc(g[i].numNeigh*sizeof(double));	
-    velocity(g[i].x[0],g[i].x[1],g[i].x[2],g[i].vel);
     
     for(k=0;k<g[i].numNeigh;k++){
       for(j=0;j<3;j++) x[j]=g[i].x[j];		
@@ -58,7 +57,6 @@ getVelosplines(inputPars *par, struct grid *g){
     g[i].a2=malloc(g[i].numNeigh*sizeof(double));
     g[i].a3=malloc(g[i].numNeigh*sizeof(double));
     g[i].a4=malloc(g[i].numNeigh*sizeof(double));
-    for(j=0;j<3;j++) g[i].vel[j]=0.;
     for(j=0;j<g[i].numNeigh;j++){
       g[i].a0[j]=0.;
       g[i].a1[j]=0.;
@@ -94,7 +92,6 @@ getVelosplines_lin(inputPars *par, struct grid *g){
   for(i=par->pIntensity;i<par->ncell;i++){
     g[i].a0=malloc(g[i].numNeigh*sizeof(double));
     g[i].a1=malloc(g[i].numNeigh*sizeof(double));
-    for(j=0;j<3;j++) g[i].vel[j]=0.;
     for(j=0;j<g[i].numNeigh;j++){
       g[i].a0[j]=0.;
       g[i].a1[j]=0.;
