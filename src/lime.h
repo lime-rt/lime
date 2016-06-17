@@ -63,7 +63,6 @@
 #define GRAV		6.67428e-11
 
 /* Other constants */
-#define NITERATIONS 	16
 #define max_phot		10000		/* don't set this value higher unless you have enough memory. */
 #define ininphot		9
 #define minpop			1.e-6
@@ -94,6 +93,7 @@ typedef struct {
   char **moldatfile;
   _Bool writeGridAtStage[NUM_GRID_STAGES];
   char *gridFitsOutSets[NUM_GRID_STAGES];
+  int nSolveIters;
 } inputPars;
 
 /* Molecular data: shared attributes */
@@ -298,7 +298,7 @@ void 	greetings_parallel(int);
 void	screenInfo();
 void 	printDone(int);
 void 	progressbar(double,int);
-void 	progressbar2(int,int,double,double,double);
+void 	progressbar2(inputPars*, int,int,double,double,double);
 void	casaStyleProgressBar(const int,int);
 void 	goodnight(int, char *);
 void	quotemass(double);

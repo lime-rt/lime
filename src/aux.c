@@ -41,6 +41,7 @@ parseInput(inputPars *par, image **img, molData **m){
   par->sinkPoints=0;
   par->doPregrid=0;
   par->nThreads=0;
+  par->nSolveIters=17;
 
   for(i=0;i<NUM_GRID_STAGES;i++){
     par->writeGridAtStage[i] = 0;
@@ -443,7 +444,7 @@ lineBlend(molData *m, inputPars *par, blend **matrix){
 
 void
 levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
-  int id,iter,ilev,prog=0,ispec,c=0,n,i,threadI,nVerticesDone,nItersDone;
+  int id,iter,ilev,ispec,c=0,n,i,threadI,nVerticesDone,nItersDone;
   double percent=0.,*median,result1=0,result2=0,snr,delta_pop;
   blend *matrix;
   struct statistics { double *pop, *ave, *sigma; } *stat;
@@ -506,8 +507,8 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
 
   if(par->lte_only==0){
     nItersDone=0;
-    do{
-      if(!silent) progressbar2(0, prog++, 0, result1, result2);
+    while(nItersDone < par->nSolveIters){ /* Not a 'for' loop because we will probably later want to add a convergence criterion. */
+      if(!silent) progressbar2(par, 0, nItersDone, 0, result1, result2);
 
       for(id=0;id<par->ncell && !g[id].sink;id++){
         for(ilev=0;ilev<m[0].nlev;ilev++) {
@@ -595,9 +596,10 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
       }
       free(median);
 
-      if(!silent) progressbar2(1, prog, percent, result1, result2);
+      if(!silent) progressbar2(par, 1, nItersDone, percent, result1, result2);
       if(par->outputfile != NULL) popsout(par,g,m);
-    } while(nItersDone++<NITERATIONS);
+      nItersDone++;
+    }
     if(par->binoutputfile != NULL) binpopsout(par,g,m);
   }
 
