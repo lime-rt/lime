@@ -627,7 +627,7 @@ buildGrid(inputPars *par, struct grid *g, molData *md){
 
   //	getArea(par,g, ran);
   //	getMass(par,g, ran);
-  getVelosplines(par,g);
+  calcInterpCoeffs(par,g); /* Mallocs and sets .a0, .a1 etc. */
   dumpGrid(par,g);
 
   gsl_rng_free(ran);

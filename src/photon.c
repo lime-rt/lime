@@ -47,70 +47,100 @@ sortangles(double *inidir, int id, struct grid *g, const gsl_rng *ran) {
   }
 }
 
+inline double interpolate(double a0, double a1, double a2, double a3, double a4, double s){
+  /*
+Calculates a polynomial interpolation of velocity at location d along an interval of length ds
 
+	       __4
+	       \
+	v(d) ~  >     a_j*s^j
+	       /_j=0
 
-void
-velocityspline(struct grid *g, int id, int k, double binv, double deltav, double *vfac){
-  int nspline,ispline,naver,iaver;
-  double v1,v2,s1,s2,sd,v,vfacsub,d;
+where it is assumed that
+
+	     d
+	s = --- - 0.5.
+	     ds
+  */
+  double vel;
+  vel = (((a4*s + a3)*s + a2)*s + a1)*s + a0;
+  return vel;
+}
+
+void calcAvRelLineAmp(struct grid *gp, int id, int k, double oneOnB, double deltav, double *avRelLineAmp){
+  /*
+This performs a numerical integration of the amplitude of a spectral line along the link or edge between two grid points. The line shapes are Gaussian and are normalized such that the maximum equals unity. The integral may be expressed as
+
+	         ds
+	     1   /       (-[deltav-v{x}]^2 )
+	I = ---- | dx exp(-----------------)
+	     ds  /       (       B         )
+	        0
+
+where ds is the distance between the two grid points and v(x) is the component of vector velocity in the direction of the 'edge' between the grid points. v(x) is estimated via polynomial interpolation - see function 'interpolate()' for the exact formula.
+  */
+
+  int nCoarseSamples,i,nFineSamples,j;
+  double v1,v2,vOld,vNew,dFracOld,dFracNew,dFrac,v,fineRelLineAmp;
   
-  v1=deltav-veloproject(g[id].dir[k].xn,g[id].vel);
-  v2=deltav-veloproject(g[id].dir[k].xn,g[id].neigh[k]->vel);
+  v1 = interpolate(gp[id].a0[k], gp[id].a1[k], gp[id].a2[k], gp[id].a3[k], gp[id].a4[k], -0.5);
+  v2 = interpolate(gp[id].a0[k], gp[id].a1[k], gp[id].a2[k], gp[id].a3[k], gp[id].a4[k],  0.5);
 
-  nspline=(fabs(v1-v2)*binv < 1) ? 1 : (int)(fabs(v1-v2)*binv);
-  *vfac=0.;
-  s2=0;
-  v2=v1;
+  nCoarseSamples = (fabs(v1-v2)*oneOnB < 1) ? 1 : (int)(fabs(v1-v2)*oneOnB);
+  *avRelLineAmp = 0.0;
+  dFracNew = 0.0;
+  vNew = v1;
   
-  for(ispline=0;ispline<nspline;ispline++){
-    s1=s2;
-    s2=((double)(ispline+1))/(double)nspline;
-    v1=v2;
-    d=s2*g[id].ds[k];
-    v2=deltav-((((g[id].a4[k]*d+g[id].a3[k])*d+g[id].a2[k])*d+g[id].a1[k])*d+g[id].a0[k]);
-    naver=(1 > fabs(v1-v2)*binv) ? 1 : (int)(fabs(v1-v2)*binv);
-    for(iaver=0;iaver<naver;iaver++){
-      sd=s1+(s2-s1)*((double)iaver-0.5)/(double)naver;
-      d=sd*g[id].ds[k];
-      v=deltav-((((g[id].a4[k]*d+g[id].a3[k])*d+g[id].a2[k])*d+g[id].a1[k])*d+g[id].a0[k]);
-      vfacsub=gaussline(v,binv);
-      *vfac+=vfacsub/(double)naver;
+  for(i=0;i<nCoarseSamples;i++){
+    dFracOld = dFracNew;
+    dFracNew = ((double)(i+1))/(double)nCoarseSamples;
+    vOld = vNew;
+    vNew = interpolate(gp[id].a0[k], gp[id].a1[k], gp[id].a2[k], gp[id].a3[k], gp[id].a4[k], dFracNew-0.5);
+    nFineSamples = (1 > fabs(vOld-vNew)*oneOnB) ? 1 : (int)(fabs(vOld-vNew)*oneOnB);
+    fineRelLineAmp = 0.0;
+    for(j=0;j<nFineSamples;j++){
+      dFrac = dFracOld + (dFracNew-dFracOld)*((double)j-0.5)/(double)nFineSamples;
+      v = interpolate(gp[id].a0[k], gp[id].a1[k], gp[id].a2[k], gp[id].a3[k], gp[id].a4[k], dFrac-0.5);
+
+      fineRelLineAmp += gaussline(deltav-v,oneOnB);
     }
+    *avRelLineAmp += fineRelLineAmp/(double)nFineSamples;
   }
-  *vfac= *vfac/(double)nspline;
+  *avRelLineAmp= *avRelLineAmp/(double)nCoarseSamples;
   return;
 }
 
+void calcAvRelLineAmp_lin(struct grid *gp, int id, int k, double oneOnB, double deltav, double *avRelLineAmp){
+  /*
+The same as calcAvRelLineAmp(), only using 2 polynomial interpolation coefficients.
+  */
 
-void
-velocityspline_lin(struct grid *g, int id, int k, double binv, double deltav, double *vfac){
-  int nspline,ispline,naver,iaver;
-  double v1,v2,s1,s2,sd,v,vfacsub,d;
+  int nCoarseSamples,i,nFineSamples,j;
+  double v1,v2,vOld,vNew,dFracOld,dFracNew,dFrac,v,fineRelLineAmp;
   
-  v1=deltav-veloproject(g[id].dir[k].xn,g[id].vel);
-  v2=deltav-veloproject(g[id].dir[k].xn,g[id].neigh[k]->vel);
+  v1 = gp[id].a0[k] - 0.5*gp[id].a1[k];
+  v2 = gp[id].a0[k] + 0.5*gp[id].a1[k];
 
-  nspline=(fabs(v1-v2)*binv < 1) ? 1 : (int)(fabs(v1-v2)*binv);
-  *vfac=0.;
-  s2=0;
-  v2=v1;
+  nCoarseSamples = (fabs(v1-v2)*oneOnB < 1) ? 1 : (int)(fabs(v1-v2)*oneOnB);
+  *avRelLineAmp = 0.0;
+  dFracNew = 0.0;
+  vNew = v1;
   
-  for(ispline=0;ispline<nspline;ispline++){
-    s1=s2;
-    s2=((double)(ispline+1))/(double)nspline;
-    v1=v2;
-    d=s2*g[id].ds[k];
-    v2=deltav-(g[id].a1[k]*d+g[id].a0[k]);
-    naver=(1 > fabs(v1-v2)*binv) ? 1 : (int)(fabs(v1-v2)*binv);
-    for(iaver=0;iaver<naver;iaver++){
-      sd=s1+(s2-s1)*((double)iaver-0.5)/(double)naver;
-      d=sd*g[id].ds[k];
-      v=deltav-(g[id].a1[k]*d+g[id].a0[k]);
-      vfacsub=gaussline(v,binv);
-      *vfac+=vfacsub/(double)naver;
+  for(i=0;i<nCoarseSamples;i++){
+    dFracOld = dFracNew;
+    dFracNew = ((double)(i+1))/(double)nCoarseSamples;
+    vOld = vNew;
+    vNew = gp[id].a0[k] + gp[id].a1[k]*(dFracNew-0.5);
+    nFineSamples = (1 > fabs(vOld-vNew)*oneOnB) ? 1 : (int)(fabs(vOld-vNew)*oneOnB);
+    fineRelLineAmp = 0.0;
+    for(j=0;j<nFineSamples;j++){
+      dFrac = dFracOld + (dFracNew-dFracOld)*((double)j-0.5)/(double)nFineSamples;
+      v = gp[id].a0[k] + gp[id].a1[k]*(dFrac-0.5);
+      fineRelLineAmp += gaussline(deltav-v,oneOnB);
     }
+    *avRelLineAmp += fineRelLineAmp/(double)nFineSamples;
   }
-  *vfac= *vfac/(double)nspline;
+  *avRelLineAmp= *avRelLineAmp/(double)nCoarseSamples;
   return;
 }
 
@@ -216,8 +246,10 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
         ds=g[here].ds[dir]/2.;
         halfFirstDs[iphot]=ds;
         for(l=0;l<par->nSpecies;l++){
-          if(!par->doPregrid) velocityspline(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
-          else velocityspline_lin(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
+          if(par->doPregrid)
+            calcAvRelLineAmp_lin(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
+          else
+            calcAvRelLineAmp(    g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
           mp[l].vfac[iphot]=vfac[0];
         }
       } else {
@@ -225,8 +257,10 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
       }
       
       for(l=0;l<par->nSpecies;l++){
-        if(!par->doPregrid) velocityspline(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
-        else velocityspline_lin(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
+        if(par->doPregrid)
+          calcAvRelLineAmp_lin(g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
+        else
+          calcAvRelLineAmp(    g,here,dir,g[id].mol[l].binv,deltav,&vfac[l]);
       }
       
       for(iline=0;iline<nlinetot;iline++){
@@ -256,8 +290,10 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
           alpha=0.;
           for(jline=0;jline<sizeof(matrix)/sizeof(blend);jline++){
             if(matrix[jline].line1 == jline || matrix[jline].line2 == jline){	
-              if(!par->doPregrid) velocityspline(g,here,dir,g[id].mol[counta[jline]].binv,deltav-matrix[jline].deltav,&vblend);
-              else velocityspline_lin(g,here,dir,g[id].mol[counta[jline]].binv,deltav-matrix[jline].deltav,&vblend);	
+              if(par->doPregrid)
+                calcAvRelLineAmp_lin(g,here,dir,g[id].mol[counta[jline]].binv,deltav-matrix[jline].deltav,&vblend);
+              else
+                calcAvRelLineAmp(    g,here,dir,g[id].mol[counta[jline]].binv,deltav-matrix[jline].deltav,&vblend);
               sourceFunc_line(&jnu,&alpha,m,vblend,g,here,counta[jline],countb[jline]);
               dtau=alpha*ds;
               if(dtau < -30) dtau = -30;

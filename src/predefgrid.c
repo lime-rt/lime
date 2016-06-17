@@ -74,7 +74,7 @@ predefinedGrid(inputPars *par, struct grid *g){
   distCalc(par,g);
   //  getArea(par,g, ran);
   //  getMass(par,g, ran);
-  getVelosplines_lin(par,g);
+  calcInterpCoeffs_lin(par,g);
   if(par->gridfile) write_VTK_unstructured_Points(par, g);
   gsl_rng_free(ran);
 }

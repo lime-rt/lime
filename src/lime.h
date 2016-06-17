@@ -210,6 +210,10 @@ void gasIIdust(double,double,double,double *);
 
 void   	binpopsout(inputPars *, struct grid *, molData *);
 void   	buildGrid(inputPars *, struct grid *, molData *);
+void	calcAvRelLineAmp(struct grid*, int, int, double, double, double*);
+void	calcAvRelLineAmp_lin(struct grid*, int, int, double, double, double*);
+void	calcInterpCoeffs(inputPars*, struct grid*);
+void	calcInterpCoeffs_lin(inputPars*, struct grid*);
 void    calcSourceFn(double dTau, const inputPars *par, double *remnantSnu, double *expDTau);
 void	constructLinkArrays(unsigned int, struct grid *, struct linkType **\
   , unsigned int *, struct linkType ***, unsigned int **, unsigned int *);
@@ -221,8 +225,6 @@ void	distCalc(inputPars *, struct grid *);
 void	fit_d1fi(double, double, double*);
 void    fit_fi(double, double, double*);
 void    fit_rr(double, double, double*);
-void   	input(inputPars *, image *);
-float  	invSqrt(float);
 void    freeInput(inputPars *, image*, molData* m );
 void   	freeGrid(const inputPars * par, const molData* m, struct grid * g);
 void   	freePopulation(const inputPars * par, const molData* m, struct populations * pop);
@@ -232,9 +234,10 @@ void    getjbar(int, molData *, struct grid *, inputPars *,gridPointData *,doubl
 void    getMass(inputPars *, struct grid *, const gsl_rng *);
 void   	getmatrix(int, gsl_matrix *, molData *, struct grid *, int, gridPointData *);
 void	getclosest(double, double, double, long *, long *, double *, double *, double *);
-void	getVelosplines(inputPars *, struct grid *);
-void	getVelosplines_lin(inputPars *, struct grid *);
 void	gridAlloc(inputPars *, struct grid **);
+void   	input(inputPars *, image *);
+double	interpolate(double, double, double, double, double, double);
+float  	invSqrt(float);
 void   	kappa(molData *, struct grid *, inputPars *,int);
 void	levelPops(molData *, inputPars *, struct grid *, int *);
 void	line_plane_intersect(struct grid *, double *, int , int *, double *, double *, double);
@@ -273,8 +276,6 @@ void   	stateq(int, struct grid *, molData *, int, inputPars *,gridPointData *,d
 void	statistics(int, molData *, struct grid *, int *, double *, double *, int *);
 void    stokesangles(double, double, double, double, double *);
 void    traceray(rayData, int, int, inputPars *, struct grid *, molData *, image *, int, int *, int *, double);
-void   	velocityspline(struct grid *, int, int, double, double, double*);
-void   	velocityspline2(double *, double *, double, double, double, double*);
 double 	veloproject(double *, double *);
 void	writeGridExtToFits(fitsfile *, inputPars, unsigned short, struct grid *, unsigned int *, char **);
 int	writeGridToFits(char *, inputPars, unsigned short, unsigned short, struct grid *, molData *, char **);
