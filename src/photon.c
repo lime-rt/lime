@@ -99,7 +99,7 @@ where ds is the distance between the two grid points and v(x) is the component o
     nFineSamples = (1 > fabs(vOld-vNew)*oneOnB) ? 1 : (int)(fabs(vOld-vNew)*oneOnB);
     fineRelLineAmp = 0.0;
     for(j=0;j<nFineSamples;j++){
-      dFrac = dFracOld + (dFracNew-dFracOld)*((double)j-0.5)/(double)nFineSamples;
+      dFrac = dFracOld + (dFracNew-dFracOld)*((double)j+0.5)/(double)nFineSamples;
       v = interpolate(gp[id].a0[k], gp[id].a1[k], gp[id].a2[k], gp[id].a3[k], gp[id].a4[k], dFrac-0.5);
 
       fineRelLineAmp += gaussline(deltav-v,oneOnB);
@@ -134,7 +134,7 @@ The same as calcAvRelLineAmp(), only using 2 polynomial interpolation coefficien
     nFineSamples = (1 > fabs(vOld-vNew)*oneOnB) ? 1 : (int)(fabs(vOld-vNew)*oneOnB);
     fineRelLineAmp = 0.0;
     for(j=0;j<nFineSamples;j++){
-      dFrac = dFracOld + (dFracNew-dFracOld)*((double)j-0.5)/(double)nFineSamples;
+      dFrac = dFracOld + (dFracNew-dFracOld)*((double)j+0.5)/(double)nFineSamples;
       v = gp[id].a0[k] + gp[id].a1[k]*(dFrac-0.5);
       fineRelLineAmp += gaussline(deltav-v,oneOnB);
     }
