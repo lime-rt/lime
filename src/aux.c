@@ -29,6 +29,7 @@ parseInput(inputPars *par, image **img, molData **m){
   par->gridfile     = NULL;
   par->pregrid      = NULL;
   par->restart      = NULL;
+  par->gridInFile   = NULL;
 
   par->tcmb = 2.728;
   par->lte_only=0;
@@ -44,9 +45,10 @@ parseInput(inputPars *par, image **img, molData **m){
   par->nSolveIters=17;
 
   for(i=0;i<NUM_GRID_STAGES;i++){
-    par->writeGridAtStage[i] = 0;
-    par->gridFitsOutSets[i] = "";
+    par->writeGridAtStage[i] = 0; /* The user is not expected to set this. */
+    par->gridOutFiles[i] = "";
   };
+  par->dataStageI = 0; /* The user is not expected to set this. */
 
   /* Allocate space for output fits images */
   (*img)=malloc(sizeof(image)*MAX_NSPECIES);
@@ -121,6 +123,11 @@ parseInput(inputPars *par, image **img, molData **m){
     while(temp[i++]>-1) par->collPart++;
   }
 
+  for(i=0;i<NUM_GRID_STAGES;i++){
+    if(par->gridOutFiles[i] != "")
+      par->writeGridAtStage[i] = 1;
+  };
+
   /*
 Now we need to calculate the cutoff value used in calcSourceFn(). The issue is to decide between
 
@@ -140,6 +147,16 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
   if(par->dust != NULL){
     if((fp=fopen(par->dust, "r"))==NULL){
       if(!silent) bail_out("Error opening dust opacity data file!");
+      exit(1);
+    }
+    else  {
+      fclose(fp);
+    }
+  }
+
+  if(par->gridInFile!=NULL){
+    if((fp=fopen(par->gridInFile, "r"))==NULL){
+      if(!silent) bail_out("Error opening grid input file!");
       exit(1);
     }
     else  {
@@ -602,6 +619,8 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
     }
     if(par->binoutputfile != NULL) binpopsout(par,g,m);
   }
+
+  par->dataStageI = 4;
 
   for (i=0;i<par->nThreads;i++){
     gsl_rng_free(threadRans[i]);

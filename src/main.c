@@ -21,14 +21,13 @@ double EXP_TABLE_3D[1][1][1];
 #endif
 
 int main () {
-  int i,stageI,status=0;
+  int i,nLineImages;
   int initime=time(0);
   int popsdone=0;
-  molData*     m = NULL;
+  molData*     md = NULL;
   inputPars    par;
-  struct grid* g = NULL;
+  struct grid* gp = NULL;
   image*       img = NULL;
-  char **collPartNames=NULL; /*** this is a placeholder until we start reading these. */
   char message[80];
 
   if(!silent) greetings();
@@ -38,7 +37,7 @@ int main () {
   calcTableEntries(FAST_EXP_MAX_TAYLOR, FAST_EXP_NUM_BITS);
 #endif
 
-  parseInput(&par,&img,&m);
+  parseInput(&par,&img,&md);
 
   if(!silent && par.nThreads>1){
     sprintf(message, "Number of threads used: %d", par.nThreads);
@@ -47,39 +46,58 @@ int main () {
 
   if(par.doPregrid)
     {
-      gridAlloc(&par,&g);
-      predefinedGrid(&par,g);
+      gridAlloc(&par,&gp);
+      predefinedGrid(&par,gp);
+      par.dataStageI = 3; // Sort of.
     }
   else if(par.restart)
     {
-      popsin(&par,&g,&m,&popsdone);
+      popsin(&par,&gp,&md,&popsdone);
+      par.dataStageI = 4; // Sort of.
     }
   else
     {
-      gridAlloc(&par,&g);
-      buildGrid(&par,g,m);
+      readOrBuildGrid(&par,&gp);
     }
 
+  /* Make all the continuum images, and count the non-continuum images at the same time:
+  */
+  nLineImages = 0;
   for(i=0;i<par.nImages;i++){
-    if(img[i].doline==1 && popsdone==0) {
-      levelPops(m,&par,g,&popsdone);
+    if(img[i].doline)
+      nLineImages++;
+    else{
+      continuumSetup(i,img,md,&par,gp);
+      raytrace(i,&par,gp,md,img);
+      writefits(i,&par,md,img);
     }
-    if(img[i].doline==0) {
-      continuumSetup(i,img,m,&par,g);
-    }
-
-    raytrace(i,&par,g,m,img);
-    writefits(i,&par,m,img);
   }
 
-  stageI = 3;
-  if(par.writeGridAtStage[stageI])
-    status = writeGridToFits(par.gridFitsOutSets[stageI], par, (unsigned short)DIM\
-      , (unsigned short)NUM_VEL_COEFFS, g, m, collPartNames);
+  if(nLineImages>0 && !popsdone){ // eventually, replace !popdone by (!popsdone || dataStageI<4)? *Really* eventually we want to get rid of popsdone.
+    levelPops(md,&par,gp,&popsdone);
+    par.dataStageI = 4;
+/* Disable the next lines for now, since we have not tested dataStageI<4 in the 'if' of this block, because we can't use an input grid file at dataStageI==4 yet: we have to disentangle all the functionality of molinit() before we can contemplate doing that. 
+  }else if(par.dataStageI==4 && par->nSolveIters>0 && par.writeGridAtStage[par.dataStageI-1]){
+    sprintf(message, "You just read a grid file at data stage %d, now you want to write it again?", par.dataStageI);
+    if(!silent) warning(message);
+*/
+  }
+
+  if(par.dataStageI==4)
+    writeGridIfRequired(&par, gp, md, lime_FITS);
+
+  /* Now make the line images.
+  */
+  for(i=0;i<par.nImages;i++){
+    if(img[i].doline){
+      raytrace(i,&par,gp,md,img);
+      writefits(i,&par,md,img);
+    }
+  }
 
   if(!silent) goodnight(initime,img[0].filename);
 
-  freeGrid( &par, m, g);
-  freeInput(&par, img, m);
+  freeGrid( &par, md, gp);
+  freeInput(&par, img, md);
   return 0;
 }

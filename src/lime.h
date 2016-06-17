@@ -79,7 +79,6 @@
 #define FAST_EXP_NUM_BITS	8
 #define NUM_GRID_STAGES		4
 
-
 /* input parameters */
 typedef struct {
   double radius,radiusSqu,minScale,minScaleSqu,tcmb,taylorCutoff;
@@ -92,8 +91,9 @@ typedef struct {
   int sampling,collPart,lte_only,init_lte,antialias,polarization,doPregrid,nThreads;
   char **moldatfile;
   _Bool writeGridAtStage[NUM_GRID_STAGES];
-  char *gridFitsOutSets[NUM_GRID_STAGES];
-  int nSolveIters;
+  char *gridInFile,*gridOutFiles[NUM_GRID_STAGES];
+
+  int dataStageI,nSolveIters;
 } inputPars;
 
 /* Molecular data: shared attributes */
@@ -208,86 +208,106 @@ void gasIIdust(double,double,double,double *);
 
 /* More functions */
 
-void   	binpopsout(inputPars *, struct grid *, molData *);
-void   	buildGrid(inputPars *, struct grid *, molData *);
+void   	binpopsout(inputPars*, struct grid*, molData*);
 void	calcAvRelLineAmp(struct grid*, int, int, double, double, double*);
 void	calcAvRelLineAmp_lin(struct grid*, int, int, double, double, double*);
 void	calcInterpCoeffs(inputPars*, struct grid*);
 void	calcInterpCoeffs_lin(inputPars*, struct grid*);
-void    calcSourceFn(double dTau, const inputPars *par, double *remnantSnu, double *expDTau);
-void	constructLinkArrays(unsigned int, struct grid *, struct linkType **\
-  , unsigned int *, struct linkType ***, unsigned int **, unsigned int *);
+void    calcSourceFn(double, const inputPars*, double*, double*);
+int	checkPopsBlockExists(lime_fptr*, const int, const unsigned short, _Bool*);
+_Bool	checkPopsFitsExtExists(lime_fptr*, const unsigned short);
+void	closeAndFree(lime_fptr*, const int, unsigned int*, struct linkType**, struct linkType*, const unsigned int);
+void	closeFile(lime_fptr*, const int);
+void	closeFITSFile(fitsfile*);
+void	constructLinkArrays(const unsigned int, struct grid*, struct linkType**, unsigned int*, struct linkType***, unsigned int**, unsigned int*, const int);
 void	continuumSetup(int, image *, molData *, inputPars *, struct grid *);
-void	defineGridExtColumns(unsigned short, unsigned short\
-  , unsigned short, unsigned short, char *ttype[]\
-  , char *tform[], char *tunit[], int dataTypes[]);
+int	countColumns(fitsfile*, char*);
+int	countKeywords(fitsfile*, char*);
+void	defineGridExtColumns(const unsigned short, inputPars, const unsigned short, const int, char *ttype[], char *tform[], char *tunit[], int dataTypes[]);
 void	distCalc(inputPars *, struct grid *);
 void	fit_d1fi(double, double, double*);
 void    fit_fi(double, double, double*);
 void    fit_rr(double, double, double*);
+void	freeReadGrid(struct grid**, struct gridInfoType);
 void    freeInput(inputPars *, image*, molData* m );
 void   	freeGrid(const inputPars * par, const molData* m, struct grid * g);
 void   	freePopulation(const inputPars * par, const molData* m, struct populations * pop);
 double 	gaussline(double, double);
 void    getArea(inputPars *, struct grid *, const gsl_rng *);
-void    getjbar(int, molData *, struct grid *, inputPars *,gridPointData *,double *);
-void    getMass(inputPars *, struct grid *, const gsl_rng *);
-void   	getmatrix(int, gsl_matrix *, molData *, struct grid *, int, gridPointData *);
 void	getclosest(double, double, double, long *, long *, double *, double *, double *);
-void	gridAlloc(inputPars *, struct grid **);
+void    getjbar(int, molData*, struct grid*, inputPars*,gridPointData*,double*);
+void    getMass(inputPars*, struct grid*, const gsl_rng*);
+void   	getmatrix(int, gsl_matrix*, molData*, struct grid*, int, gridPointData*);
+int	getNumPopsBlocks(lime_fptr*, const int, unsigned short*);
+void	gridAlloc(inputPars*, struct grid**);
 void   	input(inputPars *, image *);
 double	interpolate(double, double, double, double, double, double);
 float  	invSqrt(float);
-void   	kappa(molData *, struct grid *, inputPars *,int);
-void	levelPops(molData *, inputPars *, struct grid *, int *);
-void	line_plane_intersect(struct grid *, double *, int , int *, double *, double *, double);
-void	lineBlend(molData *, inputPars *, blend **);
-void    lineCount(int,molData *,int **, int **, int *);
-void	loadNnIntoGrid(unsigned int *, struct linkType **, struct linkType *, unsigned int, struct grid **);
-void	LTE(inputPars *, struct grid *, molData *);
-void   	molinit(molData *, inputPars *, struct grid *,int);
-void    openSocket(inputPars *par, int);
-void	qhull(inputPars *, struct grid *);
-void  	photon(int, struct grid *, molData *, int, const gsl_rng *,inputPars *,blend *,gridPointData *,double *);
-void	parseInput(inputPars *, image **, molData **);
-double 	planckfunc(int, double, molData *, int);
-int     pointEvaluation(inputPars *,double, double, double, double);
-void   	popsin(inputPars *, struct grid **, molData **, int *);
-void   	popsout(inputPars *, struct grid *, molData *);
-void	predefinedGrid(inputPars *, struct grid *);
+void   	kappa(molData*, struct grid*, inputPars*,int);
+void	levelPops(molData*, inputPars*, struct grid*, int*);
+void	line_plane_intersect(struct grid*, double*, int , int*, double*, double*, double);
+void	lineBlend(molData*, inputPars*, blend**);
+void    lineCount(int,molData*,int**, int**, int*);
+void	loadNnIntoGrid(unsigned int*, struct linkType**, struct linkType*, struct gridInfoType, struct grid*, const int);
+void	LTE(inputPars*, struct grid*, molData*);
+void	mallocAndSetDefaultGrid(struct grid**, const unsigned int);
+void   	molinit(molData*, inputPars*, struct grid*,int);
+lime_fptr	*openFileForRead(char*, const int, int*);
+fitsfile	*openFITSFileForRead(char*, int*);
+lime_fptr	*openFileForWrite(char*, const int, const int);
+fitsfile	*openFITSFileForWrite(char*, const int);
+void    openSocket(inputPars*, int);
+void	qhull(inputPars*, struct grid*);
+void  	photon(int, struct grid*, molData*, int, const gsl_rng*,inputPars*,blend*,gridPointData*,double*);
+void	parseInput(inputPars*, image**, molData**);
+double 	planckfunc(int, double, molData*, int);
+int     pointEvaluation(inputPars*,double, double, double, double);
+void   	popsin(inputPars*, struct grid**, molData**, int *);
+void   	popsout(inputPars*, struct grid*, molData*);
+void	predefinedGrid(inputPars*, struct grid*);
 void	processFitsError(int);
-double 	ratranInput(char *, char *, double, double, double);
-void   	raytrace(int, inputPars *, struct grid *, molData *, image *);
-void	readGridExtFromFits(fitsfile *, inputPars, unsigned short\
-  , struct grid **, unsigned int **, _Bool *, char ***, int *);
-void	readGridFromFits(char *, inputPars, unsigned short, unsigned short\
-  , struct grid **, _Bool *, _Bool *, _Bool *, molData *, char ***, int *);
-void	readLinksExtFromFits(fitsfile *, _Bool, unsigned short, struct grid *, struct linkType **);
-void	readNnIndicesExtFromFits(fitsfile *, struct linkType *, struct linkType ***);
-void	readPopsExtFromFits(fitsfile *, unsigned int, molData *, unsigned short, struct grid **);
-void	report(int, inputPars *, struct grid *);
-void	smooth(inputPars *, struct grid *);
-int     sortangles(double *, int, struct grid *, const gsl_rng *);
-void	sourceFunc(double *, double *, double, molData *,double,struct grid *,int,int, int,int);
-void    sourceFunc_line(double *,double *,molData *, double, struct grid *, int, int,int);
-void    sourceFunc_cont(double *,double *, struct grid *, int, int,int);
-void    sourceFunc_pol(double *, double *, double, molData *, double, struct grid *, int, int, int, double);
-void   	stateq(int, struct grid *, molData *, int, inputPars *,gridPointData *,double *);
-void	statistics(int, molData *, struct grid *, int *, double *, double *, int *);
-void    stokesangles(double, double, double, double, double *);
-void    traceray(rayData, int, int, inputPars *, struct grid *, molData *, image *, int, int *, int *, double);
-double 	veloproject(double *, double *);
-void	writeGridExtToFits(fitsfile *, inputPars, unsigned short, struct grid *, unsigned int *, char **);
-int	writeGridToFits(char *, inputPars, unsigned short, unsigned short, struct grid *, molData *, char **);
-void	writefits(int, inputPars *, molData *, image *);
-void	writeLinksExtToFits(fitsfile *, _Bool, unsigned int, unsigned short, struct linkType *);
-void	writeNnIndicesExtToFits(fitsfile *, unsigned int, struct linkType **, struct linkType *);
-void	writePopsExtToFits(fitsfile *, unsigned int, molData *, unsigned short, struct grid *);
-void    write_VTK_unstructured_Points(inputPars *, struct grid *);
-int	factorial(const int n);
-double	taylor(const int maxOrder, const float x);
-void	calcFastExpRange(const int maxTaylorOrder, const int maxNumBitsPerMantField, int *numMantissaFields, int *lowestExponent, int *numExponentsUsed);
-void	calcTableEntries(const int maxTaylorOrder, const int maxNumBitsPerMantField);
+double 	ratranInput(char*, char*, double, double, double);
+void   	raytrace(int, inputPars*, struct grid*, molData*, image*);
+int	readGrid(char*, const int, struct gridInfoType*, struct grid**, char***, int*, int*);
+int	readGridBlock(lime_fptr*, const int, struct gridInfoType*, struct grid**, unsigned int**, char***, int*, const int);
+void	readGridExtFromFits(fitsfile*, struct gridInfoType*, struct grid**, unsigned int**, char***, int*, const int);
+void	readOrBuildGrid(inputPars*, struct grid**);
+int	readLinksBlock(lime_fptr*, const int, struct gridInfoType*, struct grid*, struct linkType**, const int);
+void	readLinksExtFromFits(fitsfile*, struct gridInfoType*, struct grid*, struct linkType**, const int);
+int	readNnIndicesBlock(lime_fptr*, const int, struct linkType*, struct linkType***, struct gridInfoType*);
+void	readNnIndicesExtFromFits(fitsfile*, struct linkType*, struct linkType***, struct gridInfoType*);
+void	readOrBuildGrid(inputPars*, struct grid**);
+int	readPopsBlock(lime_fptr*, const int, const unsigned short, struct grid*, struct gridInfoType*);
+void	readPopsExtFromFits(fitsfile*, const unsigned short, struct grid*, struct gridInfoType*);
+void	report(int, inputPars*, struct grid*);
+void	smooth(inputPars*, struct grid*);
+int     sortangles(double*, int, struct grid*, const gsl_rng*);
+void	sourceFunc(double*, double*, double, molData*,double,struct grid*,int,int, int,int);
+void    sourceFunc_line(double*,double*,molData*, double, struct grid*, int, int,int);
+void    sourceFunc_cont(double*,double*, struct grid*, int, int,int);
+void    sourceFunc_pol(double*, double*, double, molData*, double, struct grid*, int, int, int, double);
+void   	stateq(int, struct grid*, molData*, int, inputPars*,gridPointData*,double*);
+void	statistics(int, molData*, struct grid*, int*, double*, double*, int*);
+void    stokesangles(double, double, double, double, double*);
+void    traceray(rayData, int, int, inputPars*, struct grid*, molData*, image*, int, int*, int*, double);
+void   	velocityspline2(double*, double*, double, double, double, double*);
+double 	veloproject(double*, double*);
+int	writeGrid(char*, const int, inputPars, unsigned short, unsigned short, struct grid*, molData*, char**, const int);
+int	writeGridBlock(lime_fptr*, const int, inputPars, unsigned short, struct grid*, unsigned int*, char**, const int);
+void	writeGridExtToFits(fitsfile*, inputPars, unsigned short, struct grid*, unsigned int*, char**, const int);
+void	writeGridIfRequired(inputPars*, struct grid*, molData*, const int);
+void	writefits(int, inputPars*, molData*, image*);
+int	writeLinksBlock(lime_fptr*, const int, const unsigned int, const unsigned short, struct linkType*, const int);
+void	writeLinksExtToFits(fitsfile*, const unsigned int, const unsigned short, struct linkType*, const int);
+int	writeNnIndicesBlock(lime_fptr*, const int, const unsigned int, struct linkType**, struct linkType*);
+void	writeNnIndicesExtToFits(fitsfile*, const unsigned int, struct linkType**, struct linkType*);
+int	writePopsBlock(lime_fptr*, const int, unsigned int, molData*, unsigned short, struct grid*);
+void	writePopsExtToFits(fitsfile*, const unsigned int, molData*, const unsigned short, struct grid*);
+void    write_VTK_unstructured_Points(inputPars*, struct grid*);
+int	factorial(const int);
+double	taylor(const int, const float);
+void	calcFastExpRange(const int, const int, int*, int*, int*);
+void	calcTableEntries(const int, const int);
 double	FastExp(const float negarg);
 
 

@@ -504,139 +504,264 @@ getMass(inputPars *par, struct grid *g, const gsl_rng *ran){
 }
 
 
-void
-buildGrid(inputPars *par, struct grid *g, molData *md){
+void mallocAndSetDefaultGrid(struct grid **gp, const unsigned int numPoints){
+  unsigned int i;
+
+  *gp = malloc(sizeof(struct grid)*numPoints);
+  for(i=0;i<numPoints; i++){
+    (*gp)[i].a0 = NULL;
+    (*gp)[i].a1 = NULL;
+    (*gp)[i].a2 = NULL;
+    (*gp)[i].a3 = NULL;
+    (*gp)[i].a4 = NULL;
+    (*gp)[i].mol = NULL;
+    (*gp)[i].dir = NULL;
+    (*gp)[i].neigh = NULL;
+    (*gp)[i].w = NULL;
+    (*gp)[i].ds = NULL;
+    (*gp)[i].dens=NULL;
+    (*gp)[i].abun=NULL;
+    (*gp)[i].nmol=NULL;
+    (*gp)[i].t[0]=-1;
+    (*gp)[i].t[1]=-1;
+    (*gp)[i].conv=0;
+  }
+}
+
+void readOrBuildGrid(inputPars *par, struct grid **gp){
   double lograd;		/* The logarithm of the model radius		*/
   double logmin;	    /* Logarithm of par->minScale				*/
   double r,theta,phi,sinPhi,x,y,z,semiradius;	/* Coordinates								*/
   double temp;
   int k=0,i,j;            /* counters									*/
-  int flag,stageI,status=0;
-  char **collPartNames=NULL; /*** this is a placeholder until we start reading these. */
+  int flag;
+  struct gridInfoType gridInfoRead;
+  int status;
+  char **collPartNames;
+  int numCollPartRead;
+  char message[80];
 
-  gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
+  par->dataStageI = 0;
+  if(par->gridInFile!=NULL){
+    /* Set defaults for *gridInfoRead:
+    */
+    gridInfoRead.nInternalPoints = 0;
+    gridInfoRead.nSinkPoints = 0;
+    gridInfoRead.nLinks = 0;
+    gridInfoRead.nNNIndices = 0;
+    gridInfoRead.nDims = 0;
+    gridInfoRead.nSpecies = 0;
+    gridInfoRead.nDensities = 0;
+    gridInfoRead.nACoeffs = 0;
+    gridInfoRead.mols = NULL;
+
+    status = readGrid(par->gridInFile, lime_FITS, &gridInfoRead, gp\
+      , &collPartNames, &numCollPartRead, &(par->dataStageI));
+
+    if(status){
+      if(!silent){
+        sprintf(message, "Read of grid file failed with status return %d", status);
+        bail_out(message);
+      }
+      exit(1);
+    }
+
+    /* Test gridInfoRead values against par values and overwrite the latter, with a warning, if necessary.
+    */
+    if(gridInfoRead.nSinkPoints>0 && par->sinkPoints>0){
+      if(gridInfoRead.nSinkPoints!=par->sinkPoints){
+        if(!silent) warning("par->sinkPoints will be overwritten");
+        par->sinkPoints = gridInfoRead.nSinkPoints;
+      }
+      if(gridInfoRead.nInternalPoints!=par->pIntensity){
+        if(!silent) warning("par->pIntensity will be overwritten");
+        par->pIntensity = gridInfoRead.nInternalPoints;
+      }
+      par->ncell = par->sinkPoints + par->pIntensity;
+    }
+    if(gridInfoRead.nDims!=DIM){ /* At present this situation is already detected and handled inside readGridExtFromFits(), but it may not be in future. The test here has no present functionality but saves trouble later if we change grid.x from an array to a pointer. */
+      if(!silent){
+        sprintf(message, "Grid file had %d dimensions but there should be %d.", (int)gridInfoRead.nDims, DIM);
+        bail_out(message);
+      }
+      exit(1);
+    }
+    if(gridInfoRead.nSpecies>0 && par->nSpecies>0 && gridInfoRead.nSpecies!=par->nSpecies){
+      if(!silent){
+        sprintf(message, "Grid file had %d species but you have provided moldata files for %d."\
+          , (int)gridInfoRead.nSpecies, par->nSpecies);
+        bail_out(message);
+      }
+      exit(1);
+/**** should compare name to name - at some later time after we have read these from the moldata files? */
+    }
+    if(gridInfoRead.nDensities>0 && par->collPart>0 && gridInfoRead.nDensities!=par->collPart){
+      if(!silent){
+        sprintf(message, "Grid file had %d densities but you have provided %d."\
+          , (int)gridInfoRead.nDensities, par->collPart);
+        bail_out(message);
+      }
+      exit(1);
+    }
+
+/*
+**** Ideally we should also have a test on nACoeffs.
+
+**** Ideally we should also have a test on the mols entries - at some later time after we have read the corresponding values from the moldata files?
+*/
+    if(par->dataStageI==4 && !silent)
+      warning("Sorry, LIME is not yet able to further process level populations read from file.");
+  } /* End of read grid file. Whether and what we subsequently calculate will depend on the value of par->dataStageI returned. */
+
+  if(par->dataStageI<1){ /* This can only happen if we did not read a file. */
+    mallocAndSetDefaultGrid(gp, (unsigned int)par->ncell);
+
+    gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
 #ifdef TEST
-  gsl_rng_set(ran,342971);
+    gsl_rng_set(ran,342971);
 #else
-  gsl_rng_set(ran,time(0));
+    gsl_rng_set(ran,time(0));
 #endif  
   
-  lograd=log10(par->radius);
-  logmin=log10(par->minScale);
+    lograd=log10(par->radius);
+    logmin=log10(par->minScale);
 
-  /* Sample pIntensity number of points */
-  for(k=0;k<par->pIntensity;k++){
-    temp=gsl_rng_uniform(ran);
-    flag=0;
-    /* Pick a point and check if we like it or not */
-    do{
-      if(par->sampling==0){
-        r=pow(10,logmin+gsl_rng_uniform(ran)*(lograd-logmin));
-        theta=2.*PI*gsl_rng_uniform(ran);
-        phi=PI*gsl_rng_uniform(ran);
-        sinPhi=sin(phi);
-        x=r*cos(theta)*sinPhi;
-        y=r*sin(theta)*sinPhi;
-        if(DIM==3) z=r*cos(phi);
-        else z=0.;
-      } else if(par->sampling==1){
-        x=(2*gsl_rng_uniform(ran)-1)*par->radius;
-        y=(2*gsl_rng_uniform(ran)-1)*par->radius;
-        if(DIM==3) z=(2*gsl_rng_uniform(ran)-1)*par->radius;
-        else z=0;
-      } else if(par->sampling==2){
-        r=pow(10,logmin+gsl_rng_uniform(ran)*(lograd-logmin));
-        theta=2.*PI*gsl_rng_uniform(ran);
-        if(DIM==3) {
-          z=2*gsl_rng_uniform(ran)-1.;
-          semiradius=r*sqrt(1.-z*z);
-          z*=r;
+    /* Sample pIntensity number of points */
+    for(k=0;k<par->pIntensity;k++){
+      temp=gsl_rng_uniform(ran);
+      flag=0;
+      /* Pick a point and check if we like it or not */
+      do{
+        if(par->sampling==0){
+          r=pow(10,logmin+gsl_rng_uniform(ran)*(lograd-logmin));
+          theta=2.*PI*gsl_rng_uniform(ran);
+          phi=PI*gsl_rng_uniform(ran);
+          sinPhi=sin(phi);
+          x=r*cos(theta)*sinPhi;
+          y=r*sin(theta)*sinPhi;
+          if(DIM==3) z=r*cos(phi);
+          else z=0.;
+        } else if(par->sampling==1){
+          x=(2*gsl_rng_uniform(ran)-1)*par->radius;
+          y=(2*gsl_rng_uniform(ran)-1)*par->radius;
+          if(DIM==3) z=(2*gsl_rng_uniform(ran)-1)*par->radius;
+          else z=0;
+        } else if(par->sampling==2){
+          r=pow(10,logmin+gsl_rng_uniform(ran)*(lograd-logmin));
+          theta=2.*PI*gsl_rng_uniform(ran);
+          if(DIM==3) {
+            z=2*gsl_rng_uniform(ran)-1.;
+            semiradius=r*sqrt(1.-z*z);
+            z*=r;
+          } else {
+            z=0.;
+            semiradius=r;
+          }
+          x=semiradius*cos(theta);
+          y=semiradius*sin(theta);
         } else {
-          z=0.;
-          semiradius=r;
+          if(!silent) bail_out("Don't know how to sample model");
+          exit(1);
         }
-        x=semiradius*cos(theta);
-        y=semiradius*sin(theta);
-      } else {
-        if(!silent) bail_out("Don't know how to sample model");
-        exit(1);
-      }
-      if((x*x+y*y+z*z)<par->radiusSqu) flag=pointEvaluation(par,temp,x,y,z);
-    } while(!flag);
-    /* Now pointEvaluation has decided that we like the point */
+        if((x*x+y*y+z*z)<par->radiusSqu) flag=pointEvaluation(par,temp,x,y,z);
+      } while(!flag);
+      /* Now pointEvaluation has decided that we like the point */
 
-    /* Assign values to the k'th grid point */
-    /* I don't think we actually need to do this here... */
-    g[k].id=k;
-    g[k].x[0]=x;
-    g[k].x[1]=y;
-    if(DIM==3) g[k].x[2]=z;
-    else g[k].x[2]=0.;
+      /* Assign values to the k'th grid point */
+      /* I don't think we actually need to do this here... */
+      (*gp)[k].id=k;
+      (*gp)[k].x[0]=x;
+      (*gp)[k].x[1]=y;
+      if(DIM==3) (*gp)[k].x[2]=z;
+      else (*gp)[k].x[2]=0.;
 
-    g[k].sink=0;
-    /* This next step needs to be done, even though it looks stupid */
-    g[k].dir=malloc(sizeof(point)*1);
-    g[k].ds =malloc(sizeof(double)*1);
-    g[k].neigh =malloc(sizeof(struct grid *)*1);
-    if(!silent) progressbar((double) k/((double)par->pIntensity-1), 4);
+      (*gp)[k].sink=0;
+
+      if(!silent) progressbar((double) k/((double)par->pIntensity-1), 4);
+    }
+    /* end model grid point assignment */
+    if(!silent) printDone(4);
+
+    /* Add surface sink particles */
+    for(k=par->pIntensity;k<par->ncell;k++){
+      theta=gsl_rng_uniform(ran)*2*PI;
+      if(DIM==3) z=2*gsl_rng_uniform(ran)-1.;
+      else z=0.;
+      semiradius=sqrt(1.-z*z);
+      x=semiradius*cos(theta);
+      y=semiradius*sin(theta);;
+      (*gp)[k].id=k;
+      (*gp)[k].x[0]=par->radius*x;
+      (*gp)[k].x[1]=par->radius*y;
+      (*gp)[k].x[2]=par->radius*z;
+      (*gp)[k].sink=1;
+    }
+    /* end grid allocation */
+
+    gsl_rng_free(ran);
+
+    smooth(par, *gp);
+    if(!silent) printDone(5);
+
+    par->dataStageI = 1;
+  }else if(par->dataStageI==1 && par->writeGridAtStage[par->dataStageI-1]){
+    sprintf(message, "You just read a grid file at data stage %d, now you want to write it again?", par->dataStageI);
+    if(!silent) warning(message);
   }
-  /* end model grid point assignment */
-  if(!silent) printDone(4);
 
-  /* Add surface sink particles */
-  for(i=0;i<par->sinkPoints;i++){
-    theta=gsl_rng_uniform(ran)*2*PI;
-    if(DIM==3) z=2*gsl_rng_uniform(ran)-1.;
-    else z=0.;
-    semiradius=sqrt(1.-z*z);
-    x=semiradius*cos(theta);
-    y=semiradius*sin(theta);;
-    g[k].id=k;
-    g[k].x[0]=par->radius*x;
-    g[k].x[1]=par->radius*y;
-    g[k].x[2]=par->radius*z;
-    g[k].sink=1;
-    g[k].abun[0]=0;
-    g[k].dens[0]=1e-30;
-    g[k].t[0]=par->tcmb;
-    g[k].t[1]=par->tcmb;
-    g[k].dopb=0.;
-    for(j=0;j<DIM;j++) g[k].vel[j]=0.;
-    k++;
+  if(par->dataStageI==1) /* Only happens if (i) we read no file, or (ii) we read a file at dataStageI==1. */
+    writeGridIfRequired(par, *gp, NULL, lime_FITS);
+
+  if(par->dataStageI<2){
+    qhull(par, *gp); /* Mallocs and sets .neigh, sets .numNeigh */
+
+    par->dataStageI = 2;
+  }else if(par->dataStageI==2 && par->writeGridAtStage[par->dataStageI-1]){
+    sprintf(message, "You just read a grid file at data stage %d, now you want to write it again?", par->dataStageI);
+    if(!silent) warning(message);
   }
-  /* end grid allocation */
 
-  smooth(par,g);
-  qhull(par, g);	
-  distCalc(par, g);	    
+  if(par->dataStageI==2) /* Only happens if (i) we read no file, or (ii) we read a file at dataStageI==2. */
+    writeGridIfRequired(par, *gp, NULL, lime_FITS);
 
-/* Can't do this yet because .dens is not NULL, but .a0, .a1 etc are. Have to rearrange the mallocs of g elements first. Simply set g[0].dens=NULL to kluge around this? But then have to malloc it again (sigh).
-  stageI = 1;
-  if(par->writeGridAtStage[stageI])
-    status = writeGridToFits(par->gridFitsOutSets[stageI], *par, (unsigned short)DIM\
-      , (unsigned short)NUM_VEL_COEFFS, g, md, collPartNames);
-*/
+  distCalc(par, *gp); /* Mallocs and sets .dir & .ds, sets .nphot */
 
-  for(i=0;i<par->pIntensity;i++){
-    density(    g[i].x[0],g[i].x[1],g[i].x[2], g[i].dens);
-    temperature(g[i].x[0],g[i].x[1],g[i].x[2], g[i].t);
-    doppler(    g[i].x[0],g[i].x[1],g[i].x[2],&g[i].dopb);	
-    abundance(  g[i].x[0],g[i].x[1],g[i].x[2], g[i].abun);
-    velocity(   g[i].x[0],g[i].x[1],g[i].x[2], g[i].vel);
- }
+  if(par->dataStageI<3){
+    for(i=0;i<par->ncell; i++){
+      (*gp)[i].dens = malloc(sizeof(double)*par->collPart);
+      (*gp)[i].abun = malloc(sizeof(double)*par->nSpecies);
+      (*gp)[i].nmol = malloc(sizeof(double)*par->nSpecies);
+    }
 
-  //	getArea(par,g, ran);
-  //	getMass(par,g, ran);
-  calcInterpCoeffs(par,g); /* Mallocs and sets .a0, .a1 etc. */
-  dumpGrid(par,g);
+    for(i=0;i<par->pIntensity;i++){
+      density(    (*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2], (*gp)[i].dens);
+      temperature((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2], (*gp)[i].t);
+      doppler(    (*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],&(*gp)[i].dopb);	
+      abundance(  (*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2], (*gp)[i].abun);
+      velocity(   (*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2], (*gp)[i].vel);
+    }
 
-  gsl_rng_free(ran);
-  if(!silent) printDone(5);
+    for(i=par->pIntensity;i<par->ncell;i++){
+      (*gp)[i].dens[0]=1e-30;
+      (*gp)[i].t[0]=par->tcmb;
+      (*gp)[i].t[1]=par->tcmb;
+      (*gp)[i].dopb=0.;
+      (*gp)[i].abun[0]=0;
+      for(j=0;j<DIM;j++) (*gp)[i].vel[j]=0.;
+    }
 
-  stageI = 2;
-  if(par->writeGridAtStage[stageI])
-    status = writeGridToFits(par->gridFitsOutSets[stageI], *par, (unsigned short)DIM\
-      , (unsigned short)NUM_VEL_COEFFS, g, md, collPartNames);
+    calcInterpCoeffs(par,*gp); /* Mallocs and sets .a0, .a1 etc. */
+
+    par->dataStageI = 3;
+  }else if(par->dataStageI==3 && par->writeGridAtStage[par->dataStageI-1]){
+    sprintf(message, "You just read a grid file at data stage %d, now you want to write it again?", par->dataStageI);
+    if(!silent) warning(message);
+  }
+
+  if(par->dataStageI==3) /* Only happens if (i) we read no file, or (ii) we read a file at dataStageI==3. */
+    writeGridIfRequired(par, *gp, NULL, lime_FITS);
+
+  dumpGrid(par,*gp);
 }
 
 
