@@ -28,6 +28,7 @@ int main () {
   inputPars    par;
   struct grid* g = NULL;
   image*       img = NULL;
+  region*      rgn = NULL;
 
   if(!silent) greetings();
   if(!silent) screenInfo();
@@ -36,7 +37,7 @@ int main () {
   calcTableEntries(FAST_EXP_MAX_TAYLOR, FAST_EXP_NUM_BITS);
 #endif
 
-  parseInput(&par,&img,&m);
+  parseInput(&par,&img,&m,&rgn);
 
   if(par.doPregrid)
     {
@@ -50,7 +51,7 @@ int main () {
   else
     {
       gridAlloc(&par,&g);
-      buildGrid(&par,g);
+      buildGrid(&par,g,rgn);
     }
 
   for(i=0;i<par.nImages;i++){
@@ -68,6 +69,6 @@ int main () {
   if(!silent) goodnight(initime,img[0].filename);
 
   freeGrid( &par, m, g);
-  freeInput(&par, img, m);
+  freeInput(&par, img, m, rgn);
   return 0;
 }
