@@ -194,6 +194,7 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
   double size,minfreq,absDeltaFreq,totalNumPixelsMinus1=(double)(img[im].pxls*img[im].pxls-1);
   double cutoff;
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
+  gsl_error_handler_t *defaultErrorHandler=NULL;
 
   gsl_rng *ran = gsl_rng_alloc(ranNumGenType);	/* Random number generator */
 #ifdef TEST
@@ -246,6 +247,13 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
     }
   }
 
+  defaultErrorHandler = gsl_set_error_handler_off();
+  /*
+The GSL documentation does not recommend leaving the error handler at the default within multi-threaded code.
+
+While this is off however, gsl_* calls will not exit if they encounter a problem. We may need to pay some attention to trapping their errors.
+  */
+
   nRaysDone=0;
   omp_set_dynamic(0);
   #pragma omp parallel private(px,aa,threadI) num_threads(par->nThreads)
@@ -286,6 +294,7 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
     free(ray.intensity);
   } /* End of parallel block. */
 
+  gsl_set_error_handler(defaultErrorHandler);
   img[im].trans=tmptrans;
 
   free(counta);

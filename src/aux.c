@@ -452,6 +452,7 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
   struct statistics { double *pop, *ave, *sigma; } *stat;
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
   _Bool luWarningGiven=0;
+  gsl_error_handler_t *defaultErrorHandler=NULL;
 
   stat=malloc(sizeof(struct statistics)*par->pIntensity);
 
@@ -510,6 +511,13 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
   }
 
   if(par->lte_only==0){
+    defaultErrorHandler = gsl_set_error_handler_off();
+    /*
+This is done to allow proper handling of errors which may arise in the LU solver within stateq(). It is done here because the GSL documentation does not recommend leaving the error handler at the default within multi-threaded code.
+
+While this is off however, other gsl_* etc calls will not exit if they encounter a problem. We may need to pay some attention to trapping their errors.
+    */
+
     do{
       if(!silent) progressbar2(0, prog++, 0, result1, result2);
 
@@ -603,6 +611,7 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
       if(!silent) progressbar2(1, prog, percent, result1, result2);
       if(par->outputfile) popsout(par,g,m);
     } while(conv++<NITERATIONS);
+    gsl_set_error_handler(defaultErrorHandler);
     if(par->binoutputfile) binpopsout(par,g,m);
   }
 

@@ -20,7 +20,6 @@ stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par\
   int t,s,iter,status;
   double *opop,*oopop,*tempNewPop=NULL;
   double diff;
-  gsl_error_handler_t *defaultErrorHandler=NULL;
   char errStr[80];
 
   gsl_matrix *matrix = gsl_matrix_alloc(m[ispec].nlev+1, m[ispec].nlev+1);
@@ -44,9 +43,6 @@ stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par\
   gsl_vector_set(rhVec,m[ispec].nlev-1,1.);
   diff=1;
   iter=0;
-
-  defaultErrorHandler = gsl_set_error_handler_off();
-  /* While this is off, the gsl_matrix_* etc calls will not exit if they encounter a problem. However the usual problem they would have is out-of-range indices; the respective code is simple enough though that the likelihood of this sort of problem seems low. */
 
   while((diff>TOL && iter<MAXITER) || iter<5){
     getjbar(id,m,g,par,mp,halfFirstDs);
@@ -97,8 +93,6 @@ stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par\
     }
     iter++;
   }
-
-  gsl_set_error_handler(defaultErrorHandler);
 
   gsl_matrix_free(matrix);
   gsl_matrix_free(reduc);
