@@ -37,7 +37,9 @@ input(inputPars *par, image *img){
   img[0].trans			= 3;          // zero-indexed J quantum number
   img[0].pxls			= 100;	      // Pixels per dimension
   img[0].imgres			= 0.1;		  // Resolution in arc seconds
-  img[0].theta			= 0.0;		  // 0: face-on, pi/2: edge-on
+  img[0].incl			= 0.;		  // 0: face-on, pi/2: edge-on
+  img[0].posang			= 90./180.*PI;// Position angle measured from North through East
+  img[0].azimuth		= 0./180.*PI; // Rotation angle in the x-y plane
   img[0].distance		= 140*PC;	  // source distance in m
   img[0].source_vel		= 0;          // source velocity in m/s
   img[0].unit			= 0;		  // 0:Kelvin 1:Jansky/pixel 2:SI 3:Lsun/pixel 4:tau

@@ -19,6 +19,7 @@ parseInput(inputPars *par, image **img, molData **m){
   int i,id;
   double BB[3];
   double cosPhi,sinPhi,cosTheta,sinTheta;
+  double sin_incl, cos_incl, sin_pa, cos_pa, sin_az, cos_az;
 
   /* Set default values */
   par->dust  	    = NULL;
@@ -92,6 +93,10 @@ parseInput(inputPars *par, image **img, molData **m){
     (*img)[i].trans=-1;
     (*img)[i].freq=-1.;
     (*img)[i].bandwidth=-1.;
+
+    (*img)[i].incl     = -999.;
+    (*img)[i].posang   = -999.;
+    (*img)[i].azimuth  = -999.;    
   }
   input(par,*img);
 
@@ -187,19 +192,43 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
 
     */
 
-    cosPhi   = cos((*img)[i].phi);
-    sinPhi   = sin((*img)[i].phi);
-    cosTheta = cos((*img)[i].theta);
-    sinTheta = sin((*img)[i].theta);
-    (*img)[i].rotMat[0][0] =           cosPhi;
-    (*img)[i].rotMat[0][1] =  0.0;
-    (*img)[i].rotMat[0][2] =          -sinPhi;
-    (*img)[i].rotMat[1][0] =  sinTheta*sinPhi;
-    (*img)[i].rotMat[1][1] =  cosTheta;
-    (*img)[i].rotMat[1][2] =  sinTheta*cosPhi;
-    (*img)[i].rotMat[2][0] =  cosTheta*sinPhi;
-    (*img)[i].rotMat[2][1] = -sinTheta;
-    (*img)[i].rotMat[2][2] =  cosTheta*cosPhi;
+    if( ((*img)[i].incl<-100.) | ((*img)[i].posang<-100.) | ((*img)[i].phi<-100.) ){ 
+        cosPhi   = cos((*img)[i].phi);
+        sinPhi   = sin((*img)[i].phi);
+        cosTheta = cos((*img)[i].theta);
+        sinTheta = sin((*img)[i].theta);
+        (*img)[i].rotMat[0][0] =           cosPhi;
+        (*img)[i].rotMat[0][1] =  0.0;
+        (*img)[i].rotMat[0][2] =          -sinPhi;
+        (*img)[i].rotMat[1][0] =  sinTheta*sinPhi;
+        (*img)[i].rotMat[1][1] =  cosTheta;
+        (*img)[i].rotMat[1][2] =  sinTheta*cosPhi;
+        (*img)[i].rotMat[2][0] =  cosTheta*sinPhi;
+        (*img)[i].rotMat[2][1] = -sinTheta;
+        (*img)[i].rotMat[2][2] =  cosTheta*cosPhi;
+    
+    } else {
+
+        cos_incl = cos((*img)[i].incl);
+        sin_incl = sin((*img)[i].incl);
+        cos_pa   = cos((*img)[i].posang-PI/2.);
+        sin_pa   = sin((*img)[i].posang-PI/2.);
+        cos_az   = cos((*img)[i].azimuth);
+        sin_az   = sin((*img)[i].azimuth);
+
+
+        (*img)[i].rotMat[0][0] = cos_az*cos_pa - sin_az*cos_incl*sin_pa;
+        (*img)[i].rotMat[0][1] = cos_az*sin_pa + sin_az*cos_incl*cos_pa;
+        (*img)[i].rotMat[0][2] = sin_az*sin_incl;
+        (*img)[i].rotMat[1][0] = -sin_az*cos_pa - cos_az*cos_incl*sin_pa;
+        (*img)[i].rotMat[1][1] = -sin_az*sin_pa + cos_az*cos_incl*cos_pa;
+        (*img)[i].rotMat[1][2] = cos_az*cos_incl;
+        (*img)[i].rotMat[2][0] = sin_incl*sin_pa;
+        (*img)[i].rotMat[2][1] = -sin_incl*cos_pa;
+        (*img)[i].rotMat[2][2] = cos_incl;
+
+    }
+    
   }
 
   /* Allocate moldata array */
