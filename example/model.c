@@ -51,7 +51,9 @@ density(double x, double y, double z, double *density){
   /*
    * Define variable for radial coordinate
    */
-  double r;
+  double r, rToUse;
+  const double rMin = 0.1*AU; /* This cutoff should be chosen smaller than par->minScale but greater than zero (to avoid a singularity at the origin). */
+
   /*
    * Calculate radial distance from origin
    */
@@ -60,7 +62,12 @@ density(double x, double y, double z, double *density){
    * Calculate a spherical power-law density profile
    * (Multiply with 1e6 to go to SI-units)
    */
-  density[0] = 1.5e6*pow(r/(300*AU),-1.5)*1e6;
+  if(r>rMin)
+    rToUse = r;
+  else
+    rToUse = rMin;
+
+  density[0] = 1.5e6*pow(rToUse/(300*AU),-1.5)*1e6;
 }
 
 /******************************************************************************/
@@ -78,7 +85,7 @@ temperature(double x, double y, double z, double *temperature){
       {44.777, 31.037, 25.718, 22.642, 20.560, 19.023, 17.826, 16.857, 16.050, 15.364}
   };
   /*
-   * Calculate coordinate distance from origin
+   * Calculate radial distance from origin
    */
   r=sqrt(x*x+y*y+z*z);
   /*
@@ -125,24 +132,27 @@ doppler(double x, double y, double z, double *doppler){
 
 void
 velocity(double x, double y, double z, double *vel){
-  double R, r;
+  double r, rToUse, ffSpeed;
+  const double rMin = 0.1*AU; /* This cutoff should be chosen smaller than par->minScale but greater than zero (to avoid a singularity at the origin). */
 
-  R=sqrt(x*x+y*y+z*z);
-  if (R>0.){
-/*
- * Free-fall velocity in the radial direction onto a central 
- * mass of 1.0 solar mass
- */  
-    r=-sqrt(2*6.67e-11*1.989e30/R);
+  /*
+   * Calculate radial distance from origin
+   */
+  r = sqrt(x*x+y*y+z*z);
+  if(r>rMin)
+    rToUse = r;
+  else
+    rToUse = rMin;
 
-    vel[0]=x*r/R;
-    vel[1]=y*r/R;
-    vel[2]=z*r/R;
-  } else {
-    vel[0]=0.0;
-    vel[1]=0.0;
-    vel[2]=0.0;
-  }
+  /*
+   * Free-fall velocity in the radial direction onto a central 
+   * mass of 1.0 solar mass
+   */  
+  ffSpeed = sqrt(2*GRAV*1.989e30/rToUse);
+
+  vel[0] = -x*ffSpeed/rToUse;
+  vel[1] = -y*ffSpeed/rToUse;
+  vel[2] = -z*ffSpeed/rToUse;
 }
 
 /******************************************************************************/
