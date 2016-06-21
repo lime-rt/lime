@@ -9,6 +9,8 @@
 
 #include "lime.h"
 
+char *collpartnames[] = {"H2","p-H2","o-H2","electrons","H","He","H+"}; /* definition from LAMDA */
+
 void calcMolCMBs(inputPars *par, molData *md){
   int i, iline;
 
@@ -47,7 +49,6 @@ planckfunc(int iline, double temp, molData *md,int s){
 void readMolData(inputPars *par, molData *md, int **allUniqueCollPartIds, int *numCollPartsFound){
   /* NOTE! allUniqueCollPartIds is malloc'd in the present function, but not freed. The calling program must free it elsewhere.
   */
-  char *collpartnames[] = {"H2","p-H2","o-H2","electrons","H","He","H+"}; /* definition from LAMDA */
   int i,j,k,ilev,idummy,iline,numPartsAcceptedThisMol,ipart,collPartId,itemp,itrans;
   FILE *fp;
   char string[200], specref[90], partstr[90];
@@ -282,7 +283,15 @@ To preserve backward compatibility I am going to try to make the same guesses as
       exit(1);
     }
 
-    if(!silent) warning("User didn't set par.collPartIds, I'm having to guess them.");
+    if(!silent) {
+      warning("User didn't set par.collPartIds, I'm having to guess them. Guessed:");
+#ifdef NO_NCURSES
+      for(i=0;i<par->numDensities;i++){
+        printf("Collision partner %d assigned code %d (=%s)\n", i, par->collPartIds[i], collpartnames[par->collPartIds[i]-1]);
+      }
+      printf("\n");
+#endif
+    }
 
     if(par->nMolWeights==NULL){
       /*
