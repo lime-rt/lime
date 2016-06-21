@@ -207,7 +207,7 @@ raytrace(int im, inputPars *par, struct grid *gp, molData *md, image *img){
 
   for (i=0;i<par->nThreads;i++){
     threadRans[i] = gsl_rng_alloc(ranNumGenType);
-    gsl_rng_set(threadRans[i],(int)gsl_rng_uniform(ran)*1e6);
+    gsl_rng_set(threadRans[i],(int)(gsl_rng_uniform(ran)*1e6));
   }
 
   size=img[im].distance*img[im].imgres;
