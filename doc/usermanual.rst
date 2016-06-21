@@ -465,15 +465,17 @@ Because there are 2 independent sources of information about these so-called col
 
 .. code:: c
 
-    (int) par->collPartIds (optional)
+    (integer) par->collPartIds (optional)
 
 The integer values are the codes given in `<http://home.strw.leidenuniv.nl/~moldata/molformat.html>`_. Currently recognized values range from 1 to 7 inclusive. E.g if the only colliding species of interest in your model is H2, your density function should return a single value, namely the density of molecular hydrogen, and (if you supply a collPartIds value at all) you should set collPartIds[0] = 1 (the LAMDA code for H2).
 
-LIME calculates the number density of each of its radiating species, at each grid point, by multiplying the abundance of the species (returned via the function of that name) by a weighted sum of the density values. The next parameter allows the user to specify the weights in that sum. An example of when this might be useful is if a density for electrons is provided, they being of collisional importance, but it is not desired to include electrons in the sum when calculating nmol values. In that case one would set the appropriate value of nMolWeights to zero.
+LIME calculates the number density of each of its radiating species, at each grid point, by multiplying the abundance of the species (returned via the function of that name) by a weighted sum of the density values. The next parameter allows the user to specify the weights in that sum.
 
 .. code:: c
 
     (double) par->nMolWeights (optional)
+
+An example of when this might be useful is if a density for electrons is provided, they being of collisional importance, but it is not desired to include electrons in the sum when calculating nmol values. In that case one would set the appropriate value of nMolWeights to zero.
 
 The final one of the density-linked parameters controls how the dust opacity is calculated. This again involves a weighted sum of provided density values, and this parameter allows the user to specify the weights to be used.
 
@@ -655,8 +657,7 @@ be included for continuum polarization images.
 Density
 ~~~~~~~
 
-The density subroutine contains a user-defined description of the 3D
-density profile of the collision partner(s).
+The density subroutine contains a user-defined description of the 3D density profile of the collision partner(s).
 
 .. code:: c
 
@@ -668,7 +669,7 @@ density profile of the collision partner(s).
       density[n] = f(x,y,z);
     }
 
-LIME can deal with an unlimited number n of collision partners (CPs). In most cases, a single density profile will suffice. Note that the number of returned density function values no longer has to be the same as the number of CPs listed in the moldata file(s), but if the numbers are different, LIME will require the user to provide the collPartIds parameter to allow the CPs associated with each density value to be matched to those in the moldata file(s). Note also that moldata CPs for which there is no density return will be ignored.
+LIME can deal with an unlimited number n of collision partners (CPs). In most cases, a single density profile will suffice. Note that the number of returned density function values no longer has to be the same as the number of CPs listed in the moldata file(s) so long as the user sets values for the collPartIds parameter, but if this parameter is not supplied, and the numbers are different, LIME may not be able to match the CPs associated with each density value to those in the moldata file(s). Note also that moldata CPs for which there is no matching density will be ignored.
 
 The density is a number density, that is, the number of molecules of the respective CP per unit volume (in cubic meters, not cubic centimeters).
 
