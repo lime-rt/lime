@@ -43,11 +43,13 @@ par->nMolWeights: this specifies how you want the number density of each radiati
 par->dustWeights: this is similar, but the weighted sum of densities now feeds into the calculation of the dust opacity.
 
 Note that there are convenient macros defined in ../src/lime.h for 7 types of collision partner.
-  */
-//  par->collPartIds[0] 		= CP_H2;
-//  par->nMolWeights[0] 		= 1.0;
-//  par->dustWeights[0] 		= 1.0;
-// Typical values (commented out) given here for the sake of an example.
+
+Below is an example of how you might use these parameters:
+
+  par->collPartIds[0]           = CP_H2;
+  par->nMolWeights[0]           = 1.0;
+  par->dustWeights[0]           = 1.0;
+   */
 
   /*
    * Definitions for image #0. Add blocks for additional images.

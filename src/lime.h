@@ -191,7 +191,6 @@ typedef struct {
 typedef struct {double x,y, *intensity, *tau;} rayData;
 
 
-
 /* Some functions */
 void density(double,double,double,double *);
 void temperature(double,double,double,double *);

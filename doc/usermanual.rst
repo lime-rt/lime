@@ -114,7 +114,7 @@ line
 
 ::
 
-    bash$ lime model.c
+    lime model.c
 
 where model.c is the file containing the model (this file can have any
 name). This will cause the code to be compiled and the terminal window
@@ -215,11 +215,11 @@ model.c (although it may be given any name). Model.c is, as the name
 suggests, C source code which is compiled together with LIME at runtime,
 and therefore it must conform to the ansi C standard. Setting up a model
 however, requires only little knowledge of the C programming language.
-For an in- depth introduction to C the user is referred to “The C
+For an in-depth introduction to C the user is referred to “The C
 Programming Language 2nd ed.” by Kernighan and Ritchie, and otherwise,
 numerous tutorials and introductions can be found on the Internet. The
 file lime\_cs.pdf, contained in the LimePackage directory, is a quick
-reference for setting up models for LIME. Please not that all physical
+reference for setting up models for LIME. Please note that all physical
 numbers in model.c should be given in SI-units.
 
 In most common cases, everything about a model should be described
@@ -334,9 +334,9 @@ unit). This is currently under development.
 
     (string) par->moldatfile[i] (optional)
 
-Path to the i’th molecular data file. Molecular data files contains the
+Path to the i’th molecular data file. Molecular data files contain the
 energy states, Einstein coefficients, and collisional rates which are
-needed by LIME to solve the excitation. These files need to conform to
+needed by LIME to solve the excitation. These files must conform to
 the standard of the LAMDA database
 (http://www.strw.leidenuniv.nl/~moldata). Data files can be downloaded
 from the LAMDA database but from LIME version 1.23, LIME can also
@@ -458,6 +458,30 @@ containing the Stokes I, Q, and U. In order for the polarization to
 work, a magnetic field needs to be defined (see below). When
 polarization is switched on, LIME is identical to the DustPol code
 (Padovani et al., 2012).
+
+The next three (optional) parameters are linked to the density function you provide in model.c. All three are vector quantities, and should therefore be indexed, the same as moldatfile or img. If you choose to make use of any or all of the three (which is recommended though not mandatory), you must supply, for each one you use, the same number of elements as your density function returns. As described below in the relevant section, the density function can return multiple values per call, 1 for each species which is present in significant quantity. The contribution of such species to the physics of the situation is most usually via collisional excitation or quenching of levels of the radiating species of interest, and for this reason they are known in LIME as collision partners (CPs). 
+
+Because there are 2 independent sources of information about these so-called collision partners, namely via the density function on the one hand and via any collisional transition-rate tables present in the moldata file on the other, we have to be careful to match up these sources properly. That is the intent of the parameter
+
+.. code:: c
+
+    (int) par->collPartIds (optional)
+
+The integer values are the codes given in `<http://home.strw.leidenuniv.nl/~moldata/molformat.html>`_. Currently recognized values range from 1 to 7 inclusive. E.g if the only colliding species of interest in your model is H2, your density function should return a single value, namely the density of molecular hydrogen, and (if you supply a collPartIds value at all) you should set collPartIds[0] = 1 (the LAMDA code for H2).
+
+LIME calculates the number density of each of its radiating species, at each grid point, by multiplying the abundance of the species (returned via the function of that name) by a weighted sum of the density values. The next parameter allows the user to specify the weights in that sum. An example of when this might be useful is if a density for electrons is provided, they being of collisional importance, but it is not desired to include electrons in the sum when calculating nmol values. In that case one would set the appropriate value of nMolWeights to zero.
+
+.. code:: c
+
+    (double) par->nMolWeights (optional)
+
+The final one of the density-linked parameters controls how the dust opacity is calculated. This again involves a weighted sum of provided density values, and this parameter allows the user to specify the weights to be used.
+
+.. code:: c
+
+    (double) par->dustWeights (optional)
+
+If none of the three density-linked parameters is provided, LIME will attempt to guess the information, in a manner as close as possible to the way it was done in version 1.5 and earlier. This is safe enough when a single density value is returned, and only H2 provided as collision partner in the moldata file(s), but more complicated situations can very easily result in the code guessing wrongly. For this reason we encourage users to make use of these three parameters, although in order to preserve backward compatibility with old model.c files, we have not (yet) made them mandatory.
 
 .. _par-nthreads:
 
@@ -644,25 +668,14 @@ density profile of the collision partner(s).
       density[n] = f(x,y,z);
     }
 
-LIME can deal with an unlimited number of collision partners (n).
-However, LIME will produce an error if more density profiles are given
-in the density subroutine than there are collision partners listed in
-the molecular data file. In most cases, a single density profile will
-suffice. The density is a number density, that is, the number of
-collision partners per unit volume (in cubic meters, not cubic
-centimeters). Please note that the current version of LIME always takes
-the abundance relative to the first collision partner. This is
-potentially a problem if the first collision partner is not the total H2
-density and the user will have to correct for this in the abundances
-(see below).
+LIME can deal with an unlimited number n of collision partners (CPs). In most cases, a single density profile will suffice. Note that the number of returned density function values no longer has to be the same as the number of CPs listed in the moldata file(s), but if the numbers are different, LIME will require the user to provide the collPartIds parameter to allow the CPs associated with each density value to be matched to those in the moldata file(s). Note also that moldata CPs for which there is no density return will be ignored.
+
+The density is a number density, that is, the number of molecules of the respective CP per unit volume (in cubic meters, not cubic centimeters).
 
 Molecular abundance
 ~~~~~~~~~~~~~~~~~~~
 
-The abundance subroutine contains descriptions of the molecular
-abundance profiles of the input model. The number of abundance profiles
-should match exactly the number of molecular data files defined in
-par->moldatfile.
+The abundance subroutine contains descriptions of the molecular abundance profiles of the radiating species in the input model. The number of abundance profiles should match exactly the number of molecular data files defined in par->moldatfile.
 
 .. code:: c
 
@@ -674,10 +687,9 @@ par->moldatfile.
       abundance[n] = f(x,y,z);
     }
 
-The abundance is the fractional abundance with respect to the primary
-collision partner (density[0]) so that the molecular density of the
-first species is given by abundance[0] x density[0]. The abundances are
-dimensionless.
+The abundance is the fractional abundance with respect to a weighted sum of the densities supplied for the collision partners. If the user does not supply the weights via the nMolWeights parameter, the code will try to guess them.
+
+Abundances are dimensionless.
 
 Temperature
 ~~~~~~~~~~~
@@ -747,7 +759,7 @@ grid points.
 Magnetic field
 ~~~~~~~~~~~~~~
 
-The magnetic field subroutine contains a description of the magnetic
+This is an optional function which contains a description of the magnetic
 field. The return type of this subroutine is a three component vector,
 with components for the x, y, and z axis. The magnetic field only has an
 effect for continuum polarization calulations, that is, if
