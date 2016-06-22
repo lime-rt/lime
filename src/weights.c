@@ -13,7 +13,7 @@ int
 pointEvaluation(inputPars *par, double ran, double x, double y, double z){
   double fracDensity;
 
-  gridDensity(par, x, y, z, &fracDensity);
+  gridDensity(*par, x, y, z, &fracDensity);
 
   if(ran < fracDensity) return 1;
   else return 0;

@@ -183,7 +183,7 @@ void doppler(double,double,double, double *);
 void velocity(double,double,double,double *);
 void magfield(double,double,double,double *);
 void gasIIdust(double,double,double,double *);
-void gridDensity(inputPars*,double,double,double,double*);
+void gridDensity(inputPars,double,double,double,double*);
 
 /* More functions */
 
