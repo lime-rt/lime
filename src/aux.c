@@ -104,9 +104,10 @@ parseInput(inputPars *par, image **img, molData **m){
   par->minScaleSqu=par->minScale*par->minScale;
   if(par->pregrid!=NULL) par->doPregrid=1;
 
-  /* Check that the user has supplied this function (needed even if par->pregrid or par->restart):
+  /* Check that the user has supplied this function (needed unless par->pregrid):
   */
-  velocity(0.0,0.0,0.0, dummyVel);
+  if(!par->pregrid)
+    velocity(0.0,0.0,0.0, dummyVel);
 
   /*
 Now we need to calculate the cutoff value used in calcSourceFn(). The issue is to decide between
