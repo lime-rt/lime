@@ -86,7 +86,7 @@ Here the user-set parameters (both in the inputPars struct and the image struct)
     /* Check if files exist */
     for(id=0;id<(*nSpecies);id++){
       if((fp=fopen(par->moldatfile[id], "r"))==NULL) {
-        openSocket(par, id);
+        openSocket(par->moldatfile[id]);
       } else {
         fclose(fp);
       }

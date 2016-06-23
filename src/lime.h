@@ -7,6 +7,11 @@
  *
  */
 
+#ifndef LIME_H
+#define LIME_H
+
+#include "inpars.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -79,7 +84,7 @@
 #define FAST_EXP_NUM_BITS	8
 
 
-/* input parameters */
+/* input parameters
 typedef struct {
   double radius,minScale,tcmb;
   int sinkPoints,pIntensity,blend;
@@ -92,7 +97,7 @@ typedef struct {
   int sampling,lte_only,antialias,polarization,nThreads;
   char **moldatfile;
 } inputPars;
-
+ */
 typedef struct {
   double radius,minScale,tcmb;
   double radiusSqu,minScaleSqu,taylorCutoff;
@@ -235,7 +240,7 @@ void	lineBlend(molData *, configInfo *, blend **);
 void    lineCount(int,molData *,int **, int **, int *);
 void	LTE(configInfo *, struct grid *, molData *);
 void   	molinit(molData *, configInfo *, struct grid *,int);
-void    openSocket(inputPars *, int);
+void	openSocket(char*);
 void	qhull(configInfo *, struct grid *);
 void  	photon(int, struct grid *, molData *, int, const gsl_rng *,configInfo *,blend *,gridPointData *,double *);
 double 	planckfunc(int, double, molData *, int);
@@ -283,5 +288,5 @@ void    collpartmesg(char *, int);
 void    collpartmesg2(char *, int);
 void    collpartmesg3(int, int);
 
-
+#endif /* LIME_H */
 
