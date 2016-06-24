@@ -57,16 +57,6 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
   */
   par->taylorCutoff = pow(24.*DBL_EPSILON, 0.25);
 
-  if(par->dust != NULL){
-    if((fp=fopen(par->dust, "r"))==NULL){
-      if(!silent) bail_out("Error opening dust opacity data file!");
-      exit(1);
-    }
-    else  {
-      fclose(fp);
-    }
-  }
-
   /* Allocate pixel space and parse image information */
   for(i=0;i<par->nImages;i++){
     if((*img)[i].nchan == 0 && (*img)[i].velres<0 ){
