@@ -15,7 +15,6 @@
 
 void
 parseInput(inputPars *par, image **img, molData **m){
-  FILE *fp;
   int i,id, ispec;
   double BB[3];
   double cosPhi,sinPhi,cosTheta,sinTheta,dummyVel[DIM];
