@@ -292,7 +292,7 @@ void raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
     ray.intensity=malloc(sizeof(double) * img[im].nchan);
     ray.tau=malloc(sizeof(double) * img[im].nchan);
 
-    #pragma omp for
+    #pragma omp for schedule(dynamic)
     /* Main loop through pixel grid. */
     for(px=0;px<(img[im].pxls*img[im].pxls);px++){
       #pragma omp atomic
