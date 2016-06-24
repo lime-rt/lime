@@ -209,8 +209,8 @@ run(inputPars *par, image *img)
 int main () {
   /* Main program for stand-alone LIME */
 
-  inputPars	par;
-  image		*img = NULL;
+  inputPars par;
+  image	*img = NULL;
 
   silent = 0;
 
