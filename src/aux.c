@@ -19,17 +19,6 @@ parseInput(inputPars *par, image **img, molData **m){
   double BB[3];
   double cosPhi,sinPhi,cosTheta,sinTheta,dummyVel[DIM];
 
-  /* Allocate moldata array */
-  if(par->nSpecies > 1) {
-    (*m)=malloc(sizeof(molData)*par->nSpecies);
-    for(ispec=0;ispec<par->nSpecies;ispec++)
-      m[ispec]->nlev=0;
-  }
-  else {
-    (*m)=malloc(sizeof(molData)*1);
-    m[0]->nlev=0;
-  }
-
   par->ncell=par->pIntensity+par->sinkPoints;
   par->radiusSqu=par->radius*par->radius;
   par->minScaleSqu=par->minScale*par->minScale;
