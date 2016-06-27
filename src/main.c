@@ -10,6 +10,14 @@
 
 #include "lime.h"
 
+
+/* Forward declaration of functions only used in this file */
+void initParImg(inputPars *par, image **img);
+void freeParImg(inputPars *par, image *img);
+int main ();
+
+
+
 #ifdef FASTEXP
 double EXP_TABLE_2D[128][10];
 double EXP_TABLE_3D[256][2][10];
