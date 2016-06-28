@@ -158,7 +158,7 @@ Note that the algorithm employed here is similar to that employed in the functio
       for(ichan=0;ichan<img[im].nchan;ichan++){
         sourceFunc_pol(ds, gp[posn].B, md[polMolI], gAux[posn].mol[polMolI], polLineI, img[im].theta, snu_pol, &dtau);
 #ifdef FASTEXP
-        ray.intensity[ichan]+=FastExp(ray.tau[ichan])*(1.-FastExp(dtau))*snu_pol[ichan]; /**** Can't ref snu_pol[ichan] because snu_pol is only dimensioned to size 3. */
+        ray.intensity[ichan]+=FastExp(ray.tau[ichan])*(1.-FastExp(dtau))*snu_pol[ichan];
 #else
         ray.intensity[ichan]+=   exp(-ray.tau[ichan])*(1.-exp(-dtau))*snu_pol[ichan];
 #endif
