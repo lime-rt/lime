@@ -16,7 +16,7 @@ LTE(inputPars *par, struct grid *g, molData *m){
 
   for(ispec=0;ispec<par->nSpecies;ispec++){
     for(id=0;id<par->pIntensity;id++){
-      g[id].nmol[ispec]=g[id].abun[ispec]*g[id].dens[0];
+      g[id].mol[ispec].nmol=g[id].abun[ispec]*g[id].dens[0];
       z=0;
       for(ilev=0;ilev<m[ispec].nlev;ilev++){
         z+=m[ispec].gstat[ilev]*exp(-100*CLIGHT*HPLANCK*m[ispec].eterm[ilev]/(KBOLTZ*g[id].t[0]));
@@ -24,6 +24,9 @@ LTE(inputPars *par, struct grid *g, molData *m){
       for(ilev=0;ilev<m[ispec].nlev;ilev++){
         g[id].mol[ispec].pops[ilev]=m[ispec].gstat[ilev]*exp(-100*CLIGHT*HPLANCK*m[ispec].eterm[ilev]/(KBOLTZ*g[id].t[0]))/z;
       }
+    }
+    for(id=par->pIntensity;id<par->ncell;id++){
+      g[id].mol[ispec].nmol=0.0;
     }
   }
   if(par->outputfile) popsout(par,g,m);

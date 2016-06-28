@@ -105,7 +105,7 @@ void
 molinit(molData *m, inputPars *par, struct grid *g,int i){
   int id, ilev, iline, itrans, ispec, itemp, *ntemp, tnint=-1, idummy, ipart, *count,flag=0;
   char *collpartname[] = {"H2","p-H2","o-H2","electrons","H","He","H+"}; /* definition from LAMDA */
-  double fac, uprate, downrate=0, dummy, amass;
+  double fac, uprate, downrate=0, dummy, amass, sum;
   struct data { double *colld, *temp; } *part;
 
   char string[200], specref[90], partstr[90];
@@ -241,16 +241,16 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
     for(id=0;id<par->ncell; id++){
       for(ispec=0;ispec<par->nSpecies;ispec++){
         if(m[i].npart == 1 && (count[0] == 1 || count[0] == 2 || count[0] == 3)){
-          g[id].nmol[ispec]=g[id].abun[ispec]*g[id].dens[0];
+          g[id].mol[ispec].nmol=g[id].abun[ispec]*g[id].dens[0];
         } else if(m[i].npart == 2 && (count[0] == 2 || count[0] == 3) && (count[1] == 2 || count[1] == 3)){
           if(!flag){
-            g[id].nmol[ispec]=g[id].abun[ispec]*(g[id].dens[0]+g[id].dens[1]);
+            g[id].mol[ispec].nmol=g[id].abun[ispec]*(g[id].dens[0]+g[id].dens[1]);
           } else {
-            g[id].nmol[ispec]=g[id].abun[ispec]*g[id].dens[0];
+            g[id].mol[ispec].nmol=g[id].abun[ispec]*g[id].dens[0];
             if(!silent) warning("Calculating molecular density with respect to first collision partner only");
           }
         } else if(m[i].npart > 2 && !flag){
-          g[id].nmol[ispec]=g[id].abun[ispec]*(g[id].dens[0]+g[id].dens[1]);
+          g[id].mol[ispec].nmol=g[id].abun[ispec]*(g[id].dens[0]+g[id].dens[1]);
           if(!silent) warning("Calculating molecular density with respect first and second collision partner");
         }
       }
@@ -301,6 +301,18 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
     g[id].mol[i].dust = malloc(sizeof(double)*m[i].nline);
     g[id].mol[i].knu  = malloc(sizeof(double)*m[i].nline);
     for(ilev=0;ilev<m[i].nlev;ilev++) g[id].mol[i].pops[ilev]=0.0;
+  }
+
+  /* Set the sink-point level populations to LTE with the cmb:
+  */
+  for(id=par->pIntensity;id<par->ncell;id++){
+    sum = 0.0;
+    for(ilev=0;ilev<m[i].nlev;ilev++){
+      g[id].mol[i].pops[ilev]=m[i].gstat[ilev]*exp(-100*CLIGHT*HPLANCK*m[i].eterm[ilev]/(KBOLTZ*par->tcmb));
+      sum += g[id].mol[i].pops[ilev];
+    }
+    for(ilev=0;ilev<m[i].nlev;ilev++)
+      g[id].mol[i].pops[ilev] /= sum;
   }
 
   /* Get dust opacities */

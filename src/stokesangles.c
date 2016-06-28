@@ -10,14 +10,12 @@
 #include "lime.h"
 
 void
-stokesangles(double x, double y, double z, double incl, double *angle){
+stokesangles(const double B[3], const double incl, double *trigFuncs){
 
-	double B[3],Bp[3];
+	double Bp[3];
 	double sPsi, cPsi;
 	double cGam,cosIncl,sinIncl;
 	
-	magfield(x,y,z,B);
-
         cosIncl=cos(incl);
         sinIncl=sin(incl);
 	Bp[0] =  B[0];
@@ -42,8 +40,8 @@ stokesangles(double x, double y, double z, double incl, double *angle){
 	else {
 		cGam = 0.;
 	}
-	angle[0] = cPsi;	//cosinus of Psi
-	angle[1] = sPsi;	//sinus of Psi
-	angle[2] = cGam;	//cosinus of Gamma
+	trigFuncs[0] = cPsi;	//cosinus of Psi
+	trigFuncs[1] = sPsi;	//sinus of Psi
+	trigFuncs[2] = cGam;	//cosinus of Gamma
 	
 }

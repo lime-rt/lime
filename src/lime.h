@@ -81,7 +81,7 @@
 /* input parameters */
 typedef struct {
   double radius,radiusSqu,minScale,minScaleSqu,tcmb,taylorCutoff;
-  int ncell,sinkPoints,pIntensity,nImages,nSpecies,blend;
+  int ncell,sinkPoints,pIntensity,nImages,nSpecies,blend,traceRayAlgorithm;
   char *outputfile, *binoutputfile, *inputfile;
   char *gridfile;
   char *pregrid;
@@ -120,16 +120,15 @@ struct rates {
 
 
 struct populations {
-  double * pops, *knu, *dust;
-  double dopb, binv;
+  double *pops, *knu, *dust;
+  double dopb, binv, nmol;
   struct rates *partner;
 };
 
 /* Grid properties */
 struct grid {
   int id;
-  double x[3];
-  double vel[3];
+  double x[DIM], vel[DIM], B[3]; /* B field only makes physical sense in 3 dimensions. */
   double *a0,*a1,*a2,*a3,*a4;
   int numNeigh;
   point *dir;
@@ -138,9 +137,9 @@ struct grid {
   int sink;
   int nphot;
   int conv;
-  double *dens,t[2],*nmol,*abun, dopb;
+  double *dens,t[2],*abun, dopb;
   double *ds;
-  struct populations* mol;
+  struct populations *mol;
 };
 
 typedef struct {
@@ -173,9 +172,54 @@ typedef struct {
 
 typedef struct {double x,y, *intensity, *tau;} rayData;
 
+/* NOTE that it is assumed that vertx[i] is opposite the face that abuts with neigh[i] for all i.
+*/ 
+struct cell {
+  struct grid *vertx[DIM+1];
+  struct cell *neigh[DIM+1]; /* ==NULL flags an external face. */
+  unsigned long id;
+  double centre[DIM];
+};
+
+struct pop2 {
+  double *specNumDens, *knu, *dust;
+  double binv;
+};
+
+typedef struct{
+  double x[DIM], xCmpntRay, B[3];
+  struct pop2 *mol;
+} gridInterp;
+
+struct gAuxType{
+  struct pop2 *mol;
+};
+
+/* This struct is meant to record all relevant information about the intersection between a ray (defined by a direction unit vector 'dir' and a starting position 'r') and a face of a Delaunay cell.
+*/
+typedef struct {
+  int fi;
+  /* The index (in the range {0...DIM}) of the face (and thus of the opposite vertex, i.e. the one 'missing' from the bary[] list of this face).
+  */
+  int orientation;
+  /* >0 means the ray exits, <0 means it enters, ==0 means the face is parallel to ray.
+  */
+  double bary[DIM], dist, collPar;
+  /* 'dist' is defined via r_int = r + dist*dir. 'collPar' is a measure of how close to any edge of the face r_int lies.
+  */
+} intersectType;
+
+typedef struct {
+  double r[DIM][DIM], centre[DIM];/*, norm[3], mat[1][1], det; */
+} faceType;
+
+typedef struct {
+  double xAxis[DIM], yAxis[DIM], r[3][2];
+} triangle2D;
 
 
-/* Some functions */
+
+/* User-specifiable functions */
 void density(double,double,double,double *);
 void temperature(double,double,double,double *);
 void abundance(double,double,double,double *);
@@ -188,26 +232,45 @@ void gasIIdust(double,double,double,double *);
 
 void   	binpopsout(inputPars *, struct grid *, molData *);
 void   	buildGrid(inputPars *, struct grid *);
-void    calcSourceFn(double dTau, const inputPars *par, double *remnantSnu, double *expDTau);
-void	continuumSetup(int, image *, molData *, inputPars *, struct grid *);
-void	distCalc(inputPars *, struct grid *);
+int	buildRayCellChain(double*, double*, struct grid*, struct cell*, _Bool**, unsigned long, int, int, int, const double, unsigned long**, intersectType**, int*);
+void	calcFastExpRange(const int, const int, int*, int*, int*);
+void	calcLineAmpInterp(const double, const double, const double, double*);
+void	calcLineAmpLinear(struct grid*, const int, const int, const double, const double, double*);
+void   	calcLineAmpSample(double*, double*, const double, const double, const double, double*);
+void   	calcLineAmpSpline(struct grid*, const int, const int, const double, const double, double*);
+void    calcSourceFn(double, const inputPars*, double*, double*);
+void	calcTableEntries(const int, const int);
+triangle2D calcTriangle2D(faceType);
+void	continuumSetup(int, image*, molData*, inputPars*, struct grid*);
+void	delaunay(const int, struct grid*, const unsigned long, const _Bool, struct cell**, unsigned long*);
+void	distCalc(inputPars*, struct grid*);
+void	doBaryInterp(const intersectType, struct grid*, struct gAuxType*, double*, unsigned long*, molData*, const int, gridInterp*);
+void	doSegmentInterp(gridInterp*, const int, molData*, const int, const double, const int);
+faceType extractFace(struct grid*, struct cell*, const unsigned long, const int);
+int	factorial(const int n);
+//inline double	FastExp(const float negarg);
 void	fit_d1fi(double, double, double*);
 void    fit_fi(double, double, double*);
 void    fit_rr(double, double, double*);
-void   	input(inputPars *, image *);
-float  	invSqrt(float);
-void    freeInput(inputPars *, image*, molData* m );
-void   	freeGrid(const inputPars * par, const molData* m, struct grid * g);
-void   	freePopulation(const inputPars * par, const molData* m, struct populations * pop);
+int	followRayThroughDelCells(double*, double*, struct grid*, struct cell*, const unsigned long, const double, intersectType*, unsigned long**, intersectType**, int*);
+void    freeInput(inputPars*, image*, molData* m );
+void	freeGAux(const unsigned long, const int, struct gAuxType*);
+void   	freeGrid(const inputPars*, const molData*, struct grid*);
+void   	freePopulation(const inputPars*, const molData*, struct populations*);
+void	freePop2(const int, struct pop2*);
 double 	gaussline(double, double);
 void    getArea(inputPars *, struct grid *, const gsl_rng *);
+void	getclosest(double, double, double, long *, long *, double *, double *, double *);
 void    getjbar(int, molData *, struct grid *, inputPars *,gridPointData *,double *);
 void    getMass(inputPars *, struct grid *, const gsl_rng *);
 void   	getmatrix(int, gsl_matrix *, molData *, struct grid *, int, gridPointData *);
-void	getclosest(double, double, double, long *, long *, double *, double *, double *);
+int	getNewEntryFaceI(const unsigned long, const struct cell);
 void	getVelosplines(inputPars *, struct grid *);
 void	getVelosplines_lin(inputPars *, struct grid *);
 void	gridAlloc(inputPars *, struct grid **);
+void   	input(inputPars *, image *);
+void	intersectLineTriangle(double*, double*, faceType, intersectType*);
+float  	invSqrt(float);
 void   	kappa(molData *, struct grid *, inputPars *,int);
 void	levelPops(molData *, inputPars *, struct grid *, int *);
 void	line_plane_intersect(struct grid *, double *, int , int *, double *, double *, double);
@@ -216,7 +279,6 @@ void    lineCount(int,molData *,int **, int **, int *);
 void	LTE(inputPars *, struct grid *, molData *);
 void   	molinit(molData *, inputPars *, struct grid *,int);
 void    openSocket(inputPars *par, int);
-void	qhull(inputPars *, struct grid *);
 void  	photon(int, struct grid *, molData *, int, const gsl_rng *,inputPars *,blend *,gridPointData *,double *);
 void	parseInput(inputPars *, image **, molData **);
 double 	planckfunc(int, double, molData *, int);
@@ -230,23 +292,20 @@ void	report(int, inputPars *, struct grid *);
 void	smooth(inputPars *, struct grid *);
 int     sortangles(double *, int, struct grid *, const gsl_rng *);
 void	sourceFunc(double *, double *, double, molData *,double,struct grid *,int,int, int,int);
-void    sourceFunc_line(double *,double *,molData *, double, struct grid *, int, int,int);
-void    sourceFunc_cont(double *,double *, struct grid *, int, int,int);
-void    sourceFunc_pol(double *, double *, double, molData *, double, struct grid *, int, int, int, double);
+void    sourceFunc_line(const molData, const double, const struct populations, const int, double*, double*);
+void    sourceFunc_cont(const struct populations, const int, double*, double*);
+void    sourceFunc_line_raytrace(const molData, const double, const struct pop2, const int, double*, double*);
+void    sourceFunc_cont_raytrace(const struct pop2, const int, double*, double*);
+void	sourceFunc_pol(const double, const double*, const molData, const struct pop2, const int, const double, double*, double*);
 void   	stateq(int, struct grid *, molData *, int, inputPars *,gridPointData *,double *);
 void	statistics(int, molData *, struct grid *, int *, double *, double *, int *);
-void    stokesangles(double, double, double, double, double *);
-void    traceray(rayData, int, int, inputPars *, struct grid *, molData *, image *, int, int *, int *, double);
-void   	velocityspline(struct grid *, int, int, double, double, double*);
-void   	velocityspline2(double *, double *, double, double, double, double*);
+void    stokesangles(const double B[3], const double, double *);
+double	taylor(const int maxOrder, const float x);
+void	traceray(rayData, inputPars*, const int, image*, const int, struct grid*, struct gAuxType*, molData*, const int, int*, int*, const double);
+void	traceray_smooth(rayData, inputPars*, const int, image*, const int, struct grid*, struct gAuxType*, molData*, const int, int*, int*, struct cell*, const unsigned long, const double, gridInterp gips[3], const int, const double);
 double 	veloproject(double *, double *);
 void	writefits(int, inputPars *, molData *, image *);
 void    write_VTK_unstructured_Points(inputPars *, struct grid *);
-int	factorial(const int n);
-double	taylor(const int maxOrder, const float x);
-void	calcFastExpRange(const int maxTaylorOrder, const int maxNumBitsPerMantField, int *numMantissaFields, int *lowestExponent, int *numExponentsUsed);
-void	calcTableEntries(const int maxTaylorOrder, const int maxNumBitsPerMantField);
-double	FastExp(const float negarg);
 
 
 /* Curses functions */

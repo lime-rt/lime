@@ -40,7 +40,6 @@ gridAlloc(inputPars *par, struct grid **g){
     (*g)[i].ds = NULL;
     (*g)[i].dens=malloc(sizeof(double)*par->collPart);
     (*g)[i].abun=malloc(sizeof(double)*par->nSpecies);
-    (*g)[i].nmol=malloc(sizeof(double)*par->nSpecies);
     (*g)[i].t[0]=-1;
     (*g)[i].t[1]=-1;
   }
@@ -87,12 +86,46 @@ freePopulation(const inputPars *par, const molData* m, struct populations* pop )
       free(pop);
     }
 }
+
+/*....................................................................*/
+void
+freePop2(const int numSpecies, struct pop2 *mol){
+  int i;
+
+  if(mol !=NULL){
+    for(i=0;i<numSpecies;i++){
+      if(mol[i].specNumDens != NULL)
+        free(mol[i].specNumDens);
+      if(mol[i].knu != NULL)
+        free(mol[i].knu);
+      if(mol[i].dust != NULL)
+        free(mol[i].dust);
+    }
+    free(mol);
+  }
+}
+
+
+/*....................................................................*/
+void
+freeGAux(const unsigned long numPoints, const int numSpecies, struct gAuxType *gAux) {
+  unsigned long ppi;
+
+  if(gAux !=NULL){
+    for(ppi=0;ppi<numPoints;ppi++){
+      freePop2(numSpecies, gAux[ppi].mol);
+    }
+    free(gAux);
+  }
+}
+
+/*....................................................................*/
 void
 freeGrid(const inputPars *par, const molData* m ,struct grid* g){
   int i;
   if( g != NULL )
     {
-      for(i=0;i<(par->pIntensity+par->sinkPoints); i++){
+      for(i=0;i<(par->ncell); i++){
         if(g[i].a0 != NULL)
           {
             free(g[i].a0);
@@ -129,10 +162,6 @@ freeGrid(const inputPars *par, const molData* m ,struct grid* g){
           {
             free(g[i].dens);
           }
-        if(g[i].nmol != NULL)
-          {
-            free(g[i].nmol);
-          }
         if(g[i].abun != NULL)
           {
             free(g[i].abun);
@@ -150,74 +179,154 @@ freeGrid(const inputPars *par, const molData* m ,struct grid* g){
     }
 }
 
-void
-qhull(inputPars *par, struct grid *g){
-  int i,j,k,id;
+/*....................................................................*/
+void delaunay(const int numDims, struct grid *gp, const unsigned long numPoints\
+  , const _Bool getCells, struct cell **dc, unsigned long *numCells){
+  /*
+The principal purpose of this function is to perform a Delaunay triangulation for the set of points defined by the input argument 'g'. This is achieved via routines in the 3rd-party package qhull.
+
+A note about qhull nomenclature: a vertex is what you think it is - i.e., a point; but a facet means in this context a Delaunay triangle (in 2D) or tetrahedron (in 3D).
+
+Required elements of structs:
+	struct grid *gp:
+		.id
+		.x
+
+Elements of structs are set as follows:
+	struct grid *gp:
+		.numNeigh
+		.neigh (this is malloc'd too large and at present not realloc'd.)
+
+	cellType *dc (if getCells>0):
+		.id
+		.neigh
+		.vertx
+  */
+
+  coordT *pt_array=NULL;
+  unsigned long ppi,id,pointIdsThisFacet[numDims+1],idI,idJ,fi,ffi;
+  int i,j,k;
   char flags[255];
   boolT ismalloc = False;
-  facetT *facet;
   vertexT *vertex,**vertexp;
-  coordT *pt_array;
-  int simplex[DIM+1];
+  facetT *facet, *neighbor, **neighborp;
   int curlong, totlong;
+  _Bool neighbourNotFound;
 
-  pt_array=malloc(DIM*sizeof(coordT)*par->ncell);
-
-  for(i=0;i<par->ncell;i++) {
-    for(j=0;j<DIM;j++) {
-      pt_array[i*DIM+j]=g[i].x[j];
+  pt_array=malloc(sizeof(coordT)*numDims*numPoints);
+  for(ppi=0;ppi<numPoints;ppi++) {
+    for(j=0;j<numDims;j++) {
+      pt_array[ppi*numDims+j]=gp[ppi].x[j];
     }
   }
 
   sprintf(flags,"qhull d Qbb");
-  if (!qh_new_qhull(DIM, par->ncell, pt_array, ismalloc, flags, NULL, NULL)) {
-    /* Identify points */
-    FORALLvertices {
-      id=qh_pointid(vertex->point);
-      g[id].numNeigh=qh_setsize(vertex->neighbors);
-      if(  g[id].neigh != NULL )
-        {
-          free( g[id].neigh );
-        }
-      g[id].neigh=malloc(sizeof(struct grid *)*g[id].numNeigh);
-      for(k=0;k<g[id].numNeigh;k++) {
-        g[id].neigh[k]=NULL;
-      }
-    }
-    
-    /* Identify neighbors */
-    FORALLfacets {
-      if (!facet->upperdelaunay) {
-        j=0;
-        FOREACHvertex_ (facet->vertices) simplex[j++]=qh_pointid(vertex->point);
-        for(i=0;i<DIM+1;i++){
-          for(j=0;j<DIM+1;j++){
-            k=0;
-            if(i!=j){
-              while(g[simplex[i]].neigh[k] != NULL && g[simplex[i]].neigh[k]->id != g[simplex[j]].id) {
-                k++;
-              }
-              g[simplex[i]].neigh[k]=&g[simplex[j]];
-            }
-          }
-        }
-      }
-    }
-  } else {
+  if (qh_new_qhull(numDims, (int)numPoints, pt_array, ismalloc, flags, NULL, NULL)) {
     if(!silent) bail_out("Qhull failed to triangulate");
     exit(1);
   }
 
-  for(i=0;i<par->ncell;i++){
-    j=0;
-    for(k=0;k<g[i].numNeigh;k++){
-      if(g[i].neigh[k] != NULL)
-        {
-          j++;
-        }
+  /* Identify points */
+  FORALLvertices {
+    id=(unsigned long)qh_pointid(vertex->point);
+    /* Note this is NOT the same value as vertex->id. Only the id gained via the call to qh_pointid() is the same as the index of the point in the input list. */
+
+    gp[id].numNeigh=qh_setsize(vertex->neighbors);
+    /* Note that vertex->neighbors refers to facets abutting the vertex, not other vertices. In general there seem to be more facets surrounding a point than vertices (in fact there seem to be exactly 2x as many). In any case, mallocing to N_facets gives extra room. */
+
+    if(gp[id].neigh!=NULL)
+      free( gp[id].neigh );
+    gp[id].neigh=malloc(sizeof(struct grid *)*gp[id].numNeigh);
+    for(k=0;k<gp[id].numNeigh;k++) {
+      gp[id].neigh[k]=NULL;
     }
-    g[i].numNeigh=j;
   }
+
+  /* Identify the Delaunay neighbors of each point. This is a little involved, because the only direct information we have about which vertices are linked to which others is stored in qhull's facetT objects.
+  */
+  *numCells = 0;
+  FORALLfacets {
+    if (!facet->upperdelaunay) {
+      /* Store the point IDs in a list for convenience. These ID values are conveniently ordered such that qh_pointid() returns ppi for gp[ppi]. 
+      */
+      j=0;
+      FOREACHvertex_ (facet->vertices) pointIdsThisFacet[j++]=(unsigned long)qh_pointid(vertex->point);
+
+      for(i=0;i<numDims+1;i++){
+        idI = pointIdsThisFacet[i];
+        for(j=0;j<numDims+1;j++){
+          idJ = pointIdsThisFacet[j];
+          if(i!=j){
+            /* Cycle through all the non-NULL links of gp[idI], storing the link if it is new.
+            */
+            k=0;
+            while(gp[idI].neigh[k] != NULL && gp[idI].neigh[k]->id != gp[idJ].id)
+              k++;
+            gp[idI].neigh[k]=&gp[idJ];
+          }
+        }
+      }
+      (*numCells)++;
+    }
+  }
+
+  for(ppi=0;ppi<numPoints;ppi++){
+    j=0;
+    for(k=0;k<gp[ppi].numNeigh;k++){
+      if(gp[ppi].neigh[k] != NULL)
+        j++;
+    }
+    gp[ppi].numNeigh=j;
+  }
+
+  if(getCells){
+    (*dc) = malloc(sizeof(**dc)*(*numCells));
+    fi = 0;
+    FORALLfacets {
+      if (!facet->upperdelaunay) {
+        (*dc)[fi].id = (unsigned long)facet->id; /* Do NOT expect this to be equal to fi. */
+        fi++;
+      }
+    }
+
+    fi = 0;
+    FORALLfacets {
+      if (!facet->upperdelaunay) {
+        i = 0;
+        FOREACHneighbor_(facet) {
+          if(neighbor->upperdelaunay){
+            (*dc)[fi].neigh[i] = NULL;
+          }else{
+            /* Have to find the member of *dc with the same id as neighbour.*/
+            ffi = 0;
+            neighbourNotFound=1;
+            while(ffi<(*numCells) && neighbourNotFound){
+              if((*dc)[ffi].id==(unsigned long)neighbor->id){
+                (*dc)[fi].neigh[i] = &(*dc)[ffi];
+                neighbourNotFound = 0;
+              }
+              ffi++;
+            }
+            if(ffi>=(*numCells) && neighbourNotFound){
+              if(!silent) bail_out("Something weird going on.");
+              exit(1);
+            }
+          }
+          i++;
+        }
+
+        i = 0;
+        FOREACHvertex_( facet->vertices ) {
+          id = (unsigned long)qh_pointid(vertex->point);
+          (*dc)[fi].vertx[i] = &gp[id];
+          i++;
+        }
+
+        fi++;
+      }
+    }
+  }
+
   qh_freeqhull(!qh_ALL);
   qh_memfreeshort (&curlong, &totlong);
   free(pt_array);
@@ -522,6 +631,8 @@ buildGrid(inputPars *par, struct grid *g){
   double temp;
   int k=0,i;            /* counters									*/
   int flag;
+  struct cell *dc=NULL; /* Not used at present. */
+  unsigned long numCells;
 
   gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
 #ifdef TEST
@@ -619,9 +730,9 @@ buildGrid(inputPars *par, struct grid *g){
   temperature(0.0,0.0,0.0, g[0].t);
   doppler(    0.0,0.0,0.0,&g[0].dopb);	
   abundance(  0.0,0.0,0.0, g[0].abun);
-  /* Note that velocity() is the only one of the 5 mandatory functions which is still needed (in raytrace) even if par->pregrid or par->restart. Therefore we test it already in parseInput(). */
+  /* Note that velocity() is the only one of the 5 mandatory functions which is still needed (in raytrace) unless par->pregrid. Therefore we test it already in parseInput(). */
 
-  qhull(par, g);
+  delaunay(DIM, g, (unsigned long)par->ncell, 0, &dc, &numCells);
   distCalc(par, g);
   smooth(par,g);
 
@@ -632,10 +743,22 @@ buildGrid(inputPars *par, struct grid *g){
     abundance(  g[i].x[0],g[i].x[1],g[i].x[2], g[i].abun);
   }
 
+  if(par->polarization){
+    for(i=0;i<par->pIntensity;i++)
+      magfield(g[i].x[0],g[i].x[1],g[i].x[2], g[i].B);
+  }else{
+    for(i=0;i<par->pIntensity;i++){
+      g[i].B[0]=0.0;
+      g[i].B[1]=0.0;
+      g[i].B[2]=0.0;
+    }
+  }
+
   //	getArea(par,g, ran);
   //	getMass(par,g, ran);
   getVelosplines(par,g);
   dumpGrid(par,g);
+  if(dc!=NULL) free(dc);
 
   gsl_rng_free(ran);
   if(!silent) done(5);
