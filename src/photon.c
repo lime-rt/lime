@@ -72,7 +72,7 @@ void calcLineAmpSpline(struct grid *g, const int id, const int k\
     v2=deltav-((((g[id].a4[k]*d+g[id].a3[k])*d+g[id].a2[k])*d+g[id].a1[k])*d+g[id].a0[k]);
     naver=(1 > fabs(v1-v2)*binv) ? 1 : (int)(fabs(v1-v2)*binv);
     for(iaver=0;iaver<naver;iaver++){
-      sd=s1+(s2-s1)*((double)iaver-0.5)/(double)naver;
+      sd=s1+(s2-s1)*((double)iaver+0.5)/(double)naver;
       d=sd*g[id].ds[k];
       v=deltav-((((g[id].a4[k]*d+g[id].a3[k])*d+g[id].a2[k])*d+g[id].a1[k])*d+g[id].a0[k]);
       vfacsub=gaussline(v,binv);
@@ -107,7 +107,7 @@ void calcLineAmpLinear(struct grid *g, const int id, const int k\
     v2=deltav-(g[id].a1[k]*d+g[id].a0[k]);
     naver=(1 > fabs(v1-v2)*binv) ? 1 : (int)(fabs(v1-v2)*binv);
     for(iaver=0;iaver<naver;iaver++){
-      sd=s1+(s2-s1)*((double)iaver-0.5)/(double)naver;
+      sd=s1+(s2-s1)*((double)iaver+0.5)/(double)naver;
       d=sd*g[id].ds[k];
       v=deltav-(g[id].a1[k]*d+g[id].a0[k]);
       vfacsub=gaussline(v,binv);

@@ -724,6 +724,14 @@ buildGrid(inputPars *par, struct grid *g){
   }
   /* end grid allocation */
 
+  /* Check that the user has supplied all necessary functions:
+  */
+  density(    0.0,0.0,0.0, g[0].dens);
+  temperature(0.0,0.0,0.0, g[0].t);
+  doppler(    0.0,0.0,0.0,&g[0].dopb);	
+  abundance(  0.0,0.0,0.0, g[0].abun);
+  /* Note that velocity() is the only one of the 5 mandatory functions which is still needed (in raytrace) unless par->pregrid. Therefore we test it already in parseInput(). */
+
   delaunay(DIM, g, (unsigned long)par->ncell, 0, &dc, &numCells);
   distCalc(par, g);
   smooth(par,g);
