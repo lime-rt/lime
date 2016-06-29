@@ -189,12 +189,12 @@ Note that the algorithm employed here is similar to that employed in the functio
 
 void
 raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
-  int *counta,*countb,nlinetot,aa,numRaysThisPixel;
+  int *counta,*countb,nlinetot,aa,numRaysThisPixel,numActiveRays;
   int ichan,gi,iline,tmptrans,i,threadI,nRaysDone;
   double size,minfreq,absDeltaFreq;
   double cutoff;
   unsigned int totalNumImagePixels,ppi;
-  double imgXiCentre,imgYiCentre,x[3],oneOnTotalNumPixelsMinus1;
+  double imgXiCentre,imgYiCentre,x[3],oneOnNumActiveRaysMinus1;
   int xi,yi,ri,j;
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
 
@@ -210,12 +210,11 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
 
   for (i=0;i<par->nThreads;i++){
     threadRans[i] = gsl_rng_alloc(ranNumGenType);
-    gsl_rng_set(threadRans[i],(int)(gsl_rng_uniform(ran)*1e6));
+    gsl_rng_set(threadRans[i],(int)(gsl_rng_uniform(randGen)*1e6));
   }
 
   size=img[im].distance*img[im].imgres;
   totalNumImagePixels = img[im].pxls*img[im].pxls;
-  oneOnTotalNumPixelsMinus1 = 1.0/(double)totalNumImagePixels;
   imgXiCentre = img[im].pxls/2.0;
   imgYiCentre = img[im].pxls/2.0;
 
@@ -288,6 +287,11 @@ In this algorithm we attempt to deal better with image pixels which cover areas 
     exit(1);
   }
 
+  numActiveRays = 0;
+  for(ppi=0;ppi<totalNumImagePixels;ppi++)
+    numActiveRays += img[im].pixel[ppi].numRays;
+  oneOnNumActiveRaysMinus1 = 1.0/(double)(numActiveRays - 1);
+
   cutoff = par->minScale*1.0e-7;
 
   nRaysDone=0;
@@ -331,7 +335,7 @@ In this algorithm we attempt to deal better with image pixels which cover areas 
         }
       }
       if (threadI == 0){ // i.e., is master thread
-        if(!silent) progressbar((double)(nRaysDone)*oneOnTotalNumPixelsMinus1, 13);
+        if(!silent) progressbar((double)(nRaysDone)*oneOnNumActiveRaysMinus1, 13);
       }
     }
 
