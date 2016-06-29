@@ -188,6 +188,7 @@ Note that the algorithm employed here is similar to that employed in the functio
         for(iline=0;iline<nlinetot;iline++){
           molI = allLineMolIs[iline];
           lineI = allLineLineIs[iline];
+
           if(img[im].doline\
           && md[molI].freq[lineI] > img[im].freq-img[im].bandwidth*0.5\
           && md[molI].freq[lineI] < img[im].freq+img[im].bandwidth*0.5){
@@ -396,6 +397,7 @@ At the moment I will fix the number of segments, but it might possibly be faster
           for(iline=0;iline<nlinetot;iline++){
             molI = allLineMolIs[iline];
             lineI = allLineLineIs[iline];
+
             if(img[im].doline\
             && md[molI].freq[lineI] > img[im].freq-img[im].bandwidth*0.5\
             && md[molI].freq[lineI] < img[im].freq+img[im].bandwidth*0.5){
@@ -459,44 +461,125 @@ raytrace(int im, inputPars *par, struct grid *gp, molData *md, image *img){
 This function constructs an image cube by following sets of rays (at least 1 per image pixel) through the model, solving the radiative transfer equations as appropriate for each ray. The ray locations within each pixel are chosen randomly within the pixel, but the number of rays per pixel is set equal to the number of projected model grid points falling within that pixel, down to a minimum equal to par->alias.
   */
 
-  const gsl_rng_type *ranNumGenType=gsl_rng_ranlxs2;
-  const double epsilon = 1.0e-6; /* Needs thinking about. Double precision is much smaller than this. */
-  const int numFaces=1+DIM, numInterpPoints=3, numSegments=5;
-  const double oneOnNFaces=1.0/(double)numFaces, oneOnNumSegments=1.0/(double)numSegments;
+  const int maxNumRaysPerPixel=20; /**** Arbitrary - could make this a global, or an argument. Set it to zero to indicate there is no maximum. */
+  const double cutoff = par->minScale*1.0e-7;
+  const int numFaces=1+DIM, numInterpPoints=3, numSegments=5, minNumRaysForAverage=2;
+  const double oneOnNFaces=1.0/(double)numFaces, oneOnNumSegments = 1.0/(double)numSegments;
+  const double epsilon = 1.0e-6; // Needs thinking about. Double precision is much smaller than this.
   const int nStepsThruCell=10;
   const double oneOnNSteps=1.0/(double)nStepsThruCell;
 
-  int i,di,vi,gi,molI,ei,li,nlinetot,iline,tmptrans,ichan,xi,yi;
-  double size,imgCentreXPixels,imgCentreYPixels,sum,minfreq,absDeltaFreq,oneOnNumActiveRaysMinus1,cutoff,progress,x[2];
-  unsigned int totalNumImagePixels,ppi,numActiveRays,nRaysDone;
-  struct cell *dc=NULL;
-  unsigned long numCells, dci;
-  struct gAuxType *gAux=NULL; /* This will hold some precalculated values for the grid points. */
+  double size,oneOnNumActiveRaysMinus1,imgCentreXPixels,imgCentreYPixels,minfreq,absDeltaFreq,x[2],sum,oneOnNumRays;//,oneOnTotalNumPixelsMinus1
+  unsigned int totalNumImagePixels,ppi,numPixelsForInterp;
+  int gi,molI,ei,li,nlinetot,iline,tmptrans,ichan,numActiveRays,i,di,xi,yi,ri,c,id,ids[3],vi;
   int *allLineMolIs,*allLineLineIs;
-  static double lastProgress = 0.0;
-
-  gsl_rng *randGen = gsl_rng_alloc(ranNumGenType);	/* Random number generator */
-#ifdef TEST
-  gsl_rng_set(randGen,178490);
-#else
-  gsl_rng_set(randGen,time(0));
-#endif
-
-  gsl_rng **threadRans;
-  threadRans = malloc(sizeof(gsl_rng *)*par->nThreads);
-
-  for (i=0;i<par->nThreads;i++){
-    threadRans[i] = gsl_rng_alloc(ranNumGenType);
-    gsl_rng_set(threadRans[i],(int)(gsl_rng_uniform(randGen)*1e6));
-  }
+  rayData *rays;
+  struct cell *dc=NULL;
+  unsigned long numCells,dci;
+  struct gAuxType *gAux=NULL; /* This will hold some precalculated values for the grid points. */
+  coordT *pt_array, point[3];
+  char flags[255];
+  boolT ismalloc = False,isoutside;
+  realT bestdist;
+  facetT *facet;//, *neighbor, **neighborp;
+  vertexT *vertex,**vertexp;
+  int curlong, totlong;
+  double triangle[3][2],barys[3];
+  _Bool isOutsideImage;
 
   size = img[im].distance*img[im].imgres;
   totalNumImagePixels = img[im].pxls*img[im].pxls;
   imgCentreXPixels = img[im].pxls/2.0;
   imgCentreYPixels = img[im].pxls/2.0;
 
+  /* Determine whether there are blended lines or not. */
+  lineCount(par->nSpecies, md, &allLineMolIs, &allLineLineIs, &nlinetot); /* mallocs allLineMolIs, allLineLineIs */
+  if(img[im].doline==0) nlinetot=1;
+
+  /* Fix the image parameters. */
+  if(img[im].freq < 0) img[im].freq = md[0].freq[img[im].trans];
+  if(img[im].nchan == 0 && img[im].bandwidth>0){
+    img[im].nchan=(int) (img[im].bandwidth/(img[im].velres/CLIGHT*img[im].freq));
+  } else if (img[im].velres<0 && img[im].bandwidth>0){
+    img[im].velres = img[im].bandwidth*CLIGHT/img[im].freq/img[im].nchan;
+  } else img[im].bandwidth = img[im].nchan*img[im].velres/CLIGHT * img[im].freq;
+
+  if(img[im].trans<0){
+    iline=0;
+    minfreq=fabs(img[im].freq-md[0].freq[iline]);
+    tmptrans=iline;
+    for(iline=1;iline<md[0].nline;iline++){
+      absDeltaFreq=fabs(img[im].freq-md[0].freq[iline]);
+      if(absDeltaFreq<minfreq){
+        minfreq=absDeltaFreq;
+        tmptrans=iline;
+      }
+    }
+  } else tmptrans=img[im].trans;
+
+  for(ppi=0;ppi<totalNumImagePixels;ppi++){
+    for(ichan=0;ichan<img[im].nchan;ichan++){
+      img[im].pixel[ppi].intense[ichan] = 0.0;
+      img[im].pixel[ppi].tau[    ichan] = 0.0;
+    }
+  }
+
+  for(ppi=0;ppi<totalNumImagePixels;ppi++)
+    img[im].pixel[ppi].numRays = 0;
+
+  /* The following is the first of the 3 main loops in raytrace. Here we loop over the (internal or non-sink) grid points. We're doing 2 things: loading the rotated, projected coordinates into the rays list, and counting the rays per image pixel.
+  */
+  rays = malloc(sizeof(rayData)*par->pIntensity); /* We may need to reallocate this later. */
+  numActiveRays = 0;
+  for(gi=0;gi<par->pIntensity;gi++){
+    /* Apply the inverse (i.e. transpose) rotation matrix. (We use the inverse matrix here because here we want to rotate grid coordinates to the observer frame, whereas inside traceray() we rotate observer coordinates to the grid frame.)
+    */
+    for(i=0;i<2;i++){
+      x[i]=0.0;
+      for(di=0;di<DIM;di++){
+        x[i] += gp[gi].x[di]*img[im].rotMat[di][i];
+      }
+    }
+
+    /* Calculate which pixel the projected position (x[0],x[1]) falls within.
+    */
+    xi = floor(x[0]/size + imgCentreXPixels);
+    yi = floor(x[1]/size + imgCentreYPixels);
+    if(xi<0 || xi>=img[im].pxls || yi<0 || yi>=img[im].pxls){
+      isOutsideImage = 1;
+      ppi = 0; /* Under these circumstances it ought never to be accessed, but it is not good to leave it without a value at all. */
+    }else{
+      isOutsideImage = 0;
+      ppi = (unsigned int)yi*(unsigned int)img[im].pxls + (unsigned int)xi;
+    }
+
+    /* See if we want to keep the ray. For the time being we will include those outside the image bounds, but a cleverer algorithm would exclude some of them. Note that maxNumRaysPerPixel<1 is used to flag that there is no upper limit to the number of rays per pixel.
+    */
+    if(isOutsideImage || maxNumRaysPerPixel<1 || img[im].pixel[ppi].numRays<maxNumRaysPerPixel){
+      if(!isOutsideImage)
+        img[im].pixel[ppi].numRays++;
+
+      rays[numActiveRays].ppi = ppi;
+      rays[numActiveRays].x = x[0];
+      rays[numActiveRays].y = x[1];
+      rays[numActiveRays].tau       = malloc(sizeof(double)*img[im].nchan);
+      rays[numActiveRays].intensity = malloc(sizeof(double)*img[im].nchan);
+      for(ichan=0;ichan<img[im].nchan;ichan++) {
+        rays[numActiveRays].tau[ichan] = 0.0;
+        rays[numActiveRays].intensity[ichan] = 0.0;
+      }
+
+      numActiveRays++;
+    }
+  } /* End loop 1, over grid points. */
+
+  oneOnNumActiveRaysMinus1 = 1.0/(double)(numActiveRays-1);
+
+  if(numActiveRays<par->pIntensity)
+    rays = realloc(rays, sizeof(rayData)*numActiveRays);
+
   if(par->traceRayAlgorithm==1){
-    delaunay(DIM, gp, (unsigned long)par->ncell, 1, &dc, &numCells);
+    delaunay(DIM, gp, (unsigned long)par->ncell, 1, &dc, &numCells); /* mallocs dc if getCells==T */
 
     /* We need to process the list of cells a bit further - calculate their centres, and reset the id values to be the same as the index of the cell in the list. (This last because we are going to construct other lists to indicate which cells have been visited etc.)
     */
@@ -535,143 +618,47 @@ This function constructs an image cube by following sets of rays (at least 1 per
       */
       for(li=0;li<md[molI].nline;li++){
         gAux[gi].mol[molI].dust[li] = gp[gi].mol[molI].dust[li];
-        gAux[gi].mol[molI].knu[li]  = gp[gi].mol[molI].knu[li];
+        gAux[gi].mol[molI].knu[ li] = gp[gi].mol[molI].knu[ li];
       }
     }
   }
 
-  /* Determine whether there are blended lines or not. */
-  lineCount(par->nSpecies, md, &allLineMolIs, &allLineLineIs, &nlinetot);
-  if(img[im].doline==0) nlinetot=1;
-
-  /* Fix the image parameters. */
-  if(img[im].freq < 0) img[im].freq = md[0].freq[img[im].trans];
-  if(img[im].nchan == 0 && img[im].bandwidth>0){
-    img[im].nchan=(int) (img[im].bandwidth/(img[im].velres/CLIGHT*img[im].freq));
-  } else if (img[im].velres<0 && img[im].bandwidth>0){
-    img[im].velres = img[im].bandwidth*CLIGHT/img[im].freq/img[im].nchan;
-  } else img[im].bandwidth = img[im].nchan*img[im].velres/CLIGHT * img[im].freq;
-
-  if(img[im].trans<0){
-    iline=0;
-    minfreq=fabs(img[im].freq-md[0].freq[iline]);
-    tmptrans=iline;
-    for(iline=1;iline<md[0].nline;iline++){
-      absDeltaFreq=fabs(img[im].freq-md[0].freq[iline]);
-      if(absDeltaFreq<minfreq){
-        minfreq=absDeltaFreq;
-        tmptrans=iline;
-      }
-    }
-  } else tmptrans=img[im].trans;
-
-  for(ppi=0;ppi<totalNumImagePixels;ppi++){
-    for(ichan=0;ichan<img[im].nchan;ichan++){
-      img[im].pixel[ppi].intense[ichan]=0.0;
-      img[im].pixel[ppi].tau[ichan]=0.0;
-    }
-  }
-
-  for(ppi=0;ppi<totalNumImagePixels;ppi++){
-    img[im].pixel[ppi].numRays=0;
-  }
-
-  /* Calculate the number of rays wanted per image pixel from the density of the projected model grid points.
+  /* This is the start of loop 2/3, which loops over the rays. We trace each ray, then load into the image cube those for which the number of rays per pixel exceeds a minimum. The remaining image pixels we handle via an interpolation algorithm in loop 3.
   */
-  for(gi=0;gi<par->pIntensity;gi++){
-    /* Apply the inverse (i.e. transpose) rotation matrix. (We use the inverse matrix here because here we want to rotate grid coordinates to the observer frame, whereas inside traceray() we rotate observer coordinates to the grid frame.)
-    */
-    for(i=0;i<2;i++){
-      x[i]=0.0;
-      for(di=0;di<DIM;di++)
-        x[i] += gp[gi].x[di]*img[im].rotMat[di][i];
-    }
-
-    /* Calculate which pixel the projected position (x[0],x[1]) falls within. */
-    xi = floor(x[0]/size + imgCentreXPixels);
-    yi = floor(x[1]/size + imgCentreYPixels);
-    ppi = (unsigned int)yi*img[im].pxls + (unsigned int)xi;
-    if(ppi>=0 && ppi<totalNumImagePixels)
-      img[im].pixel[ppi].numRays++;
-  }
-
-  /* Set a minimum number of rays per image pixel, and count the total number of rays.
-  */
-  numActiveRays = 0;
-  for(ppi=0;ppi<totalNumImagePixels;ppi++)
-    if(img[im].pixel[ppi].numRays < par->antialias)
-      img[im].pixel[ppi].numRays = par->antialias;
-
-    numActiveRays += img[im].pixel[ppi].numRays;
-  oneOnNumActiveRaysMinus1 = 1.0/(double)(numActiveRays - 1);
-
-  cutoff = par->minScale*1.0e-7;
-
-  nRaysDone=0;
   omp_set_dynamic(0);
-  #pragma omp parallel private(ppi,molI,xi,yi) num_threads(par->nThreads)
+  #pragma omp parallel num_threads(par->nThreads)
   {
-    /* Declaration of thread-private pointers. */
-    int ai,ii,threadI = omp_get_thread_num();
-    rayData ray;
+    /* Declaration of thread-private pointers.
+    */
+    int threadI = omp_get_thread_num();
+    int ii, si, ri;
     gridInterp gips[numInterpPoints];
-    double oneOnNRaysThisPixel;
-
-    ray.intensity = malloc(sizeof(double)*img[im].nchan);
-    ray.tau       = malloc(sizeof(double)*img[im].nchan);
 
     if(par->traceRayAlgorithm==1){
       /* Allocate memory for the interpolation points:
       */
       for(ii=0;ii<numInterpPoints;ii++){
         gips[ii].mol = malloc(sizeof(*(gips[ii].mol))*par->nSpecies);
-        for(molI=0;molI<par->nSpecies;molI++){
-          gips[ii].mol[molI].specNumDens = malloc(sizeof(*(gips[ii].mol[molI].specNumDens))*md[molI].nlev);
-          gips[ii].mol[molI].dust        = malloc(sizeof(*(gips[ii].mol[molI].dust))       *md[molI].nline);
-          gips[ii].mol[molI].knu         = malloc(sizeof(*(gips[ii].mol[molI].knu))        *md[molI].nline);
+        for(si=0;si<par->nSpecies;si++){
+          gips[ii].mol[si].specNumDens = malloc(sizeof(*(gips[ii].mol[si].specNumDens))*md[si].nlev);
+          gips[ii].mol[si].dust        = malloc(sizeof(*(gips[ii].mol[si].dust))       *md[si].nline);
+          gips[ii].mol[si].knu         = malloc(sizeof(*(gips[ii].mol[si].knu))        *md[si].nline);
         }
       }
     }
 
     #pragma omp for schedule(dynamic)
-    /* Main loop through pixel grid. */
-    for(ppi=0;ppi<totalNumImagePixels;ppi++){
-      xi = (int)(ppi%(unsigned int)img[im].pxls);
-      yi = floor(ppi/(double)img[im].pxls);
+    for(ri=0;ri<numActiveRays;ri++){
+      if(par->traceRayAlgorithm==0){
+        traceray(rays[ri], par, tmptrans, img, im, gp, gAux, md, nlinetot\
+          , allLineMolIs, allLineLineIs, cutoff, nStepsThruCell, oneOnNSteps);
+      }else if(par->traceRayAlgorithm==1)
+        traceray_smooth(rays[ri], par, tmptrans, img, im, gp, gAux, md, nlinetot\
+          , allLineMolIs, allLineLineIs, dc, numCells, epsilon, gips, numSegments\
+          , oneOnNumSegments, nStepsThruCell, oneOnNSteps);
 
-      oneOnNRaysThisPixel = 1.0/(double)img[im].pixel[ppi].numRays;
-
-      #pragma omp atomic
-      ++nRaysDone;
-
-      for(ai=0;ai<img[im].pixel[ppi].numRays;ai++){
-        ray.x = -size*(gsl_rng_uniform(threadRans[threadI]) + xi - imgCentreXPixels);
-        ray.y =  size*(gsl_rng_uniform(threadRans[threadI]) + yi - imgCentreYPixels);
-
-        if(par->traceRayAlgorithm==0){
-          traceray(ray, par, tmptrans, img, im, gp, gAux, md, nlinetot\
-            , allLineMolIs, allLineLineIs, cutoff, nStepsThruCell, oneOnNSteps);
-        }else if(par->traceRayAlgorithm==1)
-          traceray_smooth(ray, par, tmptrans, img, im, gp, gAux, md, nlinetot\
-            , allLineMolIs, allLineLineIs, dc, numCells, epsilon, gips, numSegments\
-            , oneOnNumSegments, nStepsThruCell, oneOnNSteps);
-
-        #pragma omp critical
-        {
-          for(ichan=0;ichan<img[im].nchan;ichan++){
-            img[im].pixel[ppi].intense[ichan] += ray.intensity[ichan]*oneOnNRaysThisPixel;
-            img[im].pixel[ppi].tau[    ichan] += ray.tau[      ichan]*oneOnNRaysThisPixel;
-          }
-        }
-      }
       if (threadI == 0){ /* i.e., is master thread */
-        if(!silent) {
-          progress = ((double)nRaysDone)*oneOnNumActiveRaysMinus1;
-          if(progress-lastProgress>0.002){
-            lastProgress = progress;
-            progressbar(progress, 13);
-          }
-        }
+        if(!silent) progressbar((double)(ri)*oneOnNumActiveRaysMinus1, 13);
       }
     }
 
@@ -679,21 +666,122 @@ This function constructs an image cube by following sets of rays (at least 1 per
       for(ii=0;ii<numInterpPoints;ii++)
         freePop2(par->nSpecies, gips[ii].mol);
     }
-    free(ray.tau);
-    free(ray.intensity);
   } /* End of parallel block. */
+
+  /* For pixels with more than a cutoff number of rays, just average those rays into the pixel:
+  */
+  for(ri=0;ri<numActiveRays;ri++){
+    if(img[im].pixel[rays[ri].ppi].numRays >= minNumRaysForAverage){
+      for(ichan=0;ichan<img[im].nchan;ichan++){
+        img[im].pixel[rays[ri].ppi].intense[ichan] += rays[ri].intensity[ichan];
+        img[im].pixel[rays[ri].ppi].tau[    ichan] += rays[ri].tau[      ichan];
+      }
+    }
+  }
+  numPixelsForInterp = 0;
+  for(ppi=0;ppi<totalNumImagePixels;ppi++){
+    if(img[im].pixel[ppi].numRays >= minNumRaysForAverage){
+      oneOnNumRays = 1.0/(double)img[im].pixel[ppi].numRays;
+      for(ichan=0;ichan<img[im].nchan;ichan++){
+        img[im].pixel[ppi].intense[ichan] *= oneOnNumRays;
+        img[im].pixel[ppi].tau[    ichan] *= oneOnNumRays;
+      }
+    }else
+      numPixelsForInterp++;
+  }
+
+  if(numPixelsForInterp>0){
+    /* Now we enter main loop 3/3, in which we loop over image pixels, and for any we need to interpolate, we do so. But first we need to invoke qhull to get a Delaunay triangulation of the projected points.
+    */
+    pt_array=malloc(sizeof(coordT)*2*numActiveRays);
+
+    for(ri=0;ri<numActiveRays;ri++) {
+      pt_array[ri*2+0] = rays[ri].x;
+      pt_array[ri*2+1] = rays[ri].y;
+    }
+
+    sprintf(flags,"qhull d Qbb");
+    if(qh_new_qhull(2, numActiveRays, pt_array, ismalloc, flags, NULL, NULL)) {
+      if(!silent) bail_out("Qhull failed to triangulate");
+      exit(1);
+    }
+
+    point[2]=0.;
+    for(ppi=0;ppi<totalNumImagePixels;ppi++){
+      if(img[im].pixel[ppi].numRays < minNumRaysForAverage){
+        xi = (int)(ppi%(unsigned int)img[im].pxls);
+        yi = floor(ppi/(double)img[im].pxls);
+        point[0] = size*(0.5 + xi - imgCentreXPixels);
+        point[1] = size*(0.5 + yi - imgCentreYPixels);
+
+        qh_setdelaunay (3, 1, point);
+        facet = qh_findbestfacet (point, qh_ALL, &bestdist, &isoutside);
+        if(isoutside){
+          c=0;
+          FOREACHvertex_( facet->vertices ) {
+            id = qh_pointid(vertex->point);
+            triangle[c][0] = rays[id].x;
+            triangle[c][1] = rays[id].y;
+            ids[c]=id;
+            c++;
+          }
+
+          calcTriangleBaryCoords(triangle, (double)point[0], (double)point[1], barys);
+
+          /* Interpolate: */
+          for(ichan=0;ichan<img[im].nchan;ichan++){
+            img[im].pixel[ppi].intense[ichan] += barys[0]*rays[ids[0]].intensity[ichan]\
+                                               + barys[1]*rays[ids[1]].intensity[ichan]\
+                                               + barys[2]*rays[ids[2]].intensity[ichan];
+            img[im].pixel[ppi].tau[    ichan] += barys[0]*rays[ids[0]].tau[ichan]\
+                                               + barys[1]*rays[ids[1]].tau[ichan]\
+                                               + barys[2]*rays[ids[2]].tau[ichan];
+          }
+        } /* end if !isoutside */
+      } /* end if(img[im].pixel[ppi].numRays < minNumRaysForAverage) */
+    } /* end loop over image pixels */
+
+    qh_freeqhull(!qh_ALL);
+    qh_memfreeshort (&curlong, &totlong);
+    free(pt_array);
+  } /* end if(numPixelsForInterp>0) */
 
   img[im].trans=tmptrans;
 
   freeGAux((unsigned long)par->ncell, par->nSpecies, gAux);
-  free(allLineMolIs);
-  free(allLineLineIs);
   if(par->traceRayAlgorithm==1)
     free(dc);
-  for (i=0;i<par->nThreads;i++){
-    gsl_rng_free(threadRans[i]);
+  for(ri=0;ri<numActiveRays;ri++){
+    free(rays[ri].tau);
+    free(rays[ri].intensity);
   }
-  free(threadRans);
-  gsl_rng_free(randGen);
+  free(rays);
+  free(allLineMolIs);
+  free(allLineLineIs);
+}
+
+/*....................................................................*/
+void calcTriangleBaryCoords(double vertices[3][2], double x, double y, double barys[3]){
+  double mat[2][2], vec[2], det;
+  /*
+The barycentric coordinates (L0,L1,L2) of a point r[] in a triangle v[] are given by
+
+	(v[0][0]-v[2][0]  v[1][0]-v[2][0]) (L0)   (r[0]-v[2][0])
+	(                                )*(  ) = (            ),
+	(v[0][1]-v[2][1]  v[1][1]-v[2][1]) (L1)   (r[1]-v[2][1])
+
+with L2 = 1 - L0 - L1.
+  */
+  mat[0][0] = vertices[0][0] - vertices[2][0];
+  mat[0][1] = vertices[1][0] - vertices[2][0];
+  mat[1][0] = vertices[0][1] - vertices[2][1];
+  mat[1][1] = vertices[1][1] - vertices[2][1];
+  vec[0] = x - vertices[2][0];
+  vec[1] = y - vertices[2][1];
+  det = mat[0][0]*mat[1][1] - mat[0][1]*mat[1][0];
+  /*** We're assuming that the triangle is not pathological, i.e that det!=0. */
+  barys[0] = ( mat[1][1]*vec[0] - mat[0][1]*vec[1])/det;
+  barys[1] = (-mat[1][0]*vec[0] + mat[0][0]*vec[1])/det;
+  barys[2] = 1.0 - barys[0] - barys[1];
 }
 

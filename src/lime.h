@@ -171,7 +171,10 @@ typedef struct {
   double deltav;
 } blend;
 
-typedef struct {double x,y, *intensity, *tau;} rayData;
+typedef struct {
+  double x,y, *intensity, *tau;
+  unsigned int ppi;
+} rayData;
 
 /* NOTE that it is assumed that vertx[i] is opposite the face that abuts with neigh[i] for all i.
 */ 
@@ -241,6 +244,7 @@ void	calcLineAmpSample(const double x[3], const double dx[3], const double, cons
 void   	calcLineAmpSpline(struct grid*, const int, const int, const double, const double, double*);
 void    calcSourceFn(double, const inputPars*, double*, double*);
 void	calcTableEntries(const int, const int);
+void	calcTriangleBaryCoords(double vertices[3][2], double, double, double barys[3]);
 triangle2D calcTriangle2D(faceType);
 void	continuumSetup(int, image*, molData*, inputPars*, struct grid*);
 void	delaunay(const int, struct grid*, const unsigned long, const _Bool, struct cell**, unsigned long*);
