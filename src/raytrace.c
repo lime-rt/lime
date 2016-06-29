@@ -11,19 +11,19 @@
 
 
 /*....................................................................*/
-void calcLineAmpSample(double x[3], double dx[3], const double ds\
-  , const double binv, const double deltav, double *vfac){
+void calcLineAmpSample(const double x[3], const double dx[3], const double ds\
+  , const double binv, double *projVels, const int nSteps\
+  , const double oneOnNSteps, const double deltav, double *vfac){
   /*
 The bulk velocity of the model material can vary significantly with position, thus so can the value of the line-shape function at a given frequency and direction. The present function calculates 'vfac', an approximate average of the line-shape function along a path of length ds in the direction of the line of sight.
   */
-  int i,steps=10;
+  int i;
   double v,d,val,vel[3];
 
   *vfac=0.;
-  for(i=0;i<steps;i++){
-    d=i*ds/steps;
-    velocity(x[0]+(dx[0]*d),x[1]+(dx[1]*d),x[2]+(dx[2]*d),vel);
-    v=deltav-veloproject(dx,vel); /* veloproject returns the component of the local bulk velocity in the direction of dx, whereas deltav is the recession velocity of the channel we are interested in (corrected for bulk source velocity and line displacement from the nominal frequency). Remember also that, since dx points away from the observer, positive values of the projected velocity also represent recessions. Line centre occurs when v==0, i.e. when deltav==veloproject(dx,vel). That is the reason for the subtraction here. */
+  for(i=0;i<nSteps;i++){
+    d=i*ds*oneOnNSteps;
+    v = deltav - projVels[i]; /* projVels contains the component of the local bulk velocity in the direction of dx, whereas deltav is the recession velocity of the channel we are interested in (corrected for bulk source velocity and line displacement from the nominal frequency). Remember also that, since dx points away from the observer, positive values of the projected velocity also represent recessions. Line centre occurs when v==0, i.e. when deltav==veloproject(dx,vel). That is the reason for the subtraction here. */
     val=fabs(v)*binv;
     if(val <=  2500.){
 #ifdef FASTEXP
@@ -33,19 +33,19 @@ The bulk velocity of the model material can vary significantly with position, th
 #endif
     }
   }
-  *vfac=*vfac/steps;
+  *vfac *= oneOnNSteps;
   return;
 }
 
 /*....................................................................*/
-void calcLineAmpInterp(const double velCmpntRay, const double binv\
+void calcLineAmpInterp(const double projVelRay, const double binv\
   , const double deltav, double *vfac){
   /*
 The bulk velocity of the model material can vary significantly with position, thus so can the value of the line-shape function at a given frequency and direction. The present function calculates 'vfac', an approximate average of the line-shape function along a path of length ds in the direction of the line of sight.
   */
   double v,val;
 
-  v = deltav - velCmpntRay; /* velCmpntRay is the component of the local bulk velocity in the direction of the ray, whereas deltav is the recession velocity of the channel we are interested in (corrected for bulk source velocity and line displacement from the nominal frequency). Remember also that, since the ray points away from the observer, positive values of the projected velocity also represent recessions. Line centre occurs when v==0, i.e. when deltav==velCmpntRay. That is the reason for the subtraction here. */
+  v = deltav - projVelRay; /* projVelRay is the component of the local bulk velocity in the direction of the ray, whereas deltav is the recession velocity of the channel we are interested in (corrected for bulk source velocity and line displacement from the nominal frequency). Remember also that, since the ray points away from the observer, positive values of the projected velocity also represent recessions. Line centre occurs when v==0, i.e. when deltav==projVelRay. That is the reason for the subtraction here. */
   val = fabs(v)*binv;
   if(val <=  2500.){
 #ifdef FASTEXP
@@ -91,17 +91,19 @@ This function returns ds as the (always positive-valued) distance between the pr
 void
 traceray(rayData ray, inputPars *par, const int tmptrans, image *img\
   , const int im, struct grid *gp, struct gAuxType *gAux, molData *md\
-  , const int nlinetot, int *counta, int *countb, const double cutoff){
+  , const int nlinetot, int *allLineMolIs, int *allLineLineIs, const double cutoff\
+  , const int nSteps, const double oneOnNSteps){
   /*
 For a given image pixel position, this function evaluates the intensity of the total light emitted/absorbed along that line of sight through the (possibly rotated) model. The calculation is performed for several frequencies, one per channel of the output image.
 
 Note that the algorithm employed here is similar to that employed in the function photon() which calculates the average radiant flux impinging on a grid cell: namely the notional photon is started at the side of the model near the observer and 'propagated' in the receding direction until it 'reaches' the far side. This is rather non-physical in conception but it makes the calculation easier.
   */
 
-  int ichan,di,i,posn,nposn,polMolI,polLineI,contMolI,contLineI,iline,molI,lineI;
+  int ichan,stokesId,di,i,posn,nposn,polMolI,polLineI,contMolI,contLineI,iline,molI,lineI;
   double xp,yp,zp,x[DIM],dx[DIM],dist2,ndist2,col,ds,snu_pol[3],dtau;
   double contJnu,contAlpha,jnu,alpha,lineRedShift,vThisChan,deltav,vfac=0.;
-  double remnantSnu,expDTau;
+  double remnantSnu,expDTau,brightnessIncrement;
+  double projVels[nSteps],d,vel[DIM];
 
   for(ichan=0;ichan<img[im].nchan;ichan++){
     ray.tau[ichan]=0.0;
@@ -154,16 +156,25 @@ Note that the algorithm employed here is similar to that employed in the functio
     if(par->polarization){
       polMolI = 0; /****** Always?? */
       polLineI = 0; /****** Always?? */
-      for(ichan=0;ichan<img[im].nchan;ichan++){
+      for(stokesId=0;stokesId<img[im].nchan;stokesId++){
         sourceFunc_pol(ds, gp[posn].B, md[polMolI], gAux[posn].mol[polMolI], polLineI, img[im].theta, snu_pol, &dtau);
 #ifdef FASTEXP
-        ray.intensity[ichan]+=FastExp(ray.tau[ichan])*(1.-FastExp(dtau))*snu_pol[ichan];
+        brightnessIncrement = FastExp(ray.tau[stokesId])*(1.-FastExp(dtau))*snu_pol[stokesId];
 #else
-        ray.intensity[ichan]+=   exp(-ray.tau[ichan])*(1.-exp(-dtau))*snu_pol[ichan];
+        brightnessIncrement =    exp(-ray.tau[stokesId])*(1.-   exp(-dtau))*snu_pol[stokesId];
 #endif
-        ray.tau[ichan]+=dtau;
+        ray.intensity[stokesId] += brightnessIncrement;
+        ray.tau[stokesId]+=dtau;
       }
     } else {
+      if(!par->pregrid){
+        for(i=0;i<nSteps;i++){
+          d = i*ds*oneOnNSteps;
+          velocity(x[0]+(dx[0]*d),x[1]+(dx[1]*d),x[2]+(dx[2]*d),vel);
+          projVels[i] = veloproject(dx,vel);
+        }
+      }
+
       /* Calculate first the continuum stuff because it is the same for all channels:
       */
       contJnu = 0.0;
@@ -173,10 +184,11 @@ Note that the algorithm employed here is similar to that employed in the functio
       for(ichan=0;ichan<img[im].nchan;ichan++){
         jnu = contJnu;
         alpha = contAlpha;
+        vThisChan = (ichan-(img[im].nchan-1)*0.5)*img[im].velres; /* Consistent with the WCS definition in writefits(). */
 
         for(iline=0;iline<nlinetot;iline++){
-          molI = counta[iline];
-          lineI = countb[iline];
+          molI = allLineMolIs[iline];
+          lineI = allLineLineIs[iline];
           if(img[im].doline\
           && md[molI].freq[lineI] > img[im].freq-img[im].bandwidth*0.5\
           && md[molI].freq[lineI] < img[im].freq+img[im].bandwidth*0.5){
@@ -188,13 +200,14 @@ Note that the algorithm employed here is similar to that employed in the functio
               lineRedShift=(img[im].freq-md[molI].freq[lineI])/img[im].freq*CLIGHT;
             }
 
-            vThisChan=(ichan-(img[im].nchan-1)/2.)*img[im].velres; /* Consistent with the WCS definition in writefits(). */
             deltav = vThisChan - img[im].source_vel - lineRedShift;
             /* Line centre occurs when deltav = the recession velocity of the radiating material. Explanation of the signs of the 2nd and 3rd terms on the RHS: (i) A bulk source velocity (which is defined as >0 for the receding direction) should be added to the material velocity field; this is equivalent to subtracting it from deltav, as here. (ii) A positive value of lineRedShift means the line is red-shifted wrt to the frequency specified for the image. The effect is the same as if the line and image frequencies were the same, but the bulk recession velocity were higher. lineRedShift should thus be added to the recession velocity, which is equivalent to subtracting it from deltav, as here. */
 
             /* Calculate an approximate average line-shape function at deltav within the Voronoi cell. */
-            if(!par->pregrid) calcLineAmpSample(x,dx,ds,gp[posn].mol[molI].binv,deltav,&vfac);
-            else vfac=gaussline(deltav+veloproject(dx,gp[posn].vel),gp[posn].mol[molI].binv);
+            if(!par->pregrid)
+              calcLineAmpSample(x,dx,ds,gp[posn].mol[molI].binv,projVels,nSteps,oneOnNSteps,deltav,&vfac);
+            else
+              vfac = gaussline(deltav-veloproject(dx,gp[posn].vel),gp[posn].mol[molI].binv);
 
             /* Increment jnu and alpha for this Voronoi cell by the amounts appropriate to the spectral line. */
             sourceFunc_line_raytrace(md[molI],vfac,gAux[posn].mol[molI],lineI,&jnu,&alpha);
@@ -202,13 +215,15 @@ Note that the algorithm employed here is similar to that employed in the functio
         }
 
         dtau=alpha*ds;
+//???          if(dtau < -30) dtau = -30; // as in photon()?
         calcSourceFn(dtau, par, &remnantSnu, &expDTau);
         remnantSnu *= jnu*md[0].norminv*ds;
 #ifdef FASTEXP
-        ray.intensity[ichan]+=FastExp(ray.tau[ichan])*remnantSnu;
+        brightnessIncrement = FastExp(ray.tau[ichan])*remnantSnu;
 #else
-        ray.intensity[ichan]+=   exp(-ray.tau[ichan])*remnantSnu;
+        brightnessIncrement =    exp(-ray.tau[ichan])*remnantSnu;
 #endif
+        ray.intensity[ichan] += brightnessIncrement;
         ray.tau[ichan]+=dtau;
       }
     }
@@ -236,7 +251,7 @@ void traceray_smooth(rayData ray, inputPars *par, const int tmptrans, image *img
   , const int im, struct grid *gp, struct gAuxType *gAux, molData *md, const int nlinetot\
   , int *allLineMolIs, int *allLineLineIs, struct cell *dc\
   , const unsigned long numCells, const double epsilon, gridInterp gips[3]\
-  , const int numSegments, const double oneOnNumSegments){
+  , const int numSegments, const double oneOnNumSegments, const int nSteps, const double oneOnNSteps){
   /*
 For a given image pixel position, this function evaluates the intensity of the total light emitted/absorbed along that line of sight through the (possibly rotated) model. The calculation is performed for several frequencies, one per channel of the output image.
 
@@ -246,9 +261,9 @@ This version of traceray implements a new algorithm in which the population valu
   */
 
   const int numFaces = DIM+1, nVertPerFace=3;
-  int ichan, di, status, lenChainPtrs, entryI, exitI, vi, vvi, ci;
+  int ichan,stokesId,di,status,lenChainPtrs,entryI,exitI,vi,vvi,ci;
   int si, contMolI, contLineI, polMolI, polLineI, iline, molI, lineI;
-  double xp,yp,zp,x[DIM],dir[DIM],velCmpntRay,vel[DIM];
+  double xp,yp,zp,x[DIM],dir[DIM],projVelRay,vel[DIM];
   double xCmpntsRay[nVertPerFace], ds, snu_pol[3], dtau, contJnu, contAlpha;
   double jnu, alpha, lineRedShift, vThisChan, deltav, vfac, remnantSnu, expDTau;
   double brightnessIncrement;
@@ -352,16 +367,22 @@ At the moment I will fix the number of segments, but it might possibly be faster
       if(par->polarization){
         polMolI = 0; /****** Always?? */
         polLineI = 0; /****** Always?? */
-        for(ichan=0;ichan<img[im].nchan;ichan++){ /**** could also precalc continuum part here? */
+        for(stokesId=0;stokesId<img[im].nchan;stokesId++){ /**** could also precalc continuum part here? */
           sourceFunc_pol(ds, gips[2].B, md[polMolI], gips[2].mol[polMolI], polLineI, img[im].theta, snu_pol, &dtau);
 #ifdef FASTEXP
-          ray.intensity[ichan]+=FastExp(ray.tau[ichan])*(1.-FastExp(dtau))*snu_pol[ichan];
+          brightnessIncrement = FastExp(ray.tau[stokesId])*(1.-FastExp(dtau))*snu_pol[stokesId];
 #else
-          ray.intensity[ichan]+=   exp(-ray.tau[ichan])*(1.-   exp(-dtau))*snu_pol[ichan];
+          brightnessIncrement =    exp(-ray.tau[stokesId])*(1.-   exp(-dtau))*snu_pol[stokesId];
 #endif
-          ray.tau[ichan]+=dtau;
+          ray.intensity[stokesId] += brightnessIncrement;
+          ray.tau[stokesId]+=dtau;
         }
       } else {
+        /* It appears to be necessary to sample the velocity function in the following way rather than interpolating it from the vertices of the Delaunay cell in the same way as with all the other quantities of interest. Velocity varies too much across the cells, and in a nonlinear way, for linear interpolation to yield a totally satisfactory result.
+        */
+        velocity(gips[2].x[0], gips[2].x[1], gips[2].x[2], vel);
+        projVelRay = veloproject(dir, vel);
+
         /* Calculate first the continuum stuff because it is the same for all channels:
         */
         contJnu = 0.0;
@@ -371,6 +392,7 @@ At the moment I will fix the number of segments, but it might possibly be faster
         for(ichan=0;ichan<img[im].nchan;ichan++){
           jnu = contJnu;
           alpha = contAlpha;
+          vThisChan=(ichan-(img[im].nchan-1)*0.5)*img[im].velres; /* Consistent with the WCS definition in writefits(). */
 
           for(iline=0;iline<nlinetot;iline++){
             molI = allLineMolIs[iline];
@@ -386,15 +408,10 @@ At the moment I will fix the number of segments, but it might possibly be faster
                 lineRedShift=(img[im].freq-md[molI].freq[lineI])/img[im].freq*CLIGHT;
               }
 
-              vThisChan=(ichan-(img[im].nchan-1)*0.5)*img[im].velres; /* Consistent with the WCS definition in writefits(). */
               deltav = vThisChan - img[im].source_vel - lineRedShift;
               /* Line centre occurs when deltav = the recession velocity of the radiating material. Explanation of the signs of the 2nd and 3rd terms on the RHS: (i) A bulk source velocity (which is defined as >0 for the receding direction) should be added to the material velocity field; this is equivalent to subtracting it from deltav, as here. (ii) A positive value of lineRedShift means the line is red-shifted wrt to the frequency specified for the image. The effect is the same as if the line and image frequencies were the same, but the bulk recession velocity were higher. lineRedShift should thus be added to the recession velocity, which is equivalent to subtracting it from deltav, as here. */
 
-              /* It appears to be necessary to sample the velocity function in the following way rather than interpolating it from the vertices of the Delaunay cell in the same way as with all the other quantities of interest. Velocity varies too much across the cells, and in a nonlinear way, for linear interpolation to yield a totally satisfactory result.
-              */
-              velocity(gips[2].x[0], gips[2].x[1], gips[2].x[2], vel);
-              velCmpntRay = veloproject(dir, vel);
-              calcLineAmpInterp(velCmpntRay, gips[2].mol[molI].binv, deltav, &vfac);
+              calcLineAmpInterp(projVelRay, gips[2].mol[molI].binv, deltav, &vfac);
 
               /* Increment jnu and alpha for this Voronoi cell by the amounts appropriate to the spectral line.
               */
@@ -403,6 +420,7 @@ At the moment I will fix the number of segments, but it might possibly be faster
           } /* end loop over all lines. */
 
           dtau = alpha*ds;
+//???          if(dtau < -30) dtau = -30; // as in photon()?
           calcSourceFn(dtau, par, &remnantSnu, &expDTau);
           remnantSnu *= jnu*md[0].norminv*ds;
 #ifdef FASTEXP
@@ -446,6 +464,8 @@ This function constructs an image cube by following sets of rays (at least 1 per
   const double epsilon = 1.0e-6; /* Needs thinking about. Double precision is much smaller than this. */
   const int numFaces=1+DIM, numInterpPoints=3, numSegments=5;
   const double oneOnNFaces=1.0/(double)numFaces, oneOnNumSegments=1.0/(double)numSegments;
+  const int nStepsThruCell=10;
+  const double oneOnNSteps=1.0/(double)nStepsThruCell;
 
   int i,di,vi,gi,molI,ei,li,nlinetot,iline,tmptrans,ichan,xi,yi;
   double size,imgCentreXPixels,imgCentreYPixels,sum,minfreq,absDeltaFreq,oneOnNumActiveRaysMinus1,cutoff,progress,x[2];
@@ -614,9 +634,8 @@ This function constructs an image cube by following sets of rays (at least 1 per
       }
     }
 
-    #pragma omp for
-    /* Main loop through pixel grid. ***NOTE*** though that the division of labour between threads can be uneven if par->raytraceAlgorithm==1. Probably should rearrange the code, maybe so there is only 1 'for' loop over all the rays?
-   */
+    #pragma omp for schedule(dynamic)
+    /* Main loop through pixel grid. */
     for(ppi=0;ppi<totalNumImagePixels;ppi++){
       xi = (int)(ppi%(unsigned int)img[im].pxls);
       yi = floor(ppi/(double)img[im].pxls);
@@ -631,10 +650,12 @@ This function constructs an image cube by following sets of rays (at least 1 per
         ray.y =  size*(gsl_rng_uniform(threadRans[threadI]) + yi - imgCentreYPixels);
 
         if(par->traceRayAlgorithm==0){
-          traceray(ray, par, tmptrans, img, im, gp, gAux, md, nlinetot, allLineMolIs, allLineLineIs, cutoff);
+          traceray(ray, par, tmptrans, img, im, gp, gAux, md, nlinetot\
+            , allLineMolIs, allLineLineIs, cutoff, nStepsThruCell, oneOnNSteps);
         }else if(par->traceRayAlgorithm==1)
-          traceray_smooth(ray, par, tmptrans, img, im, gp, gAux, md, nlinetot, allLineMolIs, allLineLineIs\
-            , dc, numCells, epsilon, gips, numSegments, oneOnNumSegments);
+          traceray_smooth(ray, par, tmptrans, img, im, gp, gAux, md, nlinetot\
+            , allLineMolIs, allLineLineIs, dc, numCells, epsilon, gips, numSegments\
+            , oneOnNumSegments, nStepsThruCell, oneOnNSteps);
 
         #pragma omp critical
         {

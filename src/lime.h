@@ -237,7 +237,7 @@ int	buildRayCellChain(double*, double*, struct grid*, struct cell*, _Bool**, uns
 void	calcFastExpRange(const int, const int, int*, int*, int*);
 void	calcLineAmpInterp(const double, const double, const double, double*);
 void	calcLineAmpLinear(struct grid*, const int, const int, const double, const double, double*);
-void   	calcLineAmpSample(double*, double*, const double, const double, const double, double*);
+void	calcLineAmpSample(const double x[3], const double dx[3], const double, const double, double*, const int, const double, const double, double*);
 void   	calcLineAmpSpline(struct grid*, const int, const int, const double, const double, double*);
 void    calcSourceFn(double, const inputPars*, double*, double*);
 void	calcTableEntries(const int, const int);
@@ -302,8 +302,8 @@ void   	stateq(int, struct grid *, molData *, int, inputPars *,gridPointData *,d
 void	statistics(int, molData *, struct grid *, int *, double *, double *, int *);
 void    stokesangles(const double B[3], const double, double *);
 double	taylor(const int maxOrder, const float x);
-void	traceray(rayData, inputPars*, const int, image*, const int, struct grid*, struct gAuxType*, molData*, const int, int*, int*, const double);
-void	traceray_smooth(rayData, inputPars*, const int, image*, const int, struct grid*, struct gAuxType*, molData*, const int, int*, int*, struct cell*, const unsigned long, const double, gridInterp gips[3], const int, const double);
+void	traceray(rayData, inputPars*, const int, image*, const int, struct grid*, struct gAuxType*, molData*, const int, int*, int*, const double, const int, const double);
+void	traceray_smooth(rayData, inputPars*, const int, image*, const int, struct grid*, struct gAuxType*, molData*, const int, int*, int*, struct cell*, const unsigned long, const double, gridInterp gips[3], const int, const double, const int, const double);
 double 	veloproject(double *, double *);
 void	write2Dfits(int, inputPars *, molData *, image *);
 void	write3Dfits(int, inputPars *, molData *, image *);
