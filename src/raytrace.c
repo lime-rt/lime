@@ -438,10 +438,9 @@ At the moment I will fix the number of segments, but it might possibly be faster
 /*....................................................................*/
 void
 raytrace(int im, inputPars *par, struct grid *gp, molData *md, image *img){
-
-    /*
-In this algorithm we attempt to deal better with image pixels which cover areas of the model where grid points are packed much more densely than the pixel spacing. In algorithm 0, such regions are sampled by only at par->antialias rays per pixel, which risks missing extreme values. The approach here is to generate approximately the same number of rays per pixel as the number of projected grid points in that pixel (with par->antialias providing a minimum floor). The set of values per pixel are then averaged to obtain the image value for that pixel.
-    */
+  /*
+This function constructs an image cube by following sets of rays (at least 1 per image pixel) through the model, solving the radiative transfer equations as appropriate for each ray. The ray locations within each pixel are chosen randomly within the pixel, but the number of rays per pixel is set equal to the number of projected model grid points falling within that pixel, down to a minimum equal to par->alias.
+  */
 
   const gsl_rng_type *ranNumGenType=gsl_rng_ranlxs2;
   const double epsilon = 1.0e-6; /* Needs thinking about. Double precision is much smaller than this. */
@@ -558,6 +557,8 @@ In this algorithm we attempt to deal better with image pixels which cover areas 
     img[im].pixel[ppi].numRays=0;
   }
 
+  /* Calculate the number of rays wanted per image pixel from the density of the projected model grid points.
+  */
   for(gi=0;gi<par->pIntensity;gi++){
     /* Apply the inverse (i.e. transpose) rotation matrix. (We use the inverse matrix here because here we want to rotate grid coordinates to the observer frame, whereas inside traceray() we rotate observer coordinates to the grid frame.)
     */
@@ -575,8 +576,13 @@ In this algorithm we attempt to deal better with image pixels which cover areas 
       img[im].pixel[ppi].numRays++;
   }
 
+  /* Set a minimum number of rays per image pixel, and count the total number of rays.
+  */
   numActiveRays = 0;
   for(ppi=0;ppi<totalNumImagePixels;ppi++)
+    if(img[im].pixel[ppi].numRays < par->antialias)
+      img[im].pixel[ppi].numRays = par->antialias;
+
     numActiveRays += img[im].pixel[ppi].numRays;
   oneOnNumActiveRaysMinus1 = 1.0/(double)(numActiveRays - 1);
 
@@ -587,7 +593,7 @@ In this algorithm we attempt to deal better with image pixels which cover areas 
   #pragma omp parallel private(ppi,molI,xi,yi) num_threads(par->nThreads)
   {
     /* Declaration of thread-private pointers. */
-    int ai,ii,numRaysThisPixel,threadI = omp_get_thread_num();
+    int ai,ii,threadI = omp_get_thread_num();
     rayData ray;
     gridInterp gips[numInterpPoints];
     double oneOnNRaysThisPixel;
@@ -615,16 +621,12 @@ In this algorithm we attempt to deal better with image pixels which cover areas 
       xi = (int)(ppi%(unsigned int)img[im].pxls);
       yi = floor(ppi/(double)img[im].pxls);
 
-      if(img[im].pixel[ppi].numRays>par->antialias)
-        numRaysThisPixel = img[im].pixel[ppi].numRays;
-      else
-        numRaysThisPixel = par->antialias;
-      oneOnNRaysThisPixel = 1.0/(double)numRaysThisPixel;
+      oneOnNRaysThisPixel = 1.0/(double)img[im].pixel[ppi].numRays;
 
       #pragma omp atomic
       ++nRaysDone;
 
-      for(ai=0;ai<numRaysThisPixel;ai++){
+      for(ai=0;ai<img[im].pixel[ppi].numRays;ai++){
         ray.x = -size*(gsl_rng_uniform(threadRans[threadI]) + xi - imgCentreXPixels);
         ray.y =  size*(gsl_rng_uniform(threadRans[threadI]) + yi - imgCentreYPixels);
 
@@ -654,9 +656,8 @@ In this algorithm we attempt to deal better with image pixels which cover areas 
     }
 
     if(par->traceRayAlgorithm==1){
-      for(ii=0;ii<numInterpPoints;ii++){
+      for(ii=0;ii<numInterpPoints;ii++)
         freePop2(par->nSpecies, gips[ii].mol);
-      }
     }
     free(ray.tau);
     free(ray.intensity);
