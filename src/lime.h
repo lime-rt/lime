@@ -81,7 +81,7 @@
 /* input parameters */
 typedef struct {
   double radius,radiusSqu,minScale,minScaleSqu,tcmb,taylorCutoff;
-  int ncell,sinkPoints,pIntensity,nImages,nSpecies,blend;
+  int ncell,sinkPoints,pIntensity,nImages,nSpecies,blend,raytraceAlgorithm;
   char *outputfile, *binoutputfile, *inputfile;
   char *gridfile;
   char *pregrid;
@@ -147,6 +147,7 @@ typedef struct {
   double *intense;
   double *tau;
   double stokes[3];
+  int numRays;
 } spec;
 
 /* Image information */
@@ -240,7 +241,8 @@ void    traceray(rayData, int, int, inputPars *, struct grid *, molData *, image
 void   	velocityspline(struct grid *, int, int, double, double, double*);
 void   	velocityspline2(double *, double *, double, double, double, double*);
 double 	veloproject(double *, double *);
-void	writefits(int, inputPars *, molData *, image *);
+void	write2Dfits(int, inputPars *, molData *, image *);
+void	write3Dfits(int, inputPars *, molData *, image *);
 void    write_VTK_unstructured_Points(inputPars *, struct grid *);
 int	factorial(const int n);
 double	taylor(const int maxOrder, const float x);

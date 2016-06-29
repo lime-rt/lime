@@ -189,17 +189,20 @@ Note that the algorithm employed here is similar to that employed in the functio
 
 void
 raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
-  int *counta, *countb,nlinetot,aa;
-  int ichan,px,iline,tmptrans,i,threadI,nRaysDone;
-  double size,minfreq,absDeltaFreq,totalNumPixelsMinus1=(double)(img[im].pxls*img[im].pxls-1);
+  int *counta,*countb,nlinetot,aa,numRaysThisPixel,numActiveRays;
+  int ichan,gi,iline,tmptrans,i,threadI,nRaysDone;
+  double size,minfreq,absDeltaFreq;
   double cutoff;
+  unsigned int totalNumImagePixels,ppi;
+  double imgXiCentre,imgYiCentre,x[3],oneOnNumActiveRaysMinus1;
+  int xi,yi,ri,j;
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
 
-  gsl_rng *ran = gsl_rng_alloc(ranNumGenType);	/* Random number generator */
+  gsl_rng *randGen = gsl_rng_alloc(ranNumGenType);	/* Random number generator */
 #ifdef TEST
-  gsl_rng_set(ran,178490);
+  gsl_rng_set(randGen,178490);
 #else
-  gsl_rng_set(ran,time(0));
+  gsl_rng_set(randGen,time(0));
 #endif
 
   gsl_rng **threadRans;
@@ -207,10 +210,13 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
 
   for (i=0;i<par->nThreads;i++){
     threadRans[i] = gsl_rng_alloc(ranNumGenType);
-    gsl_rng_set(threadRans[i],(int)(gsl_rng_uniform(ran)*1e6));
+    gsl_rng_set(threadRans[i],(int)(gsl_rng_uniform(randGen)*1e6));
   }
 
   size=img[im].distance*img[im].imgres;
+  totalNumImagePixels = img[im].pxls*img[im].pxls;
+  imgXiCentre = img[im].pxls/2.0;
+  imgYiCentre = img[im].pxls/2.0;
 
   /* Determine whether there are blended lines or not. */
   lineCount(par->nSpecies, m, &counta, &countb, &nlinetot);
@@ -237,48 +243,99 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
     }
   } else tmptrans=img[im].trans;
 
-  cutoff = par->minScale*1.0e-7;
-
-  for(px=0;px<(img[im].pxls*img[im].pxls);px++){
+  for(ppi=0;ppi<totalNumImagePixels;ppi++){
     for(ichan=0;ichan<img[im].nchan;ichan++){
-      img[im].pixel[px].intense[ichan]=0.0;
-      img[im].pixel[px].tau[ichan]=0.0;
+      img[im].pixel[ppi].intense[ichan]=0.0;
+      img[im].pixel[ppi].tau[ichan]=0.0;
     }
   }
 
+  if(par->raytraceAlgorithm==0){
+    for(ppi=0;ppi<totalNumImagePixels;ppi++){
+      img[im].pixel[ppi].numRays=par->antialias;
+    }
+
+  } else if(par->raytraceAlgorithm==1){
+    /*
+In this algorithm we attempt to deal better with image pixels which cover areas of the model where grid points are packed much more densely than the pixel spacing. In algorithm 0, such regions are sampled by only at par->antialias rays per pixel, which risks missing extreme values. The approach here is to generate approximately the same number of rays per pixel as the number of projected grid points in that pixel (with par->antialias providing a minimum floor). The set of values per pixel are then averaged to obtain the image value for that pixel.
+    */
+
+    for(ppi=0;ppi<totalNumImagePixels;ppi++){
+      img[im].pixel[ppi].numRays=0;
+    }
+
+    for(gi=0;gi<par->pIntensity;gi++){
+      /* Apply the inverse (i.e. transpose) rotation matrix. (We use the inverse matrix here because here we want to rotate grid coordinates to the observer frame, whereas inside traceray() we rotate observer coordinates to the grid frame.)
+      */
+      for(i=0;i<2;i++){
+        x[i]=0.0;
+        for(j=0;j<DIM;j++){
+          x[i] += g[gi].x[j]*img[im].rotMat[j][i];
+        }
+      }
+
+      /* Calculate which pixel the projected position (x[0],x[1]) falls within. */
+      xi = floor(x[0]/size + imgXiCentre);
+      yi = floor(x[1]/size + imgYiCentre);
+      ppi = yi*img[im].pxls + xi;
+      if(ppi>=0 && ppi<totalNumImagePixels)
+        img[im].pixel[ppi].numRays++;
+    }
+
+  } else {
+    if(!silent) bail_out("Unrecognized value of par.raytraceAlgorithm");
+    exit(1);
+  }
+
+  numActiveRays = 0;
+  for(ppi=0;ppi<totalNumImagePixels;ppi++)
+    numActiveRays += img[im].pixel[ppi].numRays;
+  oneOnNumActiveRaysMinus1 = 1.0/(double)(numActiveRays - 1);
+
+  cutoff = par->minScale*1.0e-7;
+
   nRaysDone=0;
   omp_set_dynamic(0);
-  #pragma omp parallel private(px,aa,threadI) num_threads(par->nThreads)
+  #pragma omp parallel private(ppi,aa,threadI) num_threads(par->nThreads)
   {
     threadI = omp_get_thread_num();
 
     /* Declaration of thread-private pointers. */
     rayData ray;
-    ray.intensity=malloc(sizeof(double) * img[im].nchan);
-    ray.tau=malloc(sizeof(double) * img[im].nchan);
+    ray.intensity= malloc(sizeof(double)*img[im].nchan);
+    ray.tau      = malloc(sizeof(double)*img[im].nchan);
 
     #pragma omp for
-    /* Main loop through pixel grid. */
-    for(px=0;px<(img[im].pxls*img[im].pxls);px++){
+    /* Main loop through pixel grid. ***NOTE*** though that the division of labour between threads can be uneven if par->raytraceAlgorithm==1. Probably should rearrange the code, maybe so there is only 1 'for' loop over all the rays?
+   */
+    for(ppi=0;ppi<totalNumImagePixels;ppi++){
+      xi = ppi%img[im].pxls;
+      yi = ppi/img[im].pxls;
+
+      if(img[im].pixel[ppi].numRays>par->antialias)
+        numRaysThisPixel = img[im].pixel[ppi].numRays;
+      else
+        numRaysThisPixel = par->antialias;
+
       #pragma omp atomic
       ++nRaysDone;
 
-      for(aa=0;aa<par->antialias;aa++){
-        ray.x = -size*(gsl_rng_uniform(threadRans[threadI]) + px%img[im].pxls - 0.5*img[im].pxls);
-        ray.y =  size*(gsl_rng_uniform(threadRans[threadI]) + px/img[im].pxls - 0.5*img[im].pxls);
+      for(aa=0;aa<numRaysThisPixel;aa++){
+        ray.x = size*(gsl_rng_uniform(threadRans[threadI]) + xi - imgXiCentre);
+        ray.y = size*(gsl_rng_uniform(threadRans[threadI]) + yi - imgYiCentre);
 
         traceray(ray, tmptrans, im, par, g, m, img, nlinetot, counta, countb, cutoff);
 
         #pragma omp critical
         {
           for(ichan=0;ichan<img[im].nchan;ichan++){
-            img[im].pixel[px].intense[ichan] += ray.intensity[ichan]/(double) par->antialias;
-            img[im].pixel[px].tau[ichan] += ray.tau[ichan]/(double) par->antialias;
+            img[im].pixel[ppi].intense[ichan] += ray.intensity[ichan]/(double)numRaysThisPixel;
+            img[im].pixel[ppi].tau[    ichan] += ray.tau[      ichan]/(double)numRaysThisPixel;
           }
         }
       }
-      if (threadI == 0){ /* i.e., is master thread */
-        if(!silent) progressbar((double)(nRaysDone)/totalNumPixelsMinus1, 13);
+      if (threadI == 0){ // i.e., is master thread
+        if(!silent) progressbar((double)(nRaysDone)*oneOnNumActiveRaysMinus1, 13);
       }
     }
 
@@ -294,248 +351,7 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
     gsl_rng_free(threadRans[i]);
   }
   free(threadRans);
-  gsl_rng_free(ran);
-}
-
-
-void
-raytrace_1_4(int im, inputPars *par, struct grid *g, molData *m, image *img){
-  /*
-This is an alternative raytracing algorithm which was implemented by
-C Brinch in version 1.4 (the original parallelized version) of LIME.
-I've adapted it slightly so it makes use of the function traceray(),
-which was modified from the function tracerays() in v1.4. This algorithm
-is not currently used, but may be useful as an option; that's why I have
-kept it.
-  */
-
-  int *counta, *countb,nlinetot;
-  int ichan,i,px,iline,tmptrans,count;
-  double size,xp,yp,minfreq,absDeltaFreq;
-  double cutoff;
-
-  gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
-#ifdef TEST
-  gsl_rng_set(ran,178490);
-#else
-  gsl_rng_set(ran,time(0));
-#endif
-  rayData *rays;
-  
-  int sg,n;
-  double cx,cy;
-
-  double x1,x2,x3,y1,y2,y3,z1,z2,z3,xt[3],yt[3],di,p,d1,d2,d3,temp1;
-  int zt[3];
-  int c;
-  
-  char flags[255];
-  boolT ismalloc = False;
-  facetT *facet, *neighbor, **neighborp;;
-  vertexT *vertex,**vertexp;
-  coordT *pt_array;
-
-  int id;
-  coordT point[3];
-  boolT isoutside;
-  realT bestdist;
-
-  size=img[im].distance*img[im].imgres;
-
-  /* Determine whether there are blended lines or not */
-  lineCount(par->nSpecies, m, &counta, &countb, &nlinetot);
-  if(img[im].doline==0) nlinetot=1;
-
-  /* Fix the image parameters */
-  if(img[im].freq < 0) img[im].freq=m[0].freq[img[im].trans];
-  if(img[im].nchan == 0 && img[im].bandwidth>0){
-    img[im].nchan=(int) (img[im].bandwidth/(img[im].velres/CLIGHT*img[im].freq));
-  } else if (img[im].velres<0 && img[im].bandwidth>0){
-    img[im].velres = img[im].bandwidth*CLIGHT/img[im].freq/img[im].nchan;
-  } else img[im].bandwidth = img[im].nchan*img[im].velres/CLIGHT * img[im].freq;
-
-  if(img[im].trans<0){
-    iline=0;
-    minfreq=fabs(img[im].freq-m[0].freq[iline]);
-    tmptrans=iline;
-    for(iline=1;iline<m[0].nline;iline++){
-      absDeltaFreq=fabs(img[im].freq-m[0].freq[iline]);
-      if(absDeltaFreq<minfreq){
-        minfreq=absDeltaFreq;
-        tmptrans=iline;
-      }
-    }
-  } else tmptrans=img[im].trans;
-
-  /* Allocate dynamical arrays */
-  rays = malloc(sizeof(rayData) * (par->pIntensity));
-  
-  for(i=0;i<par->pIntensity;i++){
-    rays[i].x=g[i].x[0];
-    rays[i].y=g[i].x[1];
-    rays[i].tau=malloc(sizeof(double) * img[im].nchan);
-    rays[i].intensity=malloc(sizeof(double) * img[im].nchan);
-    for(ichan=0;ichan<img[im].nchan;ichan++) {
-      rays[i].tau[ichan]=0.0;
-      rays[i].intensity[ichan]=0.0;
-    }
-  }
-  
-
-  /* Smooth out the distribution of rays */
-  for(sg=0;sg<20;sg++){
-    pt_array=malloc(2*sizeof(coordT)*par->pIntensity);
-          
-    for(i=0;i<par->pIntensity;i++) {
-      pt_array[i*2+0]=rays[i].x;
-      pt_array[i*2+1]=rays[i].y;
-    }
-    
-    sprintf(flags,"qhull v s Qbb T0");
-    if (!qh_new_qhull(2, par->pIntensity, pt_array, ismalloc, flags, NULL, NULL)) {
-
-      qh_setvoronoi_all();
-      
-      FORALLvertices {
-        i=qh_pointid(vertex->point);
-        
-        cx=0.;
-        cy=0.;
-        n=0;
-        FOREACHneighbor_(vertex) {
-          if (!neighbor->upperdelaunay) n++;
-        }
-        if(n>0){
-        
-          
-        } else {
-          if(!silent) bail_out("Qhull error");
-          exit(0);
-        }
-        
-        FOREACHneighbor_(vertex) {
-          if (!neighbor->upperdelaunay) {
-            cx+=neighbor->center[0];
-            cy+=neighbor->center[1];
-          }
-        }
-
-        rays[i].x = rays[i].x - (rays[i].x-cx/ (double) n)*0.1;
-        rays[i].y = rays[i].y - (rays[i].y-cy/ (double) n)*0.1;
-      }
-    } else {
-      printf("qhull error\n");
-    }
-    
-    qh_freeqhull(!qh_ALL);
-    free(pt_array);  
-  }
-
-  cutoff = par->minScale*1.0e-7;
-
-  /* Main loop through rays */
-  count=0;
-  for(px=0;px<par->pIntensity;px++){
-    traceray(rays[px], tmptrans, im, par, g, m, img, nlinetot, counta, countb, cutoff);
-    ++count;
-    if(!silent) progressbar((double)(count)/(double)(par->pIntensity-1), 13);
-  }
-
-  /* Remap rays onto pixel grid */
-  pt_array=malloc(2*sizeof(coordT)*par->pIntensity);
-
-  for(i=0;i<par->pIntensity;i++) {
-    pt_array[i*2+0]=rays[i].x;
-    pt_array[i*2+1]=rays[i].y;
-  }
-
-/* This allocation belongs to "Shepard's method" below
-  d=malloc(sizeof(double)*par->pIntensity);
-*/
-  size=img[im].distance*img[im].imgres;
-
-  sprintf(flags,"qhull d Qbb");
-  if (!qh_new_qhull(2, par->pIntensity, pt_array, ismalloc, flags, NULL, NULL)) {
-    for(px=0;px<img[im].pxls*img[im].pxls;px++){
-      for(ichan=0;ichan<img[im].nchan;ichan++){
-        img[im].pixel[px].intense[ichan]=0.0;
-        img[im].pixel[px].tau[ichan]=0.0;
-      }
-      xp=size*(0.5+px%img[im].pxls)-size*img[im].pxls/2.;
-      yp=size*(0.5+px/img[im].pxls)-size*img[im].pxls/2.;
-
-/*
-This part works great! This is "Shepard's method" with a weight of 8. Slow, unfortunately. Could it be parallelized?
-
-      for(ichan=0;ichan<img[im].nchan;ichan++){
-        img[im].pixel[px].intense[ichan] = 0.;
-        di=0;
-        for(i=0;i<par->pIntensity;i++){
-          // d[i]=1./pow(sqrt(pow(xp-rays[i].x,2)+ pow(yp-rays[i].y,2)),8.);
-          temp1 = (xp-rays[i].x)*(xp-rays[i].x)+ (yp-rays[i].y)*(yp-rays[i].y)
-          d[i]=1./(temp1*temp1*temp1*temp1);
-          img[im].pixel[px].intense[ichan] += rays[i].intensity[ichan]*d[i];
-**** how to handle img[im].pixel[px].tau[ichan]?
-          di+=d[i];
-        }
-        img[im].pixel[px].intense[ichan] /= di;
-      }
-*/
-      
-      
-      point[0]=xp;
-      point[1]=yp;
-      point[2]=0.;
-     
-      qh_setdelaunay (3, 1, point);
-      facet= qh_findbestfacet (point, qh_ALL, &bestdist, &isoutside);
-      
-      c=0;
-      FOREACHvertex_( facet->vertices ) {
-        id=qh_pointid(vertex->point);
-        xt[c]=rays[id].x; yt[c]=rays[id].y; zt[c]=id;
-        c++;
-      }
-      
-      
-      x1=xt[0];x2=xt[1];x3=xt[2];
-      y1=yt[0];y2=yt[1];y3=yt[2];
-
-      for(ichan=0;ichan<img[im].nchan;ichan++){
-        z1=rays[zt[2]].intensity[ichan];z2=rays[zt[1]].intensity[ichan];z3=rays[zt[2]].intensity[ichan];
-      
-        
-        p=1.;
-        // d1=1./pow(sqrt(pow(xp-x1,2)+ pow(yp-y1,2)),p);
-        // d2=1./pow(sqrt(pow(xp-x2,2)+ pow(yp-y2,2)),p);
-        // d3=1./pow(sqrt(pow(xp-x3,2)+ pow(yp-y3,2)),p);
-
-        d1=1./sqrt((xp-x1)*(xp-x1) + (yp-y1)*(yp-y1));
-        d2=1./sqrt((xp-x2)*(xp-x2) + (yp-y2)*(yp-y2));
-        d3=1./sqrt((xp-x3)*(xp-x3) + (yp-y3)*(yp-y3));
-
-        di=d1+d2+d3;
-        img[im].pixel[px].intense[ichan] = 1./di * (z1*d1 + z2*d2 + z3*d3);
-//**** how to handle img[im].pixel[px].tau[ichan]?
-      }
-
-      
-    }
-  } else {
-	if(!silent) bail_out("Qhull failed to triangulate");
-	exit(1);
-  }
-
-  img[im].trans=tmptrans;
-
-  free(pt_array);
-  for(i=0;i<par->pIntensity;i++){
-    free(rays[i].tau);
-    free(rays[i].intensity);
-  }
-  free(rays);
-  free(counta);
-  free(countb);
+  gsl_rng_free(randGen);
 }
 
 
