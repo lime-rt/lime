@@ -146,6 +146,7 @@ typedef struct {
   double *intense;
   double *tau;
   double stokes[3];
+  int numRays;
 } spec;
 
 /* Image information */
@@ -304,7 +305,8 @@ double	taylor(const int maxOrder, const float x);
 void	traceray(rayData, inputPars*, const int, image*, const int, struct grid*, struct gAuxType*, molData*, const int, int*, int*, const double);
 void	traceray_smooth(rayData, inputPars*, const int, image*, const int, struct grid*, struct gAuxType*, molData*, const int, int*, int*, struct cell*, const unsigned long, const double, gridInterp gips[3], const int, const double);
 double 	veloproject(double *, double *);
-void	writefits(int, inputPars *, molData *, image *);
+void	write2Dfits(int, inputPars *, molData *, image *);
+void	write3Dfits(int, inputPars *, molData *, image *);
 void    write_VTK_unstructured_Points(inputPars *, struct grid *);
 
 

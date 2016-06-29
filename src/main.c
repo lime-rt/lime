@@ -62,7 +62,15 @@ int main () {
     }
 
     raytrace(i,&par,g,m,img);
-    writefits(i,&par,m,img);
+
+    if(img[i].unit<5)
+      write3Dfits(i,&par,m,img);
+    else if(img[i].unit==5)
+      write2Dfits(i,&par,m,img);
+    else{
+      if(!silent) bail_out("Image unit number invalid");
+      exit(0);
+    }
   }
 
   if(!silent) goodnight(initime,img[0].filename);

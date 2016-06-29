@@ -5,7 +5,6 @@
  *  Copyright (C) 2006-2014 Christian Brinch
  *  Copyright (C) 2015 The LIME development team
  *
-TODO: sort out snu_pol in traceray().
  */
 
 #include "lime.h"
@@ -178,8 +177,9 @@ Note that the algorithm employed here is similar to that employed in the functio
         for(iline=0;iline<nlinetot;iline++){
           molI = counta[iline];
           lineI = countb[iline];
-          if(img[im].doline && md[molI].freq[lineI] > img[im].freq-img[im].bandwidth/2.
-          && md[molI].freq[lineI] < img[im].freq+img[im].bandwidth/2.){
+          if(img[im].doline\
+          && md[molI].freq[lineI] > img[im].freq-img[im].bandwidth*0.5\
+          && md[molI].freq[lineI] < img[im].freq+img[im].bandwidth*0.5){
             /* Calculate the red shift of the transition wrt to the frequency specified for the image.
             */
             if(img[im].trans > -1){
@@ -248,7 +248,7 @@ This version of traceray implements a new algorithm in which the population valu
   const int numFaces = DIM+1, nVertPerFace=3;
   int ichan, di, status, lenChainPtrs, entryI, exitI, vi, vvi, ci;
   int si, contMolI, contLineI, polMolI, polLineI, iline, molI, lineI;
-  double xp,yp,zp,x[DIM],dir[DIM],velCmpntRay,vel[DIM];//,velCmpntsRay[nVertPerFace];
+  double xp,yp,zp,x[DIM],dir[DIM],velCmpntRay,vel[DIM];
   double xCmpntsRay[nVertPerFace], ds, snu_pol[3], dtau, contJnu, contAlpha;
   double jnu, alpha, lineRedShift, vThisChan, deltav, vfac, remnantSnu, expDTau;
   double brightnessIncrement;
@@ -349,13 +349,13 @@ At the moment I will fix the number of segments, but it might possibly be faster
     for(si=0;si<numSegments;si++){
       doSegmentInterp(gips, entryI, md, par->nSpecies, oneOnNumSegments, si);
 
-      if(par->polarization){ //************************ WTF is with this snu_pol?????
+      if(par->polarization){
         polMolI = 0; /****** Always?? */
         polLineI = 0; /****** Always?? */
         for(ichan=0;ichan<img[im].nchan;ichan++){ /**** could also precalc continuum part here? */
           sourceFunc_pol(ds, gips[2].B, md[polMolI], gips[2].mol[polMolI], polLineI, img[im].theta, snu_pol, &dtau);
 #ifdef FASTEXP
-          ray.intensity[ichan]+=FastExp(ray.tau[ichan])*(1.-FastExp(dtau))*snu_pol[ichan]; /**** Can't ref snu_pol[ichan] because snu_pol is only dimensioned to size 3. */
+          ray.intensity[ichan]+=FastExp(ray.tau[ichan])*(1.-FastExp(dtau))*snu_pol[ichan];
 #else
           ray.intensity[ichan]+=   exp(-ray.tau[ichan])*(1.-   exp(-dtau))*snu_pol[ichan];
 #endif
@@ -375,7 +375,8 @@ At the moment I will fix the number of segments, but it might possibly be faster
           for(iline=0;iline<nlinetot;iline++){
             molI = allLineMolIs[iline];
             lineI = allLineLineIs[iline];
-            if(img[im].doline && md[molI].freq[lineI] > img[im].freq-img[im].bandwidth*0.5
+            if(img[im].doline\
+            && md[molI].freq[lineI] > img[im].freq-img[im].bandwidth*0.5\
             && md[molI].freq[lineI] < img[im].freq+img[im].bandwidth*0.5){
               /* Calculate the red shift of the transition wrt to the frequency specified for the image.
               */
@@ -436,27 +437,31 @@ At the moment I will fix the number of segments, but it might possibly be faster
 
 /*....................................................................*/
 void
-raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
+raytrace(int im, inputPars *par, struct grid *gp, molData *md, image *img){
+
+    /*
+In this algorithm we attempt to deal better with image pixels which cover areas of the model where grid points are packed much more densely than the pixel spacing. In algorithm 0, such regions are sampled by only at par->antialias rays per pixel, which risks missing extreme values. The approach here is to generate approximately the same number of rays per pixel as the number of projected grid points in that pixel (with par->antialias providing a minimum floor). The set of values per pixel are then averaged to obtain the image value for that pixel.
+    */
+
+  const gsl_rng_type *ranNumGenType=gsl_rng_ranlxs2;
+  const double epsilon = 1.0e-6; /* Needs thinking about. Double precision is much smaller than this. */
   const int numFaces=1+DIM, numInterpPoints=3, numSegments=5;
-  const double oneOnNumSegments = 1.0/(double)numSegments, oneOnNFaces=1.0/(double)numFaces;
-  const double epsilon = 1.0e-6; // Needs thinking about. Double precision is much smaller than this.
-  const double oneOnNAlias = 1.0/(double)par->antialias;
-  const double oneOnTotalNumPixelsMinus1=1.0/(double)(img[im].pxls*img[im].pxls-1);
-  int *allLineMolIs,*allLineLineIs,nlinetot,aa,ii,ppi;
-  int ichan,px,iline,tmptrans,i,threadI,nPixelsDone,molI,di,vi,li;
-  double size,minfreq,absDeltaFreq;
-  double cutoff,sum,progress;
-  const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
+  const double oneOnNFaces=1.0/(double)numFaces, oneOnNumSegments=1.0/(double)numSegments;
+
+  int i,di,vi,gi,molI,ei,li,nlinetot,iline,tmptrans,ichan,xi,yi;
+  double size,imgCentreXPixels,imgCentreYPixels,sum,minfreq,absDeltaFreq,oneOnNumActiveRaysMinus1,cutoff,progress,x[2];
+  unsigned int totalNumImagePixels,ppi,numActiveRays,nRaysDone;
   struct cell *dc=NULL;
   unsigned long numCells, dci;
-  static double lastProgress = 0.0;
   struct gAuxType *gAux=NULL; /* This will hold some precalculated values for the grid points. */
+  int *allLineMolIs,*allLineLineIs;
+  static double lastProgress = 0.0;
 
-  gsl_rng *ran = gsl_rng_alloc(ranNumGenType);	/* Random number generator */
+  gsl_rng *randGen = gsl_rng_alloc(ranNumGenType);	/* Random number generator */
 #ifdef TEST
-  gsl_rng_set(ran,178490);
+  gsl_rng_set(randGen,178490);
 #else
-  gsl_rng_set(ran,time(0));
+  gsl_rng_set(randGen,time(0));
 #endif
 
   gsl_rng **threadRans;
@@ -464,13 +469,16 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
 
   for (i=0;i<par->nThreads;i++){
     threadRans[i] = gsl_rng_alloc(ranNumGenType);
-    gsl_rng_set(threadRans[i],(int)(gsl_rng_uniform(ran)*1e6));
+    gsl_rng_set(threadRans[i],(int)(gsl_rng_uniform(randGen)*1e6));
   }
 
-  size=img[im].distance*img[im].imgres;
+  size = img[im].distance*img[im].imgres;
+  totalNumImagePixels = img[im].pxls*img[im].pxls;
+  imgCentreXPixels = img[im].pxls/2.0;
+  imgCentreYPixels = img[im].pxls/2.0;
 
   if(par->traceRayAlgorithm==1){
-    delaunay(DIM, g, (unsigned long)par->ncell, 1, &dc, &numCells);
+    delaunay(DIM, gp, (unsigned long)par->ncell, 1, &dc, &numCells);
 
     /* We need to process the list of cells a bit further - calculate their centres, and reset the id values to be the same as the index of the cell in the list. (This last because we are going to construct other lists to indicate which cells have been visited etc.)
     */
@@ -494,32 +502,32 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
   /* Precalculate binv*nmol*pops for all grid points.
   */
   gAux = malloc(sizeof(*gAux)*par->ncell);
-  for(ppi=0;ppi<par->ncell;ppi++){
-    gAux[ppi].mol = malloc(sizeof(*(gAux[ppi].mol))*par->nSpecies);
+  for(gi=0;gi<par->ncell;gi++){
+    gAux[gi].mol = malloc(sizeof(*(gAux[gi].mol))*par->nSpecies);
     for(molI=0;molI<par->nSpecies;molI++){
-      gAux[ppi].mol[molI].specNumDens = malloc(sizeof(*(gAux[ppi].mol[molI].specNumDens))*m[molI].nlev);
-      gAux[ppi].mol[molI].dust        = malloc(sizeof(*(gAux[ppi].mol[molI].dust))       *m[molI].nline);
-      gAux[ppi].mol[molI].knu         = malloc(sizeof(*(gAux[ppi].mol[molI].knu))        *m[molI].nline);
+      gAux[gi].mol[molI].specNumDens = malloc(sizeof(*(gAux[gi].mol[molI].specNumDens))*md[molI].nlev);
+      gAux[gi].mol[molI].dust        = malloc(sizeof(*(gAux[gi].mol[molI].dust))       *md[molI].nline);
+      gAux[gi].mol[molI].knu         = malloc(sizeof(*(gAux[gi].mol[molI].knu))        *md[molI].nline);
 
-      for(li=0;li<m[molI].nlev;li++)
-        gAux[ppi].mol[molI].specNumDens[li] = g[ppi].mol[molI].binv\
-          *g[ppi].mol[molI].nmol*g[ppi].mol[molI].pops[li];
+      for(ei=0;ei<md[molI].nlev;ei++)
+        gAux[gi].mol[molI].specNumDens[ei] = gp[gi].mol[molI].binv\
+          *gp[gi].mol[molI].nmol*gp[gi].mol[molI].pops[ei];
 
       /* This next is repetition. I do it in order to be able to use the same sourcefunc.c functions for the interpolated grid values as for the 'standard' algorithm. With a sensible arrangement of memory for the grid values, this would be unnecessary.
       */
-      for(li=0;li<m[molI].nline;li++){
-        gAux[ppi].mol[molI].dust[li] = g[ppi].mol[molI].dust[li];
-        gAux[ppi].mol[molI].knu[li]  = g[ppi].mol[molI].knu[li];
+      for(li=0;li<md[molI].nline;li++){
+        gAux[gi].mol[molI].dust[li] = gp[gi].mol[molI].dust[li];
+        gAux[gi].mol[molI].knu[li]  = gp[gi].mol[molI].knu[li];
       }
     }
   }
 
   /* Determine whether there are blended lines or not. */
-  lineCount(par->nSpecies, m, &allLineMolIs, &allLineLineIs, &nlinetot);
+  lineCount(par->nSpecies, md, &allLineMolIs, &allLineLineIs, &nlinetot);
   if(img[im].doline==0) nlinetot=1;
 
   /* Fix the image parameters. */
-  if(img[im].freq < 0) img[im].freq=m[0].freq[img[im].trans];
+  if(img[im].freq < 0) img[im].freq = md[0].freq[img[im].trans];
   if(img[im].nchan == 0 && img[im].bandwidth>0){
     img[im].nchan=(int) (img[im].bandwidth/(img[im].velres/CLIGHT*img[im].freq));
   } else if (img[im].velres<0 && img[im].bandwidth>0){
@@ -528,10 +536,10 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
 
   if(img[im].trans<0){
     iline=0;
-    minfreq=fabs(img[im].freq-m[0].freq[iline]);
+    minfreq=fabs(img[im].freq-md[0].freq[iline]);
     tmptrans=iline;
-    for(iline=1;iline<m[0].nline;iline++){
-      absDeltaFreq=fabs(img[im].freq-m[0].freq[iline]);
+    for(iline=1;iline<md[0].nline;iline++){
+      absDeltaFreq=fabs(img[im].freq-md[0].freq[iline]);
       if(absDeltaFreq<minfreq){
         minfreq=absDeltaFreq;
         tmptrans=iline;
@@ -539,27 +547,53 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
     }
   } else tmptrans=img[im].trans;
 
-  cutoff = par->minScale*1.0e-7;
-
-  for(px=0;px<(img[im].pxls*img[im].pxls);px++){
+  for(ppi=0;ppi<totalNumImagePixels;ppi++){
     for(ichan=0;ichan<img[im].nchan;ichan++){
-      img[im].pixel[px].intense[ichan]=0.0;
-      img[im].pixel[px].tau[ichan]=0.0;
+      img[im].pixel[ppi].intense[ichan]=0.0;
+      img[im].pixel[ppi].tau[ichan]=0.0;
     }
   }
 
-  nPixelsDone=0;
-  omp_set_dynamic(0);
-  #pragma omp parallel private(px,aa,threadI,ii) num_threads(par->nThreads)
-  {
-    threadI = omp_get_thread_num();
+  for(ppi=0;ppi<totalNumImagePixels;ppi++){
+    img[im].pixel[ppi].numRays=0;
+  }
 
+  for(gi=0;gi<par->pIntensity;gi++){
+    /* Apply the inverse (i.e. transpose) rotation matrix. (We use the inverse matrix here because here we want to rotate grid coordinates to the observer frame, whereas inside traceray() we rotate observer coordinates to the grid frame.)
+    */
+    for(i=0;i<2;i++){
+      x[i]=0.0;
+      for(di=0;di<DIM;di++)
+        x[i] += gp[gi].x[di]*img[im].rotMat[di][i];
+    }
+
+    /* Calculate which pixel the projected position (x[0],x[1]) falls within. */
+    xi = floor(x[0]/size + imgCentreXPixels);
+    yi = floor(x[1]/size + imgCentreYPixels);
+    ppi = (unsigned int)yi*img[im].pxls + (unsigned int)xi;
+    if(ppi>=0 && ppi<totalNumImagePixels)
+      img[im].pixel[ppi].numRays++;
+  }
+
+  numActiveRays = 0;
+  for(ppi=0;ppi<totalNumImagePixels;ppi++)
+    numActiveRays += img[im].pixel[ppi].numRays;
+  oneOnNumActiveRaysMinus1 = 1.0/(double)(numActiveRays - 1);
+
+  cutoff = par->minScale*1.0e-7;
+
+  nRaysDone=0;
+  omp_set_dynamic(0);
+  #pragma omp parallel private(ppi,molI,xi,yi) num_threads(par->nThreads)
+  {
     /* Declaration of thread-private pointers. */
+    int ai,ii,numRaysThisPixel,threadI = omp_get_thread_num();
     rayData ray;
     gridInterp gips[numInterpPoints];
+    double oneOnNRaysThisPixel;
 
-    ray.intensity=malloc(sizeof(double) * img[im].nchan);
-    ray.tau=malloc(sizeof(double) * img[im].nchan);
+    ray.intensity = malloc(sizeof(double)*img[im].nchan);
+    ray.tau       = malloc(sizeof(double)*img[im].nchan);
 
     if(par->traceRayAlgorithm==1){
       /* Allocate memory for the interpolation points:
@@ -567,40 +601,50 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
       for(ii=0;ii<numInterpPoints;ii++){
         gips[ii].mol = malloc(sizeof(*(gips[ii].mol))*par->nSpecies);
         for(molI=0;molI<par->nSpecies;molI++){
-          gips[ii].mol[molI].specNumDens = malloc(sizeof(*(gips[ii].mol[molI].specNumDens))*m[molI].nlev);
-          gips[ii].mol[molI].dust        = malloc(sizeof(*(gips[ii].mol[molI].dust))       *m[molI].nline);
-          gips[ii].mol[molI].knu         = malloc(sizeof(*(gips[ii].mol[molI].knu))        *m[molI].nline);
+          gips[ii].mol[molI].specNumDens = malloc(sizeof(*(gips[ii].mol[molI].specNumDens))*md[molI].nlev);
+          gips[ii].mol[molI].dust        = malloc(sizeof(*(gips[ii].mol[molI].dust))       *md[molI].nline);
+          gips[ii].mol[molI].knu         = malloc(sizeof(*(gips[ii].mol[molI].knu))        *md[molI].nline);
         }
       }
     }
 
     #pragma omp for
-    /* Main loop through pixel grid. */
-    for(px=0;px<(img[im].pxls*img[im].pxls);px++){
-      #pragma omp atomic
-      ++nPixelsDone;
+    /* Main loop through pixel grid. ***NOTE*** though that the division of labour between threads can be uneven if par->raytraceAlgorithm==1. Probably should rearrange the code, maybe so there is only 1 'for' loop over all the rays?
+   */
+    for(ppi=0;ppi<totalNumImagePixels;ppi++){
+      xi = (int)(ppi%(unsigned int)img[im].pxls);
+      yi = floor(ppi/(double)img[im].pxls);
 
-      for(aa=0;aa<par->antialias;aa++){
-        ray.x = -size*(gsl_rng_uniform(threadRans[threadI]) + px%img[im].pxls - 0.5*img[im].pxls);
-        ray.y =  size*(gsl_rng_uniform(threadRans[threadI]) + px/img[im].pxls - 0.5*img[im].pxls);
+      if(img[im].pixel[ppi].numRays>par->antialias)
+        numRaysThisPixel = img[im].pixel[ppi].numRays;
+      else
+        numRaysThisPixel = par->antialias;
+      oneOnNRaysThisPixel = 1.0/(double)numRaysThisPixel;
+
+      #pragma omp atomic
+      ++nRaysDone;
+
+      for(ai=0;ai<numRaysThisPixel;ai++){
+        ray.x = -size*(gsl_rng_uniform(threadRans[threadI]) + xi - imgCentreXPixels);
+        ray.y =  size*(gsl_rng_uniform(threadRans[threadI]) + yi - imgCentreYPixels);
 
         if(par->traceRayAlgorithm==0){
-          traceray(ray, par, tmptrans, img, im, g, gAux, m, nlinetot, allLineMolIs, allLineLineIs, cutoff);
+          traceray(ray, par, tmptrans, img, im, gp, gAux, md, nlinetot, allLineMolIs, allLineLineIs, cutoff);
         }else if(par->traceRayAlgorithm==1)
-          traceray_smooth(ray, par, tmptrans, img, im, g, gAux, m, nlinetot, allLineMolIs, allLineLineIs\
+          traceray_smooth(ray, par, tmptrans, img, im, gp, gAux, md, nlinetot, allLineMolIs, allLineLineIs\
             , dc, numCells, epsilon, gips, numSegments, oneOnNumSegments);
 
         #pragma omp critical
         {
           for(ichan=0;ichan<img[im].nchan;ichan++){
-            img[im].pixel[px].intense[ichan] += ray.intensity[ichan]*oneOnNAlias;
-            img[im].pixel[px].tau[ichan]     += ray.tau[      ichan]*oneOnNAlias;
+            img[im].pixel[ppi].intense[ichan] += ray.intensity[ichan]*oneOnNRaysThisPixel;
+            img[im].pixel[ppi].tau[    ichan] += ray.tau[      ichan]*oneOnNRaysThisPixel;
           }
         }
       }
       if (threadI == 0){ /* i.e., is master thread */
         if(!silent) {
-          progress = ((double)nPixelsDone)*oneOnTotalNumPixelsMinus1;
+          progress = ((double)nRaysDone)*oneOnNumActiveRaysMinus1;
           if(progress-lastProgress>0.002){
             lastProgress = progress;
             progressbar(progress, 13);
@@ -610,7 +654,6 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
     }
 
     if(par->traceRayAlgorithm==1){
-      free(dc);
       for(ii=0;ii<numInterpPoints;ii++){
         freePop2(par->nSpecies, gips[ii].mol);
       }
@@ -624,10 +667,12 @@ raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
   freeGAux((unsigned long)par->ncell, par->nSpecies, gAux);
   free(allLineMolIs);
   free(allLineLineIs);
+  if(par->traceRayAlgorithm==1)
+    free(dc);
   for (i=0;i<par->nThreads;i++){
     gsl_rng_free(threadRans[i]);
   }
   free(threadRans);
-  gsl_rng_free(ran);
+  gsl_rng_free(randGen);
 }
 
