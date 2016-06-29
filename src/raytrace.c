@@ -18,11 +18,10 @@ void calcLineAmpSample(const double x[3], const double dx[3], const double ds\
 The bulk velocity of the model material can vary significantly with position, thus so can the value of the line-shape function at a given frequency and direction. The present function calculates 'vfac', an approximate average of the line-shape function along a path of length ds in the direction of the line of sight.
   */
   int i;
-  double v,d,val,vel[3];
+  double v,val;
 
   *vfac=0.;
   for(i=0;i<nSteps;i++){
-    d=i*ds*oneOnNSteps;
     v = deltav - projVels[i]; /* projVels contains the component of the local bulk velocity in the direction of dx, whereas deltav is the recession velocity of the channel we are interested in (corrected for bulk source velocity and line displacement from the nominal frequency). Remember also that, since dx points away from the observer, positive values of the projected velocity also represent recessions. Line centre occurs when v==0, i.e. when deltav==veloproject(dx,vel). That is the reason for the subtraction here. */
     val=fabs(v)*binv;
     if(val <=  2500.){

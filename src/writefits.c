@@ -142,7 +142,7 @@ void
 write2Dfits(int im, inputPars *par, molData *m, image *img){
   double bscale,bzero,epoch,lonpole,equinox,restfreq;
   double cdelt1,crpix1,crval1,cdelt2,crpix2,crval2;
-  double cdelt3,crpix3,crval3,ru3,scale;
+  double ru3,scale;
   int velref;
   float *row,minVal;
   int px,py;

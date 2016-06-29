@@ -117,7 +117,7 @@ At a successful termination, therefore, details of all the cells to the edge of 
   const int bufferSize=1024;
   int numGoodExits, numMarginalExits, fi, goodExitFis[numFaces], marginalExitFis[numFaces], exitFi, i, status, newEntryFaceI;
   faceType face;
-  intersectType intcpt[numFaces], dummy_intcpt;
+  intersectType intcpt[numFaces];
 
   followingSingleChain = 1; /* default */
   do{ /* Follow the chain through 'good' cells, i.e. ones for which entry and exit are nicely distant from face edges. (Here we also follow marginal exits if there are no good ones, and only 1 marginal one.) */
@@ -297,8 +297,8 @@ Notes:
 
   const int numDims=3;
   double norm[numDims], normDotDx, numerator, px2D[numDims-1], mat[numDims-1][numDims-1], vec[numDims-1], det;
-  int i, j, k, di;
-  double a, testSumForCW=0.0;
+  int j, k, di;
+  double testSumForCW=0.0;
   triangle2D face2D;
 
   intcpt->fi = -1;
@@ -404,8 +404,6 @@ triangle2D calcTriangle2D(faceType face){
 /**** all this could be precalculated (norm and mat too). */
 
   triangle2D face2D;
-  const int numDims = 3;
-  int i;
   double lengthX, lengthY, dotResult;
 
   face2D.xAxis[0] = face.r[1][0]-face.r[0][0];
@@ -498,7 +496,6 @@ void doSegmentInterp(gridInterp gips[3], const int iA, molData *md\
   const double fracA = (si + 0.5)*oneOnNumSegments, fracB = 1.0 - fracA;
   const int iB = 1 - iA;
   int di, molI, levelI, lineI;
-  double sum;
 
   gips[2].xCmpntRay = fracA*gips[iB].xCmpntRay + fracB*gips[iA].xCmpntRay; /* This does not seem to be used. */
 
