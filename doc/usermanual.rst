@@ -439,13 +439,7 @@ file. The default is blend=0 (no line blending).
 
     (integer) par->antialias (optional)
 
-If set, LIME will anti-alias the output image. anti-alias can take the
-value of any positive integer, with the value 1 (default) being no
-anti-aliasing. Greater values correspond to stronger anti-aliasing. LIME
-uses stochastic super-sampling anti- aliasing. This is very effective in
-minimizing artifacts in the image, but it also slows down the ray-tracer
-by a factor equal to the value of antialias. This parameter is the only
-one that will not be ignored in case par->restart is set.
+This parameter is no longer used, although it is retained for the present for purposes of backward compatibility.
 
 .. code:: c
 
@@ -458,6 +452,12 @@ containing the Stokes I, Q, and U. In order for the polarization to
 work, a magnetic field needs to be defined (see below). When
 polarization is switched on, LIME is identical to the DustPol code
 (Padovani et al., 2012).
+
+    (integer) par->traceRayAlgorithm (optional)
+
+This parameter specifies the algorithm used by LIME to solve the radiative-transfer equations during ray-tracing. The default value of zero invokes the algorithm used in LIME-1.5 and previous; a value of 1 invokes a new algorithm which is much more time-consuming but which produces much smoother images, free from step-artifacts.
+
+Note that there have been additional modifications to the raytracing algorithm which have significant effects on the output images since LIME-1.5. Image-plane interpolation is now employed in areas of the image where the grid point spacing is larger than the image pixel spacing. This leads both to a smoother image and a shorter processing time.
 
 .. _par-nthreads:
 

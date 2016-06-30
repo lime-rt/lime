@@ -5,6 +5,7 @@
  *  Copyright (C) 2006-2014 Christian Brinch
  *  Copyright (C) 2015 The LIME development team
  *
+TODO: - In raytrace(), look at rearranging the code to do the qhull step before choosing the rays. This would allow cells with all vertices outside the image boundaries to be excluded. If the image is much smaller than the model, this could lead to significant savings in time. The only downside might be memory useage...
  */
 
 #include "lime.h"
