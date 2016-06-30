@@ -18,7 +18,7 @@ parseInput(inputPars *par, image **img, molData **m){
   FILE *fp;
   int i,id;
   double BB[3];
-  double cosPhi,sinPhi,cosTheta,sinTheta;
+  double cosPhi,sinPhi,cosTheta,sinTheta,dummyVel[DIM];
 
   /* Set default values */
   par->dust  	    = NULL;
@@ -103,6 +103,11 @@ parseInput(inputPars *par, image **img, molData **m){
   par->radiusSqu=par->radius*par->radius;
   par->minScaleSqu=par->minScale*par->minScale;
   if(par->pregrid!=NULL) par->doPregrid=1;
+
+  /* Check that the user has supplied this function (needed unless par->pregrid):
+  */
+  if(!par->pregrid)
+    velocity(0.0,0.0,0.0, dummyVel);
 
   /*
 Now we need to calculate the cutoff value used in calcSourceFn(). The issue is to decide between
@@ -461,7 +466,7 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
 
   for (i=0;i<par->nThreads;i++){
     threadRans[i] = gsl_rng_alloc(ranNumGenType);
-    gsl_rng_set(threadRans[i],(int)gsl_rng_uniform(ran)*1e6);
+    gsl_rng_set(threadRans[i],(int)(gsl_rng_uniform(ran)*1e6));
   }
 
   /* Read in all molecular data */
@@ -491,7 +496,7 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
 
   if(par->lte_only==0){
     do{
-      if(!silent) progressbar2(prog++, 0, result1, result2);
+      if(!silent) progressbar2(0, prog++, 0, result1, result2);
 
       for(id=0;id<par->ncell && !g[id].sink;id++){
         for(ilev=0;ilev<m[0].nlev;ilev++) {
@@ -579,7 +584,7 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
       }
       free(median);
 
-      if(!silent) progressbar2(prog, percent, result1, result2);
+      if(!silent) progressbar2(1, prog, percent, result1, result2);
       if(par->outputfile) popsout(par,g,m);
     } while(conv++<NITERATIONS);
     if(par->binoutputfile) binpopsout(par,g,m);

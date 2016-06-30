@@ -70,7 +70,7 @@ velocityspline(struct grid *g, int id, int k, double binv, double deltav, double
     v2=deltav-((((g[id].a4[k]*d+g[id].a3[k])*d+g[id].a2[k])*d+g[id].a1[k])*d+g[id].a0[k]);
     naver=(1 > fabs(v1-v2)*binv) ? 1 : (int)(fabs(v1-v2)*binv);
     for(iaver=0;iaver<naver;iaver++){
-      sd=s1+(s2-s1)*((double)iaver-0.5)/(double)naver;
+      sd=s1+(s2-s1)*((double)iaver+0.5)/(double)naver;
       d=sd*g[id].ds[k];
       v=deltav-((((g[id].a4[k]*d+g[id].a3[k])*d+g[id].a2[k])*d+g[id].a1[k])*d+g[id].a0[k]);
       vfacsub=gaussline(v,binv);
@@ -103,7 +103,7 @@ velocityspline_lin(struct grid *g, int id, int k, double binv, double deltav, do
     v2=deltav-(g[id].a1[k]*d+g[id].a0[k]);
     naver=(1 > fabs(v1-v2)*binv) ? 1 : (int)(fabs(v1-v2)*binv);
     for(iaver=0;iaver<naver;iaver++){
-      sd=s1+(s2-s1)*((double)iaver-0.5)/(double)naver;
+      sd=s1+(s2-s1)*((double)iaver+0.5)/(double)naver;
       d=sd*g[id].ds[k];
       v=deltav-(g[id].a1[k]*d+g[id].a0[k]);
       vfacsub=gaussline(v,binv);
@@ -169,13 +169,12 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
   int iphot,iline,jline,here,there,firststep,dir,np_per_line,ip_at_line,l;
   int *counta, *countb,nlinetot;
   double deltav,segment,vblend,dtau,expDTau,jnu,alpha,ds,vfac[par->nSpecies],pt_theta,pt_z,semiradius;
-  double *tau,*expTau,vel[3],x[3], inidir[3];
+  double *tau,*expTau,x[3],inidir[3];
   double remnantSnu;
 
   lineCount(par->nSpecies, m, &counta, &countb, &nlinetot);
   tau=malloc(sizeof(*tau)*nlinetot);
   expTau=malloc(sizeof(*expTau)*nlinetot);
-  velocity(g[id].x[0],g[id].x[1],g[id].x[2],vel);
   
   np_per_line=(int) g[id].nphot/g[id].numNeigh; // Works out to be equal to ininphot. :-/
 
@@ -208,7 +207,7 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
     dir=sortangles(inidir,id,g,ran);
     here=g[id].id;
     there=g[here].neigh[dir]->id;
-    deltav=segment*4.3*g[id].dopb+veloproject(g[id].dir[dir].xn,vel);
+    deltav=segment*4.3*g[id].dopb+veloproject(g[id].dir[dir].xn,g[id].vel);
     
     /* Photon propagation loop */
     do{
