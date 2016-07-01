@@ -268,10 +268,6 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
 
     for(id=0;id<par->ncell;id++){
       g[id].mol[i].partner=malloc(sizeof(struct rates)*m[i].npart);
-      for(ipart=0;ipart<m[i].npart;ipart++){
-        // g[id].mol[i].partner[ipart].up = malloc(sizeof(double)*m[i].ntrans[ipart]);
-        // g[id].mol[i].partner[ipart].down = malloc(sizeof(double)*m[i].ntrans[ipart]);
-      }
     }
 
     for(id=0;id<par->ncell;id++){
@@ -284,18 +280,16 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
               }
             }
             fac=(g[id].t[0]-part[ipart].temp[tnint])/(part[ipart].temp[tnint+1]-part[ipart].temp[tnint]);
-            // downrate=part[ipart].colld[itrans*ntemp[ipart]+tnint]+fac*(part[ipart].colld[itrans*ntemp[ipart]+tnint+1]-part[ipart].colld[itrans*ntemp[ipart]+tnint]);
             g[id].mol[i].partner[ipart].t_binlow = tnint;
             g[id].mol[i].partner[ipart].interp_coeff = fac;
-          } else {
-            // if(g[id].t[0]<=part[ipart].temp[0]) downrate=part[ipart].colld[itrans*ntemp[ipart]];
-            // if(g[id].t[0]>=part[ipart].temp[ntemp[ipart]-1]) downrate=part[ipart].colld[itrans*ntemp[ipart]+ntemp[ipart]-1];
-            if(g[id].t[0]<=part[ipart].temp[0]) {g[id].mol[i].partner[ipart].t_binlow=0; g[id].mol[i].partner[ipart].interp_coeff=0.0;}
-            if(g[id].t[0]>=part[ipart].temp[ntemp[ipart]-1]) {g[id].mol[i].partner[ipart].t_binlow=ntemp[ipart]-2; g[id].mol[i].partner[ipart].interp_coeff=1.0;}
-          }
-          // uprate=m[i].gstat[m[i].lcu[itrans]]/m[i].gstat[m[i].lcl[itrans]]*downrate*exp(-HCKB*(m[i].eterm[m[i].lcu[itrans]]-m[i].eterm[m[i].lcl[itrans]])/g[id].t[0]);
-          // g[id].mol[i].partner[ipart].up[itrans]=uprate;
-          // g[id].mol[i].partner[ipart].down[itrans]=downrate;
+
+	    } else if(g[id].t[0]<=part[ipart].temp[0]) {
+	      g[id].mol[i].partner[ipart].t_binlow=0;
+	      g[id].mol[i].partner[ipart].interp_coeff=0.0;
+	    } else {
+	      g[id].mol[i].partner[ipart].t_binlow=ntemp[ipart]-2;
+	      g[id].mol[i].partner[ipart].interp_coeff=1.0;
+	   }
         }
       }
     }
