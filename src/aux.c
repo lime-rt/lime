@@ -18,7 +18,7 @@ parseInput(inputPars *par, image **img, molData **m){
   FILE *fp;
   int i,id;
   double BB[3];
-  double cosPhi,sinPhi,cosTheta,sinTheta;
+  double cosPhi,sinPhi,cosTheta,sinTheta,dummyVel[DIM];
 
   /* Set default values */
   par->dust  	    = NULL;
@@ -103,6 +103,11 @@ parseInput(inputPars *par, image **img, molData **m){
   par->radiusSqu=par->radius*par->radius;
   par->minScaleSqu=par->minScale*par->minScale;
   if(par->pregrid!=NULL) par->doPregrid=1;
+
+  /* Check that the user has supplied this function (needed unless par->pregrid):
+  */
+  if(!par->pregrid)
+    velocity(0.0,0.0,0.0, dummyVel);
 
   /*
 Now we need to calculate the cutoff value used in calcSourceFn(). The issue is to decide between
