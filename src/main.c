@@ -84,7 +84,7 @@ initParImg(inputPars *par, image **img)
   id=-1;
   while(par->moldatfile[++id]!=NULL);
   par->nSpecies=id;
-  if( par->nSpecies == 0 )
+  if( par->nSpecies <= 0 )
     {
       par->nSpecies = 1;
       free(par->moldatfile);
