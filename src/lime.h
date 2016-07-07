@@ -99,9 +99,10 @@ typedef struct {
 
 /* Molecular data: shared attributes */
 typedef struct {
-  int nlev,nline,*ntrans,npart;
+  int nlev,nline,*ntrans,*ntemp,npart;
   int *lal,*lau,*lcl,*lcu;
-  double *aeinst,*freq,*beinstu,*beinstl,*up,*down,*eterm,*gstat;
+  double *aeinst,*freq,*beinstu,*beinstl,*eterm,*gstat;
+  double **down;
   double norm,norminv,*cmb,*local_cmb;
 } molData;
 
@@ -121,7 +122,8 @@ typedef struct {
 } point;
 
 struct rates {
-  double *up, *down;
+  int t_binlow;
+  double interp_coeff;
 };
 
 

@@ -67,20 +67,6 @@ freePopulation(const inputPars *par, const molData* m, struct populations* pop )
             }
           if( pop[j].partner != NULL )
             {
-              if( m != NULL )
-                {
-                  for(k=0; k<m[j].npart; k++)
-                    {
-                      if( pop[j].partner[k].up != NULL )
-                        {
-                          free(pop[j].partner[k].up);
-                        }
-                      if( pop[j].partner[k].down != NULL )
-                        {
-                          free(pop[j].partner[k].down);
-                        }
-                    }
-                }
               free( pop[j].partner );
             }
         }
