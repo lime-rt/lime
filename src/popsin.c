@@ -36,7 +36,6 @@ popsin(inputPars *par, struct grid **g, molData **m, int *popsdone){
   for(i=0;i<par->nSpecies;i++){
     (*m)[i].lcl = NULL;
     (*m)[i].lcu = NULL;
-    (*m)[i].up = NULL;
     (*m)[i].down = NULL;
     (*m)[i].eterm = NULL;
     (*m)[i].gstat = NULL;

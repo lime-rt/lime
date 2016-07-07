@@ -88,7 +88,7 @@ stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par, gridPointD
 
 void
 getmatrix(int id, gsl_matrix *matrix, molData *m, struct grid *g, int ispec, gridPointData *mp){
-  int p,t,k,l,ipart;
+  int p,t,ti,k,l,li,ipart;
   struct getmatrix {
     double *ctot;
     gsl_matrix * colli;
@@ -113,20 +113,24 @@ getmatrix(int id, gsl_matrix *matrix, molData *m, struct grid *g, int ispec, gri
   }
 
   /* Populate matrix with radiative transitions */
-  for(t=0;t<m[ispec].nline;t++){
-    k=m[ispec].lau[t];
-    l=m[ispec].lal[t];
-    gsl_matrix_set(matrix, k, k, gsl_matrix_get(matrix, k, k)+m[ispec].beinstu[t]*mp[ispec].jbar[t]+m[ispec].aeinst[t]);
-    gsl_matrix_set(matrix, l, l, gsl_matrix_get(matrix, l, l)+m[ispec].beinstl[t]*mp[ispec].jbar[t]);
-    gsl_matrix_set(matrix, k, l, gsl_matrix_get(matrix, k, l)-m[ispec].beinstl[t]*mp[ispec].jbar[t]);
-    gsl_matrix_set(matrix, l, k, gsl_matrix_get(matrix, l, k)-m[ispec].beinstu[t]*mp[ispec].jbar[t]-m[ispec].aeinst[t]);
+  for(li=0;li<m[ispec].nline;li++){
+    k=m[ispec].lau[li];
+    l=m[ispec].lal[li];
+    gsl_matrix_set(matrix, k, k, gsl_matrix_get(matrix, k, k)+m[ispec].beinstu[li]*mp[ispec].jbar[li]+m[ispec].aeinst[li]);
+    gsl_matrix_set(matrix, l, l, gsl_matrix_get(matrix, l, l)+m[ispec].beinstl[li]*mp[ispec].jbar[li]);
+    gsl_matrix_set(matrix, k, l, gsl_matrix_get(matrix, k, l)-m[ispec].beinstl[li]*mp[ispec].jbar[li]);
+    gsl_matrix_set(matrix, l, k, gsl_matrix_get(matrix, l, k)-m[ispec].beinstu[li]*mp[ispec].jbar[li]-m[ispec].aeinst[li]);
   }
 
   /* Populate matrix with collisional transitions */
   for(ipart=0;ipart<m[ispec].npart;ipart++){
-    for(t=0;t<m[ispec].ntrans[ipart];t++){
-      gsl_matrix_set(partner[ipart].colli, m[ispec].lcu[t], m[ispec].lcl[t], g[id].mol[ispec].partner[ipart].down[t]);
-      gsl_matrix_set(partner[ipart].colli, m[ispec].lcl[t], m[ispec].lcu[t], g[id].mol[ispec].partner[ipart].up[t]);
+    double *downrates = m[ispec].down[ipart];
+    for(ti=0;ti<m[ispec].ntrans[ipart];ti++){
+      int coeff_index = ti*m[ispec].ntemp[ipart] + g[id].mol[ispec].partner[ipart].t_binlow;
+      double down = downrates[coeff_index] + g[id].mol[ispec].partner[ipart].interp_coeff*(downrates[coeff_index+1] - downrates[coeff_index]);
+      double up = down*m[ispec].gstat[m[ispec].lcu[ti]]/m[ispec].gstat[m[ispec].lcl[ti]]*exp(-HCKB*(m[ispec].eterm[m[ispec].lcu[ti]]-m[ispec].eterm[m[ispec].lcl[ti]])/g[id].t[0]);
+      gsl_matrix_set(partner[ipart].colli, m[ispec].lcu[ti], m[ispec].lcl[ti], down);
+      gsl_matrix_set(partner[ipart].colli, m[ispec].lcl[ti], m[ispec].lcu[ti], up);
     }
 
     for(p=0;p<m[ispec].nlev;p++){
