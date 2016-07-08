@@ -28,7 +28,7 @@ void lteOnePoint(inputPars *par, molData *m, const int ispec, const double temp,
 
   sum = 0.0;
   for(ilev=0;ilev<m[ispec].nlev;ilev++){
-    pops[ilev] = m[ispec].gstat[ilev]*exp(-100*CLIGHT*HPLANCK*m[ispec].eterm[ilev]/(KBOLTZ*temp));
+    pops[ilev] = m[ispec].gstat[ilev]*exp(-HCKB*m[ispec].eterm[ilev]/temp);
     sum += pops[ilev];
   }
   for(ilev=0;ilev<m[ispec].nlev;ilev++)
