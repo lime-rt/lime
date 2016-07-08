@@ -618,6 +618,8 @@ buildGrid(inputPars *par, struct grid *g){
     abundance(  g[i].x[0],g[i].x[1],g[i].x[2], g[i].abun);
   }
 
+  checkGridDensities(par, g);
+
   //	getArea(par,g, ran);
   //	getMass(par,g, ran);
   getVelosplines(par,g);
