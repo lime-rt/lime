@@ -148,17 +148,17 @@ chapter 2). If one or more non-LTE line images are asked for, LIME will
 proceed to calculate the level populations. This too is an iterative
 process where the radiation field and the populations are recalculated
 repeatedly. The radiation field is obtained by propagating photons
-through the grid, a fix number for each grid point, and using the
+through the grid, a fixed number for each grid point; using the
 resulting radiation field, the code enters a minor iteration loop where
 a set of linear equations, determining the statistical equilibrium, are
 iterated upon in order to converge upon a set of populations. This is
-done for each grid point in turn. Once all the grid points has gotten
+done for each grid point in turn. Once all the grid points have
 new populations, the process is repeated.
 
 When the solution has converged, the code will ray-trace the model to
-obtain an image. Ray-tracing is done for each user- defined image in
+obtain an image. Ray-tracing is done for each user-defined image in
 turn. At the end of the ray-tracing, FITS files will be written to the
-disk at the code will clean up the memory and terminate.
+disk, after which the code will clean up the memory and terminate.
 
 .. _lime-options:
 
@@ -213,20 +213,20 @@ The model file
 All basic setup of a model is done in a single file which we refer to as
 model.c (although it may be given any name). Model.c is, as the name
 suggests, C source code which is compiled together with LIME at runtime,
-and therefore it must conform to the ansi C standard. Setting up a model
+and therefore it must conform to the ANSI C standard. Setting up a model
 however, requires only little knowledge of the C programming language.
 For an in-depth introduction to C the user is referred to “The C
 Programming Language 2nd ed.” by Kernighan and Ritchie, and otherwise,
 numerous tutorials and introductions can be found on the Internet. The
 file lime\_cs.pdf, contained in the LimePackage directory, is a quick
 reference for setting up models for LIME. Please note that all physical
-numbers in model.c should be given in SI-units.
+numbers in model.c should be given in SI units. A number of macros are available however for easier expression of some quantities: PI, PC (= the number of metres in a parsec) and AU (= 1 Astronomical Unit in metres).
 
 In most common cases, everything about a model should be described
 within model.c. However, model.c can be set up as a wrapper that will
 call other files containing parts of the model or even call external
 codes or subroutines. Examples of such usage are given below in the
-section Advanced setup.
+section `Advanced Setup`.
 
 model.c should always begin with the following inclusion
 
@@ -235,13 +235,16 @@ model.c should always begin with the following inclusion
     #include "lime.h"
 
 to make model.c aware of the global LIME variable structures. Other
-header files may be included in model.c if needed, with the possible
-need of modifying the Makefile accordingly. Following the preprocessor
-commands, the main model function should appear
+header files may be included in model.c if needed, although you may need to modify the Makefile accordingly.
+
+Following the preprocessor
+commands, the main model function should appear as
 
 .. code:: c
 
-    void input(inputPars *, image *);
+    void input(inputPars *par, image *img){
+      // Define the needed parts of par and img
+    }
 
 This function should contain the parameter and image settings.
 
@@ -272,9 +275,9 @@ rather the distance from the center to the corner of the (r,z)-plane.
 
 minScale is the smallest scales sampled by the code. Structures smaller
 than minScale will not be sampled properly. If one uses spherical
-sampling (see below) this number can also be though upon as the inner
+sampling (see below) this number can also be though of as the inner
 edge of the grid. This number should not be set smaller than needed,
-because an undesirable large number of grid point will end up near the
+because that will cause an undesirably large number of grid points to end up near the
 center of the model.
 
 .. code:: c
@@ -293,8 +296,8 @@ about one hundred thousand.
 
 The sinkPoints are grid points that are distributed randomly at
 par->radius forming the surface of the model. As a photon from within
-the model reaches a sink point it is said to escape and is not traced
-any longer. The number of sink points is a user defined quantity since
+the model reaches a sink point it is said to escape and is not tracked
+any longer. The number of sink points is a user-defined quantity since
 the exact number may affect the resulting image as well as the running
 time of the code. One should choose a number that gives a surface
 density large enough not to cause artifacts in the image and low enough
@@ -344,7 +347,7 @@ download these files automatically. If a data file name is give that
 cannot be found locally, LIME will try and download the file instead.
 When downloading data files, the filename can be give both with and
 without the surname .dat (i.e., “co” or “co.dat”). moldatfile is an
-array so multiple data files can be used for a single LIME run. There is
+array, so multiple data files can be used for a single LIME run. There is
 no default value.
 
 .. code:: c
@@ -442,7 +445,7 @@ file. The default is blend=0 (no line blending).
 If set, LIME will anti-alias the output image. anti-alias can take the
 value of any positive integer, with the value 1 (default) being no
 anti-aliasing. Greater values correspond to stronger anti-aliasing. LIME
-uses stochastic super-sampling anti- aliasing. This is very effective in
+uses stochastic super-sampling anti-aliasing. This is very effective in
 minimizing artifacts in the image, but it also slows down the ray-tracer
 by a factor equal to the value of antialias. This parameter is the only
 one that will not be ignored in case par->restart is set.
@@ -499,7 +502,7 @@ Images
 LIME can output a number of images per run. The information about each
 image is contained in a structure array called img. The images defined
 in the image array can be either line or continuum images or both. All
-definitions of an image may be changed between images (i.e., distance,
+definitions of an image may be different between images (i.e., distance,
 resolution, inclination, etc.) so that a number of images with varying
 source distance or image resolution can be made in one go. In the
 following, i should be replaced by the image number (0, 1, 2, ...)
@@ -508,7 +511,7 @@ following, i should be replaced by the image number (0, 1, 2, ...)
 
     (integer) img[i]->pxls (required)
 
-This is the number of pixels per spatial dimensions of the FITS file.
+This is the number of pixels per spatial dimension of the FITS file.
 The total amount of pixels in the image is thus the square of this
 number.
 
@@ -526,14 +529,13 @@ seconds. The image field of view is therefore pxls x imgres.
 Theta is the viewing angle (the angle between the model z axis and the
 ray-tracers line of sight). This number is given in radians, not
 degrees, so that a face-on view (of models where this term is
-applicable) is 0 and edge-on view is π/2.
+applicable) is 0 and edge-on view is π/2. Note that you can use the predefined PI macro: e.g. to express π/2, write PI/2.0 in your model file.
 
 .. code:: c
 
     (double) img[i]->distance (required)
 
-The source distance in meters. LIME knows the conversion between parsec,
-AU, and meters, so the distance can be given as 100\*pc, for example. If
+The source distance in meters. LIME predefines macros PC and AU which express respectively the sizes of the parsec and the Astronomical Unit in meters, so it is valid to write the distance as 100\*PC for example. If
 the source is located at a cosmological distance, this parameter is the
 luminosity distance.
 
@@ -550,7 +552,7 @@ an optical depth image cube (dimensionless).
 
     (string) img[i]->filename (required)
 
-This variable is the name of the FITS file. It has no default value.
+This variable is the name of the output FITS file. It has no default value.
 
 .. code:: c
 
@@ -567,8 +569,8 @@ position angle on the sky. The default value is 0.
     (double) img[i]->source_vel (optional)
 
 The source velocity is an optional parameter that gives the spectra a
-velocity offset. This parameter is useful when comparing the model to an
-astronomical source with a known relative velocity.
+velocity offset (receding velocities are positive-valued). This parameter is useful when comparing the model to an
+astronomical source with a known relative line-of-sight velocity.
 
 .. code:: c
 

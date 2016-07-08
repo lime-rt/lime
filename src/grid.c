@@ -38,22 +38,22 @@ gridAlloc(inputPars *par, struct grid **g){
   }
 }
 
-void gridLineInit(inputPars *par, molData *md, struct grid *g){
+void gridLineInit(inputPars *par, molData *md, struct grid *gp){
   int i,id, ilev;
 
   for(i=0;i<par->nSpecies;i++){
     /* Calculate Doppler and thermal line broadening */
     for(id=0;id<par->ncell;id++) {
-      g[id].mol[i].dopb = sqrt(g[id].dopb*g[id].dopb+2.*KBOLTZ/md[i].amass*g[id].t[0]);
-      g[id].mol[i].binv = 1./g[id].mol[i].dopb;
+      gp[id].mol[i].dopb = sqrt(gp[id].dopb*gp[id].dopb+2.*KBOLTZ/md[i].amass*gp[id].t[0]);
+      gp[id].mol[i].binv = 1./gp[id].mol[i].dopb;
     }
 
     /* Allocate space for populations etc */
     for(id=0;id<par->ncell; id++){
-      g[id].mol[i].pops = malloc(sizeof(double)*md[i].nlev);
-      g[id].mol[i].dust = malloc(sizeof(double)*md[i].nline);
-      g[id].mol[i].knu  = malloc(sizeof(double)*md[i].nline);
-      for(ilev=0;ilev<md[i].nlev;ilev++) g[id].mol[i].pops[ilev]=0.0;
+      gp[id].mol[i].pops = malloc(sizeof(double)*md[i].nlev);
+      gp[id].mol[i].dust = malloc(sizeof(double)*md[i].nline);
+      gp[id].mol[i].knu  = malloc(sizeof(double)*md[i].nline);
+      for(ilev=0;ilev<md[i].nlev;ilev++) gp[id].mol[i].pops[ilev]=0.0;
     }
   }
 }
@@ -153,10 +153,6 @@ void calcGridCollRates(inputPars *par, molData *md, struct grid *g){
   for(i=0;i<par->nSpecies;i++){
     for(id=0;id<par->ncell;id++){
       g[id].mol[i].partner = malloc(sizeof(struct rates)*md[i].npart);
-      for(ipart=0;ipart<md[i].npart;ipart++){
-        g[id].mol[i].partner[ipart].up   = malloc(sizeof(double)*md[i].part[ipart].ntrans);
-        g[id].mol[i].partner[ipart].down = malloc(sizeof(double)*md[i].part[ipart].ntrans);
-      }
     }
 
     for(ipart=0;ipart<md[i].npart;ipart++){
@@ -170,20 +166,16 @@ void calcGridCollRates(inputPars *par, molData *md, struct grid *g){
               }
             }
             fac=(g[id].t[0]-part.temp[tnint])/(part.temp[tnint+1]-part.temp[tnint]);
-            downrate =      part.colld[itrans*part.ntemp+tnint]\
-                     + fac*(part.colld[itrans*part.ntemp+tnint+1]\
-                           -part.colld[itrans*part.ntemp+tnint]);
-          } else {
-            if(g[id].t[0]<=part.temp[0])
-              downrate = part.colld[itrans*part.ntemp];
-            if(g[id].t[0]>=part.temp[part.ntemp-1])
-              downrate = part.colld[itrans*part.ntemp+part.ntemp-1];
-          }
-          uprate = md[i].gstat[part.lcu[itrans]]/md[i].gstat[part.lcl[itrans]]\
-                   * downrate*exp(-HCKB*(md[i].eterm[part.lcu[itrans]]\
-                                        -md[i].eterm[part.lcl[itrans]])/g[id].t[0]);
-          g[id].mol[i].partner[ipart].up[  itrans] = uprate;
-          g[id].mol[i].partner[ipart].down[itrans] = downrate;
+            g[id].mol[i].partner[ipart].t_binlow = tnint;
+            g[id].mol[i].partner[ipart].interp_coeff = fac;
+
+	  } else if(g[id].t[0]<=part.temp[0]) {
+	    g[id].mol[i].partner[ipart].t_binlow = 0;
+	    g[id].mol[i].partner[ipart].interp_coeff = 0.0;
+	  } else {
+	    g[id].mol[i].partner[ipart].t_binlow = part.ntemp-2;
+	    g[id].mol[i].partner[ipart].interp_coeff = 1.0;
+	  }
         } /* End loop over transitions. */
       } /* End loop over grid points. */
     } /* End loop over collision partners. */
@@ -652,6 +644,14 @@ buildGrid(inputPars *par, struct grid *g){
     g[k++].dopb=0.;
   }
   /* end grid allocation */
+
+  /* Check that the user has supplied all necessary functions:
+  */
+  density(    0.0,0.0,0.0, g[0].dens);
+  temperature(0.0,0.0,0.0, g[0].t);
+  doppler(    0.0,0.0,0.0,&g[0].dopb);	
+  abundance(  0.0,0.0,0.0, g[0].abun);
+  /* Note that velocity() is the only one of the 5 mandatory functions which is still needed (in raytrace) even if par->pregrid or par->restart. Therefore we test it already in parseInput(). */
 
   qhull(par, g);
   distCalc(par, g);

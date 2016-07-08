@@ -15,6 +15,9 @@ LTE(inputPars *par, struct grid *g, molData *m){
   double z;
 
   for(ispec=0;ispec<par->nSpecies;ispec++){
+    for(id=0;id<par->ncell;id++){
+      g[id].nmol[ispec]=g[id].abun[ispec]*g[id].dens[0];
+    }
     for(id=0;id<par->pIntensity;id++){
       z=0;
       for(ilev=0;ilev<m[ispec].nlev;ilev++){

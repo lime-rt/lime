@@ -5,6 +5,8 @@
  *  Copyright (C) 2006-2014 Christian Brinch
  *  Copyright (C) 2015 The LIME development team
  *
+TODO:
+	- Get rid of, or regularize somehow, the printf statements - and clean up all the other new messages which are going to dick with the stdout when curses are selected? (Sigh.)
  */
 
 #include "lime.h"
@@ -12,22 +14,22 @@
 char *collpartnames[] = {"H2","p-H2","o-H2","electrons","H","He","H+"}; /* definition from LAMDA */
 
 void calcMolCMBs(inputPars *par, molData *md){
-  int i, iline;
+  int si, iline;
 
-  for(i=0;i<par->nSpecies;i++){
-    md[i].cmb	   = malloc(sizeof(double)*md[i].nline);
-    md[i].local_cmb = malloc(sizeof(double)*md[i].nline);
+  for(si=0;si<par->nSpecies;si++){
+    md[si].cmb	     = malloc(sizeof(double)*md[si].nline);
+    md[si].local_cmb = malloc(sizeof(double)*md[si].nline);
 
     /* fix the normalization at 230GHz */
-    md[i].norm=planckfunc(0,par->tcmb,md,0);
-    md[i].norminv=1./md[i].norm;
-    for(iline=0;iline<md[i].nline;iline++){
+    md[si].norm=planckfunc(0,par->tcmb,md,0);
+    md[si].norminv=1./md[si].norm;
+    for(iline=0;iline<md[si].nline;iline++){
       if(par->tcmb>0.)
-        md[i].cmb[iline] = planckfunc(iline,par->tcmb,md,i)/md[i].norm;
+        md[si].cmb[iline] = planckfunc(iline,par->tcmb,md,si)/md[si].norm;
       else
-        md[i].cmb[iline]=0.;
+        md[si].cmb[iline]=0.;
 
-      md[i].local_cmb[iline]=planckfunc(iline,2.728,md,i)/md[i].norm;
+      md[si].local_cmb[iline] = planckfunc(iline,2.728,md,si)/md[si].norm;
     }
   }
 }
@@ -161,10 +163,10 @@ void readMolData(inputPars *par, molData *md, int **allUniqueCollPartIds, int *n
           readDummyCollPart(fp, 80);
           md[i].part[k].ntemp  = -1;
           md[i].part[k].ntrans = -1;
+          md[i].part[k].down  = NULL;
           md[i].part[k].temp  = NULL;
           md[i].part[k].lcl   = NULL;
           md[i].part[k].lcu   = NULL;
-          md[i].part[k].colld = NULL;
 
         }else{ /* Add the CP data to md[i].part, we will need it to solve the population levels. */
           fgets(string, 80, fp);
@@ -185,7 +187,7 @@ void readMolData(inputPars *par, molData *md, int **allUniqueCollPartIds, int *n
           fscanf(fp,"\n");
           fgets(string, 80, fp);
 
-          md[i].part[k].colld = malloc(sizeof(double)\
+          md[i].part[k].down = malloc(sizeof(double)\
             *md[i].part[k].ntrans*md[i].part[k].ntemp);
 
           for(itrans=0;itrans<md[i].part[k].ntrans;itrans++){
@@ -194,8 +196,8 @@ void readMolData(inputPars *par, molData *md, int **allUniqueCollPartIds, int *n
             md[i].part[k].lcl[itrans]-=1;
             for(itemp=0;itemp<md[i].part[k].ntemp;itemp++){
               j = itrans*md[i].part[k].ntemp+itemp;
-              fscanf(fp, "%lf", &md[i].part[k].colld[j]);
-              md[i].part[k].colld[j] /= 1.0e6;
+              fscanf(fp, "%lf", &md[i].part[k].down[j]);
+              md[i].part[k].down[j] /= 1.0e6;
             }
             fscanf(fp,"\n");
           }
@@ -287,7 +289,7 @@ To preserve backward compatibility I am going to try to make the same guesses as
       warning("User didn't set par.collPartIds, I'm having to guess them. Guessed:");
 #ifdef NO_NCURSES
       for(i=0;i<par->numDensities;i++){
-        printf("Collision partner %d assigned code %d (=%s)\n", i, par->collPartIds[i], collpartnames[par->collPartIds[i]-1]);
+        printf("  Collision partner %d assigned code %d (=%s)\n", i, par->collPartIds[i], collpartnames[par->collPartIds[i]-1]);
       }
       printf("\n");
 #endif
@@ -387,7 +389,7 @@ If we have reached this point, par->collPartIds (and par->nMolWeights) should ha
 void readDummyCollPart(FILE *fp, const int strLen){
   char string[strLen];
   int ntrans, ntemp, itemp, itrans, idummy, dummyLcu, dummyLcl;
-  double dummyTemp, dummyColld;
+  double dummyTemp, dummyDown;
 
   fgets(string, strLen, fp);
   fgets(string, strLen, fp);
@@ -405,7 +407,7 @@ void readDummyCollPart(FILE *fp, const int strLen){
   for(itrans=0;itrans<ntrans;itrans++){
     fscanf(fp, "%d %d %d", &idummy, &dummyLcu, &dummyLcl);
     for(itemp=0;itemp<ntemp;itemp++){
-      fscanf(fp, "%lf", &dummyColld);
+      fscanf(fp, "%lf", &dummyDown);
     }
     fscanf(fp,"\n");
   }

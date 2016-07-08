@@ -34,7 +34,7 @@ freeMolData(inputPars *par, molData *mol){
     for(i=0;i<par->nSpecies;i++){
       if(mol[i].part != NULL){
         for(j=0; j<mol[i].npart; j++){
-          free(mol[i].part[j].colld);
+          free(mol[i].part[j].down);
           free(mol[i].part[j].temp);
           free(mol[i].part[j].lcl);
           free(mol[i].part[j].lcu);
@@ -78,15 +78,7 @@ freePopulation(const inputPars *par, const molData *m, struct populations *pop )
       free( pop[j].pops );
       free( pop[j].knu );
       free( pop[j].dust );
-      if(pop[j].partner != NULL){
-        if(m != NULL){
-          for(k=0; k<m[j].npart; k++){
-            free(pop[j].partner[k].up);
-            free(pop[j].partner[k].down);
-           }
-        }
-        free( pop[j].partner );
-      }
+      free( pop[j].partner );
     }
     free(pop);
   }
