@@ -3,9 +3,12 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015 The LIME development team
+ *  Copyright (C) 2016 The LIME development team
  *
  */
+
+#ifndef LIME_H
+#define LIME_H
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -38,7 +41,6 @@
 #define omp_set_dynamic(int) 0
 #endif
 
-#define silent 0
 #define DIM 3
 #define VERSION	"1.5"
 #define DEFAULT_NTHREADS 1
@@ -182,7 +184,8 @@ typedef struct {
 
 typedef struct {double x,y, *intensity, *tau;} rayData;
 
-
+/* Some global variables */
+int silent;
 
 /* Some functions */
 void density(double,double,double,double *);
@@ -194,6 +197,7 @@ void magfield(double,double,double,double *);
 void gasIIdust(double,double,double,double *);
 
 /* More functions */
+void    run(inputPars *, image *);
 
 void   	binpopsout(inputPars *, struct grid *, molData *);
 void   	buildGrid(inputPars *, struct grid *);
@@ -208,9 +212,11 @@ double	FastExp(const float);
 void	fit_d1fi(double, double, double*);
 void    fit_fi(double, double, double*);
 void    fit_rr(double, double, double*);
-void   	freeGrid(const inputPars*, const molData*, struct grid*);
-void    freeInput(inputPars*, image*, molData*);
-void   	freePopulation(const inputPars*, const molData*, struct populations*);
+void   	input(inputPars *, image *);
+float  	invSqrt(float);
+void    freeMoldata(inputPars *, molData* m );
+void   	freeGrid(const inputPars * par, const molData* m, struct grid * g);
+void   	freePopulation(const inputPars * par, const molData* m, struct populations * pop);
 double 	gaussline(double, double);
 void    getArea(inputPars *, struct grid *, const gsl_rng *);
 void	getclosest(double, double, double, long *, long *, double *, double *, double *);
@@ -277,5 +283,4 @@ void    collpartmesg(char *, int);
 void    collpartmesg2(char *, int);
 void    collpartmesg3(int, int);
 
-
-
+#endif  /* LIME_H */
