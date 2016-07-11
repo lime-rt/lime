@@ -92,7 +92,7 @@ velocityspline(struct grid *g, int id, int k, double binv, double deltav, double
     v2=deltav-((((g[id].a4[k]*d+g[id].a3[k])*d+g[id].a2[k])*d+g[id].a1[k])*d+g[id].a0[k]);
     naver=(1 > fabs(v1-v2)*binv) ? 1 : (int)(fabs(v1-v2)*binv);
     for(iaver=0;iaver<naver;iaver++){
-      sd=s1+(s2-s1)*((double)iaver-0.5)/(double)naver;
+      sd=s1+(s2-s1)*((double)iaver+0.5)/(double)naver;
       d=sd*g[id].ds[k];
       v=deltav-((((g[id].a4[k]*d+g[id].a3[k])*d+g[id].a2[k])*d+g[id].a1[k])*d+g[id].a0[k]);
       vfacsub=gaussline(v,binv);
@@ -125,7 +125,7 @@ velocityspline_lin(struct grid *g, int id, int k, double binv, double deltav, do
     v2=deltav-(g[id].a1[k]*d+g[id].a0[k]);
     naver=(1 > fabs(v1-v2)*binv) ? 1 : (int)(fabs(v1-v2)*binv);
     for(iaver=0;iaver<naver;iaver++){
-      sd=s1+(s2-s1)*((double)iaver-0.5)/(double)naver;
+      sd=s1+(s2-s1)*((double)iaver+0.5)/(double)naver;
       d=sd*g[id].ds[k];
       v=deltav-(g[id].a1[k]*d+g[id].a0[k]);
       vfacsub=gaussline(v,binv);
@@ -191,9 +191,9 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
   , gridPointData *mp, double *halfFirstDs){
 
   int iphot,iline,here,there,firststep,neighI,np_per_line,ip_at_line;
-  int nextMolWithBlend, nextLineWithBlend, molI, lineI, molJ, lineJ, bi, di;
+  int nextMolWithBlend, nextLineWithBlend, molI, lineI, molJ, lineJ, bi;
   double deltav,segment,vblend,dtau,expDTau,jnu,alpha,ds,vfac[par->nSpecies],pt_theta,pt_z,semiradius;
-  double *tau,*expTau,x[3],inidir[3];
+  double *tau,*expTau,inidir[3];
   double remnantSnu, velProj;
 
   tau    = malloc(sizeof(*tau)   *nlinetot);
@@ -253,10 +253,8 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
             velocityspline_lin(g,here,neighI,g[id].mol[molI].binv,deltav,&vfac[molI]);
           mp[molI].vfac[iphot]=vfac[0];
         }
-        for(di=0;di<DIM;di++) x[di]=g[here].x[di]+(g[here].dir[neighI].xn[di] * g[id].ds[neighI]*0.5);
       } else {
         ds=g[here].ds[neighI];
-        for(di=0;di<DIM;di++) x[di]=g[here].x[di];
       
         for(molI=0;molI<par->nSpecies;molI++){
           if(!par->doPregrid)
