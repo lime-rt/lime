@@ -133,16 +133,19 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
   /* Allocate pixel space and parse image information */
   for(i=0;i<par->nImages;i++){
     if((*img)[i].nchan == 0 && (*img)[i].velres<0 ){
-      /* Assume continuum image */
+      /* Assume continuum image. */
 
-      /* Check for polarization */
-      magfield(par->minScale,par->minScale,par->minScale,BB);
-      normBSquared = BB[0]*BB[0] + BB[1]*BB[1] + BB[2]*BB[2];
-      if(normBSquared > 0.) par->polarization=1; /* Even with the amendment to use all components of BB, this is a truly crappy test! */
-
-      if(par->polarization)
+      if(par->polarization){
         (*img)[i].nchan=3;
-      else
+
+        if(!silent){
+          /* Do a sketchy check which might indicate if the user has forgotten to supply a magfield function, and warn if this comes up positive. Note: there is no really robust way at present to distinguish the default magfield function (which, if called, indicates that the user forgot to supply their own) from one the user has supplied but which happens to set the B field to 0 at the origin.
+          */
+          magfield(par->minScale,par->minScale,par->minScale,BB);
+          normBSquared = BB[0]*BB[0] + BB[1]*BB[1] + BB[2]*BB[2];
+          if(normBSquared > 0.) warning("Zero B field - did you remember to supply a magfield function?");
+        }
+      }else
         (*img)[i].nchan=1;
 
       if((*img)[i].trans>-1 || (*img)[i].bandwidth>-1. || (*img)[i].freq==-1 || par->dust==NULL){
@@ -151,8 +154,7 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
       }
       (*img)[i].doline=0;
     } else if (((*img)[i].nchan>0 || (*img)[i].velres > 0)){
-      /* Assume line image */
-      par->polarization=0;
+      /* Assume line image. */
       if(par->moldatfile==NULL){
         if(!silent) bail_out("Error: No data file is specified for line image.");
         exit(1);
