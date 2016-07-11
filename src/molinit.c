@@ -170,11 +170,13 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
     g[id].mol[i].binv=1./g[id].mol[i].dopb;
   }
 
+
   /* Collision rates below here */
   if(par->lte_only==0){
     fgets(string, 80, fp);
     fscanf(fp,"%d\n", &m[i].npart);
     count=malloc(sizeof(*count)*m[i].npart);
+    m[i].down=malloc(sizeof(double*)*m[i].npart);
     /* collision partner sanity check */
 
     if(m[i].npart > par->collPart) flag=1;
@@ -183,7 +185,7 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
       exit(1);
     }
 
-
+    m[i].ntemp = malloc(sizeof(int)*m[i].npart);
     m[i].ntrans = malloc(sizeof(int)*m[i].npart);
     ntemp = malloc(sizeof(*ntemp)*m[i].npart);
     part = malloc(sizeof(struct data) * m[i].npart);
@@ -224,6 +226,14 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
         }
         fscanf(fp,"\n");
       }
+
+      m[i].ntemp[ipart] = ntemp[ipart];
+      m[i].down[ipart] = malloc(sizeof(double)*m[i].ntrans[ipart]*m[i].ntemp[ipart]);
+      for(itrans=0;itrans<m[i].ntrans[ipart];itrans++) {
+        for(itemp=0;itemp<m[i].ntemp[ipart];itemp++) {
+	  m[i].down[ipart][itrans*m[i].ntemp[ipart]+itemp] = part[ipart].colld[itrans*m[i].ntemp[ipart]+itemp];
+        }
+      }
     }
     fclose(fp);
 
@@ -260,10 +270,6 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
 
     for(id=0;id<par->ncell;id++){
       g[id].mol[i].partner=malloc(sizeof(struct rates)*m[i].npart);
-      for(ipart=0;ipart<m[i].npart;ipart++){
-        g[id].mol[i].partner[ipart].up = malloc(sizeof(double)*m[i].ntrans[ipart]);
-        g[id].mol[i].partner[ipart].down = malloc(sizeof(double)*m[i].ntrans[ipart]);
-      }
     }
 
     for(id=0;id<par->ncell;id++){
@@ -276,14 +282,16 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
               }
             }
             fac=(g[id].t[0]-part[ipart].temp[tnint])/(part[ipart].temp[tnint+1]-part[ipart].temp[tnint]);
-            downrate=part[ipart].colld[itrans*ntemp[ipart]+tnint]+fac*(part[ipart].colld[itrans*ntemp[ipart]+tnint+1]-part[ipart].colld[itrans*ntemp[ipart]+tnint]);
-          } else {
-            if(g[id].t[0]<=part[ipart].temp[0]) downrate=part[ipart].colld[itrans*ntemp[ipart]];
-            if(g[id].t[0]>=part[ipart].temp[ntemp[ipart]-1]) downrate=part[ipart].colld[itrans*ntemp[ipart]+ntemp[ipart]-1];
-          }
-          uprate=m[i].gstat[m[i].lcu[itrans]]/m[i].gstat[m[i].lcl[itrans]]*downrate*exp(-HCKB*(m[i].eterm[m[i].lcu[itrans]]-m[i].eterm[m[i].lcl[itrans]])/g[id].t[0]);
-          g[id].mol[i].partner[ipart].up[itrans]=uprate;
-          g[id].mol[i].partner[ipart].down[itrans]=downrate;
+            g[id].mol[i].partner[ipart].t_binlow = tnint;
+            g[id].mol[i].partner[ipart].interp_coeff = fac;
+
+	    } else if(g[id].t[0]<=part[ipart].temp[0]) {
+	      g[id].mol[i].partner[ipart].t_binlow=0;
+	      g[id].mol[i].partner[ipart].interp_coeff=0.0;
+	    } else {
+	      g[id].mol[i].partner[ipart].t_binlow=ntemp[ipart]-2;
+	      g[id].mol[i].partner[ipart].interp_coeff=1.0;
+	   }
         }
       }
     }
