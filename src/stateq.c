@@ -10,32 +10,37 @@
 #include "lime.h"
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_permutation.h>
+#include <gsl/gsl_errno.h>
 
 
 void
-stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par, gridPointData *mp, double *halfFirstDs){
-  int t,s,iter;
-  double *opop, *oopop;
+stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par\
+  , gridPointData *mp, double *halfFirstDs, _Bool *luWarningGiven){
+
+  int t,s,iter,status;
+  double *opop,*oopop,*tempNewPop=NULL;
   double diff;
+  char errStr[80];
 
   gsl_matrix *matrix = gsl_matrix_alloc(m[ispec].nlev+1, m[ispec].nlev+1);
   gsl_matrix *reduc  = gsl_matrix_alloc(m[ispec].nlev, m[ispec].nlev);
   gsl_vector *newpop = gsl_vector_alloc(m[ispec].nlev);
-  gsl_vector *oldpop = gsl_vector_alloc(m[ispec].nlev);
+  gsl_vector *rhVec  = gsl_vector_alloc(m[ispec].nlev);
   gsl_matrix *svv    = gsl_matrix_alloc(m[ispec].nlev, m[ispec].nlev);
   gsl_vector *svs    = gsl_vector_alloc(m[ispec].nlev);
   gsl_vector *work   = gsl_vector_alloc(m[ispec].nlev);
   gsl_permutation *p = gsl_permutation_alloc (m[ispec].nlev);
 
-  opop	 = malloc(sizeof(*opop)*m[ispec].nlev);
-  oopop	 = malloc(sizeof(*oopop)*m[ispec].nlev);
+  opop       = malloc(sizeof(*opop)      *m[ispec].nlev);
+  oopop      = malloc(sizeof(*oopop)     *m[ispec].nlev);
+  tempNewPop = malloc(sizeof(*tempNewPop)*m[ispec].nlev);
 
   for(t=0;t<m[ispec].nlev;t++){
     opop[t]=0.;
     oopop[t]=0.;
-    gsl_vector_set(oldpop,t,0.);
+    gsl_vector_set(rhVec,t,0.);
   }
-  gsl_vector_set(oldpop,m[ispec].nlev-1,1.);
+  gsl_vector_set(rhVec,m[ispec].nlev-1,1.);
   diff=1;
   iter=0;
 
@@ -49,12 +54,27 @@ stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par, gridPointD
       gsl_matrix_set(reduc,m[ispec].nlev-1,s,1.);
     }
 
-    gsl_linalg_LU_decomp(reduc,p,&s);
-    if(gsl_linalg_LU_det(reduc,s) == 0){
-      gsl_linalg_SV_decomp(reduc,svv, svs, work);
-      gsl_linalg_SV_solve(reduc, svv, svs, oldpop, newpop);
-      if(!silent) warning("Matrix is singular. Switching to SVD.");
-    } else gsl_linalg_LU_solve(reduc,p,oldpop,newpop);
+    status = gsl_linalg_LU_decomp(reduc,p,&s);
+    if(status){
+      if(!silent){
+        sprintf(errStr, "LU decomposition failed for point %d, iteration %d (GSL error %d).", id, iter, status);
+        bail_out(errStr);
+      }
+      exit(1);
+    }
+
+    status = gsl_linalg_LU_solve(reduc,p,rhVec,newpop);
+    if(status){
+      if(!silent && !(*luWarningGiven)){
+        *luWarningGiven = 1;
+        sprintf(errStr, "LU solver failed for point %d, iteration %d (GSL error %d).", id, iter, status);
+        warning(errStr);
+        warning("Doing LSE for this point. NOTE that no further warnings will be issued.");
+      }
+      lteOnePoint(par, m, ispec, g[id].t[0], tempNewPop);
+      for(s=0;s<m[ispec].nlev;s++)
+        gsl_vector_set(newpop,s,tempNewPop[s]);
+    }
 
     diff=0.;
     for(t=0;t<m[ispec].nlev;t++){
@@ -73,14 +93,16 @@ stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par, gridPointD
     }
     iter++;
   }
+
   gsl_matrix_free(matrix);
   gsl_matrix_free(reduc);
   gsl_matrix_free(svv);
-  gsl_vector_free(oldpop);
+  gsl_vector_free(rhVec);
   gsl_vector_free(newpop);
   gsl_vector_free(svs);
   gsl_vector_free(work);
   gsl_permutation_free(p);
+  free(tempNewPop);
   free(opop);
   free(oopop);
 }
@@ -88,7 +110,7 @@ stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par, gridPointD
 
 void
 getmatrix(int id, gsl_matrix *matrix, molData *m, struct grid *g, int ispec, gridPointData *mp){
-  int p,t,k,l,ipart;
+  int p,t,ti,k,l,li,ipart;
   struct getmatrix {
     double *ctot;
     gsl_matrix * colli;
@@ -113,20 +135,24 @@ getmatrix(int id, gsl_matrix *matrix, molData *m, struct grid *g, int ispec, gri
   }
 
   /* Populate matrix with radiative transitions */
-  for(t=0;t<m[ispec].nline;t++){
-    k=m[ispec].lau[t];
-    l=m[ispec].lal[t];
-    gsl_matrix_set(matrix, k, k, gsl_matrix_get(matrix, k, k)+m[ispec].beinstu[t]*mp[ispec].jbar[t]+m[ispec].aeinst[t]);
-    gsl_matrix_set(matrix, l, l, gsl_matrix_get(matrix, l, l)+m[ispec].beinstl[t]*mp[ispec].jbar[t]);
-    gsl_matrix_set(matrix, k, l, gsl_matrix_get(matrix, k, l)-m[ispec].beinstl[t]*mp[ispec].jbar[t]);
-    gsl_matrix_set(matrix, l, k, gsl_matrix_get(matrix, l, k)-m[ispec].beinstu[t]*mp[ispec].jbar[t]-m[ispec].aeinst[t]);
+  for(li=0;li<m[ispec].nline;li++){
+    k=m[ispec].lau[li];
+    l=m[ispec].lal[li];
+    gsl_matrix_set(matrix, k, k, gsl_matrix_get(matrix, k, k)+m[ispec].beinstu[li]*mp[ispec].jbar[li]+m[ispec].aeinst[li]);
+    gsl_matrix_set(matrix, l, l, gsl_matrix_get(matrix, l, l)+m[ispec].beinstl[li]*mp[ispec].jbar[li]);
+    gsl_matrix_set(matrix, k, l, gsl_matrix_get(matrix, k, l)-m[ispec].beinstl[li]*mp[ispec].jbar[li]);
+    gsl_matrix_set(matrix, l, k, gsl_matrix_get(matrix, l, k)-m[ispec].beinstu[li]*mp[ispec].jbar[li]-m[ispec].aeinst[li]);
   }
 
   /* Populate matrix with collisional transitions */
   for(ipart=0;ipart<m[ispec].npart;ipart++){
-    for(t=0;t<m[ispec].ntrans[ipart];t++){
-      gsl_matrix_set(partner[ipart].colli, m[ispec].lcu[t], m[ispec].lcl[t], g[id].mol[ispec].partner[ipart].down[t]);
-      gsl_matrix_set(partner[ipart].colli, m[ispec].lcl[t], m[ispec].lcu[t], g[id].mol[ispec].partner[ipart].up[t]);
+    double *downrates = m[ispec].down[ipart];
+    for(ti=0;ti<m[ispec].ntrans[ipart];ti++){
+      int coeff_index = ti*m[ispec].ntemp[ipart] + g[id].mol[ispec].partner[ipart].t_binlow;
+      double down = downrates[coeff_index] + g[id].mol[ispec].partner[ipart].interp_coeff*(downrates[coeff_index+1] - downrates[coeff_index]);
+      double up = down*m[ispec].gstat[m[ispec].lcu[ti]]/m[ispec].gstat[m[ispec].lcl[ti]]*exp(-HCKB*(m[ispec].eterm[m[ispec].lcu[ti]]-m[ispec].eterm[m[ispec].lcl[ti]])/g[id].t[0]);
+      gsl_matrix_set(partner[ipart].colli, m[ispec].lcu[ti], m[ispec].lcl[ti], down);
+      gsl_matrix_set(partner[ipart].colli, m[ispec].lcl[ti], m[ispec].lcu[ti], up);
     }
 
     for(p=0;p<m[ispec].nlev;p++){

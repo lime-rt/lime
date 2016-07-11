@@ -130,8 +130,8 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
       (*m)[i].freq = NULL;
       (*m)[i].beinstu = NULL;
       (*m)[i].beinstl = NULL;
-      (*m)[i].up = NULL;
       (*m)[i].down = NULL;
+      (*m)[i].ntemp = NULL;
       (*m)[i].eterm = NULL;
       (*m)[i].gstat = NULL;
       (*m)[i].cmb = NULL;
@@ -183,14 +183,6 @@ freeMoldata( inputPars *par, molData* mol )
             {
               free(mol[i].beinstl);
             }
-          if( mol[i].up != NULL )
-            {
-              free(mol[i].up);
-            }
-          if( mol[i].down != NULL )
-            {
-              free(mol[i].down);
-            }
           if( mol[i].eterm != NULL )
             {
               free(mol[i].eterm);
@@ -207,6 +199,15 @@ freeMoldata( inputPars *par, molData* mol )
             {
               free(mol[i].local_cmb);
             }
+
+          if( mol[i].down != NULL )
+            {
+              int j=0;
+              for (j=0;j<mol[i].npart;j++) free(mol[i].down[j]);
+              free(mol[i].down);
+            }
+	 free(mol[i].ntemp);
+
         }
       free(mol);
     }
@@ -242,6 +243,25 @@ invSqrt(float x){
   x = *(float*)&i;
   x = x*(1.5f - xhalf*x*x);
   return x;
+}
+
+void checkGridDensities(inputPars *par, struct grid *g){
+  int i;
+  static _Bool warningAlreadyIssued=0;
+  char errStr[80];
+
+  if(!silent){ /* Warn if any densities too low. */
+    i = 0;
+    while(i<par->pIntensity && !warningAlreadyIssued){
+      if(g[i].dens[0]<TYPICAL_ISM_DENS){
+        warningAlreadyIssued = 1;
+        sprintf(errStr, "g[%d].dens[0] at %.1e is below typical values for the ISM (~%.1e).", i, g[i].dens[0], TYPICAL_ISM_DENS);
+        warning(errStr);
+        warning("This could give you convergence problems. NOTE: no further warnings will be issued.");
+      }
+      i++;
+    }
+  }
 }
 
 void
@@ -332,6 +352,8 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
   blend *matrix;
   struct statistics { double *pop, *ave, *sigma; } *stat;
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
+  _Bool luWarningGiven=0;
+  gsl_error_handler_t *defaultErrorHandler=NULL;
 
   stat=malloc(sizeof(struct statistics)*par->pIntensity);
 
@@ -390,6 +412,13 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
   }
 
   if(par->lte_only==0){
+    defaultErrorHandler = gsl_set_error_handler_off();
+    /*
+This is done to allow proper handling of errors which may arise in the LU solver within stateq(). It is done here because the GSL documentation does not recommend leaving the error handler at the default within multi-threaded code.
+
+While this is off however, other gsl_* etc calls will not exit if they encounter a problem. We may need to pay some attention to trapping their errors.
+    */
+
     do{
       if(!silent) progressbar2(0, prog++, 0, result1, result2);
 
@@ -427,7 +456,8 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
           }
           if(g[id].dens[0] > 0 && g[id].t[0] > 0){
             photon(id,g,m,0,threadRans[threadI],par,matrix,mp,halfFirstDs);
-            for(ispec=0;ispec<par->nSpecies;ispec++) stateq(id,g,m,ispec,par,mp,halfFirstDs);
+            for(ispec=0;ispec<par->nSpecies;ispec++)
+              stateq(id,g,m,ispec,par,mp,halfFirstDs,&luWarningGiven);
           }
           if (threadI == 0){ // i.e., is master thread
             if(!silent) warning("");
@@ -482,6 +512,7 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
       if(!silent) progressbar2(1, prog, percent, result1, result2);
       if(par->outputfile) popsout(par,g,m);
     } while(conv++<NITERATIONS);
+    gsl_set_error_handler(defaultErrorHandler);
     if(par->binoutputfile) binpopsout(par,g,m);
   }
 
