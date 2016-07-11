@@ -8,3 +8,6 @@
 *.vtk
 *.pop
 *.fits
+
+# Ignore Python byte-code
+*.pyc
