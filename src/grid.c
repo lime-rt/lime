@@ -67,20 +67,6 @@ freePopulation(const inputPars *par, const molData* m, struct populations* pop )
             }
           if( pop[j].partner != NULL )
             {
-              if( m != NULL )
-                {
-                  for(k=0; k<m[j].npart; k++)
-                    {
-                      if( pop[j].partner[k].up != NULL )
-                        {
-                          free(pop[j].partner[k].up);
-                        }
-                      if( pop[j].partner[k].down != NULL )
-                        {
-                          free(pop[j].partner[k].down);
-                        }
-                    }
-                }
               free( pop[j].partner );
             }
         }
@@ -613,6 +599,14 @@ buildGrid(inputPars *par, struct grid *g){
   }
   /* end grid allocation */
 
+  /* Check that the user has supplied all necessary functions:
+  */
+  density(    0.0,0.0,0.0, g[0].dens);
+  temperature(0.0,0.0,0.0, g[0].t);
+  doppler(    0.0,0.0,0.0,&g[0].dopb);	
+  abundance(  0.0,0.0,0.0, g[0].abun);
+  /* Note that velocity() is the only one of the 5 mandatory functions which is still needed (in raytrace) even if par->pregrid or par->restart. Therefore we test it already in parseInput(). */
+
   qhull(par, g);
   distCalc(par, g);
   smooth(par,g);
@@ -623,6 +617,8 @@ buildGrid(inputPars *par, struct grid *g){
     doppler(    g[i].x[0],g[i].x[1],g[i].x[2],&g[i].dopb);	
     abundance(  g[i].x[0],g[i].x[1],g[i].x[2], g[i].abun);
   }
+
+  checkGridDensities(par, g);
 
   //	getArea(par,g, ran);
   //	getMass(par,g, ran);
