@@ -103,7 +103,7 @@ initParImg(inputPars *par, image **img)
     nImages++;
 
   if(nImages==0) {
-    if(!silent) bail_out("No images defined (or you haven't set at least the 1st filename).");
+    if(!silent) bail_out("No images defined (or you haven't set the 1st filename).");
     exit(1);
   }
 
