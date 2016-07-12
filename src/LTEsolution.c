@@ -11,21 +11,27 @@
 
 void
 LTE(configInfo *par, struct grid *g, molData *m){
-  int id,ilev,ispec;
-  double z;
+  int id,ispec;
 
-  for(ispec=0;ispec<par->nSpecies;ispec++){
-    for(id=0;id<par->pIntensity;id++){
+  for(id=0;id<par->pIntensity;id++){
+    for(ispec=0;ispec<par->nSpecies;ispec++){
       g[id].nmol[ispec]=g[id].abun[ispec]*g[id].dens[0];
-      z=0;
-      for(ilev=0;ilev<m[ispec].nlev;ilev++){
-        z+=m[ispec].gstat[ilev]*exp(-100*CLIGHT*HPLANCK*m[ispec].eterm[ilev]/(KBOLTZ*g[id].t[0]));
-      }
-      for(ilev=0;ilev<m[ispec].nlev;ilev++){
-        g[id].mol[ispec].pops[ilev]=m[ispec].gstat[ilev]*exp(-100*CLIGHT*HPLANCK*m[ispec].eterm[ilev]/(KBOLTZ*g[id].t[0]))/z;
-      }
+      lteOnePoint(par, m, ispec, g[id].t[0], g[id].mol[ispec].pops);
     }
   }
   if(par->outputfile) popsout(par,g,m);
+}
+
+void lteOnePoint(configInfo *par, molData *m, const int ispec, const double temp, double *pops){
+  int ilev;
+  double sum;
+
+  sum = 0.0;
+  for(ilev=0;ilev<m[ispec].nlev;ilev++){
+    pops[ilev] = m[ispec].gstat[ilev]*exp(-HCKB*m[ispec].eterm[ilev]/temp);
+    sum += pops[ilev];
+  }
+  for(ilev=0;ilev<m[ispec].nlev;ilev++)
+    pops[ilev] /= sum;
 }
 

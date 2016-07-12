@@ -3,7 +3,7 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015 The LIME development team
+ *  Copyright (C) 2016 The LIME development team
  *
  */
 
@@ -43,7 +43,6 @@
 #define omp_set_dynamic(int) 0
 #endif
 
-#define silent 0
 #define DIM 3
 #define VERSION	"1.5"
 #define DEFAULT_NTHREADS 1
@@ -52,52 +51,45 @@
 #endif
 
 /* Physical constants */
-#define PI			3.14159265358979323846
-#define SPI			1.77245385
-#define CLIGHT	    2.997924562e8
-#define HPLANCK	    6.626196e-34
-#define KBOLTZ	    1.380622e-23
-#define AMU			1.6605402e-27
-#define HPIP		HPLANCK*CLIGHT/4.0/PI/SPI
-#define HCKB		100.*HPLANCK*CLIGHT/KBOLTZ
-#define PC			3.08568025e16
-#define AU			1.49598e11
-#define maxp		0.15
-#define OtoP		3.
-#define GRAV		6.67428e-11
+// - NIST values as of 23 Sept 2015:
+#define AMU             1.66053904e-27		// atomic mass unit             [kg]
+#define CLIGHT          2.99792458e8		// speed of light in vacuum     [m / s]
+#define HPLANCK         6.626070040e-34		// Planck constant              [J * s]
+#define KBOLTZ          1.38064852e-23		// Boltzmann constant           [J / K]
+
+// From IAU 2009:
+#define GRAV            6.67428e-11		// gravitational constant       [m^3 / kg / s^2]
+#define AU              1.495978707e11		// astronomical unit            [m]
+
+// Derived:
+#define PC              3.08567758e16		// parsec (~3600*180*AU/PI)     [m]
+#define HPIP            8.918502221e-27		// HPLANCK*CLIGHT/4.0/PI/SPI
+#define HCKB            1.43877735		// 100.*HPLANCK*CLIGHT/KBOLTZ
 
 /* Other constants */
-#define NITERATIONS 	16
-#define max_phot		10000		/* don't set this value higher unless you have enough memory. */
-#define ininphot		9
-#define minpop			1.e-6
-#define eps				1.0e-30
-#define TOL				1e-6
-#define MAXITER			50
-#define goal			50
-#define fixset			1e-6
-#define blendmask		1.e4
+#define PI                      3.14159265358979323846	// pi
+#define SPI                     1.77245385091		// sqrt(pi)
+#define maxp                    0.15
+#define OtoP                    3.
+#define NITERATIONS             16
+#define max_phot                10000		/* don't set this value higher unless you have enough memory. */
+#define ininphot                9
+#define minpop                  1.e-6
+#define eps                     1.0e-30
+#define TOL                     1e-6
+#define MAXITER                 50
+#define goal                    50
+#define fixset                  1e-6
+#define blendmask               1.e4
 #define MAX_NSPECIES            100
 #define MAX_NIMAGES             100
 #define N_RAN_PER_SEGMENT       3
-#define FAST_EXP_MAX_TAYLOR	3
-#define FAST_EXP_NUM_BITS	8
+#define FAST_EXP_MAX_TAYLOR     3
+#define FAST_EXP_NUM_BITS       8
+#define N_SMOOTH_ITERS          20
+#define TYPICAL_ISM_DENS        1000.0
 
 
-/* input parameters
-typedef struct {
-  double radius,minScale,tcmb;
-  int sinkPoints,pIntensity,blend;
-  char *outputfile, *binoutputfile;
-//  char *inputfile; unused at present.
-  char *gridfile;
-  char *pregrid;
-  char *restart;
-  char *dust;
-  int sampling,lte_only,antialias,polarization,nThreads;
-  char **moldatfile;
-} inputPars;
- */
 typedef struct {
   double radius,minScale,tcmb;
   double radiusSqu,minScaleSqu,taylorCutoff;
@@ -108,15 +100,16 @@ typedef struct {
   char *pregrid;
   char *restart;
   char *dust;
-  int sampling,lte_only,antialias,polarization,nThreads;
+  int sampling,lte_only,init_lte,antialias,polarization,nThreads;
   char **moldatfile;
 } configInfo;
 
 /* Molecular data: shared attributes */
 typedef struct {
-  int nlev,nline,*ntrans,npart;
+  int nlev,nline,*ntrans,*ntemp,npart;
   int *lal,*lau,*lcl,*lcu;
-  double *aeinst,*freq,*beinstu,*beinstl,*up,*down,*eterm,*gstat;
+  double *aeinst,*freq,*beinstu,*beinstl,*eterm,*gstat;
+  double **down;
   double norm,norminv,*cmb,*local_cmb;
 } molData;
 
@@ -136,7 +129,8 @@ typedef struct {
 } point;
 
 struct rates {
-  double *up, *down;
+  int t_binlow;
+  double interp_coeff;
 };
 
 
@@ -194,7 +188,8 @@ typedef struct {
 
 typedef struct {double x,y, *intensity, *tau;} rayData;
 
-
+/* Some global variables */
+int silent;
 
 /* User-specifiable functions */
 void density(double,double,double,double *);
@@ -206,28 +201,30 @@ void magfield(double,double,double,double *);
 void gasIIdust(double,double,double,double *);
 
 /* More functions */
+void    run(inputPars, image *);
 
 void   	binpopsout(configInfo *, struct grid *, molData *);
 void   	buildGrid(configInfo *, struct grid *);
-void	calcFastExpRange(const int, const int, int *, int *, int *);
-void    calcSourceFn(double, const configInfo *, double *, double *);
-void	calcTableEntries(const int maxTaylorOrder, const int maxNumBitsPerMantField);
-void	continuumSetup(int, image *, molData *, configInfo *, struct grid *);
-void	distCalc(configInfo *, struct grid *);
-int	factorial(const int n);
-double	FastExp(const float negarg);
+void	calcFastExpRange(const int, const int, int*, int*, int*);
+void    calcSourceFn(double, const configInfo*, double*, double*);
+void	calcTableEntries(const int, const int);
+void	checkGridDensities(configInfo*, struct grid*);
+void	continuumSetup(int, image*, molData*, configInfo*, struct grid*);
+void	distCalc(configInfo*, struct grid*);
+int	factorial(const int);
+double	FastExp(const float);
 void	fit_d1fi(double, double, double*);
 void    fit_fi(double, double, double*);
 void    fit_rr(double, double, double*);
-void    freeInput(configInfo *, image*, molData* m );
+void    freeMoldata(const int, molData*);
 void   	freeGrid(const configInfo * par, const molData* m, struct grid * g);
 void   	freePopulation(const configInfo * par, const molData* m, struct populations * pop);
 double 	gaussline(double, double);
 void    getArea(configInfo *, struct grid *, const gsl_rng *);
-void    getjbar(int, molData *, struct grid *, configInfo *,gridPointData *,double *);
+void	getclosest(double, double, double, long *, long *, double *, double *, double *);
+void    getjbar(int, molData*, struct grid*, configInfo*, gridPointData*, double*);
 void    getMass(configInfo *, struct grid *, const gsl_rng *);
 void   	getmatrix(int, gsl_matrix *, molData *, struct grid *, int, gridPointData *);
-void	getclosest(double, double, double, long *, long *, double *, double *, double *);
 void	getVelosplines(configInfo *, struct grid *);
 void	getVelosplines_lin(configInfo *, struct grid *);
 void	gridAlloc(configInfo *, struct grid **);
@@ -239,15 +236,17 @@ void	line_plane_intersect(struct grid *, double *, int , int *, double *, double
 void	lineBlend(molData *, configInfo *, blend **);
 void    lineCount(int,molData *,int **, int **, int *);
 void	LTE(configInfo *, struct grid *, molData *);
+void	lteOnePoint(configInfo*, molData*, const int, const double, double*);
 void   	molinit(molData *, configInfo *, struct grid *,int);
-void	openSocket(char*);
-void	qhull(configInfo *, struct grid *);
-void  	photon(int, struct grid *, molData *, int, const gsl_rng *,configInfo *,blend *,gridPointData *,double *);
+void	openSocket(char *);
+void	parseInput(inputPars, configInfo*, image**, molData**);
+void  	photon(int, struct grid*, molData*, int, const gsl_rng*, configInfo*, blend*, gridPointData*, double*);
 double 	planckfunc(int, double, molData *, int);
-int     pointEvaluation(configInfo *,double, double, double, double);
+int     pointEvaluation(configInfo*, double, double, double, double);
 void   	popsin(configInfo *, struct grid **, molData **, int *);
 void   	popsout(configInfo *, struct grid *, molData *);
 void	predefinedGrid(configInfo *, struct grid *);
+void	qhull(configInfo *, struct grid *);
 double 	ratranInput(char *, char *, double, double, double);
 void   	raytrace(int, configInfo *, struct grid *, molData *, image *);
 void	readUserInput(inputPars *, image **, int *, int *);
@@ -255,14 +254,14 @@ void	report(int, configInfo *, struct grid *);
 void	setUpConfig(configInfo *, image **, molData **);
 void	smooth(configInfo *, struct grid *);
 int     sortangles(double *, int, struct grid *, const gsl_rng *);
-void	sourceFunc(double *, double *, double, molData *,double,struct grid *,int,int, int,int);
-void    sourceFunc_line(double *,double *,molData *, double, struct grid *, int, int,int);
-void    sourceFunc_cont(double *,double *, struct grid *, int, int,int);
-void    sourceFunc_pol(double *, double *, double, molData *, double, struct grid *, int, int, int, double);
-void   	stateq(int, struct grid *, molData *, int, configInfo *,gridPointData *,double *);
+void	sourceFunc(double*, double*, double, molData*, double, struct grid*, int, int, int, int);
+void    sourceFunc_cont(double*, double*, struct grid*, int, int, int);
+void    sourceFunc_line(double*, double*, molData*, double, struct grid*, int, int, int);
+void    sourceFunc_pol(double*, double*, double, molData*, double, struct grid*, int, int, int, double);
+void   	stateq(int, struct grid*, molData*, int, configInfo*, gridPointData*, double*, _Bool*);
 void	statistics(int, molData *, struct grid *, int *, double *, double *, int *);
 void    stokesangles(double, double, double, double, double *);
-double	taylor(const int maxOrder, const float x);
+double	taylor(const int, const float);
 void    traceray(rayData, int, int, configInfo *, struct grid *, molData *, image *, int, int *, int *, double);
 void   	velocityspline(struct grid *, int, int, double, double, double*);
 void   	velocityspline2(double *, double *, double, double, double, double*);

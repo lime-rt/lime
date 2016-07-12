@@ -49,6 +49,8 @@ predefinedGrid(configInfo *par, struct grid *g){
 	if(!silent) progressbar((double) i/((double)par->pIntensity-1), 4);	
   }
 
+  checkGridDensities(par, g);
+
   for(i=par->pIntensity;i<par->ncell;i++){
     x=2*gsl_rng_uniform(ran)-1.;
     y=2*gsl_rng_uniform(ran)-1.;

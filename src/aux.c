@@ -3,7 +3,7 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015 The LIME development team
+ *  Copyright (C) 2016 The LIME development team
  *
  */
 
@@ -14,124 +14,11 @@
 
 
 void
-readUserInput(inputPars *par, image **img, int *nSpecies, int *nImages){
-  /*
-Here the user-set parameters (both in the inputPars struct and the image struct) are read.
-  */
-
-  FILE *fp;
-  int i,id;
-
-  /* Set 'impossible' default values for mandatory parameters */
-  par->radius    =-1;
-  par->minScale  =-1;
-  par->pIntensity=-1;
-  par->sinkPoints=-1;
-
-  /* Set default values for optional parameters */
-  par->sampling=2;
-  par->tcmb = 2.728;
-  par->moldatfile=malloc(sizeof(char *) * MAX_NSPECIES);
-  for(id=0;id<MAX_NSPECIES;id++){
-    par->moldatfile[id]=NULL;
-  }
-  par->dust  	    = NULL;
-  par->outputfile   = NULL;
-  par->binoutputfile= NULL;
-  par->restart      = NULL;
-  par->gridfile     = NULL;
-  par->pregrid      = NULL;
-  par->lte_only=0;
-  par->blend=0;
-  par->antialias=1;
-  par->polarization=0;
-  par->nThreads=0;
-
-  /* Allocate space for output fits images */
-  (*img)=malloc(sizeof(image)*MAX_NIMAGES);
-  for(i=0;i<MAX_NIMAGES;i++){
-    (*img)[i].filename=NULL;
-  }
-
-  /* First-pass reading of the user-set parameters */
-  input(par, *img);
-
-  /* Check that the mandatory parameters now have 'sensible' settings (i.e., that they have been set at all). Raise an exception if not. */
-  if (par->radius<=0){
-    if(!silent) bail_out("Error: you must define the radius parameter.");
-    exit(1);
-  }
-  if (par->minScale<=0){
-    if(!silent) bail_out("Error: you must define the minScale parameter.");
-    exit(1);
-  }
-  if (par->pIntensity<=0){
-    if(!silent) bail_out("Error: you must define the pIntensity parameter.");
-    exit(1);
-  }
-  if (par->sinkPoints<=0){
-    if(!silent) bail_out("Error: you must define the sinkPoints parameter.");
-    exit(1);
-  }
-
-  /* If the user has provided a list of moldatfile names, the corresponding elements of par->moldatfile will be non-NULL. Thus we can deduce the number of files (species) from the number of non-NULL elements. */
-  *nSpecies=-1;
-  while(par->moldatfile[++(*nSpecies)]!=NULL);
-  if( *nSpecies == 0 ){
-    *nSpecies = 1;
-    free(par->moldatfile);
-    par->moldatfile = NULL;
-  } else {
-    par->moldatfile=realloc(par->moldatfile, sizeof(char *)* (*nSpecies));
-    /* Check if files exist */
-    for(id=0;id<(*nSpecies);id++){
-      if((fp=fopen(par->moldatfile[id], "r"))==NULL) {
-        openSocket(par->moldatfile[id]);
-      } else {
-        fclose(fp);
-      }
-    }
-  }
-
-  /* If the user has provided a list of image filenames, the corresponding elements of (*img).filename will be non-NULL. Thus we can deduce the number of images from the number of non-NULL elements. */
-  *nImages=-1;
-  while((*img)[++(*nImages)].filename!=NULL);
-  if(*nImages==0) {
-    if(!silent) bail_out("Error: no images defined");
-    exit(1);
-  }
-
-  *img=realloc(*img, sizeof(image)*(*nImages));
-
-  /* Set img defaults. */
-  for(i=0;i<(*nImages);i++) {
-    (*img)[i].source_vel=0.0;
-    (*img)[i].phi=0.0;
-    (*img)[i].nchan=0;
-    (*img)[i].velres=-1.;
-    (*img)[i].trans=-1;
-    (*img)[i].freq=-1.;
-    (*img)[i].bandwidth=-1.;
-  }
-
-  /* Second-pass reading of the user-set parameters (this time just to read the par->moldatfile and img stuff). */
-  input(par,*img);
-
-}
-
-void
-setUpConfig(configInfo *par, image **img, molData **m){
-  /*
-Most of the work this does is setting values in the configInfo struct which contains (as one might guess) information relevant to the general configuration of the task. Non-user-settable values in the image struct are also set here; finally (and somewhat anomalously), the molData vector is initialized.
-  */
-
-  int i,id;
+parseInput(inputPars inpar, configInfo *par, image **img, molData **m){
+  int i,id, ispec;
   double BB[3];
-  double cosPhi,sinPhi,cosTheta,sinTheta;
-  int nSpecies,nImages;
-  inputPars inpar;
-
-  readUserInput(&inpar,img,&nSpecies,&nImages);
+  double cosPhi,sinPhi,cosTheta,sinTheta,dummyVel[DIM];
+  FILE *fp;
 
   /* Copy over user-set parameters to the configInfo versions. (This seems like duplicated effort but it is a good principle to separate the two structs, for several reasons, as follows. (i) We will usually want more config parameters than user-settable ones. The separation leaves it clearer which things the user needs to (or can) set. (ii) The separation allows checking and screening out of impossible combinations of parameters. (iii) We can adopt new names (for clarity) for config parameters without bothering the user with a changed interface.) */
   par->radius       = inpar.radius;
@@ -140,10 +27,6 @@ Most of the work this does is setting values in the configInfo struct which cont
   par->sinkPoints   = inpar.sinkPoints;
   par->sampling     = inpar.sampling;
   par->tcmb         = inpar.tcmb;
-  par->moldatfile   = malloc(sizeof(char*)*nSpecies);
-  for(id=0;id<nSpecies;id++){
-    par->moldatfile[id] = inpar.moldatfile[id];
-  }
   par->dust         = inpar.dust;
   par->outputfile   = inpar.outputfile;
   par->binoutputfile= inpar.binoutputfile;
@@ -151,23 +34,56 @@ Most of the work this does is setting values in the configInfo struct which cont
   par->gridfile     = inpar.gridfile;
   par->pregrid      = inpar.pregrid;
   par->lte_only     = inpar.lte_only;
+  par->init_lte     = inpar.init_lte;
   par->blend        = inpar.blend;
   par->antialias    = inpar.antialias;
   par->polarization = inpar.polarization;
+  par->nThreads     = inpar.nThreads;
 
-  if(inpar.nThreads == 0){
-    par->nThreads = NTHREADS;
+  /* If the user has provided a list of moldatfile names, the corresponding elements of par->moldatfile will be non-NULL. Thus we can deduce the number of files (species) from the number of non-NULL elements.
+  */
+  par->nSpecies=0;
+  while(inpar.moldatfile[par->nSpecies]!=NULL && par->nSpecies<MAX_NSPECIES)
+    par->nSpecies++;
+
+  /* Copy over the moldatfiles.
+  */
+  if(par->nSpecies == 0){
+    par->nSpecies = 1;
+    par->moldatfile = NULL;
+
   } else {
-    par->nThreads = inpar.nThreads;
+    par->moldatfile=malloc(sizeof(char *)*par->nSpecies);
+    for(id=0;id<par->nSpecies;id++){
+      par->moldatfile[id] = inpar.moldatfile[id];
+    }
+
+    /* Check if files exist. */
+    for(id=0;id<par->nSpecies;id++){
+      if((fp=fopen(par->moldatfile[id], "r"))==NULL) {
+        openSocket(par->moldatfile[id]);
+      } else {
+        fclose(fp);
+      }
+    }
   }
+
+  /* If the user has provided a list of image filenames, the corresponding elements of (*img).filename will be non-NULL. Thus we can deduce the number of images from the number of non-NULL elements.
+  */
+  par->nImages=0;
+  while((*img)[par->nImages].filename!=NULL && par->nImages<MAX_NIMAGES)
+    par->nImages++;
 
   /* Now set the additional values in par. */
   par->ncell = inpar.pIntensity + inpar.sinkPoints;
   par->radiusSqu = inpar.radius*inpar.radius;
   par->minScaleSqu=inpar.minScale*inpar.minScale;
   par->doPregrid = (inpar.pregrid==NULL)?0:1;
-  par->nSpecies = nSpecies;
-  par->nImages = nImages;
+
+  /* Check that the user has supplied this function (needed unless par->pregrid):
+  */
+  if(!par->pregrid)
+    velocity(0.0,0.0,0.0, dummyVel);
 
   /*
 Now we need to calculate the cutoff value used in calcSourceFn(). The issue is to decide between
@@ -198,7 +114,7 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
       if(par->polarization) (*img)[i].nchan=3;
       else (*img)[i].nchan=1;
       if((*img)[i].trans>-1 || (*img)[i].bandwidth>-1. || (*img)[i].freq==0 || inpar.dust==NULL){
-        if(!silent) bail_out("Error: Image keywords are ambiguous");
+        if(!silent) bail_out("Image keywords are ambiguous");
         exit(1);
       }
       (*img)[i].doline=0;
@@ -206,15 +122,15 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
       /* Assume line image */
       par->polarization=0;
       if(inpar.moldatfile==NULL){
-        if(!silent) bail_out("Error: No data file is specified for line image.");
+        if(!silent) bail_out("No data file is specified for line image.");
         exit(1);
       }
       if(((*img)[i].trans>-1 && (*img)[i].freq>-1) || ((*img)[i].trans<0 && (*img)[i].freq<0)){
-        if(!silent) bail_out("Error: Specify either frequency or transition ");
+        if(!silent) bail_out("Specify either frequency or transition ");
         exit(1);
       }
       if(((*img)[i].nchan==0 && (*img)[i].bandwidth<0) || ((*img)[i].bandwidth<0 && (*img)[i].velres<0)){
-        if(!silent) bail_out("Error: Image keywords are not set properly");
+        if(!silent) bail_out("Image keywords are not set properly");
         exit(1);
       }
       (*img)[i].doline=1;
@@ -269,27 +185,22 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
     (*m)[i].freq = NULL;
     (*m)[i].beinstu = NULL;
     (*m)[i].beinstl = NULL;
-    (*m)[i].up = NULL;
     (*m)[i].down = NULL;
     (*m)[i].eterm = NULL;
     (*m)[i].gstat = NULL;
     (*m)[i].cmb = NULL;
     (*m)[i].local_cmb = NULL;
   }
-
-  if( inpar.moldatfile != NULL ){
-    free(inpar.moldatfile);
-  }
 }
 
 
 void
-freeInput( configInfo *par, image* img, molData* mol )
+freeMoldata(const int nSpecies, molData *mol)
 {
-  int i,id;
+  int i;
   if( mol!= 0 )
     {
-      for( i=0; i<par->nSpecies; i++ )
+      for( i=0; i<nSpecies; i++ )
         {
           if( mol[i].ntrans != NULL )
             {
@@ -327,14 +238,6 @@ freeInput( configInfo *par, image* img, molData* mol )
             {
               free(mol[i].beinstl);
             }
-          if( mol[i].up != NULL )
-            {
-              free(mol[i].up);
-            }
-          if( mol[i].down != NULL )
-            {
-              free(mol[i].down);
-            }
           if( mol[i].eterm != NULL )
             {
               free(mol[i].eterm);
@@ -351,23 +254,17 @@ freeInput( configInfo *par, image* img, molData* mol )
             {
               free(mol[i].local_cmb);
             }
+
+          if( mol[i].down != NULL )
+            {
+              int j=0;
+              for (j=0;j<mol[i].npart;j++) free(mol[i].down[j]);
+              free(mol[i].down);
+            }
+	 free(mol[i].ntemp);
+
         }
       free(mol);
-    }
-  for(i=0;i<par->nImages;i++){
-    for(id=0;id<(img[i].pxls*img[i].pxls);id++){
-      free( img[i].pixel[id].intense );
-      free( img[i].pixel[id].tau );
-    }
-    free(img[i].pixel);
-  }
-  if( img != NULL )
-    {
-      free(img);
-    }
-  if( par->moldatfile != NULL )
-    {
-      free(par->moldatfile);
     }
 }
 
@@ -401,6 +298,25 @@ invSqrt(float x){
   x = *(float*)&i;
   x = x*(1.5f - xhalf*x*x);
   return x;
+}
+
+void checkGridDensities(configInfo *par, struct grid *g){
+  int i;
+  static _Bool warningAlreadyIssued=0;
+  char errStr[80];
+
+  if(!silent){ /* Warn if any densities too low. */
+    i = 0;
+    while(i<par->pIntensity && !warningAlreadyIssued){
+      if(g[i].dens[0]<TYPICAL_ISM_DENS){
+        warningAlreadyIssued = 1;
+        sprintf(errStr, "g[%d].dens[0] at %.1e is below typical values for the ISM (~%.1e).", i, g[i].dens[0], TYPICAL_ISM_DENS);
+        warning(errStr);
+        warning("This could give you convergence problems. NOTE: no further warnings will be issued.");
+      }
+      i++;
+    }
+  }
 }
 
 void
@@ -491,6 +407,8 @@ levelPops(molData *m, configInfo *par, struct grid *g, int *popsdone){
   blend *matrix;
   struct statistics { double *pop, *ave, *sigma; } *stat;
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
+  _Bool luWarningGiven=0;
+  gsl_error_handler_t *defaultErrorHandler=NULL;
 
   stat=malloc(sizeof(struct statistics)*par->pIntensity);
 
@@ -549,6 +467,13 @@ levelPops(molData *m, configInfo *par, struct grid *g, int *popsdone){
   }
 
   if(par->lte_only==0){
+    defaultErrorHandler = gsl_set_error_handler_off();
+    /*
+This is done to allow proper handling of errors which may arise in the LU solver within stateq(). It is done here because the GSL documentation does not recommend leaving the error handler at the default within multi-threaded code.
+
+While this is off however, other gsl_* etc calls will not exit if they encounter a problem. We may need to pay some attention to trapping their errors.
+    */
+
     do{
       if(!silent) progressbar2(0, prog++, 0, result1, result2);
 
@@ -586,7 +511,8 @@ levelPops(molData *m, configInfo *par, struct grid *g, int *popsdone){
           }
           if(g[id].dens[0] > 0 && g[id].t[0] > 0){
             photon(id,g,m,0,threadRans[threadI],par,matrix,mp,halfFirstDs);
-            for(ispec=0;ispec<par->nSpecies;ispec++) stateq(id,g,m,ispec,par,mp,halfFirstDs);
+            for(ispec=0;ispec<par->nSpecies;ispec++)
+              stateq(id,g,m,ispec,par,mp,halfFirstDs,&luWarningGiven);
           }
           if (threadI == 0){ // i.e., is master thread
             if(!silent) warning("");
@@ -641,6 +567,7 @@ levelPops(molData *m, configInfo *par, struct grid *g, int *popsdone){
       if(!silent) progressbar2(1, prog, percent, result1, result2);
       if(par->outputfile) popsout(par,g,m);
     } while(conv++<NITERATIONS);
+    gsl_set_error_handler(defaultErrorHandler);
     if(par->binoutputfile) binpopsout(par,g,m);
   }
 
