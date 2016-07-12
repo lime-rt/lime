@@ -251,7 +251,7 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
             velocityspline(g,here,neighI,g[id].mol[molI].binv,deltav,&vfac[molI]);
           else
             velocityspline_lin(g,here,neighI,g[id].mol[molI].binv,deltav,&vfac[molI]);
-          mp[molI].vfac[iphot]=vfac[0];
+          mp[molI].vfac[iphot]=vfac[molI];
         }
       } else {
         ds=g[here].ds[neighI];
