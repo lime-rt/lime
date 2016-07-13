@@ -58,7 +58,7 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
           */
           magfield(par->minScale,par->minScale,par->minScale,BB);
           normBSquared = BB[0]*BB[0] + BB[1]*BB[1] + BB[2]*BB[2];
-          if(normBSquared > 0.) warning("Zero B field - did you remember to supply a magfield function?");
+          if(normBSquared <= 0.) warning("Zero B field - did you remember to supply a magfield function?");
         }
       }else
         (*img)[i].nchan=1;
