@@ -709,7 +709,7 @@ void readOrBuildGrid(inputPars *par, struct grid **gp){
     if(!silent) warning(message);
   }
 
-  if(par->dataStageI==1) /* Only happens if (i) we read no file, or (ii) we read a file at dataStageI==1. */
+  if(par->dataStageI==1) /* Only happens if (i) we read no file and have constructed this data within LIME, or (ii) we read a file at dataStageI==1. */
     writeGridIfRequired(par, *gp, NULL, lime_FITS);
 
   if(par->dataStageI<2){
@@ -721,7 +721,7 @@ void readOrBuildGrid(inputPars *par, struct grid **gp){
     if(!silent) warning(message);
   }
 
-  if(par->dataStageI==2) /* Only happens if (i) we read no file, or (ii) we read a file at dataStageI==2. */
+  if(par->dataStageI==2) /* Only happens if (i) we read no file and have constructed this data within LIME, or (ii) we read a file at dataStageI==2. */
     writeGridIfRequired(par, *gp, NULL, lime_FITS);
 
   distCalc(par, *gp); /* Mallocs and sets .dir & .ds, sets .nphot */
@@ -758,7 +758,7 @@ void readOrBuildGrid(inputPars *par, struct grid **gp){
     if(!silent) warning(message);
   }
 
-  if(par->dataStageI==3) /* Only happens if (i) we read no file, or (ii) we read a file at dataStageI==3. */
+  if(par->dataStageI==3) /* Only happens if (i) we read no file and have constructed this data within LIME, or (ii) we read a file at dataStageI==3. */
     writeGridIfRequired(par, *gp, NULL, lime_FITS);
 
   dumpGrid(par,*gp);

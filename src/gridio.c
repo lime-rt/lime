@@ -444,6 +444,7 @@ int readGrid(char *inFileName, const int fileFormatI\
   sprintf(message, "Reading grid-point list from file %s", inFileName);
   if(!silent) printMessage(message);
 
+  /* Open the file and also return the data stage. */
   fptr = openFileForRead(inFileName, fileFormatI, dataStageI);
 
   if(*dataStageI<1 || *dataStageI>NUM_GRID_STAGES){
