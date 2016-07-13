@@ -43,6 +43,9 @@ void __attribute__((weak))
 
 void __attribute__((weak))
     magfield(double x, double y, double z, double *B){
+      B[0]=0.0;
+      B[1]=0.0;
+      B[2]=0.0;
     }
 
 void __attribute__((weak))

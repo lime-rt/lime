@@ -55,7 +55,8 @@ kappa(molData *m, struct grid *g, configInfo *par, int s){
         kappatab[j]=0.1*pow(10.,kaptab[0] + (loglam-lamtab[0]) * (kaptab[1]-kaptab[0])/(lamtab[1]-lamtab[0]));
       } else if(loglam > lamtab[i-1]){
         kappatab[j]=0.1*pow(10.,kaptab[i-2] + (loglam-lamtab[i-2]) * (kaptab[i-1]-kaptab[i-2])/(lamtab[i-1]-lamtab[i-2]));
-      } else kappatab[j]=0.1*pow(10.,gsl_spline_eval(spline,loglam,acc));
+      } else
+        kappatab[j]=0.1*pow(10.,gsl_spline_eval(spline,loglam,acc));
     }
     gsl_spline_free(spline);
     gsl_interp_accel_free(acc);
@@ -67,14 +68,15 @@ kappa(molData *m, struct grid *g, configInfo *par, int s){
     for(id=0;id<par->ncell;id++){
       gasIIdust(g[id].x[0],g[id].x[1],g[id].x[2],&gtd);
       g[id].mol[s].knu[iline]=kappatab[iline]*2.4*AMU/gtd*g[id].dens[0];
-      //Check if input model supplies a dust temperature. Otherwise use the kinetic temperature
+
+      /* Check if input model supplies a dust temperature. Otherwise use the kinetic temperature. */
       if(g[id].t[1]==-1) {
         g[id].mol[s].dust[iline]=planckfunc(iline,g[id].t[0],m,s);
       } else {
         g[id].mol[s].dust[iline]=planckfunc(iline,g[id].t[1],m,s);
       }
     }
-    // fix the normalization at 230GHz
+    /* Fix the normalization at 230GHz. */
     m[s].norm=planckfunc(0,par->tcmb,m,0);
     m[s].norminv=1./m[s].norm;
     if(par->tcmb>0.) m[s].cmb[iline]=planckfunc(iline,par->tcmb,m,s)/m[s].norm;

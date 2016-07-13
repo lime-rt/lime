@@ -453,7 +453,7 @@ calculation only. The resulting image cube will have three channels
 containing the Stokes I, Q, and U. In order for the polarization to
 work, a magnetic field needs to be defined (see below). When
 polarization is switched on, LIME is identical to the DustPol code
-(Padovani et al., 2012).
+(Padovani et al., 2012), except that the expression Padovani et al. give for sigma2 has been shown by Ade et al. (2015) to be too small by a factor of 2. This correction has now been included in LIME.
 
 .. _par-nthreads:
 
@@ -1236,6 +1236,7 @@ or bugs needing to be fixed.
 Appendix: Bibliography
 ----------------------
 
+-  Ade et al., A&A 576, A105 (2015)
 -  Brinch & Hogerheijde, A&A, 523, A25, 2010; see also
    http://www.nbi.dk/~brinch/lime.php
 -  Hogerheijde & van der Tak, A&A, 362,697, 2000

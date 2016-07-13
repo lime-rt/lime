@@ -16,7 +16,7 @@
 void
 parseInput(inputPars inpar, configInfo *par, image **img, molData **m){
   int i,id, ispec;
-  double BB[3];
+  double BB[3],normBSquared;
   double cosPhi,sinPhi,cosTheta,sinTheta,dummyVel[DIM];
   FILE *fp;
 
@@ -106,21 +106,26 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
     if((*img)[i].nchan == 0 && (*img)[i].velres<0 ){
       /* Assume continuum image */
 
-      /* Check for polarization */
-      BB[0]=0.;
-      magfield(inpar.minScale,inpar.minScale,inpar.minScale,BB);
-      if(fabs(BB[0]) > 0.) par->polarization=1;
+      if(par->polarization){
+        (*img)[i].nchan=3;
 
-      if(par->polarization) (*img)[i].nchan=3;
-      else (*img)[i].nchan=1;
+        if(!silent){
+          /* Do a sketchy check which might indicate if the user has forgotten to supply a magfield function, and warn if this comes up positive. Note: there is no really robust way at present to distinguish the default magfield function (which, if called, indicates that the user forgot to supply their own) from one the user has supplied but which happens to set the B field to 0 at the origin.
+          */
+          magfield(par->minScale,par->minScale,par->minScale,BB);
+          normBSquared = BB[0]*BB[0] + BB[1]*BB[1] + BB[2]*BB[2];
+          if(normBSquared <= 0.) warning("Zero B field - did you remember to supply a magfield function?");
+        }
+      }else
+        (*img)[i].nchan=1;
+
       if((*img)[i].trans>-1 || (*img)[i].bandwidth>-1. || (*img)[i].freq==0 || inpar.dust==NULL){
         if(!silent) bail_out("Image keywords are ambiguous");
         exit(1);
       }
       (*img)[i].doline=0;
     } else if (((*img)[i].nchan>0 || (*img)[i].velres > 0)){
-      /* Assume line image */
-      par->polarization=0;
+      /* Assume line image. */
       if(inpar.moldatfile==NULL){
         if(!silent) bail_out("No data file is specified for line image.");
         exit(1);
