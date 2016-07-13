@@ -13,7 +13,7 @@
 
 
 void
-report(int i, inputPars *par, struct grid *g){
+report(int i, configInfo *par, struct grid *g){
 	FILE *fp;
 	int j,k,p,q;
 	const int bins = 100;

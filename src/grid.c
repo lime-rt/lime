@@ -11,7 +11,7 @@
 
 
 void
-gridAlloc(inputPars *par, struct grid **g){
+gridAlloc(configInfo *par, struct grid **g){
   int i;
   double temp[99];
 
@@ -47,7 +47,7 @@ gridAlloc(inputPars *par, struct grid **g){
 }
 
 void
-freePopulation(const inputPars *par, const molData* m, struct populations* pop ) {
+freePopulation(const configInfo *par, const molData* m, struct populations* pop ) {
   if( pop !=NULL )
     {
       int j,k;
@@ -74,7 +74,7 @@ freePopulation(const inputPars *par, const molData* m, struct populations* pop )
     }
 }
 void
-freeGrid(const inputPars *par, const molData* m ,struct grid* g){
+freeGrid(const configInfo *par, const molData* m ,struct grid* g){
   int i;
   if( g != NULL )
     {
@@ -137,7 +137,7 @@ freeGrid(const inputPars *par, const molData* m ,struct grid* g){
 }
 
 void
-qhull(inputPars *par, struct grid *g){
+qhull(configInfo *par, struct grid *g){
   int i,j,k,id;
   char flags[255];
   boolT ismalloc = False;
@@ -210,7 +210,7 @@ qhull(inputPars *par, struct grid *g){
 }
 
 void
-distCalc(inputPars *par, struct grid *g){
+distCalc(configInfo *par, struct grid *g){
   int i,k,l;
 
   for(i=0;i<par->ncell;i++){
@@ -237,7 +237,7 @@ distCalc(inputPars *par, struct grid *g){
 
 
 void
-write_VTK_unstructured_Points(inputPars *par, struct grid *g){
+write_VTK_unstructured_Points(configInfo *par, struct grid *g){
   FILE *fp;
   double length;
   int i,j,l=0;
@@ -324,12 +324,12 @@ write_VTK_unstructured_Points(inputPars *par, struct grid *g){
 }
 
 void
-dumpGrid(inputPars *par, struct grid *g){
+dumpGrid(configInfo *par, struct grid *g){
   if(par->gridfile) write_VTK_unstructured_Points(par, g);
 }
 
 void
-getArea(inputPars *par, struct grid *g, const gsl_rng *ran){
+getArea(configInfo *par, struct grid *g, const gsl_rng *ran){
   int i,j,k,b;//=-1;
   double *angle,best;
   /*	double wsum; */
@@ -392,7 +392,7 @@ getArea(inputPars *par, struct grid *g, const gsl_rng *ran){
 
 
 void
-getMass(inputPars *par, struct grid *g, const gsl_rng *ran){
+getMass(configInfo *par, struct grid *g, const gsl_rng *ran){
   double mass=0.,dist;
   double vol=0.,dp,dpbest,*farea,suma;
   int i,k,j,best=-1;
@@ -501,7 +501,7 @@ getMass(inputPars *par, struct grid *g, const gsl_rng *ran){
 
 
 void
-buildGrid(inputPars *par, struct grid *g){
+buildGrid(configInfo *par, struct grid *g){
   double lograd;		/* The logarithm of the model radius		*/
   double logmin;	    /* Logarithm of par->minScale				*/
   double r,theta,phi,sinPhi,x,y,z,semiradius;	/* Coordinates								*/

@@ -10,7 +10,7 @@
 #include "lime.h"
 
 void
-popsout(inputPars *par, struct grid *g, molData *m){
+popsout(configInfo *par, struct grid *g, molData *m){
   FILE *fp;
   int j,k,l;
   double dens;
@@ -35,7 +35,7 @@ popsout(inputPars *par, struct grid *g, molData *m){
 
 
 void
-binpopsout(inputPars *par, struct grid *g, molData *m){
+binpopsout(configInfo *par, struct grid *g, molData *m){
   FILE *fp;
   int i,j;
   

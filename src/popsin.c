@@ -11,7 +11,7 @@
 
 
 void
-popsin(inputPars *par, struct grid **g, molData **m, int *popsdone){
+popsin(configInfo *par, struct grid **g, molData **m, int *popsdone){
   FILE *fp;
   int i,j,k;
   double dummy;
