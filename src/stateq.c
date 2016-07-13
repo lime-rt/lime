@@ -14,7 +14,7 @@
 
 
 void
-stateq(int id, struct grid *g, molData *m, int ispec, inputPars *par\
+stateq(int id, struct grid *g, molData *m, int ispec, configInfo *par\
   , gridPointData *mp, double *halfFirstDs, _Bool *luWarningGiven){
 
   int t,s,iter,status;

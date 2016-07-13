@@ -68,7 +68,7 @@ This function returns ds as the (always positive-valued) distance between the pr
 
 
 void
-traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *g, molData *m, image *img, int nlinetot, int *counta, int *countb, double cutoff){
+traceray(rayData ray, int tmptrans, int im, configInfo *par, struct grid *g, molData *m, image *img, int nlinetot, int *counta, int *countb, double cutoff){
   /*
 For a given image pixel position, this function evaluates the intensity of the total light emitted/absorbed along that line of sight through the (possibly rotated) model. The calculation is performed for several frequencies, one per channel of the output image.
 
@@ -202,7 +202,7 @@ Note that the algorithm employed here is similar to that employed in the functio
 
 
 void
-raytrace(int im, inputPars *par, struct grid *g, molData *m, image *img){
+raytrace(int im, configInfo *par, struct grid *g, molData *m, image *img){
   int *counta, *countb,nlinetot,aa;
   int ichan,px,iline,tmptrans,i,threadI,nRaysDone;
   double size,minfreq,absDeltaFreq,totalNumPixelsMinus1=(double)(img[im].pxls*img[im].pxls-1);
@@ -322,7 +322,7 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
 
 
 void
-raytrace_1_4(int im, inputPars *par, struct grid *g, molData *m, image *img){
+raytrace_1_4(int im, configInfo *par, struct grid *g, molData *m, image *img){
   /*
 This is an alternative raytracing algorithm which was implemented by
 C Brinch in version 1.4 (the original parallelized version) of LIME.

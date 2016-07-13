@@ -131,14 +131,14 @@ double gaussline(double v, double oneOnSigma){
 }
 
 
-void calcSourceFn(double dTau, const inputPars *par, double *remnantSnu, double *expDTau){
+void calcSourceFn(double dTau, const configInfo *par, double *remnantSnu, double *expDTau){
   /*
   The source function S is defined as j_nu/alpha, which is clearly not
   defined for alpha==0. However S is used in the algorithm only in the
   term (1-exp[-alpha*ds])*S, which is defined for all values of alpha.
   The present function calculates this term and returns it in the
   argument remnantSnu. For values of abs(alpha*ds) less than a pre-
-  calculated cutoff supplied in inputPars, a Taylor approximation is
+  calculated cutoff supplied in configInfo, a Taylor approximation is
   used.
 
   Note that the same cutoff condition holds for replacement of
@@ -165,7 +165,9 @@ void calcSourceFn(double dTau, const inputPars *par, double *remnantSnu, double 
 
 
 void
-photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPars *par,blend *matrix, gridPointData *mp, double *halfFirstDs){
+photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
+  , configInfo *par, blend *matrix, gridPointData *mp, double *halfFirstDs){
+
   int iphot,iline,jline,here,there,firststep,neighI,np_per_line,ip_at_line,l;
   int *counta, *countb,nlinetot;
   double deltav,segment,vblend,dtau,expDTau,jnu,alpha,ds,vfac[par->nSpecies],pt_theta,pt_z,semiradius;
@@ -298,7 +300,7 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran,inputPar
 }
 
 void
-getjbar(int posn, molData *m, struct grid *g, inputPars *par, gridPointData *mp, double *halfFirstDs){
+getjbar(int posn, molData *m, struct grid *g, configInfo *par, gridPointData *mp, double *halfFirstDs){
   int iline,iphot;
   double tau, expTau, remnantSnu, vsum=0., jnu, alpha;
   int *counta, *countb,nlinetot;

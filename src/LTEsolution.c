@@ -10,7 +10,7 @@
 #include "lime.h"
 
 void
-LTE(inputPars *par, struct grid *g, molData *m){
+LTE(configInfo *par, struct grid *g, molData *m){
   int id,ispec;
 
   for(id=0;id<par->pIntensity;id++){
@@ -22,7 +22,7 @@ LTE(inputPars *par, struct grid *g, molData *m){
   if(par->outputfile) popsout(par,g,m);
 }
 
-void lteOnePoint(inputPars *par, molData *m, const int ispec, const double temp, double *pops){
+void lteOnePoint(configInfo *par, molData *m, const int ispec, const double temp, double *pops){
   int ilev;
   double sum;
 
