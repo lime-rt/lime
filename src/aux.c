@@ -3,7 +3,7 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015 The LIME development team
+ *  Copyright (C) 2016 The LIME development team
  *
  */
 
@@ -15,94 +15,19 @@
 
 void
 parseInput(inputPars *par, image **img, molData **m){
-  FILE *fp;
-  int i,id;
+  int i,id, ispec;
   double BB[3];
-  double cosPhi,sinPhi,cosTheta,sinTheta;
-
-  /* Set default values */
-  par->dust  	    = NULL;
-  par->inputfile    = NULL;
-  par->outputfile   = NULL;
-  par->binoutputfile= NULL;
-  par->gridfile     = NULL;
-  par->pregrid      = NULL;
-  par->restart      = NULL;
-
-  par->tcmb = 2.728;
-  par->lte_only=0;
-  par->init_lte=0;
-  par->sampling=2;
-  par->blend=0;
-  par->antialias=1;
-  par->polarization=0;
-  par->pIntensity=0;
-  par->sinkPoints=0;
-  par->doPregrid=0;
-  par->nThreads=0;
-
-  /* Allocate space for output fits images */
-  (*img)=malloc(sizeof(image)*MAX_NSPECIES);
-  par->moldatfile=malloc(sizeof(char *) * MAX_NSPECIES);
-  for(id=0;id<MAX_NSPECIES;id++){
-    (*img)[id].filename=NULL;
-    par->moldatfile[id]=NULL;
-  }
-  input(par, *img);
-  id=-1;
-  while((*img)[++id].filename!=NULL);
-  par->nImages=id;
-  if(par->nImages==0) {
-    if(!silent) bail_out("Error: no images defined");
-    exit(1);
-  }
-
-  *img=realloc(*img, sizeof(image)*par->nImages);
-
-  id=-1;
-  while(par->moldatfile[++id]!=NULL);
-  par->nSpecies=id;
-  if( par->nSpecies == 0 )
-    {
-      par->nSpecies = 1;
-      free(par->moldatfile);
-      par->moldatfile = NULL;
-    }
-  else
-    {
-      par->moldatfile=realloc(par->moldatfile, sizeof(char *)*par->nSpecies);
-      /* Check if files exists */
-      for(id=0;id<par->nSpecies;id++){
-        if((fp=fopen(par->moldatfile[id], "r"))==NULL) {
-          openSocket(par, id);
-        }
-        else {
-          fclose(fp);
-        }
-      }
-    }
-
-
-  /* Set defaults and read inputPars and img[] */
-  for(i=0;i<par->nImages;i++) {
-    (*img)[i].source_vel=0.0;
-    (*img)[i].phi=0.0;
-    (*img)[i].nchan=0;
-    (*img)[i].velres=-1.;
-    (*img)[i].trans=-1;
-    (*img)[i].freq=-1.;
-    (*img)[i].bandwidth=-1.;
-  }
-  input(par,*img);
-
-  if(par->nThreads == 0){ // Hmm. Really ought to have a separate boolean parameter.
-    par->nThreads = NTHREADS;
-  }
+  double cosPhi,sinPhi,cosTheta,sinTheta,dummyVel[DIM];
 
   par->ncell=par->pIntensity+par->sinkPoints;
   par->radiusSqu=par->radius*par->radius;
   par->minScaleSqu=par->minScale*par->minScale;
   if(par->pregrid!=NULL) par->doPregrid=1;
+
+  /* Check that the user has supplied this function (needed unless par->pregrid):
+  */
+  if(!par->pregrid)
+    velocity(0.0,0.0,0.0, dummyVel);
 
   /*
 Now we need to calculate the cutoff value used in calcSourceFn(). The issue is to decide between
@@ -119,16 +44,6 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
 
   */
   par->taylorCutoff = pow(24.*DBL_EPSILON, 0.25);
-
-  if(par->dust != NULL){
-    if((fp=fopen(par->dust, "r"))==NULL){
-      if(!silent) bail_out("Error opening dust opacity data file!");
-      exit(1);
-    }
-    else  {
-      fclose(fp);
-    }
-  }
 
   /* Allocate pixel space and parse image information */
   for(i=0;i<par->nImages;i++){
@@ -215,8 +130,8 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
       (*m)[i].freq = NULL;
       (*m)[i].beinstu = NULL;
       (*m)[i].beinstl = NULL;
-      (*m)[i].up = NULL;
       (*m)[i].down = NULL;
+      (*m)[i].ntemp = NULL;
       (*m)[i].eterm = NULL;
       (*m)[i].gstat = NULL;
       (*m)[i].cmb = NULL;
@@ -225,9 +140,9 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
 }
 
 void
-freeInput( inputPars *par, image* img, molData* mol )
+freeMoldata( inputPars *par, molData* mol )
 {
-  int i,id;
+  int i;
   if( mol!= 0 )
     {
       for( i=0; i<par->nSpecies; i++ )
@@ -268,14 +183,6 @@ freeInput( inputPars *par, image* img, molData* mol )
             {
               free(mol[i].beinstl);
             }
-          if( mol[i].up != NULL )
-            {
-              free(mol[i].up);
-            }
-          if( mol[i].down != NULL )
-            {
-              free(mol[i].down);
-            }
           if( mol[i].eterm != NULL )
             {
               free(mol[i].eterm);
@@ -292,23 +199,17 @@ freeInput( inputPars *par, image* img, molData* mol )
             {
               free(mol[i].local_cmb);
             }
+
+          if( mol[i].down != NULL )
+            {
+              int j=0;
+              for (j=0;j<mol[i].npart;j++) free(mol[i].down[j]);
+              free(mol[i].down);
+            }
+	 free(mol[i].ntemp);
+
         }
       free(mol);
-    }
-  for(i=0;i<par->nImages;i++){
-    for(id=0;id<(img[i].pxls*img[i].pxls);id++){
-      free( img[i].pixel[id].intense );
-      free( img[i].pixel[id].tau );
-    }
-    free(img[i].pixel);
-  }
-  if( img != NULL )
-    {
-      free(img);
-    }
-  if( par->moldatfile != NULL )
-    {
-      free(par->moldatfile);
     }
 }
 
@@ -342,6 +243,25 @@ invSqrt(float x){
   x = *(float*)&i;
   x = x*(1.5f - xhalf*x*x);
   return x;
+}
+
+void checkGridDensities(inputPars *par, struct grid *g){
+  int i;
+  static _Bool warningAlreadyIssued=0;
+  char errStr[80];
+
+  if(!silent){ /* Warn if any densities too low. */
+    i = 0;
+    while(i<par->pIntensity && !warningAlreadyIssued){
+      if(g[i].dens[0]<TYPICAL_ISM_DENS){
+        warningAlreadyIssued = 1;
+        sprintf(errStr, "g[%d].dens[0] at %.1e is below typical values for the ISM (~%.1e).", i, g[i].dens[0], TYPICAL_ISM_DENS);
+        warning(errStr);
+        warning("This could give you convergence problems. NOTE: no further warnings will be issued.");
+      }
+      i++;
+    }
+  }
 }
 
 void
@@ -432,6 +352,8 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
   blend *matrix;
   struct statistics { double *pop, *ave, *sigma; } *stat;
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
+  _Bool luWarningGiven=0;
+  gsl_error_handler_t *defaultErrorHandler=NULL;
 
   stat=malloc(sizeof(struct statistics)*par->pIntensity);
 
@@ -490,6 +412,13 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
   }
 
   if(par->lte_only==0){
+    defaultErrorHandler = gsl_set_error_handler_off();
+    /*
+This is done to allow proper handling of errors which may arise in the LU solver within stateq(). It is done here because the GSL documentation does not recommend leaving the error handler at the default within multi-threaded code.
+
+While this is off however, other gsl_* etc calls will not exit if they encounter a problem. We may need to pay some attention to trapping their errors.
+    */
+
     do{
       if(!silent) progressbar2(0, prog++, 0, result1, result2);
 
@@ -527,7 +456,8 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
           }
           if(g[id].dens[0] > 0 && g[id].t[0] > 0){
             photon(id,g,m,0,threadRans[threadI],par,matrix,mp,halfFirstDs);
-            for(ispec=0;ispec<par->nSpecies;ispec++) stateq(id,g,m,ispec,par,mp,halfFirstDs);
+            for(ispec=0;ispec<par->nSpecies;ispec++)
+              stateq(id,g,m,ispec,par,mp,halfFirstDs,&luWarningGiven);
           }
           if (threadI == 0){ // i.e., is master thread
             if(!silent) warning("");
@@ -582,6 +512,7 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
       if(!silent) progressbar2(1, prog, percent, result1, result2);
       if(par->outputfile) popsout(par,g,m);
     } while(conv++<NITERATIONS);
+    gsl_set_error_handler(defaultErrorHandler);
     if(par->binoutputfile) binpopsout(par,g,m);
   }
 
