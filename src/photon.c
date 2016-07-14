@@ -21,46 +21,40 @@ int getNextEdge(double *inidir, int id, struct grid *g, const gsl_rng *ran){
               +inidir[1]*g[id].dir[i].xn[1]
               +inidir[2]*g[id].dir[i].xn[2]);
 
-    if(cosAngle>0.0){
+    if(cosAngle>0.0)
       numPositive++;
 
-      if(numPositive==1){
+    if(i==0){
+      largest = cosAngle;
+      iOfLargest = i;
+    }else if(i==1){
+      if(cosAngle>largest){
+        nextLargest = largest;
+        iOfNextLargest = iOfLargest;
         largest = cosAngle;
         iOfLargest = i;
-      }else if(numPositive==2){
-        if(cosAngle>largest){
-          nextLargest = largest;
-          iOfNextLargest = iOfLargest;
-          largest = cosAngle;
-          iOfLargest = i;
-        }else{
-          nextLargest = cosAngle;
-          iOfNextLargest = i;
-        }
       }else{
-        if(cosAngle>largest){
-          nextLargest = largest;
-          iOfNextLargest = iOfLargest;
-          largest = cosAngle;
-          iOfLargest = i;
-        }else if(cosAngle>nextLargest){
-          nextLargest = cosAngle;
-          iOfNextLargest = i;
-        }
+        nextLargest = cosAngle;
+        iOfNextLargest = i;
+      }
+    }else{
+      if(cosAngle>largest){
+        nextLargest = largest;
+        iOfNextLargest = iOfLargest;
+        largest = cosAngle;
+        iOfLargest = i;
+      }else if(cosAngle>nextLargest){
+        nextLargest = cosAngle;
+        iOfNextLargest = i;
       }
     }
   }
 
+  if(!silent && numPositive<=0)
+    warning("Photon propagation error - there are no forward-going edges.");
+
   /* Choose the edge to follow.
   */
-  if(numPositive<=0){
-    if(!silent) bail_out("Photon propagation error - no forward-going edges.");
-    exit(1);
-  }
-
-  if(numPositive==1)
-    return iOfLargest;
-
   mytest = (1.0 + nextLargest)/(2.0 + nextLargest + largest);
   /* The addition of the scalars here is I think essentially arbitrary - they just serve to make the choices a bit more even, which tends to scatter the photon a bit more. */
   if(gsl_rng_uniform(ran)<mytest)
@@ -69,7 +63,6 @@ int getNextEdge(double *inidir, int id, struct grid *g, const gsl_rng *ran){
     return iOfLargest;
 
 }
-
 
 void
 velocityspline(struct grid *g, int id, int k, double binv, double deltav, double *vfac){
