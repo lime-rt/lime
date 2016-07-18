@@ -343,75 +343,132 @@ continuumSetup(int im, image *img, molData *m, configInfo *par, struct grid *g){
   kappa(m,g,par,0);
 }
 
-void
-lineCount(int n,molData *m,int **counta,int **countb,int *nlinetot){
-  int ispec,iline,count;
+void freeMolsWithBlends(struct molWithBlends *mols, const int numMolsWithBlends){
+  int mi, li;
 
-  *nlinetot=0;
-  for(ispec=0;ispec<n;ispec++) *nlinetot+=m[ispec].nline;
-  if(*nlinetot > 0){
-  *counta=malloc(sizeof(*counta)* *nlinetot);
-  *countb=malloc(sizeof(*countb)* *nlinetot);
-  } else {
-    if(!silent) bail_out("Error: Line count finds no lines");
-    exit(0);
-  }
-  count=0;
-  for(ispec=0;ispec<n;ispec++) {
-    for(iline=0;iline<m[ispec].nline;iline++){
-      (*counta)[count]=ispec;
-      (*countb)[count++]=iline;
+  if(mols != NULL){
+    for(mi=0;mi<numMolsWithBlends;mi++){
+      if(mols[mi].lines != NULL){
+        for(li=0;li<mols[mi].numLinesWithBlends;li++){
+          if(mols[mi].lines[li].blends != NULL){
+            free(mols[mi].lines[li].blends);
+          }
+        }
+        free(mols[mi].lines);
+      }
     }
+    free(mols);
   }
 }
 
-void
-lineBlend(molData *m, configInfo *par, blend **matrix){
-  int iline, jline, nlinetot=0,c;
-  int *counta,*countb;
+void lineBlend(molData *m, configInfo *par, struct blendInfo *blends){
+  /*
+This obtains information on all the lines of all the radiating species which have other lines within some cutoff velocity separation.
 
-  lineCount(par->nSpecies, m, &counta, &countb, &nlinetot);
+A variable of type 'struct blendInfo' has a nested structure which can be illustrated diagrammaticaly as follows.
 
-  c=0;
-  for(iline=0;iline<nlinetot;iline++){
-    for(jline=0;jline<nlinetot;jline++){
-      if(fabs((m[counta[jline]].freq[countb[jline]]-m[counta[iline]].freq[countb[iline]])/m[counta[iline]].freq[countb[iline]]*CLIGHT) < blendmask
-         && iline !=jline) c++;
-    }
-  }
-  if(c>0){
-    if(par->blend){
-      if(!silent) warning("There are blended lines (Line blending is switched on)");
-    } else {
-      if(!silent) warning("There are blended lines (Line blending is switched off)");
-    }
+  Structs:	blendInfo		molWithBlends		lineWithBlends		blend
 
-    (*matrix)=malloc(sizeof(blend)*c);
+  Variables:	blends
+		  .numMolsWithBlends     ____________________
+		  .*mols--------------->|.molI               |
+		                        |.numLinesWithBlends |   ___________
+		                        |.*lines--------------->|.lineI     |
+		                        |____________________|  |.numBlends |           ________
+		                        |        etc         |  |.*blends------------->|.molJ   |
+		                                                |___________|          |.lineJ  |
+		                                                |    etc    |          |.deltaV |
+		                                                                       |________|
+		                                                                       |   etc  |
 
-    c=0;
-    for(iline=0;iline<nlinetot;iline++){
-      for(jline=0;jline<nlinetot;jline++){
-        if(fabs((m[counta[jline]].freq[countb[jline]]-m[counta[iline]].freq[countb[iline]])/m[counta[iline]].freq[countb[iline]]*CLIGHT) < blendmask
-           && iline != jline){
-          (*matrix)[c].line1=iline;
-          (*matrix)[c].line2=jline;
-          (*matrix)[c++].deltav=-(m[counta[jline]].freq[countb[jline]]-m[counta[iline]].freq[countb[iline]])/m[counta[iline]].freq[countb[iline]]*CLIGHT;
+Pointers are indicated by a * before the attribute name and an arrow to the memory location pointed to.
+  */
+  int molI, lineI, molJ, lineJ;
+  int nmwb, nlwb, numBlendsFound, li, bi;
+  double deltaV;
+  struct blend *tempBlends=NULL;
+  struct lineWithBlends *tempLines=NULL;
+
+  /* Dimension blends.mols first to the total number of species, then realloc later if need be.
+  */
+  (*blends).mols = malloc(sizeof(struct molWithBlends)*par->nSpecies);
+  (*blends).numMolsWithBlends = 0;
+
+  nmwb = 0;
+  for(molI=0;molI<par->nSpecies;molI++){
+    tempBlends = malloc(sizeof(struct blend)*m[molI].nline);
+    tempLines  = malloc(sizeof(struct lineWithBlends)*m[molI].nline);
+
+    nlwb = 0;
+    for(lineI=0;lineI<m[molI].nline;lineI++){
+      numBlendsFound = 0;
+      for(molJ=0;molJ<par->nSpecies;molJ++){
+        for(lineJ=0;lineJ<m[molJ].nline;lineJ++){
+          if(!(molI==molJ && lineI==lineJ)){
+            deltaV = (m[molJ].freq[lineJ] - m[molI].freq[lineI])*CLIGHT/m[molI].freq[lineI];
+            if(fabs(deltaV)<maxBlendDeltaV){
+              tempBlends[numBlendsFound].molJ   = molJ;
+              tempBlends[numBlendsFound].lineJ  = lineJ;
+              tempBlends[numBlendsFound].deltaV = deltaV;
+              numBlendsFound++;
+            }
+          }
         }
       }
-    }
-  }
-  free(counta);
-  free(countb);
 
+      if(numBlendsFound>0){
+        tempLines[nlwb].lineI = lineI;
+        tempLines[nlwb].numBlends = numBlendsFound;
+        tempLines[nlwb].blends = malloc(sizeof(struct blend)*numBlendsFound);
+        for(bi=0;bi<numBlendsFound;bi++)
+          tempLines[nlwb].blends[bi] = tempBlends[bi];
+
+        nlwb++;
+      }
+    }
+
+    if(nlwb>0){
+      (*blends).mols[nmwb].molI = molI;
+      (*blends).mols[nmwb].numLinesWithBlends = nlwb;
+      (*blends).mols[nmwb].lines = malloc(sizeof(struct lineWithBlends)*nlwb);
+      for(li=0;li<nlwb;li++){
+        (*blends).mols[nmwb].lines[li].lineI     = tempLines[li].lineI;
+        (*blends).mols[nmwb].lines[li].numBlends = tempLines[li].numBlends;
+        (*blends).mols[nmwb].lines[li].blends = malloc(sizeof(struct blend)*tempLines[li].numBlends);
+        for(bi=0;bi<tempLines[li].numBlends;bi++)
+          (*blends).mols[nmwb].lines[li].blends[bi] = tempLines[li].blends[bi];
+      }
+
+      nmwb++;
+    }
+
+    free(tempLines);
+    free(tempBlends);
+  }
+
+  (*blends).numMolsWithBlends = nmwb;
+  if(nmwb>0){
+    if(!par->blend)
+      if(!silent) warning("There are blended lines, but line blending is switched off.");
+
+    (*blends).mols = realloc((*blends).mols, sizeof(struct molWithBlends)*nmwb);
+  }else{
+    if(par->blend)
+      if(!silent) warning("Line blending is switched on, but no blended lines were found.");
+
+    free((*blends).mols);
+    (*blends).mols = NULL;
+  }
 }
 
 void
 levelPops(molData *m, configInfo *par, struct grid *g, int *popsdone){
-  int id,conv=0,iter,ilev,prog=0,ispec,c=0,n,i,threadI,nVerticesDone;
+  int id,conv=0,iter,ilev,prog=0,ispec,c=0,n,i,threadI,nVerticesDone,nlinetot;
   double percent=0.,*median,result1=0,result2=0,snr,delta_pop;
-  blend *matrix;
+  int nextMolWithBlend;
   struct statistics { double *pop, *ave, *sigma; } *stat;
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
+  struct blendInfo blends;
   _Bool luWarningGiven=0;
   gsl_error_handler_t *defaultErrorHandler=NULL;
 
@@ -446,11 +503,17 @@ levelPops(molData *m, configInfo *par, struct grid *g, int *popsdone){
     gsl_rng_set(threadRans[i],(int)(gsl_rng_uniform(ran)*1e6));
   }
 
-  /* Read in all molecular data */
-  for(id=0;id<par->nSpecies;id++) molinit(m,par,g,id);
+  /* Read in all molecular data.
+  */
+  nlinetot = 0;
+  for(id=0;id<par->nSpecies;id++){
+    molinit(m,par,g,id);
+    nlinetot += m[id].nline;
+  }
 
-  /* Check for blended lines */
-  lineBlend(m,par,&matrix);
+  /* Check for blended lines.
+  */
+  lineBlend(m, par, &blends);
 
   if(par->lte_only!=0) LTE(par,g,m);
 
@@ -491,7 +554,7 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
 
       nVerticesDone=0;
       omp_set_dynamic(0);
-#pragma omp parallel private(i,id,ispec,threadI) num_threads(par->nThreads)
+#pragma omp parallel private(id,ispec,threadI,nextMolWithBlend) num_threads(par->nThreads)
       {
         threadI = omp_get_thread_num();
 
@@ -499,10 +562,10 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
         gridPointData *mp;	// Could have declared them earlier
         double *halfFirstDs;	// and included them in private() I guess.
         mp=malloc(sizeof(gridPointData)*par->nSpecies);
-        for (i=0;i<par->nSpecies;i++){
-          mp[i].phot = malloc(sizeof(double)*m[i].nline*max_phot);
-          mp[i].vfac = malloc(sizeof(double)*           max_phot);
-          mp[i].jbar = malloc(sizeof(double)*m[i].nline);
+        for (ispec=0;ispec<par->nSpecies;ispec++){
+          mp[ispec].phot = malloc(sizeof(double)*m[ispec].nline*max_phot);
+          mp[ispec].vfac = malloc(sizeof(double)*               max_phot);
+          mp[ispec].jbar = malloc(sizeof(double)*m[ispec].nline);
         }
         halfFirstDs = malloc(sizeof(*halfFirstDs)*max_phot);
 
@@ -515,9 +578,13 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
             if(!silent) progressbar((double)nVerticesDone/par->pIntensity,10);
           }
           if(g[id].dens[0] > 0 && g[id].t[0] > 0){
-            photon(id,g,m,0,threadRans[threadI],par,matrix,mp,halfFirstDs);
-            for(ispec=0;ispec<par->nSpecies;ispec++)
-              stateq(id,g,m,ispec,par,mp,halfFirstDs,&luWarningGiven);
+            photon(id,g,m,0,threadRans[threadI],par,nlinetot,blends,mp,halfFirstDs);
+            nextMolWithBlend = 0;
+            for(ispec=0;ispec<par->nSpecies;ispec++){
+              stateq(id,g,m,ispec,par,blends,nextMolWithBlend,mp,halfFirstDs,&luWarningGiven);
+              if(par->blend && blends.mols!=NULL && ispec==blends.mols[nextMolWithBlend].molI)
+                nextMolWithBlend++;
+            }
           }
           if (threadI == 0){ // i.e., is master thread
             if(!silent) warning("");
@@ -576,17 +643,18 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
     if(par->binoutputfile) binpopsout(par,g,m);
   }
 
-  for (i=0;i<par->nThreads;i++){
-    gsl_rng_free(threadRans[i]);
-  }
-  free(threadRans);
-  gsl_rng_free(ran);
   for(id=0;id<par->pIntensity;id++){
     free(stat[id].pop);
     free(stat[id].ave);
     free(stat[id].sigma);
   }
   free(stat);
+  freeMolsWithBlends(blends.mols, blends.numMolsWithBlends);
+  for (i=0;i<par->nThreads;i++){
+    gsl_rng_free(threadRans[i]);
+  }
+  free(threadRans);
+  gsl_rng_free(ran);
   *popsdone=1;
 }
 
