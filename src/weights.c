@@ -10,7 +10,7 @@
 #include "lime.h"
 
 int
-pointEvaluation(inputPars *par,double ran, double x, double y, double z){
+pointEvaluation(configInfo *par,double ran, double x, double y, double z){
   double weight1, weight2, val[99],normalizer=0.0,totalDensity=0.0;
   int i;
 

@@ -10,7 +10,7 @@
 #include "lime.h"
 
 void
-kappa(molData *m, struct grid *g, inputPars *par, int s){
+kappa(molData *m, struct grid *g, configInfo *par, int s){
   FILE *fp;
   char string[80];
   int i=0,k,j,iline,id;
@@ -55,7 +55,8 @@ kappa(molData *m, struct grid *g, inputPars *par, int s){
         kappatab[j]=0.1*pow(10.,kaptab[0] + (loglam-lamtab[0]) * (kaptab[1]-kaptab[0])/(lamtab[1]-lamtab[0]));
       } else if(loglam > lamtab[i-1]){
         kappatab[j]=0.1*pow(10.,kaptab[i-2] + (loglam-lamtab[i-2]) * (kaptab[i-1]-kaptab[i-2])/(lamtab[i-1]-lamtab[i-2]));
-      } else kappatab[j]=0.1*pow(10.,gsl_spline_eval(spline,loglam,acc));
+      } else
+        kappatab[j]=0.1*pow(10.,gsl_spline_eval(spline,loglam,acc));
     }
     gsl_spline_free(spline);
     gsl_interp_accel_free(acc);
@@ -67,14 +68,15 @@ kappa(molData *m, struct grid *g, inputPars *par, int s){
     for(id=0;id<par->ncell;id++){
       gasIIdust(g[id].x[0],g[id].x[1],g[id].x[2],&gtd);
       g[id].mol[s].knu[iline]=kappatab[iline]*2.4*AMU/gtd*g[id].dens[0];
-      //Check if input model supplies a dust temperature. Otherwise use the kinetic temperature
+
+      /* Check if input model supplies a dust temperature. Otherwise use the kinetic temperature. */
       if(g[id].t[1]==-1) {
         g[id].mol[s].dust[iline]=planckfunc(iline,g[id].t[0],m,s);
       } else {
         g[id].mol[s].dust[iline]=planckfunc(iline,g[id].t[1],m,s);
       }
     }
-    // fix the normalization at 230GHz
+    /* Fix the normalization at 230GHz. */
     m[s].norm=planckfunc(0,par->tcmb,m,0);
     m[s].norminv=1./m[s].norm;
     if(par->tcmb>0.) m[s].cmb[iline]=planckfunc(iline,par->tcmb,m,s)/m[s].norm;
@@ -102,13 +104,14 @@ planckfunc(int iline, double temp, molData *m,int s){
 }
 
 void
-molinit(molData *m, inputPars *par, struct grid *g,int i){
-  int id, ilev, iline, itrans, ispec, itemp, *ntemp, tnint=-1, idummy, ipart, *count,flag=0;
-  char *collpartname[] = {"H2","p-H2","o-H2","electrons","H","He","H+"}; /* definition from LAMDA */
+molinit(molData *m, configInfo *par, struct grid *g,int i){
+  int id, ilev, iline, itrans, ispec, itemp, *ntemp, tnint=-1, idummy, ipart, *collPartIDs,flag=0;
+  char *collpartnames[] = {"H2","p-H2","o-H2","electrons","H","He","H+"}; /* definition from LAMDA */
   double fac, uprate, downrate=0, dummy, amass;
   struct data { double *colld, *temp; } *part;
+  const int sizeI=200;
 
-  char string[200], specref[90], partstr[90];
+  char string[sizeI], specref[90], partstr[90];
   FILE *fp;
 
   if((fp=fopen(par->moldatfile[i], "r"))==NULL) {
@@ -117,13 +120,13 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
   }
 
   /* Read the header of the data file */
-  fgets(string, 80, fp);
+  fgets(string, sizeI, fp);
   fgets(specref, 90, fp);
-  fgets(string, 80, fp);
+  fgets(string, sizeI, fp);
   fscanf(fp, "%lf\n", &amass);
-  fgets(string, 80, fp);
+  fgets(string, sizeI, fp);
   fscanf(fp, "%d\n", &m[i].nlev);
-  fgets(string, 80, fp);
+  fgets(string, sizeI, fp);
 
   m[i].eterm=malloc(sizeof(double)*m[i].nlev);
   m[i].gstat=malloc(sizeof(double)*m[i].nlev);
@@ -131,13 +134,13 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
   /* Read the level energies and statistical weights */
   for(ilev=0;ilev<m[i].nlev;ilev++){
     fscanf(fp, "%d %lf %lf", &idummy, &m[i].eterm[ilev], &m[i].gstat[ilev]);
-    fgets(string, 80, fp);
+    fgets(string, sizeI, fp);
   }
 
   /* Read the number of transitions and allocate array space */
-  fgets(string, 80, fp);
+  fgets(string, sizeI, fp);
   fscanf(fp, "%d\n", &m[i].nline);
-  fgets(string, 80, fp);
+  fgets(string, sizeI, fp);
 
   m[i].lal     = malloc(sizeof(int)*m[i].nline);
   m[i].lau     = malloc(sizeof(int)*m[i].nline);
@@ -168,18 +171,17 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
     g[id].mol[i].binv=1./g[id].mol[i].dopb;
   }
 
-
   /* Collision rates below here */
   if(par->lte_only==0){
-    fgets(string, 80, fp);
+    fgets(string, sizeI, fp);
     fscanf(fp,"%d\n", &m[i].npart);
-    count=malloc(sizeof(*count)*m[i].npart);
+    collPartIDs=malloc(sizeof(*collPartIDs)*m[i].npart);
     m[i].down=malloc(sizeof(double*)*m[i].npart);
     /* collision partner sanity check */
 
     if(m[i].npart > par->collPart) flag=1;
     if(m[i].npart < par->collPart){
-      if(!silent) bail_out("Error: Too many density profiles defined");
+      if(!silent) bail_out("Too many density profiles defined");
       exit(1);
     }
 
@@ -189,14 +191,28 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
     part = malloc(sizeof(struct data) * m[i].npart);
 
     for(ipart=0;ipart<m[i].npart;ipart++){
-      fgets(string, 80, fp);
-      fscanf(fp,"%d\n", &count[ipart]);
-      fgets(string, 80, fp);
-      fgets(string, 80, fp);
+      fgets(string, sizeI, fp);
+      fscanf(fp,"%d\n", &collPartIDs[ipart]);
+
+      /* We want to test if the comment after the coll partner ID number is longer than the buffer size. To do this, we write a character - any character, as long as it is not \0 - to the last element of the buffer:
+      */
+      string[sizeof(string)-1] = 'x';
+      if(fgets(string, sizeI, fp)==NULL){
+        if(!silent) bail_out("Read of collision-partner comment line failed.");
+        exit(1);
+      } else{
+        if(string[sizeof(string)-1]=='\0' && string[sizeof(string)-2]!='\n'){
+          /* The presence now of a final \0 means the comment string was either just long enough for the buffer, or too long; the absence of \n in the 2nd-last place means it was too long.
+          */
+          if(!silent) bail_out("Collision-partner comment line is too long.");
+          exit(1);
+        }
+      }
+      fgets(string, sizeI, fp);
       fscanf(fp,"%d\n", &m[i].ntrans[ipart]);
-      fgets(string, 80, fp);
+      fgets(string, sizeI, fp);
       fscanf(fp,"%d\n", &ntemp[ipart]);
-      fgets(string, 80, fp);
+      fgets(string, sizeI, fp);
 
       part[ipart].temp=malloc(sizeof(double)*ntemp[ipart]);
 
@@ -210,7 +226,7 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
       }
 
       fscanf(fp,"\n");
-      fgets(string, 80, fp);
+      fgets(string, sizeI, fp);
 
       part[ipart].colld=malloc(sizeof(double)*m[i].ntrans[ipart]*ntemp[ipart]);
 
@@ -236,10 +252,10 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
     fclose(fp);
 
     /* Print out collision partner information */
-    strcpy(partstr, collpartname[count[0]-1]);
+    strcpy(partstr, collpartnames[collPartIDs[0]-1]);
     for(ipart=1;ipart<m[i].npart;ipart++){
       strcat( partstr, ", ");
-      strcat( partstr, collpartname[count[ipart]-1]);
+      strcat( partstr, collpartnames[collPartIDs[ipart]-1]);
     }
     if(!silent) {
       collpartmesg(specref, m[i].npart);
@@ -250,9 +266,12 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
     /* Calculate molecular density */
     for(id=0;id<par->ncell; id++){
       for(ispec=0;ispec<par->nSpecies;ispec++){
-        if(m[i].npart == 1 && (count[0] == 1 || count[0] == 2 || count[0] == 3)){
+        if(m[i].npart == 1\
+        && (collPartIDs[0]==CP_H2 || collPartIDs[0]==CP_p_H2 || collPartIDs[0]==CP_o_H2)){
           g[id].nmol[ispec]=g[id].abun[ispec]*g[id].dens[0];
-        } else if(m[i].npart == 2 && (count[0] == 2 || count[0] == 3) && (count[1] == 2 || count[1] == 3)){
+        } else if(m[i].npart == 2\
+        && (collPartIDs[0]==CP_p_H2 || collPartIDs[0]==CP_o_H2)\
+        && (collPartIDs[1]==CP_p_H2 || collPartIDs[1]==CP_o_H2)){
           if(!flag){
             g[id].nmol[ispec]=g[id].abun[ispec]*(g[id].dens[0]+g[id].dens[1]);
           } else {
@@ -283,13 +302,13 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
             g[id].mol[i].partner[ipart].t_binlow = tnint;
             g[id].mol[i].partner[ipart].interp_coeff = fac;
 
-	    } else if(g[id].t[0]<=part[ipart].temp[0]) {
-	      g[id].mol[i].partner[ipart].t_binlow=0;
-	      g[id].mol[i].partner[ipart].interp_coeff=0.0;
-	    } else {
-	      g[id].mol[i].partner[ipart].t_binlow=ntemp[ipart]-2;
-	      g[id].mol[i].partner[ipart].interp_coeff=1.0;
-	   }
+	  } else if(g[id].t[0]<=part[ipart].temp[0]) {
+	    g[id].mol[i].partner[ipart].t_binlow=0;
+	    g[id].mol[i].partner[ipart].interp_coeff=0.0;
+	  } else {
+	    g[id].mol[i].partner[ipart].t_binlow=ntemp[ipart]-2;
+	    g[id].mol[i].partner[ipart].interp_coeff=1.0;
+	  }
         }
       }
     }
@@ -299,7 +318,7 @@ molinit(molData *m, inputPars *par, struct grid *g,int i){
     }
     free(ntemp);
     free(part);
-    free(count);
+    free(collPartIDs);
   }
   /* End of collision rates */
 

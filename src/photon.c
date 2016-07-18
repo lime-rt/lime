@@ -146,14 +146,14 @@ double gaussline(double v, double oneOnSigma){
 }
 
 
-void calcSourceFn(double dTau, const inputPars *par, double *remnantSnu, double *expDTau){
+void calcSourceFn(double dTau, const configInfo *par, double *remnantSnu, double *expDTau){
   /*
   The source function S is defined as j_nu/alpha, which is clearly not
   defined for alpha==0. However S is used in the algorithm only in the
   term (1-exp[-alpha*ds])*S, which is defined for all values of alpha.
   The present function calculates this term and returns it in the
   argument remnantSnu. For values of abs(alpha*ds) less than a pre-
-  calculated cutoff supplied in inputPars, a Taylor approximation is
+  calculated cutoff supplied in configInfo, a Taylor approximation is
   used.
 
   Note that the same cutoff condition holds for replacement of
@@ -180,7 +180,7 @@ void calcSourceFn(double dTau, const inputPars *par, double *remnantSnu, double 
 
 void
 photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
-  , inputPars *par, const int nlinetot, struct blendInfo blends\
+  , configInfo *par, const int nlinetot, struct blendInfo blends\
   , gridPointData *mp, double *halfFirstDs){
 
   int iphot,iline,here,there,firststep,neighI,np_per_line,ip_at_line;
@@ -348,7 +348,7 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
 
 void
 getjbar(int posn, molData *m, struct grid *g, const int molI\
-  , inputPars *par, struct blendInfo blends, int nextMolWithBlend\
+  , configInfo *par, struct blendInfo blends, int nextMolWithBlend\
   , gridPointData *mp, double *halfFirstDs){
 
   int lineI,iphot,bi,molJ,lineJ,nextLineWithBlend;

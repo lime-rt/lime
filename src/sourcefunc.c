@@ -70,36 +70,28 @@ sourceFunc_cont(double *jnu, double *alpha,struct grid *g,int pos,int ispec, int
   return;
 }
 
-void
-sourceFunc_pol(double *snu, double *dtau, double ds, molData *m,double vfac,struct grid *g,int pos,int ispec, int iline,double incl){
-  double dSigma, dSigma2, dI, dQ, dU, alpha;
-  double angle[3];
+void sourceFunc_pol(double *snu, double *alpha, struct grid *g, int pos, int ispec, int iline, double (*rotMat)[3]){
+  /*
+The theory behind this was originally drawn from
+
+  Padovani, M. et al, A&A 543, A16 (2012)
+
+and references therein. However, as pointed out in Ade, P. A. R. et al, A&A 576, A105 (2015), Padovani's expression for sigma2 is too small by a factor of 2. This correction has been propagated here.
+  */
+  double jnu, trigFuncs[3];
   
-  stokesangles(g[pos].x[0],g[pos].x[1],g[pos].x[2],incl,angle);
+  stokesangles(g[pos].x[0], g[pos].x[1], g[pos].x[2], rotMat, trigFuncs);
   
   /* Emission */
   /* Continuum part:	j_nu = rho_dust * kappa_nu */
-  dSigma	 = g[pos].mol[ispec].dust[iline]*g[pos].mol[ispec].knu[iline];
-  dSigma2	 = maxp*g[pos].mol[ispec].dust[iline]*g[pos].mol[ispec].knu[iline]*(0.5*angle[2]*angle[2]-1./3.);
-  dI	     = dSigma - dSigma2;
-  dQ		 = maxp*g[pos].mol[ispec].dust[iline]*g[pos].mol[ispec].knu[iline]*(2.*angle[0]*angle[0]-1.)*angle[2]*angle[2];
-  dU		 = maxp*g[pos].mol[ispec].dust[iline]*g[pos].mol[ispec].knu[iline]*(2.*angle[0]*angle[1]*angle[2]*angle[2]);
+  jnu = g[pos].mol[ispec].dust[iline]*g[pos].mol[ispec].knu[iline];
+  snu[0] = jnu*(1.0 - maxp*(trigFuncs[0] - 2.0/3.0));
+  snu[1] = jnu*maxp*trigFuncs[1]*trigFuncs[0];
+  snu[2] = jnu*maxp*trigFuncs[2]*trigFuncs[0];
   
   /* Absorption */
   /* Continuum part: Dust opacity */
-  alpha  = g[pos].mol[ispec].knu[iline];
-  
-  /* Calculate source function and tau */
-  *snu=0.;
-  *dtau=0.;
-  if(fabs(alpha)>0.){
-    snu[0]=(dI/alpha)*m[ispec].norminv;
-    snu[1]=-(dQ/alpha)*m[ispec].norminv;
-    snu[2]=-(dU/alpha)*m[ispec].norminv;
-    
-    *dtau= alpha*ds;
-  }
-  return;
+  *alpha = g[pos].mol[ispec].knu[iline];
 }
 
 

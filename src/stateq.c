@@ -14,7 +14,7 @@
 
 
 void
-stateq(int id, struct grid *g, molData *m, const int ispec, inputPars *par\
+stateq(int id, struct grid *g, molData *m, const int ispec, configInfo *par\
   , struct blendInfo blends, int nextMolWithBlend, gridPointData *mp\
   , double *halfFirstDs, _Bool *luWarningGiven){
 
