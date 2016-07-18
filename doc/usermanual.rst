@@ -760,7 +760,7 @@ par->polarization is set.
 Gas-to-dust ratio
 ~~~~~~~~~~~~~~~~~
 
-Finally the gas-to-dust ratio is an optional function which the user can
+The gas-to-dust ratio is an optional function which the user can
 choose to include in the model.c file. If this function is left out,
 LIME defaults to a dust-to-gas ratio of 100 everywhere. This number only
 has an effect if the continuum is included in the calculations.
@@ -771,6 +771,36 @@ has an effect if the continuum is included in the calculations.
     gasIIdust(double x, double y, double z, double *gtd){
       *gtd = f(x,y,z);
     }
+
+Grid point number density
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In LIME 1.5 and earlier, the number density of the random grid points was tied directly to the density of the first collision partner. The newly introduced function gridDensity now gives the user the ability to option this link and specify the grid point distribution as they please. Note that LIME defaults to the previous algorithm if the function is not supplied.
+
+.. code:: c
+
+    void
+    gridDensity(configInfo par, double x, double y, double z, double *fracDensity){
+      *fracDensity = f(x,y,z);
+    }
+
+Notes:
+  1. The returned variable is a scalar, like the doppler width described above. That's why you need to put the star in front of the variable name when setting its value.
+  2. This is the only function which includes the input parameters among the arguments. You cannot write to these, they are only supplied so that you can use their values if you wish to. Because of their 'read-only' character, you should invoke them as in the following example:
+  3. Due to the algorithm used to choose the grid points, we cannot yet make this function have quite the effect intended. Eventually we will manage to do so, but at present we cannot make a hard connection between the values for ``fracDensity`` you set and the actual grid point number density. In many ways LIME is still a work in progress. **In particular**, for the time being, you need to make sure that ``gridDensity()`` returns ``fracDensity=1`` for at least **one** location in the model space. Functions without steps are also recommended.
+
+.. code:: c
+
+    par.minScale
+
+rather than
+
+.. code:: c
+
+    par->minScale
+
+as in the input() function.
+
 
 Other settings
 ~~~~~~~~~~~~~~
@@ -949,7 +979,7 @@ and
 ::
 
     void
-    teperature(double x, double y, double z, double *temperature){
+    temperature(double x, double y, double z, double *temperature){
       temperature[0]=ratranInput("model.mdl", "te", x,y,z);
     }
 
