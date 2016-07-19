@@ -10,7 +10,7 @@
 #include "lime.h"
 
 void
-predefinedGrid(inputPars *par, struct grid *g){
+predefinedGrid(configInfo *par, struct grid *g){
   FILE *fp;
   int i;
   double x,y,z,scale;
@@ -47,6 +47,8 @@ predefinedGrid(inputPars *par, struct grid *g){
 	g[i].neigh =malloc(sizeof(struct grid *)*1);
 	if(!silent) progressbar((double) i/((double)par->pIntensity-1), 4);	
   }
+
+  checkGridDensities(par, g);
 
   for(i=par->pIntensity;i<par->ncell;i++){
     x=2*gsl_rng_uniform(ran)-1.;

@@ -3,9 +3,14 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015 The LIME development team
+ *  Copyright (C) 2016 The LIME development team
  *
  */
+
+#ifndef LIME_H
+#define LIME_H
+
+#include "inpars.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -38,7 +43,6 @@
 #define omp_set_dynamic(int) 0
 #endif
 
-#define silent 0
 #define DIM 3
 #define VERSION	"1.5"
 #define DEFAULT_NTHREADS 1
@@ -76,13 +80,24 @@
 #define MAXITER                 50
 #define goal                    50
 #define fixset                  1e-6
-#define blendmask               1.e4
+#define maxBlendDeltaV		1.e4		/* m/s */
 #define MAX_NSPECIES            100
+#define MAX_NIMAGES             100
 #define N_RAN_PER_SEGMENT       3
 #define FAST_EXP_MAX_TAYLOR	3
 #define FAST_EXP_NUM_BITS	8
 #define MAX_N_COLL_PART		7
 #define N_SMOOTH_ITERS          20
+#define TYPICAL_ISM_DENS        1000.0
+
+/* Collision partner ID numbers from LAMDA */
+#define CP_H2			1
+#define CP_p_H2			2
+#define CP_o_H2			3
+#define CP_e			4
+#define CP_H			5
+#define CP_He			6
+#define CP_Hplus		7
 
 /* Collision partner ID numbers from LAMDA */
 #define CP_H2			1
@@ -94,19 +109,19 @@
 #define CP_Hplus		7
 
 
-/* input parameters */
 typedef struct {
-  double radius,radiusSqu,minScale,minScaleSqu,tcmb,taylorCutoff,*nMolWeights,*dustWeights;
-  int ncell,sinkPoints,pIntensity,nImages,nSpecies,blend;
-  char *outputfile, *binoutputfile, *inputfile;
+  double radius,minScale,tcmb,*nMolWeights,*dustWeights;
+  double radiusSqu,minScaleSqu,taylorCutoff;
+  int sinkPoints,pIntensity,blend,*collPartIds;
+  int ncell,nImages,nSpecies,numDensities,doPregrid;
+  char *outputfile, *binoutputfile;
   char *gridfile;
   char *pregrid;
   char *restart;
   char *dust;
-  int sampling,lte_only,init_lte,antialias,polarization,doPregrid,nThreads;
+  int sampling,lte_only,init_lte,antialias,polarization,nThreads;
   char **moldatfile;
-  int *collPartIds,numDensities; /* numDensities should equal the number of density function returns (or the number of density values in the respective input files, if pregrid or restart are desired), and also eventually the number of elements in collPartIds and nMolWeights. */
-} inputPars;
+} configInfo;
 
 struct cpData {
   double *down,*temp;
@@ -190,15 +205,32 @@ typedef struct {
   double rotMat[3][3];
 } image;
 
-typedef struct {
-  int line1, line2;
-  double deltav;
-} blend;
-
 typedef struct {double x,y, *intensity, *tau;} rayData;
 
+struct blend{
+  int molJ, lineJ;
+  double deltaV;
+};
 
-/* Some functions */
+struct lineWithBlends{
+  int lineI, numBlends;
+  struct blend *blends;
+};
+
+struct molWithBlends{
+  int molI, numLinesWithBlends;
+  struct lineWithBlends *lines;
+};
+
+struct blendInfo{
+  int numMolsWithBlends;
+  struct molWithBlends *mols;
+};
+
+/* Some global variables */
+int silent;
+
+/* User-specifiable functions */
 void density(double,double,double,double *);
 void temperature(double,double,double,double *);
 void abundance(double,double,double,double *);
@@ -206,80 +238,86 @@ void doppler(double,double,double, double *);
 void velocity(double,double,double,double *);
 void magfield(double,double,double,double *);
 void gasIIdust(double,double,double,double *);
+void gridDensity(configInfo,double,double,double,double*);
 
 /* More functions */
+void	run(inputPars, image *);
 
-void	assignMolCollPartsToDensities(inputPars*, molData*);
-void   	binpopsout(inputPars *, struct grid *, molData *);
-void   	buildGrid(inputPars *, struct grid *);
+void	assignMolCollPartsToDensities(configInfo*, molData*);
+void	binpopsout(configInfo *, struct grid *, molData *);
+void	buildGrid(configInfo *, struct grid *);
 void	calcFastExpRange(const int, const int, int*, int*, int*);
-void	calcGridCollRates(inputPars*, molData*, struct grid*);
-void	calcGridDustOpacity(inputPars*, molData*, struct grid*);
-void	calcGridMolDensities(inputPars*, struct grid*);
-void	calcMolCMBs(inputPars*, molData*);
-void    calcSourceFn(double dTau, const inputPars *par, double *remnantSnu, double *expDTau);
+void	calcGridCollRates(configInfo*, molData*, struct grid*);
+void	calcGridDustOpacity(configInfo*, molData*, struct grid*);
+void	calcGridMolDensities(configInfo*, struct grid*);
+void	calcMolCMBs(configInfo*, molData*);
+void	calcSourceFn(double, const configInfo*, double*, double*);
 void	calcTableEntries(const int, const int);
-void	checkUserDensWeights(inputPars*);
-void	continuumSetup(int, image *, molData *, inputPars *, struct grid *);
-void	distCalc(inputPars *, struct grid *);
+void	checkGridDensities(configInfo*, struct grid*);
+void	checkUserDensWeights(configInfo*);
+void	continuumSetup(int, image*, molData*, configInfo*, struct grid*);
+void	distCalc(configInfo*, struct grid*);
 int	factorial(const int);
 double	FastExp(const float);
 void	fit_d1fi(double, double, double*);
-void    fit_fi(double, double, double*);
-void    fit_rr(double, double, double*);
-void   	freeGrid(const inputPars*, const molData*, struct grid*);
-void    freeInput(inputPars*, image* );
-void	freeGridPointData(inputPars*, gridPointData*);
-void	freeMolData( inputPars*, molData* );
-void   	freePopulation(const inputPars * par, const molData* m, struct populations * pop);
-double 	gaussline(double, double);
-void    getArea(inputPars *, struct grid *, const gsl_rng *);
+void	fit_fi(double, double, double*);
+void	fit_rr(double, double, double*);
+void	freeGrid(configInfo*, const molData*, struct grid*);
+void	freeGridPointData(configInfo*, gridPointData*);
+void	freeMolData(const int, molData*);
+void	freeMolsWithBlends(struct molWithBlends*, const int);
+void	freeParImg(const int, inputPars*, image*);
+void	freePopulation(configInfo*, const molData*, struct populations*);
+double	gaussline(double, double);
+void	getArea(configInfo *, struct grid *, const gsl_rng *);
 void	getclosest(double, double, double, long *, long *, double *, double *, double *);
-void    getjbar(int, molData*, struct grid*, inputPars*, gridPointData*, double*);
-void    getMass(inputPars *, struct grid *, const gsl_rng *);
-void   	getmatrix(int, gsl_matrix *, molData *, struct grid *, int, gridPointData *);
-void	getVelosplines(inputPars *, struct grid *);
-void	getVelosplines_lin(inputPars *, struct grid *);
-void	gridAlloc(inputPars *, struct grid **);
-void	gridLineInit(inputPars*, molData*, struct grid*);
-void   	input(inputPars *, image *);
-float  	invSqrt(float);
-void	levelPops(molData *, inputPars *, struct grid *, int *);
+void	getjbar(int, molData*, struct grid*, const int, configInfo*, struct blendInfo, int, gridPointData*, double*);
+void	getMass(configInfo *, struct grid *, const gsl_rng *);
+void	getmatrix(int, gsl_matrix *, molData *, struct grid *, int, gridPointData *);
+int	getNextEdge(double*, int, struct grid*, const gsl_rng*);
+void	getVelosplines(configInfo *, struct grid *);
+void	getVelosplines_lin(configInfo *, struct grid *);
+void	gridAlloc(configInfo *, struct grid **);
+void	gridLineInit(configInfo*, molData*, struct grid*);
+void	input(inputPars *, image *);
+float	invSqrt(float);
+void	levelPops(molData *, configInfo *, struct grid *, int *);
 void	line_plane_intersect(struct grid *, double *, int , int *, double *, double *, double);
-void	lineBlend(molData *, inputPars *, blend **);
-void    lineCount(int,molData *,int **, int **, int *);
-void	LTE(inputPars *, struct grid *, molData *);
-void    openSocket(inputPars *par, int);
-void	parseInput(inputPars *, image **, molData **);
-void  	photon(int, struct grid*, molData*, int, const gsl_rng*, inputPars*, blend*, gridPointData*, double*);
-double 	planckfunc(int, double, molData *, int);
-int     pointEvaluation(inputPars*, double, double, double, double);
-void   	popsin(inputPars *, struct grid **, molData **, int *);
-void   	popsout(inputPars *, struct grid *, molData *);
-void	predefinedGrid(inputPars *, struct grid *);
-void	qhull(inputPars *, struct grid *);
-double 	ratranInput(char *, char *, double, double, double);
-void   	raytrace(int, inputPars *, struct grid *, molData *, image *);
+void	lineBlend(molData*, configInfo*, struct blendInfo*);
+void	LTE(configInfo *, struct grid *, molData *);
+void	lteOnePoint(configInfo*, molData*, const int, const double, double*);
+void	openSocket(char*);
+void	parseInput(inputPars, configInfo*, image**, molData**);
+void	photon(int, struct grid*, molData*, int, const gsl_rng*, configInfo*, const int, struct blendInfo, gridPointData*, double*);
+double	planckfunc(int, double, molData *, int);
+int	pointEvaluation(configInfo*, double, double, double, double);
+void	popsin(configInfo *, struct grid **, molData **, int *);
+void	popsout(configInfo *, struct grid *, molData *);
+void	predefinedGrid(configInfo *, struct grid *);
+void	qhull(configInfo *, struct grid *);
+double	ratranInput(char *, char *, double, double, double);
+void	raytrace(int, configInfo *, struct grid *, molData *, image *);
 void	readDummyCollPart(FILE*, const int);
-void	readMolData(inputPars*, molData*, int**, int*);
-void	report(int, inputPars *, struct grid *);
-void	setUpDensityAux(inputPars*, int*, const int);
-void	smooth(inputPars *, struct grid *);
-int     sortangles(double *, int, struct grid *, const gsl_rng *);
+void	readMolData(configInfo*, molData*, int**, int*);
+void	readUserInput(inputPars *, image **, int *, int *);
+void	report(int, configInfo *, struct grid *);
+void	setUpConfig(configInfo *, image **, molData **);
+void	setUpDensityAux(configInfo*, int*, const int);
+void	smooth(configInfo *, struct grid *);
 void	sourceFunc(double*, double*, double, molData*, double, struct grid*, int, int, int, int);
-void    sourceFunc_cont(double*, double*, struct grid*, int, int, int);
-void    sourceFunc_line(double*, double*, molData*, double, struct grid*, int, int, int);
-void    sourceFunc_pol(double*, double*, double, molData*, double, struct grid*, int, int, int, double);
-void   	stateq(int, struct grid*, molData*, int, inputPars*, gridPointData*, double*);
+void	sourceFunc_cont(double*, double*, struct grid*, int, int, int);
+void	sourceFunc_line(double*, double*, molData*, double, struct grid*, int, int, int);
+void	sourceFunc_pol(double*, double*, struct grid*, int, int, int, double (*rotMat)[3]);
+void	stateq(int, struct grid*, molData*, const int, configInfo*, struct blendInfo, int, gridPointData*, double*, _Bool*);
 void	statistics(int, molData *, struct grid *, int *, double *, double *, int *);
-void    stokesangles(double, double, double, double, double *);
+void	stokesangles(double, double, double, double (*rotMat)[3], double*);
 double	taylor(const int, const float);
-void    traceray(rayData, int, int, inputPars *, struct grid *, molData *, image *, int, int *, int *, double);
-void   	velocityspline(struct grid *, int, int, double, double, double*);
-void   	velocityspline2(double *, double *, double, double, double, double*);
-double 	veloproject(double *, double *);
-void	writefits(int, inputPars *, molData *, image *);
-void    write_VTK_unstructured_Points(inputPars *, struct grid *);
+void	traceray(rayData, int, int, configInfo*, struct grid*, molData*, image*, double);
+void	velocityspline(struct grid *, int, int, double, double, double*);
+void	velocityspline2(double *, double *, double, double, double, double*);
+double	veloproject(double *, double *);
+void	writefits(int, configInfo *, molData *, image *);
+void	write_VTK_unstructured_Points(configInfo *, struct grid *);
 
 
 /* Curses functions */
@@ -299,5 +337,5 @@ void    collpartmesg(char *, int);
 void    collpartmesg2(char *, int);
 void    collpartmesg3(int, int);
 
-
+#endif /* LIME_H */
 

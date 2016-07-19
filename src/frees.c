@@ -10,28 +10,46 @@
 #include "lime.h"
 
 void
-freeInput(inputPars *par, image *img){
-  int i,id;
-  for(i=0;i<par->nImages;i++){
-    for(id=0;id<(img[i].pxls*img[i].pxls);id++){
-      free( img[i].pixel[id].intense );
-      free( img[i].pixel[id].tau );
+freeGrid(configInfo *par, const molData *m ,struct grid *g){
+  int i;
+  if(g != NULL){
+    for(i=0;i<(par->pIntensity+par->sinkPoints); i++){
+      free(g[i].a0);
+      free(g[i].a1);
+      free(g[i].a2);
+      free(g[i].a3);
+      free(g[i].a4);
+      free(g[i].dir);
+      free(g[i].neigh);
+      free(g[i].w);
+      free(g[i].dens);
+      free(g[i].nmol);
+      free(g[i].abun);
+      free(g[i].ds);
+      freePopulation( par, m, g[i].mol );
     }
-    free(img[i].pixel);
+    free(g);
   }
-  free(img);
-
-  free(par->moldatfile);
-  free(par->collPartIds);
-  free(par->nMolWeights);
-  free(par->dustWeights);
 }
 
 void
-freeMolData(inputPars *par, molData *mol){
-  int i,j;
+freeGridPointData(configInfo *par, gridPointData *mol){
+  int i;
   if(mol!= NULL){
     for(i=0;i<par->nSpecies;i++){
+      free(mol[i].jbar);
+      free(mol[i].phot);
+      free(mol[i].vfac);
+    }
+    free(mol);
+  }
+}
+
+void
+freeMolData(const int nSpecies, molData *mol){
+  int i,j;
+  if(mol!= NULL){
+    for(i=0;i<nSpecies;i++){
       if(mol[i].part != NULL){
         for(j=0; j<mol[i].npart; j++){
           free(mol[i].part[j].down);
@@ -56,22 +74,47 @@ freeMolData(inputPars *par, molData *mol){
   }
 }
 
-void
-freeGridPointData(inputPars *par, gridPointData *mol){
-  int i;
-  if(mol!= NULL){
-    for(i=0;i<par->nSpecies;i++){
-      free(mol[i].jbar);
-      free(mol[i].phot);
-      free(mol[i].vfac);
+void freeMolsWithBlends(struct molWithBlends *mols, const int numMolsWithBlends){
+  int mi, li;
+
+  if(mols != NULL){
+    for(mi=0;mi<numMolsWithBlends;mi++){
+      if(mols[mi].lines != NULL){
+        for(li=0;li<mols[mi].numLinesWithBlends;li++){
+          if(mols[mi].lines[li].blends != NULL){
+            free(mols[mi].lines[li].blends);
+          }
+        }
+        free(mols[mi].lines);
+      }
     }
-    free(mol);
+    free(mols);
   }
 }
 
+void
+freeParImg(const int nImages, inputPars *par, image *img){
+  /* Release memory allocated for the output fits images
+     and for inputPars pointers.
+  */
+  int i,id;
+  for(i=0;i<nImages;i++){
+    for(id=0;id<(img[i].pxls*img[i].pxls);id++){
+      free( img[i].pixel[id].intense );
+      free( img[i].pixel[id].tau );
+    }
+    free(img[i].pixel);
+  }
+  free(img);
+
+  free(par->moldatfile);
+  free(par->collPartIds);
+  free(par->nMolWeights);
+  free(par->dustWeights);
+}
 
 void
-freePopulation(const inputPars *par, const molData *m, struct populations *pop ){
+freePopulation(configInfo *par, const molData *m, struct populations *pop ){
   if(pop != NULL){
     int j,k;
     for(j=0; j<par->nSpecies; j++){
@@ -81,29 +124,6 @@ freePopulation(const inputPars *par, const molData *m, struct populations *pop )
       free( pop[j].partner );
     }
     free(pop);
-  }
-}
-
-void
-freeGrid(const inputPars *par, const molData *m ,struct grid *g){
-  int i;
-  if(g != NULL){
-    for(i=0;i<(par->pIntensity+par->sinkPoints); i++){
-      free(g[i].a0);
-      free(g[i].a1);
-      free(g[i].a2);
-      free(g[i].a3);
-      free(g[i].a4);
-      free(g[i].dir);
-      free(g[i].neigh);
-      free(g[i].w);
-      free(g[i].dens);
-      free(g[i].nmol);
-      free(g[i].abun);
-      free(g[i].ds);
-      freePopulation( par, m, g[i].mol );
-    }
-    free(g);
   }
 }
 

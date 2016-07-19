@@ -5,6 +5,8 @@
 .DS_Store
 
 # Ignore example files
-example/grid.vtk
+example/*.vtk
 example/*.pop
-example/*.fits
+example/*.fits*
+example/*.dat
+

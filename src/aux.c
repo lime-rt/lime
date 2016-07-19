@@ -3,13 +3,10 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015 The LIME development team
+ *  Copyright (C) 2016 The LIME development team
  *
 TODO:
-  - Check that par->pIntensity and par->sinkPoints are non-zero.
-  - Why use MAX_NSPECIES to limit the number of images?
   - The test to run photon() etc in levelPops just tests dens[0]. This is a bit sloppy.
-  - Plug the leak in the img mode-checking test.
  */
 
 #include "lime.h"
@@ -19,85 +16,77 @@ TODO:
 
 
 void
-parseInput(inputPars *par, image **img, molData **m){
-  FILE *fp;
-  int i,id;
-  double BB[3], dens[MAX_N_COLL_PART];
+parseInput(inputPars inpar, configInfo *par, image **img, molData **m){
+  int i,id,ispec;
+  double BB[3],normBSquared,dens[MAX_N_COLL_PART];
   double cosPhi,sinPhi,cosTheta,sinTheta,dummyVel[DIM];
+  FILE *fp;
 
-  /* Set default values */
-  par->dust  	    = NULL;
-  par->inputfile    = NULL;
-  par->outputfile   = NULL;
-  par->binoutputfile= NULL;
-  par->gridfile     = NULL;
-  par->pregrid      = NULL;
-  par->restart      = NULL;
+  /* Copy over user-set parameters to the configInfo versions. (This seems like duplicated effort but it is a good principle to separate the two structs, for several reasons, as follows. (i) We will usually want more config parameters than user-settable ones. The separation leaves it clearer which things the user needs to (or can) set. (ii) The separation allows checking and screening out of impossible combinations of parameters. (iii) We can adopt new names (for clarity) for config parameters without bothering the user with a changed interface.) */
+  par->radius       = inpar.radius;
+  par->minScale     = inpar.minScale;
+  par->pIntensity   = inpar.pIntensity;
+  par->sinkPoints   = inpar.sinkPoints;
+  par->sampling     = inpar.sampling;
+  par->tcmb         = inpar.tcmb;
+  par->dust         = inpar.dust;
+  par->outputfile   = inpar.outputfile;
+  par->binoutputfile= inpar.binoutputfile;
+  par->restart      = inpar.restart;
+  par->gridfile     = inpar.gridfile;
+  par->pregrid      = inpar.pregrid;
+  par->lte_only     = inpar.lte_only;
+  par->init_lte     = inpar.init_lte;
+  par->blend        = inpar.blend;
+  par->antialias    = inpar.antialias;
+  par->polarization = inpar.polarization;
+  par->nThreads     = inpar.nThreads;
 
-  par->collPartIds  = malloc(sizeof(int)*MAX_N_COLL_PART);
-  for(i=0;i<MAX_N_COLL_PART;i++) par->collPartIds[i] = 0;
-  par->nMolWeights  = malloc(sizeof(double)*MAX_N_COLL_PART);
-  for(i=0;i<MAX_N_COLL_PART;i++) par->nMolWeights[i] = -1.0;
-  par->dustWeights  = malloc(sizeof(double)*MAX_N_COLL_PART);
-  for(i=0;i<MAX_N_COLL_PART;i++) par->dustWeights[i] = -1.0;
+  /* Now set the additional values in par. */
+  par->ncell = inpar.pIntensity + inpar.sinkPoints;
+  par->radiusSqu = inpar.radius*inpar.radius;
+  par->minScaleSqu=inpar.minScale*inpar.minScale;
+  par->doPregrid = (inpar.pregrid==NULL)?0:1;
 
-  par->tcmb = 2.728;
-  par->lte_only=0;
-  par->init_lte=0;
-  par->sampling=2;
-  par->blend=0;
-  par->antialias=1;
-  par->polarization=0;
-  par->pIntensity=0;
-  par->sinkPoints=0;
-  par->doPregrid=0;
-  par->nThreads=0;
-
-  /* Allocate space for output fits images */
-  (*img)=malloc(sizeof(image)*MAX_NSPECIES);
-  par->moldatfile=malloc(sizeof(char *) * MAX_NSPECIES);
-  for(id=0;id<MAX_NSPECIES;id++){
-    (*img)[id].filename=NULL;
-    par->moldatfile[id]=NULL;
-  }
-
-  /* First call to the user function which sets par, img values. Note that, as far as img is concerned, here we just want to find out how many images the user wants, so we can malloc the array properly. We call input() a second time then to get the actual per-image parameter values.
+  /* If the user has provided a list of moldatfile names, the corresponding elements of par->moldatfile will be non-NULL. Thus we can deduce the number of files (species) from the number of non-NULL elements.
   */
-  input(par, *img);
+  par->nSpecies=0;
+  while(inpar.moldatfile[par->nSpecies]!=NULL && par->nSpecies<MAX_NSPECIES)
+    par->nSpecies++;
 
-  id=-1;
-  while((*img)[++id].filename!=NULL);
-  par->nImages=id;
-  if(par->nImages==0) {
-    if(!silent) bail_out("No images defined");
-    exit(1);
-  }
+  /* Copy over the moldatfiles.
+  */
+  if(par->nSpecies == 0){
+    par->nSpecies = 1;
+    par->moldatfile = NULL;
 
-  *img=realloc(*img, sizeof(image)*par->nImages);
-
-  id=-1;
-  while(par->moldatfile[++id]!=NULL);
-  par->nSpecies=id;
-  if( par->nSpecies == 0 )
-    {
-      par->nSpecies = 1;
-      free(par->moldatfile);
-      par->moldatfile = NULL;
+  } else {
+    par->moldatfile=malloc(sizeof(char *)*par->nSpecies);
+    for(id=0;id<par->nSpecies;id++){
+      par->moldatfile[id] = inpar.moldatfile[id];
     }
-  else
-    {
-      par->moldatfile=realloc(par->moldatfile, sizeof(char *)*par->nSpecies);
-      /* Check if files exists */
-      for(id=0;id<par->nSpecies;id++){
-        if((fp=fopen(par->moldatfile[id], "r"))==NULL) {
-          openSocket(par, id);
-        }
-        else {
-          fclose(fp);
-        }
+
+    /* Check if files exist. */
+    for(id=0;id<par->nSpecies;id++){
+      if((fp=fopen(par->moldatfile[id], "r"))==NULL) {
+        openSocket(par->moldatfile[id]);
+      } else {
+        fclose(fp);
       }
     }
+  }
 
+  /* Copy over the collision-partner pointers:
+  */
+  par->collPartIds  = malloc(sizeof(int)*MAX_N_COLL_PART);
+  for(i=0;i<MAX_N_COLL_PART;i++) par->collPartIds[i] = inpar.collPartIds[i];
+  par->nMolWeights  = malloc(sizeof(double)*MAX_N_COLL_PART);
+  for(i=0;i<MAX_N_COLL_PART;i++) par->nMolWeights[i] = inpar.nMolWeights[i];
+  par->dustWeights  = malloc(sizeof(double)*MAX_N_COLL_PART);
+  for(i=0;i<MAX_N_COLL_PART;i++) par->dustWeights[i] = inpar.dustWeights[i];
+
+  /* Calculate par->numDensities.
+  */
   if(!(par->doPregrid || par->restart)){ /* These switches cause par->numDensities to be set in routines they call. */
     /* Find out how many density functions we have (which sets par->numDensities).
     */
@@ -113,36 +102,15 @@ parseInput(inputPars *par, image **img, molData **m){
     }
   }
 
-  /* Set img defaults and then read the user-supplied values.
+  /* If the user has provided a list of image filenames, the corresponding elements of (*img).filename will be non-NULL. Thus we can deduce the number of images from the number of non-NULL elements.
   */
-  for(i=0;i<par->nImages;i++) {
-    (*img)[i].source_vel=0.0;
-    (*img)[i].phi=0.0;
-    (*img)[i].nchan=0;
-    (*img)[i].velres=-1.;
-    (*img)[i].trans=-1;
-    (*img)[i].freq=-1.;
-    (*img)[i].bandwidth=-1.;
-  }
-
-  /* Second call to the user function which sets par, img values:
-  */
-  input(par,*img);
-
-  /* That is the end of the section which reads the user-settable parameters. Now we calculate some other quantities. */
-
-  if(par->nThreads == 0){ // Hmm. Really ought to have a separate boolean parameter.
-    par->nThreads = NTHREADS;
-  }
-
-  par->ncell=par->pIntensity+par->sinkPoints;
-  par->radiusSqu=par->radius*par->radius;
-  par->minScaleSqu=par->minScale*par->minScale;
-  if(par->pregrid!=NULL) par->doPregrid=1;
+  par->nImages=0;
+  while((*img)[par->nImages].filename!=NULL && par->nImages<MAX_NIMAGES)
+    par->nImages++;
 
   /* Check that the user has supplied this function (needed unless par->pregrid):
   */
-  if(!par->pregrid)
+  if(!par->doPregrid)
     velocity(0.0,0.0,0.0, dummyVel);
 
   /*
@@ -161,38 +129,32 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
   */
   par->taylorCutoff = pow(24.*DBL_EPSILON, 0.25);
 
-  if(par->dust != NULL){
-    if((fp=fopen(par->dust, "r"))==NULL){
-      if(!silent) bail_out("Error opening dust opacity data file!");
-      exit(1);
-    }
-    else  {
-      fclose(fp);
-    }
-  }
-
   /* Allocate pixel space and parse image information */
   for(i=0;i<par->nImages;i++){
     if((*img)[i].nchan == 0 && (*img)[i].velres<0 ){
       /* Assume continuum image */
 
-      /* Check for polarization */
-      BB[0]=0.;
-      magfield(par->minScale,par->minScale,par->minScale,BB);
-      if(fabs(BB[0]) > 0.) par->polarization=1;
+      if(par->polarization){
+        (*img)[i].nchan=3;
 
-      if(par->polarization) (*img)[i].nchan=3;
-      else (*img)[i].nchan=1;
+        if(!silent){
+          /* Do a sketchy check which might indicate if the user has forgotten to supply a magfield function, and warn if this comes up positive. Note: there is no really robust way at present to distinguish the default magfield function (which, if called, indicates that the user forgot to supply their own) from one the user has supplied but which happens to set the B field to 0 at the origin.
+          */
+          magfield(par->minScale,par->minScale,par->minScale,BB);
+          normBSquared = BB[0]*BB[0] + BB[1]*BB[1] + BB[2]*BB[2];
+          if(normBSquared <= 0.) warning("Zero B field - did you remember to supply a magfield function?");
+        }
+      }else
+        (*img)[i].nchan=1;
 
-      if((*img)[i].trans>-1 || (*img)[i].bandwidth>-1. || (*img)[i].freq==0 || par->dust==NULL){
+      if((*img)[i].trans>-1 || (*img)[i].bandwidth>-1. || (*img)[i].freq==0 || inpar.dust==NULL){
         if(!silent) bail_out("Image keywords are ambiguous");
         exit(1);
       }
       (*img)[i].doline=0;
     } else if (((*img)[i].nchan>0 || (*img)[i].velres > 0)){
-      /* Assume line image */
-      par->polarization=0;
-      if(par->moldatfile==NULL){
+      /* Assume line image. */
+      if(inpar.moldatfile==NULL){
         if(!silent) bail_out("No data file is specified for line image.");
         exit(1);
       }
@@ -205,8 +167,7 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
         exit(1);
       }
       (*img)[i].doline=1;
-    }//************** else??? ((*img)[i].nchan==0 && (*img)[i].velres==0) will not enter either block above.
-
+    }
     (*img)[i].imgres=(*img)[i].imgres/206264.806;
     (*img)[i].pixel = malloc(sizeof(spec)*(*img)[i].pxls*(*img)[i].pxls);
     for(id=0;id<((*img)[i].pxls*(*img)[i].pxls);id++){
@@ -247,23 +208,22 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
 
   /* Allocate moldata array */
   (*m)=malloc(sizeof(molData)*par->nSpecies);
-  for( i=0; i<par->nSpecies; i++ )
-    {
-      (*m)[i].part = NULL;
-      (*m)[i].lal = NULL;
-      (*m)[i].lau = NULL;
-      (*m)[i].aeinst = NULL;
-      (*m)[i].freq = NULL;
-      (*m)[i].beinstu = NULL;
-      (*m)[i].beinstl = NULL;
-      (*m)[i].eterm = NULL;
-      (*m)[i].gstat = NULL;
-      (*m)[i].cmb = NULL;
-      (*m)[i].local_cmb = NULL;
-    }
+  for( i=0; i<par->nSpecies; i++ ){
+    (*m)[i].part = NULL;
+    (*m)[i].lal = NULL;
+    (*m)[i].lau = NULL;
+    (*m)[i].aeinst = NULL;
+    (*m)[i].freq = NULL;
+    (*m)[i].beinstu = NULL;
+    (*m)[i].beinstl = NULL;
+    (*m)[i].eterm = NULL;
+    (*m)[i].gstat = NULL;
+    (*m)[i].cmb = NULL;
+    (*m)[i].local_cmb = NULL;
+  }
 }
 
-void checkUserDensWeights(inputPars *par){
+void checkUserDensWeights(configInfo *par){
   /*
 This deals with three user-settable vectors: par->collPartIds, par->nMolWeights and par->dustWeights. We have to see if these (optional) parameters were set, do some basic checks on them, and make sure they have the same numbers of elements as the number of density values, which by this time should be stored in par->numDensities.
   */
@@ -395,8 +355,27 @@ invSqrt(float x){
   return x;
 }
 
+void checkGridDensities(configInfo *par, struct grid *g){
+  int i;
+  static _Bool warningAlreadyIssued=0;
+  char errStr[80];
+
+  if(!silent){ /* Warn if any densities too low. */
+    i = 0;
+    while(i<par->pIntensity && !warningAlreadyIssued){
+      if(g[i].dens[0]<TYPICAL_ISM_DENS){
+        warningAlreadyIssued = 1;
+        sprintf(errStr, "g[%d].dens[0] at %.1e is below typical values for the ISM (~%.1e).", i, g[i].dens[0], TYPICAL_ISM_DENS);
+        warning(errStr);
+        warning("This could give you convergence problems. NOTE: no further warnings will be issued.");
+      }
+      i++;
+    }
+  }
+}
+
 void
-continuumSetup(int im, image *img, molData *m, inputPars *par, struct grid *g){
+continuumSetup(int im, image *img, molData *m, configInfo *par, struct grid *g){
   int id;
   img[im].trans=0;
   m[0].nline=1;
@@ -416,76 +395,117 @@ continuumSetup(int im, image *img, molData *m, inputPars *par, struct grid *g){
   calcGridDustOpacity(par,m,g);
 }
 
-void
-lineCount(int n,molData *m,int **counta,int **countb,int *nlinetot){
-  int ispec,iline,count;
+void lineBlend(molData *m, configInfo *par, struct blendInfo *blends){
+  /*
+This obtains information on all the lines of all the radiating species which have other lines within some cutoff velocity separation.
 
-  *nlinetot=0;
-  for(ispec=0;ispec<n;ispec++) *nlinetot+=m[ispec].nline;
-  if(*nlinetot > 0){
-  *counta=malloc(sizeof(*counta)* *nlinetot);
-  *countb=malloc(sizeof(*countb)* *nlinetot);
-  } else {
-    if(!silent) bail_out("Line count finds no lines");
-    exit(0);
-  }
-  count=0;
-  for(ispec=0;ispec<n;ispec++) {
-    for(iline=0;iline<m[ispec].nline;iline++){
-      (*counta)[count]=ispec;
-      (*countb)[count++]=iline;
-    }
-  }
-}
+A variable of type 'struct blendInfo' has a nested structure which can be illustrated diagrammaticaly as follows.
 
-void
-lineBlend(molData *m, inputPars *par, blend **matrix){
-  int iline, jline, nlinetot=0,c;
-  int *counta,*countb;
+  Structs:	blendInfo		molWithBlends		lineWithBlends		blend
 
-  lineCount(par->nSpecies, m, &counta, &countb, &nlinetot);
+  Variables:	blends
+		  .numMolsWithBlends     ____________________
+		  .*mols--------------->|.molI               |
+		                        |.numLinesWithBlends |   ___________
+		                        |.*lines--------------->|.lineI     |
+		                        |____________________|  |.numBlends |           ________
+		                        |        etc         |  |.*blends------------->|.molJ   |
+		                                                |___________|          |.lineJ  |
+		                                                |    etc    |          |.deltaV |
+		                                                                       |________|
+		                                                                       |   etc  |
 
-  c=0;
-  for(iline=0;iline<nlinetot;iline++){
-    for(jline=0;jline<nlinetot;jline++){
-      if(fabs((m[counta[jline]].freq[countb[jline]]-m[counta[iline]].freq[countb[iline]])/m[counta[iline]].freq[countb[iline]]*CLIGHT) < blendmask
-         && iline !=jline) c++;
-    }
-  }
-  if(c>0){
-    if(par->blend){
-      if(!silent) warning("There are blended lines (Line blending is switched on)");
-    } else {
-      if(!silent) warning("There are blended lines (Line blending is switched off)");
-    }
+Pointers are indicated by a * before the attribute name and an arrow to the memory location pointed to.
+  */
+  int molI, lineI, molJ, lineJ;
+  int nmwb, nlwb, numBlendsFound, li, bi;
+  double deltaV;
+  struct blend *tempBlends=NULL;
+  struct lineWithBlends *tempLines=NULL;
 
-    (*matrix)=malloc(sizeof(blend)*c);
+  /* Dimension blends.mols first to the total number of species, then realloc later if need be.
+  */
+  (*blends).mols = malloc(sizeof(struct molWithBlends)*par->nSpecies);
+  (*blends).numMolsWithBlends = 0;
 
-    c=0;
-    for(iline=0;iline<nlinetot;iline++){
-      for(jline=0;jline<nlinetot;jline++){
-        if(fabs((m[counta[jline]].freq[countb[jline]]-m[counta[iline]].freq[countb[iline]])/m[counta[iline]].freq[countb[iline]]*CLIGHT) < blendmask
-           && iline != jline){
-          (*matrix)[c].line1=iline;
-          (*matrix)[c].line2=jline;
-          (*matrix)[c++].deltav=-(m[counta[jline]].freq[countb[jline]]-m[counta[iline]].freq[countb[iline]])/m[counta[iline]].freq[countb[iline]]*CLIGHT;
+  nmwb = 0;
+  for(molI=0;molI<par->nSpecies;molI++){
+    tempBlends = malloc(sizeof(struct blend)*m[molI].nline);
+    tempLines  = malloc(sizeof(struct lineWithBlends)*m[molI].nline);
+
+    nlwb = 0;
+    for(lineI=0;lineI<m[molI].nline;lineI++){
+      numBlendsFound = 0;
+      for(molJ=0;molJ<par->nSpecies;molJ++){
+        for(lineJ=0;lineJ<m[molJ].nline;lineJ++){
+          if(!(molI==molJ && lineI==lineJ)){
+            deltaV = (m[molJ].freq[lineJ] - m[molI].freq[lineI])*CLIGHT/m[molI].freq[lineI];
+            if(fabs(deltaV)<maxBlendDeltaV){
+              tempBlends[numBlendsFound].molJ   = molJ;
+              tempBlends[numBlendsFound].lineJ  = lineJ;
+              tempBlends[numBlendsFound].deltaV = deltaV;
+              numBlendsFound++;
+            }
+          }
         }
       }
-    }
-  }
-  free(counta);
-  free(countb);
 
+      if(numBlendsFound>0){
+        tempLines[nlwb].lineI = lineI;
+        tempLines[nlwb].numBlends = numBlendsFound;
+        tempLines[nlwb].blends = malloc(sizeof(struct blend)*numBlendsFound);
+        for(bi=0;bi<numBlendsFound;bi++)
+          tempLines[nlwb].blends[bi] = tempBlends[bi];
+
+        nlwb++;
+      }
+    }
+
+    if(nlwb>0){
+      (*blends).mols[nmwb].molI = molI;
+      (*blends).mols[nmwb].numLinesWithBlends = nlwb;
+      (*blends).mols[nmwb].lines = malloc(sizeof(struct lineWithBlends)*nlwb);
+      for(li=0;li<nlwb;li++){
+        (*blends).mols[nmwb].lines[li].lineI     = tempLines[li].lineI;
+        (*blends).mols[nmwb].lines[li].numBlends = tempLines[li].numBlends;
+        (*blends).mols[nmwb].lines[li].blends = malloc(sizeof(struct blend)*tempLines[li].numBlends);
+        for(bi=0;bi<tempLines[li].numBlends;bi++)
+          (*blends).mols[nmwb].lines[li].blends[bi] = tempLines[li].blends[bi];
+      }
+
+      nmwb++;
+    }
+
+    free(tempLines);
+    free(tempBlends);
+  }
+
+  (*blends).numMolsWithBlends = nmwb;
+  if(nmwb>0){
+    if(!par->blend)
+      if(!silent) warning("There are blended lines, but line blending is switched off.");
+
+    (*blends).mols = realloc((*blends).mols, sizeof(struct molWithBlends)*nmwb);
+  }else{
+    if(par->blend)
+      if(!silent) warning("Line blending is switched on, but no blended lines were found.");
+
+    free((*blends).mols);
+    (*blends).mols = NULL;
+  }
 }
 
 void
-levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
-  int id,conv=0,iter,ilev,prog=0,ispec,c=0,n,i,threadI,nVerticesDone,numCollParts;
+levelPops(molData *m, configInfo *par, struct grid *g, int *popsdone){
+  int id,conv=0,iter,ilev,prog=0,ispec,c=0,n,i,threadI,nVerticesDone,nlinetot,numCollParts;
   int *allCollPartIds=NULL;
   double percent=0.,*median,result1=0,result2=0,snr,delta_pop;
-  blend *matrix;
+  int nextMolWithBlend;
   struct statistics { double *pop, *ave, *sigma; } *stat;
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
+  struct blendInfo blends;
+  _Bool luWarningGiven=0;
+  gsl_error_handler_t *defaultErrorHandler=NULL;
 
   for(id=0;id<par->ncell;id++) {
     freePopulation( par, m, g[id].mol );
@@ -535,8 +555,12 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
     calcGridCollRates(par,m,g);
 //******** could free m[].part[].temp, .down now.
 
+    nlinetot = 0;
+    for(ispec=0;ispec<par->nSpecies;ispec++)
+      nlinetot += m[ispec].nline;
+
     /* Check for blended lines */
-    lineBlend(m,par,&matrix);
+    lineBlend(m, par, &blends);
 
     if(par->init_lte) LTE(par,g,m);
 
@@ -556,6 +580,13 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
       g[id].conv=0;
     }
 
+    defaultErrorHandler = gsl_set_error_handler_off();
+    /*
+This is done to allow proper handling of errors which may arise in the LU solver within stateq(). It is done here because the GSL documentation does not recommend leaving the error handler at the default within multi-threaded code.
+
+While this is off however, other gsl_* etc calls will not exit if they encounter a problem. We may need to pay some attention to trapping their errors.
+    */
+
     do{
       if(!silent) progressbar2(0, prog++, 0, result1, result2);
 
@@ -568,7 +599,7 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
 
       nVerticesDone=0;
       omp_set_dynamic(0);
-#pragma omp parallel private(i,id,ispec,threadI) num_threads(par->nThreads)
+#pragma omp parallel private(id,ispec,threadI,nextMolWithBlend) num_threads(par->nThreads)
       {
         threadI = omp_get_thread_num();
 
@@ -576,10 +607,10 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
         gridPointData *mp;	// Could have declared them earlier
         double *halfFirstDs;	// and included them in private() I guess.
         mp=malloc(sizeof(gridPointData)*par->nSpecies);
-        for (i=0;i<par->nSpecies;i++){
-          mp[i].phot = malloc(sizeof(double)*m[i].nline*max_phot);
-          mp[i].vfac = malloc(sizeof(double)*           max_phot);
-          mp[i].jbar = malloc(sizeof(double)*m[i].nline);
+        for (ispec=0;ispec<par->nSpecies;ispec++){
+          mp[ispec].phot = malloc(sizeof(double)*m[ispec].nline*max_phot);
+          mp[ispec].vfac = malloc(sizeof(double)*               max_phot);
+          mp[ispec].jbar = malloc(sizeof(double)*m[ispec].nline);
         }
         halfFirstDs = malloc(sizeof(*halfFirstDs)*max_phot);
 
@@ -592,17 +623,22 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
             if(!silent) progressbar((double)nVerticesDone/par->pIntensity,10);
           }
           if(g[id].dens[0] > 0 && g[id].t[0] > 0){
-            photon(id,g,m,0,threadRans[threadI],par,matrix,mp,halfFirstDs);
-            for(ispec=0;ispec<par->nSpecies;ispec++) stateq(id,g,m,ispec,par,mp,halfFirstDs);
+            photon(id,g,m,0,threadRans[threadI],par,nlinetot,blends,mp,halfFirstDs);
+            nextMolWithBlend = 0;
+            for(ispec=0;ispec<par->nSpecies;ispec++){
+              stateq(id,g,m,ispec,par,blends,nextMolWithBlend,mp,halfFirstDs,&luWarningGiven);
+              if(par->blend && blends.mols!=NULL && ispec==blends.mols[nextMolWithBlend].molI)
+                nextMolWithBlend++;
+            }
           }
-          if (threadI == 0){ // i.e., is master thread
+          if (threadI == 0){ /* i.e., is master thread */
             if(!silent) warning("");
           }
         }
 
         freeGridPointData(par, mp);
         free(halfFirstDs);
-      } // end parallel block.
+      } /* end parallel block. */
 
       for(id=0;id<par->ncell && !g[id].sink;id++){
         snr=0;
@@ -648,12 +684,16 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
       if(!silent) progressbar2(1, prog, percent, result1, result2);
       if(par->outputfile) popsout(par,g,m);
     } while(conv++<NITERATIONS);
+    gsl_set_error_handler(defaultErrorHandler);
+
+    freeMolsWithBlends(blends.mols, blends.numMolsWithBlends);
 
     for (i=0;i<par->nThreads;i++){
       gsl_rng_free(threadRans[i]);
     }
     free(threadRans);
     gsl_rng_free(ran);
+
     for(id=0;id<par->pIntensity;id++){
       free(stat[id].pop);
       free(stat[id].ave);
@@ -666,6 +706,4 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
 
   *popsdone=1;
 }
-
-
 

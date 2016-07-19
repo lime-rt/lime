@@ -10,24 +10,12 @@
 #include "lime.h"
 
 int
-pointEvaluation(inputPars *par,double ran, double x, double y, double z){
-  double weight1, weight2, val[99],normalizer=0.0,totalDensity=0.0;
-  int i;
+pointEvaluation(configInfo *par, double ran, double x, double y, double z){
+  double fracDensity;
 
-  density(par->minScale,par->minScale,par->minScale,val);
-  for (i=0;i<par->numDensities;i++) normalizer += val[i];
-  if (normalizer<=0.){
-    if(!silent) bail_out("Sum of reference densities equals 0");
-    exit(1);
-  }
-  //abundance(par->minScale,par->minScale,par->minScale,val2);
-  density(x,y,z,val);
-  for (i=0;i<par->numDensities;i++) totalDensity += val[i];
-  //abundance(x,y,z,val2);
-  weight1=pow(totalDensity/normalizer,0.2);
+  gridDensity(*par, x, y, z, &fracDensity);
 
-  weight2=0.;
-
-  if(ran < weight1 || ran < weight2) return 1;
+  if(ran < fracDensity) return 1;
   else return 0;
 }
+

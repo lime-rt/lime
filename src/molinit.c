@@ -13,7 +13,7 @@ TODO:
 
 char *collpartnames[] = {"H2","p-H2","o-H2","electrons","H","He","H+"}; /* definition from LAMDA */
 
-void calcMolCMBs(inputPars *par, molData *md){
+void calcMolCMBs(configInfo *par, molData *md){
   int si, iline;
 
   for(si=0;si<par->nSpecies;si++){
@@ -35,7 +35,7 @@ void calcMolCMBs(inputPars *par, molData *md){
 }
 
 double
-planckfunc(int iline, double temp, molData *md,int s){
+planckfunc(int iline, double temp, molData *md, int s){
   double bb=10.,wn;
   if(temp<eps) bb = 0.0;
   else {
@@ -48,14 +48,15 @@ planckfunc(int iline, double temp, molData *md,int s){
   return bb;
 }
 
-void readMolData(inputPars *par, molData *md, int **allUniqueCollPartIds, int *numCollPartsFound){
+void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *numCollPartsFound){
   /* NOTE! allUniqueCollPartIds is malloc'd in the present function, but not freed. The calling program must free it elsewhere.
   */
   int i,j,k,ilev,idummy,iline,numPartsAcceptedThisMol,ipart,collPartId,itemp,itrans;
-  FILE *fp;
-  char string[200], specref[90], partstr[90];
   double dummy;
   _Bool cpFound,previousCpFound;
+  const int sizeI=200;
+  char string[sizeI], specref[90], partstr[90];
+  FILE *fp;
 
   *allUniqueCollPartIds = malloc(sizeof(**allUniqueCollPartIds)*MAX_N_COLL_PART);
   *numCollPartsFound = 0;
@@ -67,13 +68,13 @@ void readMolData(inputPars *par, molData *md, int **allUniqueCollPartIds, int *n
     }
 
     /* Read the header of the data file */
-    fgets(string, 80, fp);
+    fgets(string, sizeI, fp);
     fgets(specref, 90, fp);
-    fgets(string, 80, fp);
+    fgets(string, sizeI, fp);
     fscanf(fp, "%lf\n", &md[i].amass);
-    fgets(string, 80, fp);
+    fgets(string, sizeI, fp);
     fscanf(fp, "%d\n", &md[i].nlev);
-    fgets(string, 80, fp);
+    fgets(string, sizeI, fp);
 
     md[i].amass *= AMU;
 
@@ -83,13 +84,13 @@ void readMolData(inputPars *par, molData *md, int **allUniqueCollPartIds, int *n
     /* Read the level energies and statistical weights */
     for(ilev=0;ilev<md[i].nlev;ilev++){
       fscanf(fp, "%d %lf %lf", &idummy, &md[i].eterm[ilev], &md[i].gstat[ilev]);
-      fgets(string, 80, fp);
+      fgets(string, sizeI, fp);
     }
 
     /* Read the number of transitions and allocate array space */
-    fgets(string, 80, fp);
+    fgets(string, sizeI, fp);
     fscanf(fp, "%d\n", &md[i].nline);
-    fgets(string, 80, fp);
+    fgets(string, sizeI, fp);
 
     md[i].lal     = malloc(sizeof(int)   *md[i].nline);
     md[i].lau     = malloc(sizeof(int)   *md[i].nline);
@@ -115,7 +116,7 @@ void readMolData(inputPars *par, molData *md, int **allUniqueCollPartIds, int *n
     }
 
     /* Collision rates below here */
-    fgets(string, 80, fp);
+    fgets(string, sizeI, fp);
     fscanf(fp,"%d\n", &md[i].npart);
 
     md[i].part = malloc(sizeof(*(md[i].part))*md[i].npart);
@@ -124,8 +125,23 @@ void readMolData(inputPars *par, molData *md, int **allUniqueCollPartIds, int *n
     */
     k = 0; /* Index to only those CPs which are found to be associated with a density function. */
     for(ipart=0;ipart<md[i].npart;ipart++){
-      fgets(string, 80, fp);
+      fgets(string, sizeI, fp);
       fscanf(fp,"%d\n", &collPartId);
+
+      /* We want to test if the comment after the coll partner ID number is longer than the buffer size. To do this, we write a character - any character, as long as it is not \0 - to the last element of the buffer before reading into it:
+      */
+      string[sizeof(string)-1] = 'x';
+      if(fgets(string, sizeI, fp)==NULL){
+        if(!silent) bail_out("Read of collision-partner comment line failed.");
+        exit(1);
+      } else{
+        if(string[sizeof(string)-1]=='\0' && string[sizeof(string)-2]!='\n'){
+          /* The presence now of a final \0 means the comment string was either just long enough for the buffer, or too long; the absence of \n in the 2nd-last place means it was too long.
+          */
+          if(!silent) bail_out("Collision-partner comment line is too long.");
+          exit(1);
+        }
+      }
 
       /* Look for this CP in par->collPartIds
       */
@@ -160,7 +176,7 @@ void readMolData(inputPars *par, molData *md, int **allUniqueCollPartIds, int *n
         md[i].part[k].densityIndex = -1; /* Default, signals that there is no density function for this CP. */
 
         if(par->lte_only){
-          readDummyCollPart(fp, 80);
+          readDummyCollPart(fp, sizeI);
           md[i].part[k].ntemp  = -1;
           md[i].part[k].ntrans = -1;
           md[i].part[k].down  = NULL;
@@ -169,12 +185,11 @@ void readMolData(inputPars *par, molData *md, int **allUniqueCollPartIds, int *n
           md[i].part[k].lcu   = NULL;
 
         }else{ /* Add the CP data to md[i].part, we will need it to solve the population levels. */
-          fgets(string, 80, fp);
-          fgets(string, 80, fp);
+          fgets(string, sizeI, fp);
           fscanf(fp,"%d\n", &md[i].part[k].ntrans);
-          fgets(string, 80, fp);
+          fgets(string, sizeI, fp);
           fscanf(fp,"%d\n", &md[i].part[k].ntemp);
-          fgets(string, 80, fp);
+          fgets(string, sizeI, fp);
 
           md[i].part[k].temp = malloc(sizeof(double)*md[i].part[k].ntemp);
           md[i].part[k].lcl  = malloc(sizeof(int)   *md[i].part[k].ntrans);
@@ -185,7 +200,7 @@ void readMolData(inputPars *par, molData *md, int **allUniqueCollPartIds, int *n
           }
 
           fscanf(fp,"\n");
-          fgets(string, 80, fp);
+          fgets(string, sizeI, fp);
 
           md[i].part[k].down = malloc(sizeof(double)\
             *md[i].part[k].ntrans*md[i].part[k].ntemp);
@@ -235,7 +250,7 @@ void readMolData(inputPars *par, molData *md, int **allUniqueCollPartIds, int *n
   }
 }
 
-void setUpDensityAux(inputPars *par, int *allUniqueCollPartIds, const int numUniqueCollParts){
+void setUpDensityAux(configInfo *par, int *allUniqueCollPartIds, const int numUniqueCollParts){
   /*
 The present function, which needs to be called only if we have to calculate the energy level populations at the grid points, deals with the user-settable vectors par->collPartIds and par->nMolWeights. The former of these is used to associate density values with collision-partner species, and the latter is used in converting, for each radiating species, its abundance to a number density, stored respectively in the grid struct attributes abun and nmol. The function deals specifically with the case in which the user has either not set par->collPartIds or par->nMolWeights at all (which they may choose to do), or has set the incorrectly. In either case the respective parameter will have been freed and set to NULL in checkUserDensWeights(). The function tries its best to guess likely values for the parameters, in line with the algorithm used in the code before par->collPartIds and par->nMolWeights were introduced.
   */
@@ -364,7 +379,7 @@ The same backward-compatible guesses are made here as for par->collPartIds in th
   }
 }
 
-void assignMolCollPartsToDensities(inputPars *par, molData *md){
+void assignMolCollPartsToDensities(configInfo *par, molData *md){
   /*
 If we have reached this point, par->collPartIds (and par->nMolWeights) should have been malloc'd and filled with sensible values. Here we set up indices which allow us to associate a density function with each collision partner of each radiating molecule. This information is made use of in stateq.c.
   */
@@ -392,7 +407,6 @@ void readDummyCollPart(FILE *fp, const int strLen){
   double dummyTemp, dummyDown;
 
   fgets(string, strLen, fp);
-  fgets(string, strLen, fp);
   fscanf(fp,"%d\n", &ntrans);
   fgets(string, strLen, fp);
   fscanf(fp,"%d\n", &ntemp);
@@ -412,8 +426,4 @@ void readDummyCollPart(FILE *fp, const int strLen){
     fscanf(fp,"\n");
   }
 }
-
-
-
-
 
