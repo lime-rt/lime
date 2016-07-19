@@ -62,7 +62,12 @@ abundance (double x, double y, double z, double *abundance)
 void
 doppler (double x, double y, double z, double *doppler)
 {
-  *doppler = 150.;
+  /*
+     The width a=0.15 km/s given by Zadelhoff et al. is a total
+     thermal+turbulent linewidth, so we need to remove the thermal
+     component.
+  */
+  doppler[0] = sqrt(150 * 150 - 2 * KBOLTZ / AMU);
 }
 
 void
