@@ -75,11 +75,11 @@ input(inputPars *par, image *img){
     7 types of collision partner.
 
     Below is an example of how you might use these parameters:
-
-    par->collPartIds[0]           = CP_H2;
-    par->nMolWeights[0]           = 1.0;
-    par->dustWeights[0]           = 1.0;
   */
+
+  par->collPartIds[0]           = CP_H2;
+  par->nMolWeights[0]           = 1.0;
+  par->dustWeights[0]           = 1.0;
 
   /*
    * Definitions for image #0. Add blocks with successive values of i for additional images.
