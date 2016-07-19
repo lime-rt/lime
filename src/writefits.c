@@ -10,7 +10,7 @@
 #include "lime.h"
 
 void 
-writefits(int im, inputPars *par, molData *m, image *img){
+writefits(int im, configInfo *par, molData *m, image *img){
   double bscale,bzero,epoch,lonpole,equinox,restfreq;
   double cdelt1,crpix1,crval1,cdelt2,crpix2,crval2;
   double cdelt3,crpix3,crval3,ru3;

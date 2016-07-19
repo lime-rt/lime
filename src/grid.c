@@ -11,7 +11,7 @@
 
 
 void
-gridAlloc(inputPars *par, struct grid **g){
+gridAlloc(configInfo *par, struct grid **g){
   int i;
   double temp[99];
 
@@ -47,7 +47,7 @@ gridAlloc(inputPars *par, struct grid **g){
 }
 
 void
-freePopulation(const inputPars *par, const molData* m, struct populations* pop ) {
+freePopulation(const configInfo *par, const molData* m, struct populations* pop ) {
   if( pop !=NULL )
     {
       int j,k;
@@ -74,7 +74,7 @@ freePopulation(const inputPars *par, const molData* m, struct populations* pop )
     }
 }
 void
-freeGrid(const inputPars *par, const molData* m ,struct grid* g){
+freeGrid(const configInfo *par, const molData* m ,struct grid* g){
   int i;
   if( g != NULL )
     {
@@ -137,7 +137,7 @@ freeGrid(const inputPars *par, const molData* m ,struct grid* g){
 }
 
 void
-qhull(inputPars *par, struct grid *g){
+qhull(configInfo *par, struct grid *g){
   int i,j,k,id;
   char flags[255];
   boolT ismalloc = False;
@@ -210,7 +210,7 @@ qhull(inputPars *par, struct grid *g){
 }
 
 void
-distCalc(inputPars *par, struct grid *g){
+distCalc(configInfo *par, struct grid *g){
   int i,k,l;
 
   for(i=0;i<par->ncell;i++){
@@ -237,7 +237,7 @@ distCalc(inputPars *par, struct grid *g){
 
 
 void
-write_VTK_unstructured_Points(inputPars *par, struct grid *g){
+write_VTK_unstructured_Points(configInfo *par, struct grid *g){
   FILE *fp;
   double length;
   int i,j,l=0;
@@ -324,12 +324,12 @@ write_VTK_unstructured_Points(inputPars *par, struct grid *g){
 }
 
 void
-dumpGrid(inputPars *par, struct grid *g){
+dumpGrid(configInfo *par, struct grid *g){
   if(par->gridfile) write_VTK_unstructured_Points(par, g);
 }
 
 void
-getArea(inputPars *par, struct grid *g, const gsl_rng *ran){
+getArea(configInfo *par, struct grid *g, const gsl_rng *ran){
   int i,j,k,b;//=-1;
   double *angle,best;
   /*	double wsum; */
@@ -392,7 +392,7 @@ getArea(inputPars *par, struct grid *g, const gsl_rng *ran){
 
 
 void
-getMass(inputPars *par, struct grid *g, const gsl_rng *ran){
+getMass(configInfo *par, struct grid *g, const gsl_rng *ran){
   double mass=0.,dist;
   double vol=0.,dp,dpbest,*farea,suma;
   int i,k,j,best=-1;
@@ -501,13 +501,17 @@ getMass(inputPars *par, struct grid *g, const gsl_rng *ran){
 
 
 void
-buildGrid(inputPars *par, struct grid *g){
+buildGrid(configInfo *par, struct grid *g){
   double lograd;		/* The logarithm of the model radius		*/
   double logmin;	    /* Logarithm of par->minScale				*/
   double r,theta,phi,sinPhi,x,y,z,semiradius;	/* Coordinates								*/
   double temp;
-  int k=0,i;            /* counters									*/
+  int k=0,i,j;            /* counters									*/
   int flag;
+  const int maxNumAttempts=1000;
+  _Bool numRandomsThisPoint;
+  int numSecondRandoms=0;
+  char errStr[80];
 
   gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
 #ifdef TEST
@@ -521,42 +525,52 @@ buildGrid(inputPars *par, struct grid *g){
 
   /* Sample pIntensity number of points */
   for(k=0;k<par->pIntensity;k++){
-    temp=gsl_rng_uniform(ran);
     flag=0;
-    /* Pick a point and check if we like it or not */
+    numRandomsThisPoint=0;
     do{
-      if(par->sampling==0){
-        r=pow(10,logmin+gsl_rng_uniform(ran)*(lograd-logmin));
-        theta=2.*PI*gsl_rng_uniform(ran);
-        phi=PI*gsl_rng_uniform(ran);
-        sinPhi=sin(phi);
-        x=r*cos(theta)*sinPhi;
-        y=r*sin(theta)*sinPhi;
-        if(DIM==3) z=r*cos(phi);
-        else z=0.;
-      } else if(par->sampling==1){
-        x=(2*gsl_rng_uniform(ran)-1)*par->radius;
-        y=(2*gsl_rng_uniform(ran)-1)*par->radius;
-        if(DIM==3) z=(2*gsl_rng_uniform(ran)-1)*par->radius;
-        else z=0;
-      } else if(par->sampling==2){
-        r=pow(10,logmin+gsl_rng_uniform(ran)*(lograd-logmin));
-        theta=2.*PI*gsl_rng_uniform(ran);
-        if(DIM==3) {
-          z=2*gsl_rng_uniform(ran)-1.;
-          semiradius=r*sqrt(1.-z*z);
-          z*=r;
+      temp=gsl_rng_uniform(ran);
+
+      if(numRandomsThisPoint==1)
+        numSecondRandoms++;
+      numRandomsThisPoint++;
+
+      /* Pick a point and check if we like it or not */
+      j=0;
+      while(!flag && j<maxNumAttempts){
+        if(par->sampling==0){
+          r=pow(10,logmin+gsl_rng_uniform(ran)*(lograd-logmin));
+          theta=2.*PI*gsl_rng_uniform(ran);
+          phi=PI*gsl_rng_uniform(ran);
+          sinPhi=sin(phi);
+          x=r*cos(theta)*sinPhi;
+          y=r*sin(theta)*sinPhi;
+          if(DIM==3) z=r*cos(phi);
+          else z=0.;
+        } else if(par->sampling==1){
+          x=(2*gsl_rng_uniform(ran)-1)*par->radius;
+          y=(2*gsl_rng_uniform(ran)-1)*par->radius;
+          if(DIM==3) z=(2*gsl_rng_uniform(ran)-1)*par->radius;
+          else z=0;
+        } else if(par->sampling==2){
+          r=pow(10,logmin+gsl_rng_uniform(ran)*(lograd-logmin));
+          theta=2.*PI*gsl_rng_uniform(ran);
+          if(DIM==3) {
+            z=2*gsl_rng_uniform(ran)-1.;
+            semiradius=r*sqrt(1.-z*z);
+            z*=r;
+          } else {
+            z=0.;
+            semiradius=r;
+          }
+          x=semiradius*cos(theta);
+          y=semiradius*sin(theta);
         } else {
-          z=0.;
-          semiradius=r;
+          if(!silent) bail_out("Don't know how to sample model");
+          exit(1);
         }
-        x=semiradius*cos(theta);
-        y=semiradius*sin(theta);
-      } else {
-        if(!silent) bail_out("Don't know how to sample model");
-        exit(1);
+        if((x*x+y*y+z*z)<par->radiusSqu) flag=pointEvaluation(par,temp,x,y,z);
+        j++;
       }
-      if((x*x+y*y+z*z)<par->radiusSqu) flag=pointEvaluation(par,temp,x,y,z);
     } while(!flag);
     /* Now pointEvaluation has decided that we like the point */
 
@@ -577,6 +591,11 @@ buildGrid(inputPars *par, struct grid *g){
   }
   /* end model grid point assignment */
   if(!silent) done(4);
+
+  if(!silent && numSecondRandoms>0){
+    sprintf(errStr, ">1 random point needed for %d grid points out of %d.", numSecondRandoms, par->pIntensity);
+    warning(errStr);
+  }
 
   /* Add surface sink particles */
   for(i=0;i<par->sinkPoints;i++){

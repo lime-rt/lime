@@ -3,7 +3,7 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015 The LIME development team
+ *  Copyright (C) 2016 The LIME development team
  *
  */
 
@@ -14,95 +14,71 @@
 
 
 void
-parseInput(inputPars *par, image **img, molData **m){
-  FILE *fp;
-  int i,id;
-  double BB[3];
+parseInput(inputPars inpar, configInfo *par, image **img, molData **m){
+  int i,id, ispec;
+  double BB[3],normBSquared;
   double cosPhi,sinPhi,cosTheta,sinTheta,dummyVel[DIM];
+  FILE *fp;
 
-  /* Set default values */
-  par->dust  	    = NULL;
-  par->inputfile    = NULL;
-  par->outputfile   = NULL;
-  par->binoutputfile= NULL;
-  par->gridfile     = NULL;
-  par->pregrid      = NULL;
-  par->restart      = NULL;
+  /* Copy over user-set parameters to the configInfo versions. (This seems like duplicated effort but it is a good principle to separate the two structs, for several reasons, as follows. (i) We will usually want more config parameters than user-settable ones. The separation leaves it clearer which things the user needs to (or can) set. (ii) The separation allows checking and screening out of impossible combinations of parameters. (iii) We can adopt new names (for clarity) for config parameters without bothering the user with a changed interface.) */
+  par->radius       = inpar.radius;
+  par->minScale     = inpar.minScale;
+  par->pIntensity   = inpar.pIntensity;
+  par->sinkPoints   = inpar.sinkPoints;
+  par->sampling     = inpar.sampling;
+  par->tcmb         = inpar.tcmb;
+  par->dust         = inpar.dust;
+  par->outputfile   = inpar.outputfile;
+  par->binoutputfile= inpar.binoutputfile;
+  par->restart      = inpar.restart;
+  par->gridfile     = inpar.gridfile;
+  par->pregrid      = inpar.pregrid;
+  par->lte_only     = inpar.lte_only;
+  par->init_lte     = inpar.init_lte;
+  par->blend        = inpar.blend;
+  par->antialias    = inpar.antialias;
+  par->polarization = inpar.polarization;
+  par->nThreads     = inpar.nThreads;
 
-  par->tcmb = 2.728;
-  par->lte_only=0;
-  par->init_lte=0;
-  par->sampling=2;
-  par->blend=0;
-  par->antialias=1;
-  par->polarization=0;
-  par->pIntensity=0;
-  par->sinkPoints=0;
-  par->doPregrid=0;
-  par->nThreads=0;
+  /* If the user has provided a list of moldatfile names, the corresponding elements of par->moldatfile will be non-NULL. Thus we can deduce the number of files (species) from the number of non-NULL elements.
+  */
+  par->nSpecies=0;
+  while(inpar.moldatfile[par->nSpecies]!=NULL && par->nSpecies<MAX_NSPECIES)
+    par->nSpecies++;
 
-  /* Allocate space for output fits images */
-  (*img)=malloc(sizeof(image)*MAX_NSPECIES);
-  par->moldatfile=malloc(sizeof(char *) * MAX_NSPECIES);
-  for(id=0;id<MAX_NSPECIES;id++){
-    (*img)[id].filename=NULL;
-    par->moldatfile[id]=NULL;
-  }
-  input(par, *img);
-  id=-1;
-  while((*img)[++id].filename!=NULL);
-  par->nImages=id;
-  if(par->nImages==0) {
-    if(!silent) bail_out("Error: no images defined");
-    exit(1);
-  }
+  /* Copy over the moldatfiles.
+  */
+  if(par->nSpecies == 0){
+    par->nSpecies = 1;
+    par->moldatfile = NULL;
 
-  *img=realloc(*img, sizeof(image)*par->nImages);
-
-  id=-1;
-  while(par->moldatfile[++id]!=NULL);
-  par->nSpecies=id;
-  if( par->nSpecies == 0 )
-    {
-      par->nSpecies = 1;
-      free(par->moldatfile);
-      par->moldatfile = NULL;
+  } else {
+    par->moldatfile=malloc(sizeof(char *)*par->nSpecies);
+    for(id=0;id<par->nSpecies;id++){
+      par->moldatfile[id] = inpar.moldatfile[id];
     }
-  else
-    {
-      par->moldatfile=realloc(par->moldatfile, sizeof(char *)*par->nSpecies);
-      /* Check if files exists */
-      for(id=0;id<par->nSpecies;id++){
-        if((fp=fopen(par->moldatfile[id], "r"))==NULL) {
-          openSocket(par, id);
-        }
-        else {
-          fclose(fp);
-        }
+
+    /* Check if files exist. */
+    for(id=0;id<par->nSpecies;id++){
+      if((fp=fopen(par->moldatfile[id], "r"))==NULL) {
+        openSocket(par->moldatfile[id]);
+      } else {
+        fclose(fp);
       }
     }
-
-
-  /* Set defaults and read inputPars and img[] */
-  for(i=0;i<par->nImages;i++) {
-    (*img)[i].source_vel=0.0;
-    (*img)[i].phi=0.0;
-    (*img)[i].nchan=0;
-    (*img)[i].velres=-1.;
-    (*img)[i].trans=-1;
-    (*img)[i].freq=-1.;
-    (*img)[i].bandwidth=-1.;
-  }
-  input(par,*img);
-
-  if(par->nThreads == 0){ // Hmm. Really ought to have a separate boolean parameter.
-    par->nThreads = NTHREADS;
   }
 
-  par->ncell=par->pIntensity+par->sinkPoints;
-  par->radiusSqu=par->radius*par->radius;
-  par->minScaleSqu=par->minScale*par->minScale;
-  if(par->pregrid!=NULL) par->doPregrid=1;
+  /* If the user has provided a list of image filenames, the corresponding elements of (*img).filename will be non-NULL. Thus we can deduce the number of images from the number of non-NULL elements.
+  */
+  par->nImages=0;
+  while((*img)[par->nImages].filename!=NULL && par->nImages<MAX_NIMAGES)
+    par->nImages++;
+
+  /* Now set the additional values in par. */
+  par->ncell = inpar.pIntensity + inpar.sinkPoints;
+  par->radiusSqu = inpar.radius*inpar.radius;
+  par->minScaleSqu=inpar.minScale*inpar.minScale;
+  par->doPregrid = (inpar.pregrid==NULL)?0:1;
 
   /* Check that the user has supplied this function (needed unless par->pregrid):
   */
@@ -125,46 +101,41 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
   */
   par->taylorCutoff = pow(24.*DBL_EPSILON, 0.25);
 
-  if(par->dust != NULL){
-    if((fp=fopen(par->dust, "r"))==NULL){
-      if(!silent) bail_out("Error opening dust opacity data file!");
-      exit(1);
-    }
-    else  {
-      fclose(fp);
-    }
-  }
-
   /* Allocate pixel space and parse image information */
   for(i=0;i<par->nImages;i++){
     if((*img)[i].nchan == 0 && (*img)[i].velres<0 ){
       /* Assume continuum image */
 
-      /* Check for polarization */
-      BB[0]=0.;
-      magfield(par->minScale,par->minScale,par->minScale,BB);
-      if(fabs(BB[0]) > 0.) par->polarization=1;
+      if(par->polarization){
+        (*img)[i].nchan=3;
 
-      if(par->polarization) (*img)[i].nchan=3;
-      else (*img)[i].nchan=1;
-      if((*img)[i].trans>-1 || (*img)[i].bandwidth>-1. || (*img)[i].freq==0 || par->dust==NULL){
-        if(!silent) bail_out("Error: Image keywords are ambiguous");
+        if(!silent){
+          /* Do a sketchy check which might indicate if the user has forgotten to supply a magfield function, and warn if this comes up positive. Note: there is no really robust way at present to distinguish the default magfield function (which, if called, indicates that the user forgot to supply their own) from one the user has supplied but which happens to set the B field to 0 at the origin.
+          */
+          magfield(par->minScale,par->minScale,par->minScale,BB);
+          normBSquared = BB[0]*BB[0] + BB[1]*BB[1] + BB[2]*BB[2];
+          if(normBSquared <= 0.) warning("Zero B field - did you remember to supply a magfield function?");
+        }
+      }else
+        (*img)[i].nchan=1;
+
+      if((*img)[i].trans>-1 || (*img)[i].bandwidth>-1. || (*img)[i].freq==0 || inpar.dust==NULL){
+        if(!silent) bail_out("Image keywords are ambiguous");
         exit(1);
       }
       (*img)[i].doline=0;
     } else if (((*img)[i].nchan>0 || (*img)[i].velres > 0)){
-      /* Assume line image */
-      par->polarization=0;
-      if(par->moldatfile==NULL){
-        if(!silent) bail_out("Error: No data file is specified for line image.");
+      /* Assume line image. */
+      if(inpar.moldatfile==NULL){
+        if(!silent) bail_out("No data file is specified for line image.");
         exit(1);
       }
       if(((*img)[i].trans>-1 && (*img)[i].freq>-1) || ((*img)[i].trans<0 && (*img)[i].freq<0)){
-        if(!silent) bail_out("Error: Specify either frequency or transition ");
+        if(!silent) bail_out("Specify either frequency or transition ");
         exit(1);
       }
       if(((*img)[i].nchan==0 && (*img)[i].bandwidth<0) || ((*img)[i].bandwidth<0 && (*img)[i].velres<0)){
-        if(!silent) bail_out("Error: Image keywords are not set properly");
+        if(!silent) bail_out("Image keywords are not set properly");
         exit(1);
       }
       (*img)[i].doline=1;
@@ -209,33 +180,32 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
 
   /* Allocate moldata array */
   (*m)=malloc(sizeof(molData)*par->nSpecies);
-  for( i=0; i<par->nSpecies; i++ )
-    {
-      (*m)[i].ntrans = NULL;
-      (*m)[i].lal = NULL;
-      (*m)[i].lau = NULL;
-      (*m)[i].lcl = NULL;
-      (*m)[i].lcu = NULL;
-      (*m)[i].aeinst = NULL;
-      (*m)[i].freq = NULL;
-      (*m)[i].beinstu = NULL;
-      (*m)[i].beinstl = NULL;
-      (*m)[i].down = NULL;
-      (*m)[i].ntemp = NULL;
-      (*m)[i].eterm = NULL;
-      (*m)[i].gstat = NULL;
-      (*m)[i].cmb = NULL;
-      (*m)[i].local_cmb = NULL;
-    }
+  for( i=0; i<par->nSpecies; i++ ){
+    (*m)[i].ntrans = NULL;
+    (*m)[i].lal = NULL;
+    (*m)[i].lau = NULL;
+    (*m)[i].lcl = NULL;
+    (*m)[i].lcu = NULL;
+    (*m)[i].aeinst = NULL;
+    (*m)[i].freq = NULL;
+    (*m)[i].beinstu = NULL;
+    (*m)[i].beinstl = NULL;
+    (*m)[i].down = NULL;
+    (*m)[i].eterm = NULL;
+    (*m)[i].gstat = NULL;
+    (*m)[i].cmb = NULL;
+    (*m)[i].local_cmb = NULL;
+  }
 }
 
+
 void
-freeInput( inputPars *par, image* img, molData* mol )
+freeMoldata(const int nSpecies, molData *mol)
 {
-  int i,id;
+  int i;
   if( mol!= 0 )
     {
-      for( i=0; i<par->nSpecies; i++ )
+      for( i=0; i<nSpecies; i++ )
         {
           if( mol[i].ntrans != NULL )
             {
@@ -301,25 +271,10 @@ freeInput( inputPars *par, image* img, molData* mol )
         }
       free(mol);
     }
-  for(i=0;i<par->nImages;i++){
-    for(id=0;id<(img[i].pxls*img[i].pxls);id++){
-      free( img[i].pixel[id].intense );
-      free( img[i].pixel[id].tau );
-    }
-    free(img[i].pixel);
-  }
-  if( img != NULL )
-    {
-      free(img);
-    }
-  if( par->moldatfile != NULL )
-    {
-      free(par->moldatfile);
-    }
 }
 
 void
-freeGridPointData(inputPars *par, gridPointData *mol){
+freeGridPointData(configInfo *par, gridPointData *mol){
   int i;
   if (mol!= 0){
     for (i=0;i<par->nSpecies;i++){
@@ -350,7 +305,7 @@ invSqrt(float x){
   return x;
 }
 
-void checkGridDensities(inputPars *par, struct grid *g){
+void checkGridDensities(configInfo *par, struct grid *g){
   int i;
   static _Bool warningAlreadyIssued=0;
   char errStr[80];
@@ -370,7 +325,7 @@ void checkGridDensities(inputPars *par, struct grid *g){
 }
 
 void
-continuumSetup(int im, image *img, molData *m, inputPars *par, struct grid *g){
+continuumSetup(int im, image *img, molData *m, configInfo *par, struct grid *g){
   int id;
   img[im].trans=0;
   m[0].nline=1;
@@ -411,7 +366,7 @@ lineCount(int n,molData *m,int **counta,int **countb,int *nlinetot){
 }
 
 void
-lineBlend(molData *m, inputPars *par, blend **matrix){
+lineBlend(molData *m, configInfo *par, blend **matrix){
   int iline, jline, nlinetot=0,c;
   int *counta,*countb;
 
@@ -451,7 +406,7 @@ lineBlend(molData *m, inputPars *par, blend **matrix){
 }
 
 void
-levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
+levelPops(molData *m, configInfo *par, struct grid *g, int *popsdone){
   int id,conv=0,iter,ilev,prog=0,ispec,c=0,n,i,threadI,nVerticesDone;
   double percent=0.,*median,result1=0,result2=0,snr,delta_pop;
   blend *matrix;
@@ -497,7 +452,7 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
   /* Check for blended lines */
   lineBlend(m,par,&matrix);
 
-  if(par->lte_only || par->init_lte) LTE(par,g,m);
+  if(par->lte_only!=0) LTE(par,g,m);
 
   for(id=0;id<par->pIntensity;id++){
     stat[id].pop=malloc(sizeof(double)*m[0].nlev*5);

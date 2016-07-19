@@ -7,7 +7,9 @@
 # Ignore example and benchmark result files
 *.vtk
 *.pop
-*.fits
+*.fits*
+example/*.dat
 
 # Ignore Python byte-code
 *.pyc
+
