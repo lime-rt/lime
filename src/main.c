@@ -13,7 +13,6 @@
 
 /* Forward declaration of functions only used in this file */
 int initParImg(inputPars *par, image **img);
-void freeParImg(const int nImages, inputPars *par, image *img);
 int main ();
 
 
@@ -42,10 +41,10 @@ initParImg(inputPars *par, image **img)
   FILE *fp;
 
   /* Set 'impossible' default values for mandatory parameters */
-  par->radius    =-1;
-  par->minScale  =-1;
-  par->pIntensity=-1;
-  par->sinkPoints=-1;
+  par->radius    = 0;
+  par->minScale  = 0;
+  par->pIntensity= 0;
+  par->sinkPoints= 0;
 
   /* Set default values for optional parameters */
   par->dust  	    = NULL;
@@ -54,6 +53,13 @@ initParImg(inputPars *par, image **img)
   par->gridfile     = NULL;
   par->pregrid      = NULL;
   par->restart      = NULL;
+
+  par->collPartIds  = malloc(sizeof(int)*MAX_N_COLL_PART);
+  for(i=0;i<MAX_N_COLL_PART;i++) par->collPartIds[i] = 0;
+  par->nMolWeights  = malloc(sizeof(double)*MAX_N_COLL_PART);
+  for(i=0;i<MAX_N_COLL_PART;i++) par->nMolWeights[i] = -1.0;
+  par->dustWeights  = malloc(sizeof(double)*MAX_N_COLL_PART);
+  for(i=0;i<MAX_N_COLL_PART;i++) par->dustWeights[i] = -1.0;
 
   par->tcmb = 2.728;
   par->lte_only=0;
@@ -76,7 +82,8 @@ initParImg(inputPars *par, image **img)
     (*img)[i].filename=NULL;
   }
 
-  /* First-pass reading of the user-set parameters */
+  /* First call to the user function which sets par, img values. Note that, as far as img is concerned, here we just want to find out how many images the user wants, so we can malloc the array properly. We call input() a second time then to get the actual per-image parameter values.
+  */
   input(par, *img);
 
   /* Check that the mandatory parameters now have 'sensible' settings (i.e., that they have been set at all). Raise an exception if not. */
@@ -126,31 +133,6 @@ initParImg(inputPars *par, image **img)
 
 
 void
-freeParImg(const int nImages, inputPars *par, image *img)
-{
-  /* Release memory allocated for the output fits images
-     and for par->moldatfile
-  */
-  int i, id;
-  for(i=0;i<nImages;i++){
-    for(id=0;id<(img[i].pxls*img[i].pxls);id++){
-      free( img[i].pixel[id].intense );
-      free( img[i].pixel[id].tau );
-    }
-    free(img[i].pixel);
-  }
-  if( img != NULL )
-    {
-      free(img);
-    }
-  if( par->moldatfile != NULL )
-    {
-      free(par->moldatfile);
-    }
-}
-
-
-void
 run(inputPars inpars, image *img)
 {
   /* Run LIME with inpars and the output fits files specified.
@@ -176,12 +158,13 @@ run(inputPars inpars, image *img)
   calcTableEntries(FAST_EXP_MAX_TAYLOR, FAST_EXP_NUM_BITS);
 #endif
 
-  parseInput(inpars, &par, &img, &m);
+  parseInput(inpars, &par, &img, &m); /* Sets par.numDensities for !(par.doPregrid || par.restart) */
 
   if(par.doPregrid)
     {
       gridAlloc(&par,&g);
-      predefinedGrid(&par,g);
+      predefinedGrid(&par,g); /* Sets par.numDensities */
+      checkUserDensWeights(&par); /* Needs par.numDensities */
     }
   else if(par.restart)
     {
@@ -189,6 +172,7 @@ run(inputPars inpars, image *img)
     }
   else
     {
+      checkUserDensWeights(&par); /* Needs par.numDensities */
       gridAlloc(&par,&g);
       buildGrid(&par,g);
     }
@@ -200,7 +184,10 @@ run(inputPars inpars, image *img)
     if(img[i].doline)
       nLineImages++;
     else{
-      continuumSetup(i,img,m,&par,g);
+      if(par.restart)
+        img[i].trans=0;
+      else
+        continuumSetup(i,img,m,&par,g);
       raytrace(i,&par,g,m,img);
       writefits(i,&par,m,img);
     }
@@ -221,8 +208,11 @@ run(inputPars inpars, image *img)
   if(!silent) goodnight(initime,img[0].filename);
 
   freeGrid( &par, m, g);
-  freeMoldata(par.nSpecies, m);
+  freeMolData(par.nSpecies, m);
   free(par.moldatfile);
+  free(par.collPartIds);
+  free(par.nMolWeights);
+  free(par.dustWeights);
 }
 
 

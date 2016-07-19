@@ -68,7 +68,7 @@ This function returns ds as the (always positive-valued) distance between the pr
 
 
 void
-traceray(rayData ray, int tmptrans, int im, configInfo *par, struct grid *g, molData *m, image *img, double cutoff){
+traceray(rayData ray, int tmptrans, int im, configInfo *par, struct grid *gp, molData *md, image *img, double cutoff){
   /*
 For a given image pixel position, this function evaluates the intensity of the total light emitted/absorbed along that line of sight through the (possibly rotated) model. The calculation is performed for several frequencies, one per channel of the output image.
 
@@ -98,10 +98,10 @@ Note that the algorithm employed here is similar to that employed in the functio
 
     /* Find the grid point nearest to the starting x. */
     i=0;
-    dist2=(x[0]-g[i].x[0])*(x[0]-g[i].x[0]) + (x[1]-g[i].x[1])*(x[1]-g[i].x[1]) + (x[2]-g[i].x[2])*(x[2]-g[i].x[2]);
+    dist2=(x[0]-gp[i].x[0])*(x[0]-gp[i].x[0]) + (x[1]-gp[i].x[1])*(x[1]-gp[i].x[1]) + (x[2]-gp[i].x[2])*(x[2]-gp[i].x[2]);
     posn=i;
     for(i=1;i<par->ncell;i++){
-      ndist2=(x[0]-g[i].x[0])*(x[0]-g[i].x[0]) + (x[1]-g[i].x[1])*(x[1]-g[i].x[1]) + (x[2]-g[i].x[2])*(x[2]-g[i].x[2]);
+      ndist2=(x[0]-gp[i].x[0])*(x[0]-gp[i].x[0]) + (x[1]-gp[i].x[1])*(x[1]-gp[i].x[1]) + (x[2]-gp[i].x[2])*(x[2]-gp[i].x[2]);
       if(ndist2<dist2){
         posn=i;
         dist2=ndist2;
@@ -112,12 +112,12 @@ Note that the algorithm employed here is similar to that employed in the functio
     do{
       ds=-2.*zp-col; /* This default value is chosen to be as large as possible given the spherical model boundary. */
       nposn=-1;
-      line_plane_intersect(g,&ds,posn,&nposn,dx,x,cutoff); /* Returns a new ds equal to the distance to the next Voronoi face, and nposn, the ID of the grid cell that abuts that face. */ 
+      line_plane_intersect(gp,&ds,posn,&nposn,dx,x,cutoff); /* Returns a new ds equal to the distance to the next Voronoi face, and nposn, the ID of the grid cell that abuts that face. */ 
       if(par->polarization){
-        sourceFunc_pol(snu_pol,&alpha,g,posn,0,0,img[im].rotMat);
+        sourceFunc_pol(snu_pol,&alpha,gp,posn,0,0,img[im].rotMat);
         dtau=alpha*ds;
         calcSourceFn(dtau, par, &remnantSnu, &expDTau);
-        remnantSnu *= m[0].norminv*ds;
+        remnantSnu *= md[0].norminv*ds;
 
         for(ichan=0;ichan<img[im].nchan;ichan++){ /* Loop over I, Q and U */
 #ifdef FASTEXP
@@ -134,14 +134,14 @@ Note that the algorithm employed here is similar to that employed in the functio
 
           if(img[im].doline){
             for(molI=0;molI<par->nSpecies;molI++){
-              for(lineI=0;lineI<m[molI].nline;lineI++){
-                if(m[molI].freq[lineI] > img[im].freq-img[im].bandwidth*0.5
-                && m[molI].freq[lineI] < img[im].freq+img[im].bandwidth*0.5){
+              for(lineI=0;lineI<md[molI].nline;lineI++){
+                if(md[molI].freq[lineI] > img[im].freq-img[im].bandwidth*0.5
+                && md[molI].freq[lineI] < img[im].freq+img[im].bandwidth*0.5){
                   /* Calculate the red shift of the transition wrt to the frequency specified for the image. */
                   if(img[im].trans > -1){
-                    lineRedShift=(m[molI].freq[img[im].trans]-m[molI].freq[lineI])/m[molI].freq[img[im].trans]*CLIGHT;
+                    lineRedShift=(md[molI].freq[img[im].trans]-md[molI].freq[lineI])/md[molI].freq[img[im].trans]*CLIGHT;
                   } else {
-                    lineRedShift=(img[im].freq-m[molI].freq[lineI])/img[im].freq*CLIGHT;
+                    lineRedShift=(img[im].freq-md[molI].freq[lineI])/img[im].freq*CLIGHT;
                   }
 
                   vThisChan=(ichan-(img[im].nchan-1)/2.)*img[im].velres; /* Consistent with the WCS definition in writefits(). */
@@ -149,22 +149,22 @@ Note that the algorithm employed here is similar to that employed in the functio
                   /* Line centre occurs when deltav = the recession velocity of the radiating material. Explanation of the signs of the 2nd and 3rd terms on the RHS: (i) A bulk source velocity (which is defined as >0 for the receding direction) should be added to the material velocity field; this is equivalent to subtracting it from deltav, as here. (ii) A positive value of lineRedShift means the line is red-shifted wrt to the frequency specified for the image. The effect is the same as if the line and image frequencies were the same, but the bulk recession velocity were higher. lineRedShift should thus be added to the recession velocity, which is equivalent to subtracting it from deltav, as here. */
 
                   /* Calculate an approximate average line-shape function at deltav within the Voronoi cell. */
-                  if(!par->pregrid) velocityspline2(x,dx,ds,g[posn].mol[molI].binv,deltav,&vfac);
-                  else vfac=gaussline(deltav-veloproject(dx,g[posn].vel),g[posn].mol[molI].binv);
+                  if(!par->pregrid) velocityspline2(x,dx,ds,gp[posn].mol[molI].binv,deltav,&vfac);
+                  else vfac=gaussline(deltav-veloproject(dx,gp[posn].vel),gp[posn].mol[molI].binv);
 
                   /* Increment jnu and alpha for this Voronoi cell by the amounts appropriate to the spectral line. */
-                  sourceFunc_line(&jnu,&alpha,m,vfac,g,posn,molI,lineI);
+                  sourceFunc_line(&jnu,&alpha,md,vfac,gp,posn,molI,lineI);
                 }
               }
             }
           }
 
-          if(img[im].doline && img[im].trans > -1) sourceFunc_cont(&jnu,&alpha,g,posn,0,img[im].trans);
-          else if(img[im].doline && img[im].trans == -1) sourceFunc_cont(&jnu,&alpha,g,posn,0,tmptrans);
-          else sourceFunc_cont(&jnu,&alpha,g,posn,0,0);
+          if(img[im].doline && img[im].trans > -1) sourceFunc_cont(&jnu,&alpha,gp,posn,0,img[im].trans);
+          else if(img[im].doline && img[im].trans == -1) sourceFunc_cont(&jnu,&alpha,gp,posn,0,tmptrans);
+          else sourceFunc_cont(&jnu,&alpha,gp,posn,0,0);
           dtau=alpha*ds;
           calcSourceFn(dtau, par, &remnantSnu, &expDTau);
-          remnantSnu *= jnu*m[0].norminv*ds;
+          remnantSnu *= jnu*md[0].norminv*ds;
 #ifdef FASTEXP
           ray.intensity[ichan]+=FastExp(ray.tau[ichan])*remnantSnu;
 #else
@@ -183,19 +183,19 @@ Note that the algorithm employed here is similar to that employed in the functio
     /* Add or subtract cmb. */
     if(par->polarization){ /* just add it to Stokes I */
 #ifdef FASTEXP
-      ray.intensity[stokesIi]+=FastExp(ray.tau[stokesIi])*m[0].local_cmb[tmptrans];
+      ray.intensity[stokesIi]+=FastExp(ray.tau[stokesIi])*md[0].local_cmb[tmptrans];
 #else
-      ray.intensity[stokesIi]+=exp(   -ray.tau[stokesIi])*m[0].local_cmb[tmptrans];
+      ray.intensity[stokesIi]+=exp(   -ray.tau[stokesIi])*md[0].local_cmb[tmptrans];
 #endif
 
     }else{
 #ifdef FASTEXP
       for(ichan=0;ichan<img[im].nchan;ichan++){
-        ray.intensity[ichan]+=FastExp(ray.tau[ichan])*m[0].local_cmb[tmptrans];
+        ray.intensity[ichan]+=FastExp(ray.tau[ichan])*md[0].local_cmb[tmptrans];
       }
 #else
       for(ichan=0;ichan<img[im].nchan;ichan++){
-        ray.intensity[ichan]+=exp(-ray.tau[ichan])*m[0].local_cmb[tmptrans];
+        ray.intensity[ichan]+=exp(-ray.tau[ichan])*md[0].local_cmb[tmptrans];
       }
 #endif
     }
@@ -204,7 +204,7 @@ Note that the algorithm employed here is similar to that employed in the functio
 
 
 void
-raytrace(int im, configInfo *par, struct grid *g, molData *m, image *img){
+raytrace(int im, configInfo *par, struct grid *gp, molData *md, image *img){
   int aa,ichan,px,iline,tmptrans,i,threadI,nRaysDone;
   double size,minfreq,absDeltaFreq,totalNumPixelsMinus1=(double)(img[im].pxls*img[im].pxls-1);
   double cutoff;
@@ -230,7 +230,7 @@ raytrace(int im, configInfo *par, struct grid *g, molData *m, image *img){
 
   /* Fix the image parameters.
   */
-  if(img[im].freq < 0) img[im].freq=m[0].freq[img[im].trans];
+  if(img[im].freq < 0) img[im].freq=md[0].freq[img[im].trans];
   if(img[im].nchan == 0 && img[im].bandwidth>0){
     img[im].nchan=(int) (img[im].bandwidth/(img[im].velres/CLIGHT*img[im].freq));
   } else if (img[im].velres<0 && img[im].bandwidth>0){
@@ -239,10 +239,10 @@ raytrace(int im, configInfo *par, struct grid *g, molData *m, image *img){
 
   if(img[im].trans<0){
     iline=0;
-    minfreq=fabs(img[im].freq-m[0].freq[iline]);
+    minfreq=fabs(img[im].freq-md[0].freq[iline]);
     tmptrans=iline;
-    for(iline=1;iline<m[0].nline;iline++){
-      absDeltaFreq=fabs(img[im].freq-m[0].freq[iline]);
+    for(iline=1;iline<md[0].nline;iline++){
+      absDeltaFreq=fabs(img[im].freq-md[0].freq[iline]);
       if(absDeltaFreq<minfreq){
         minfreq=absDeltaFreq;
         tmptrans=iline;
@@ -287,7 +287,7 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
         ray.x = -size*(gsl_rng_uniform(threadRans[threadI]) + px%img[im].pxls - 0.5*img[im].pxls);
         ray.y =  size*(gsl_rng_uniform(threadRans[threadI]) + px/img[im].pxls - 0.5*img[im].pxls);
 
-        traceray(ray, tmptrans, im, par, g, m, img, cutoff);
+        traceray(ray, tmptrans, im, par, gp, md, img, cutoff);
 
         #pragma omp critical
         {

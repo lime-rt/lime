@@ -239,9 +239,10 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
         firststep=0;				
         ds=g[here].ds[neighI]*0.5;
         halfFirstDs[iphot]=ds;
+
         for(molI=0;molI<par->nSpecies;molI++){
           if(!par->doPregrid)
-            velocityspline(g,here,neighI,g[id].mol[molI].binv,deltav,&vfac[molI]);
+            velocityspline(    g,here,neighI,g[id].mol[molI].binv,deltav,&vfac[molI]);
           else
             velocityspline_lin(g,here,neighI,g[id].mol[molI].binv,deltav,&vfac[molI]);
           mp[molI].vfac[iphot]=vfac[molI];
@@ -251,7 +252,7 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
       
         for(molI=0;molI<par->nSpecies;molI++){
           if(!par->doPregrid)
-            velocityspline(g,here,neighI,g[id].mol[molI].binv,deltav,&vfac[molI]);
+            velocityspline(    g,here,neighI,g[id].mol[molI].binv,deltav,&vfac[molI]);
           else
             velocityspline_lin(g,here,neighI,g[id].mol[molI].binv,deltav,&vfac[molI]);
         }

@@ -111,7 +111,7 @@ stateq(int id, struct grid *g, molData *m, const int ispec, configInfo *par\
 
 void
 getmatrix(int id, gsl_matrix *matrix, molData *m, struct grid *g, int ispec, gridPointData *mp){
-  int p,t,ti,k,l,li,ipart;
+  int ti,k,l,li,ipart,di;
   struct getmatrix {
     double *ctot;
     gsl_matrix * colli;
@@ -127,10 +127,10 @@ getmatrix(int id, gsl_matrix *matrix, molData *m, struct grid *g, int ispec, gri
       if(!silent)bail_out("Matrix initialization error in stateq");
       exit(0);
     }
-    for(t=0;t<m[ispec].nlev+1;t++){
-      for(p=0;p<m[ispec].nlev+1;p++){
-        gsl_matrix_set(matrix, t, p, 0.);
-        gsl_matrix_set(partner[ipart].colli, t, p, 0.);
+    for(k=0;k<m[ispec].nlev+1;k++){
+      for(l=0;l<m[ispec].nlev+1;l++){
+        gsl_matrix_set(matrix, k, l, 0.);
+        gsl_matrix_set(partner[ipart].colli, k, l, 0.);
       }
     }
   }
@@ -147,34 +147,40 @@ getmatrix(int id, gsl_matrix *matrix, molData *m, struct grid *g, int ispec, gri
 
   /* Populate matrix with collisional transitions */
   for(ipart=0;ipart<m[ispec].npart;ipart++){
-    double *downrates = m[ispec].down[ipart];
-    for(ti=0;ti<m[ispec].ntrans[ipart];ti++){
-      int coeff_index = ti*m[ispec].ntemp[ipart] + g[id].mol[ispec].partner[ipart].t_binlow;
+    struct cpData part = m[ispec].part[ipart];
+    double *downrates = part.down;
+    for(ti=0;ti<part.ntrans;ti++){
+      int coeff_index = ti*part.ntemp + g[id].mol[ispec].partner[ipart].t_binlow;
       double down = downrates[coeff_index] + g[id].mol[ispec].partner[ipart].interp_coeff*(downrates[coeff_index+1] - downrates[coeff_index]);
-      double up = down*m[ispec].gstat[m[ispec].lcu[ti]]/m[ispec].gstat[m[ispec].lcl[ti]]*exp(-HCKB*(m[ispec].eterm[m[ispec].lcu[ti]]-m[ispec].eterm[m[ispec].lcl[ti]])/g[id].t[0]);
-      gsl_matrix_set(partner[ipart].colli, m[ispec].lcu[ti], m[ispec].lcl[ti], down);
-      gsl_matrix_set(partner[ipart].colli, m[ispec].lcl[ti], m[ispec].lcu[ti], up);
+      double up = down*m[ispec].gstat[part.lcu[ti]]/m[ispec].gstat[part.lcl[ti]]*exp(-HCKB*(m[ispec].eterm[part.lcu[ti]]-m[ispec].eterm[part.lcl[ti]])/g[id].t[0]);
+      gsl_matrix_set(partner[ipart].colli, part.lcu[ti], part.lcl[ti], down);
+      gsl_matrix_set(partner[ipart].colli, part.lcl[ti], part.lcu[ti], up);
     }
 
-    for(p=0;p<m[ispec].nlev;p++){
-      partner[ipart].ctot[p]=0.;
-      for(t=0;t<m[ispec].nlev;t++) partner[ipart].ctot[p]+=gsl_matrix_get(partner[ipart].colli,p,t);
+    for(k=0;k<m[ispec].nlev;k++){
+      partner[ipart].ctot[k]=0.;
+      for(l=0;l<m[ispec].nlev;l++)
+        partner[ipart].ctot[k] += gsl_matrix_get(partner[ipart].colli,k,l);
     }
   }
 
-  for(p=0;p<m[ispec].nlev;p++){
+  for(k=0;k<m[ispec].nlev;k++){
     for(ipart=0;ipart<m[ispec].npart;ipart++){
-      gsl_matrix_set(matrix,p,p,gsl_matrix_get(matrix,p,p)+g[id].dens[ipart]*partner[ipart].ctot[p]);
+      di = m[ispec].part[ipart].densityIndex;
+      if(di>=0)
+        gsl_matrix_set(matrix,k,k,gsl_matrix_get(matrix,k,k)+g[id].dens[di]*partner[ipart].ctot[k]);
     }
-    for(t=0;t<m[ispec].nlev;t++){
-      if(p!=t){
+    for(l=0;l<m[ispec].nlev;l++){
+      if(k!=l){
         for(ipart=0;ipart<m[ispec].npart;ipart++){
-          gsl_matrix_set(matrix,p,t,gsl_matrix_get(matrix,p,t)-g[id].dens[ipart]*gsl_matrix_get(partner[ipart].colli,t,p));
+          di = m[ispec].part[ipart].densityIndex;
+          if(di>=0)
+            gsl_matrix_set(matrix,k,l,gsl_matrix_get(matrix,k,l)-g[id].dens[di]*gsl_matrix_get(partner[ipart].colli,l,k));
         }
       }
     }
-    gsl_matrix_set(matrix, m[ispec].nlev, p, 1.);
-    gsl_matrix_set(matrix, p, m[ispec].nlev, 0.);
+    gsl_matrix_set(matrix, m[ispec].nlev, k, 1.);
+    gsl_matrix_set(matrix, k, m[ispec].nlev, 0.);
   }
 
   for(ipart=0;ipart<m[ispec].npart;ipart++){

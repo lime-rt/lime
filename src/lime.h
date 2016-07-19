@@ -84,8 +84,9 @@
 #define MAX_NSPECIES            100
 #define MAX_NIMAGES             100
 #define N_RAN_PER_SEGMENT       3
-#define FAST_EXP_MAX_TAYLOR     3
-#define FAST_EXP_NUM_BITS       8
+#define FAST_EXP_MAX_TAYLOR	3
+#define FAST_EXP_NUM_BITS	8
+#define MAX_N_COLL_PART		7
 #define N_SMOOTH_ITERS          20
 #define TYPICAL_ISM_DENS        1000.0
 
@@ -98,12 +99,21 @@
 #define CP_He			6
 #define CP_Hplus		7
 
+/* Collision partner ID numbers from LAMDA */
+#define CP_H2			1
+#define CP_p_H2			2
+#define CP_o_H2			3
+#define CP_e			4
+#define CP_H			5
+#define CP_He			6
+#define CP_Hplus		7
+
 
 typedef struct {
-  double radius,minScale,tcmb;
+  double radius,minScale,tcmb,*nMolWeights,*dustWeights;
   double radiusSqu,minScaleSqu,taylorCutoff;
-  int sinkPoints,pIntensity,blend;
-  int ncell,nImages,nSpecies,collPart,doPregrid;
+  int sinkPoints,pIntensity,blend,*collPartIds;
+  int ncell,nImages,nSpecies,numDensities,doPregrid;
   char *outputfile, *binoutputfile;
   char *gridfile;
   char *pregrid;
@@ -113,13 +123,18 @@ typedef struct {
   char **moldatfile;
 } configInfo;
 
+struct cpData {
+  double *down,*temp;
+  int collPartId,ntemp,ntrans,*lcl,*lcu,densityIndex;
+};
+
 /* Molecular data: shared attributes */
 typedef struct {
-  int nlev,nline,*ntrans,*ntemp,npart;
-  int *lal,*lau,*lcl,*lcu;
+  int nlev,nline,npart;
+  int *lal,*lau;
   double *aeinst,*freq,*beinstu,*beinstl,*eterm,*gstat;
-  double **down;
-  double norm,norminv,*cmb,*local_cmb;
+  double norm,norminv,*cmb,*local_cmb,amass;
+  struct cpData *part;
 } molData;
 
 /* Data concerning a single grid vertex which is passed from photon() to stateq(). This data needs to be thread-safe. */
@@ -144,7 +159,7 @@ struct rates {
 
 
 struct populations {
-  double * pops, *knu, *dust;
+  double *pops, *knu, *dust;
   double dopb, binv;
   struct rates *partner;
 };
@@ -228,12 +243,18 @@ void gridDensity(configInfo,double,double,double,double*);
 /* More functions */
 void	run(inputPars, image *);
 
+void	assignMolCollPartsToDensities(configInfo*, molData*);
 void	binpopsout(configInfo *, struct grid *, molData *);
 void	buildGrid(configInfo *, struct grid *);
 void	calcFastExpRange(const int, const int, int*, int*, int*);
+void	calcGridCollRates(configInfo*, molData*, struct grid*);
+void	calcGridDustOpacity(configInfo*, molData*, struct grid*);
+void	calcGridMolDensities(configInfo*, struct grid*);
+void	calcMolCMBs(configInfo*, molData*);
 void	calcSourceFn(double, const configInfo*, double*, double*);
 void	calcTableEntries(const int, const int);
 void	checkGridDensities(configInfo*, struct grid*);
+void	checkUserDensWeights(configInfo*);
 void	continuumSetup(int, image*, molData*, configInfo*, struct grid*);
 void	distCalc(configInfo*, struct grid*);
 int	factorial(const int);
@@ -241,10 +262,12 @@ double	FastExp(const float);
 void	fit_d1fi(double, double, double*);
 void	fit_fi(double, double, double*);
 void	fit_rr(double, double, double*);
-void	freeGrid(const configInfo*, const molData*, struct grid*);
-void	freeMoldata(const int, molData*);
+void	freeGrid(configInfo*, const molData*, struct grid*);
+void	freeGridPointData(configInfo*, gridPointData*);
+void	freeMolData(const int, molData*);
 void	freeMolsWithBlends(struct molWithBlends*, const int);
-void	freePopulation(const configInfo*, const molData*, struct populations*);
+void	freeParImg(const int, inputPars*, image*);
+void	freePopulation(configInfo*, const molData*, struct populations*);
 double	gaussline(double, double);
 void	getArea(configInfo *, struct grid *, const gsl_rng *);
 void	getclosest(double, double, double, long *, long *, double *, double *, double *);
@@ -255,15 +278,14 @@ int	getNextEdge(double*, int, struct grid*, const gsl_rng*);
 void	getVelosplines(configInfo *, struct grid *);
 void	getVelosplines_lin(configInfo *, struct grid *);
 void	gridAlloc(configInfo *, struct grid **);
+void	gridLineInit(configInfo*, molData*, struct grid*);
 void	input(inputPars *, image *);
 float	invSqrt(float);
-void	kappa(molData *, struct grid *, configInfo *,int);
 void	levelPops(molData *, configInfo *, struct grid *, int *);
 void	line_plane_intersect(struct grid *, double *, int , int *, double *, double *, double);
 void	lineBlend(molData*, configInfo*, struct blendInfo*);
 void	LTE(configInfo *, struct grid *, molData *);
 void	lteOnePoint(configInfo*, molData*, const int, const double, double*);
-void	molinit(molData *, configInfo *, struct grid *,int);
 void	openSocket(char*);
 void	parseInput(inputPars, configInfo*, image**, molData**);
 void	photon(int, struct grid*, molData*, int, const gsl_rng*, configInfo*, const int, struct blendInfo, gridPointData*, double*);
@@ -275,9 +297,12 @@ void	predefinedGrid(configInfo *, struct grid *);
 void	qhull(configInfo *, struct grid *);
 double	ratranInput(char *, char *, double, double, double);
 void	raytrace(int, configInfo *, struct grid *, molData *, image *);
+void	readDummyCollPart(FILE*, const int);
+void	readMolData(configInfo*, molData*, int**, int*);
 void	readUserInput(inputPars *, image **, int *, int *);
 void	report(int, configInfo *, struct grid *);
 void	setUpConfig(configInfo *, image **, molData **);
+void	setUpDensityAux(configInfo*, int*, const int);
 void	smooth(configInfo *, struct grid *);
 void	sourceFunc(double*, double*, double, molData*, double, struct grid*, int, int, int, int);
 void	sourceFunc_cont(double*, double*, struct grid*, int, int, int);

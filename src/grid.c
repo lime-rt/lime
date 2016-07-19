@@ -5,6 +5,8 @@
  *  Copyright (C) 2006-2014 Christian Brinch
  *  Copyright (C) 2015 The LIME development team
  *
+TODO:
+  - There is no need to malloc nmol if all the images are non-line.
  */
 
 #include "lime.h"
@@ -13,19 +15,9 @@
 void
 gridAlloc(configInfo *par, struct grid **g){
   int i;
-  double temp[99];
 
   *g=malloc(sizeof(struct grid)*(par->pIntensity+par->sinkPoints));
   memset(*g, 0., sizeof(struct grid) * (par->pIntensity+par->sinkPoints));
-
-  if(par->doPregrid || par->restart) par->collPart=1;
-  else{
-    for(i=0;i<99;i++) temp[i]=-1;
-    density(AU,AU,AU,temp);
-    i=0;
-    par->collPart=0;
-    while(temp[i++]>-1) par->collPart++;
-  }
 
   for(i=0;i<(par->pIntensity+par->sinkPoints); i++){
     (*g)[i].a0 = NULL;
@@ -38,7 +30,7 @@ gridAlloc(configInfo *par, struct grid **g){
     (*g)[i].neigh = NULL;
     (*g)[i].w = NULL;
     (*g)[i].ds = NULL;
-    (*g)[i].dens=malloc(sizeof(double)*par->collPart);
+    (*g)[i].dens=malloc(sizeof(double)*par->numDensities);
     (*g)[i].abun=malloc(sizeof(double)*par->nSpecies);
     (*g)[i].nmol=malloc(sizeof(double)*par->nSpecies);
     (*g)[i].t[0]=-1;
@@ -46,94 +38,148 @@ gridAlloc(configInfo *par, struct grid **g){
   }
 }
 
-void
-freePopulation(const configInfo *par, const molData* m, struct populations* pop ) {
-  if( pop !=NULL )
-    {
-      int j,k;
-      for( j=0; j<par->nSpecies; j++ )
-        {
-          if( pop[j].pops != NULL )
-            {
-              free( pop[j].pops );
-            }
-          if( pop[j].knu != NULL )
-            {
-              free( pop[j].knu );
-            }
-          if( pop[j].dust != NULL )
-            {
-              free( pop[j].dust );
-            }
-          if( pop[j].partner != NULL )
-            {
-              free( pop[j].partner );
-            }
-        }
-      free(pop);
+void gridLineInit(configInfo *par, molData *md, struct grid *gp){
+  int i,id, ilev;
+
+  for(i=0;i<par->nSpecies;i++){
+    /* Calculate Doppler and thermal line broadening */
+    for(id=0;id<par->ncell;id++) {
+      gp[id].mol[i].dopb = sqrt(gp[id].dopb*gp[id].dopb+2.*KBOLTZ/md[i].amass*gp[id].t[0]);
+      gp[id].mol[i].binv = 1./gp[id].mol[i].dopb;
     }
+
+    /* Allocate space for populations etc */
+    for(id=0;id<par->ncell; id++){
+      gp[id].mol[i].pops = malloc(sizeof(double)*md[i].nlev);
+      gp[id].mol[i].dust = malloc(sizeof(double)*md[i].nline);
+      gp[id].mol[i].knu  = malloc(sizeof(double)*md[i].nline);
+      for(ilev=0;ilev<md[i].nlev;ilev++) gp[id].mol[i].pops[ilev]=0.0;
+    }
+  }
 }
-void
-freeGrid(const configInfo *par, const molData* m ,struct grid* g){
-  int i;
-  if( g != NULL )
-    {
-      for(i=0;i<(par->pIntensity+par->sinkPoints); i++){
-        if(g[i].a0 != NULL)
-          {
-            free(g[i].a0);
-          }
-        if(g[i].a1 != NULL)
-          {
-            free(g[i].a1);
-          }
-        if(g[i].a2 != NULL)
-          {
-            free(g[i].a2);
-          }
-        if(g[i].a3 != NULL)
-          {
-            free(g[i].a3);
-          }
-        if(g[i].a4 != NULL)
-          {
-            free(g[i].a4);
-          }
-        if(g[i].dir != NULL)
-          {
-            free(g[i].dir);
-          }
-        if(g[i].neigh != NULL)
-          {
-            free(g[i].neigh);
-          }
-        if(g[i].w != NULL)
-          {
-            free(g[i].w);
-          }
-        if(g[i].dens != NULL)
-          {
-            free(g[i].dens);
-          }
-        if(g[i].nmol != NULL)
-          {
-            free(g[i].nmol);
-          }
-        if(g[i].abun != NULL)
-          {
-            free(g[i].abun);
-          }
-        if(g[i].ds != NULL)
-          {
-            free(g[i].ds);
-          }
-        if(g[i].mol != NULL)
-          {
-            freePopulation( par, m, g[i].mol );
-          }
-      }
-      free(g);
+
+void calcGridMolDensities(configInfo *par, struct grid *g){
+  int id,ispec,i;
+
+  for(id=0;id<par->ncell; id++){
+    for(ispec=0;ispec<par->nSpecies;ispec++){
+      g[id].nmol[ispec] = 0.0;
+      for(i=0;i<par->numDensities;i++)
+        g[id].nmol[ispec] += g[id].abun[ispec]*g[id].dens[i]*par->nMolWeights[i];
     }
+  }
+}
+
+void calcGridDustOpacity(configInfo *par, molData *md, struct grid *gp){
+  FILE *fp;
+  char string[80];
+  int i=0,k,j,iline,id,si,di;
+  double loglam, *lamtab, *kaptab, *kappatab, gtd, densityForDust;
+  gsl_spline *spline;
+
+  for(si=0;si<par->nSpecies;si++){
+    kappatab = malloc(sizeof(*kappatab)*md[si].nline);
+
+    if(par->dust == NULL){
+      for(i=0;i<md[si].nline;i++) kappatab[i]=0.;
+    } else {
+      gsl_interp_accel *acc=gsl_interp_accel_alloc();
+      if((fp=fopen(par->dust, "r"))==NULL){
+        if(!silent) bail_out("Error opening dust opacity data file!");
+        exit(1);
+      }
+      while(fgetc(fp) != EOF){
+        fgets(string,80,fp);
+        i++;
+      }
+      rewind(fp);
+      if(i>0){
+        lamtab=malloc(sizeof(*lamtab)*i);
+        kaptab=malloc(sizeof(*kaptab)*i);
+      } else {
+        if(!silent) bail_out("No opacities read");
+        exit(1);
+      }
+      for(k=0;k<i;k++){
+        fscanf(fp,"%lf %lf\n", &lamtab[k], &kaptab[k]);
+        lamtab[k]=log10(lamtab[k]/1e6);
+        kaptab[k]=log10(kaptab[k]);
+      }
+      fclose(fp);
+      spline=gsl_spline_alloc(gsl_interp_cspline,i);
+      gsl_spline_init(spline,lamtab,kaptab,i);
+      for(j=0;j<md[si].nline;j++) {
+        loglam=log10(CLIGHT/md[si].freq[j]);
+        if(loglam < lamtab[0]){
+          kappatab[j]=0.1*pow(10.,kaptab[0] + (loglam-lamtab[0]) * (kaptab[1]-kaptab[0])/(lamtab[1]-lamtab[0]));
+        } else if(loglam > lamtab[i-1]){
+          kappatab[j]=0.1*pow(10.,kaptab[i-2] + (loglam-lamtab[i-2]) * (kaptab[i-1]-kaptab[i-2])/(lamtab[i-1]-lamtab[i-2]));
+        } else kappatab[j]=0.1*pow(10.,gsl_spline_eval(spline,loglam,acc));
+      }
+      gsl_spline_free(spline);
+      gsl_interp_accel_free(acc);
+      free(kaptab);
+      free(lamtab);
+    }
+
+    for(id=0;id<par->ncell;id++){
+      densityForDust = 0.0;
+      for(di=0;di<par->numDensities;di++)
+        densityForDust += gp[id].dens[di]*par->dustWeights[di];
+
+      for(iline=0;iline<md[si].nline;iline++){
+        gasIIdust(gp[id].x[0],gp[id].x[1],gp[id].x[2],&gtd);
+        gp[id].mol[si].knu[iline]=kappatab[iline]*2.4*AMU*densityForDust/gtd;
+        //Check if input model supplies a dust temperature. Otherwise use the kinetic temperature
+        if(gp[id].t[1]==-1) {
+          gp[id].mol[si].dust[iline]=planckfunc(iline,gp[id].t[0],md,si);
+        } else {
+          gp[id].mol[si].dust[iline]=planckfunc(iline,gp[id].t[1],md,si);
+        }
+      }
+    }
+
+    free(kappatab);
+  }
+
+  return;
+}
+
+void calcGridCollRates(configInfo *par, molData *md, struct grid *g){
+  int i,id,ipart,itrans,itemp,tnint=-1;
+  struct cpData part;
+  double fac, uprate, downrate=0.0;
+
+  for(i=0;i<par->nSpecies;i++){
+    for(id=0;id<par->ncell;id++){
+      g[id].mol[i].partner = malloc(sizeof(struct rates)*md[i].npart);
+    }
+
+    for(ipart=0;ipart<md[i].npart;ipart++){
+      part = md[i].part[ipart];
+      for(id=0;id<par->ncell;id++){
+        for(itrans=0;itrans<part.ntrans;itrans++){
+          if((g[id].t[0]>part.temp[0])&&(g[id].t[0]<part.temp[part.ntemp-1])){
+            for(itemp=0;itemp<part.ntemp-1;itemp++){
+              if((g[id].t[0]>part.temp[itemp])&&(g[id].t[0]<=part.temp[itemp+1])){
+                tnint=itemp;
+              }
+            }
+            fac=(g[id].t[0]-part.temp[tnint])/(part.temp[tnint+1]-part.temp[tnint]);
+            g[id].mol[i].partner[ipart].t_binlow = tnint;
+            g[id].mol[i].partner[ipart].interp_coeff = fac;
+
+	  } else if(g[id].t[0]<=part.temp[0]) {
+	    g[id].mol[i].partner[ipart].t_binlow = 0;
+	    g[id].mol[i].partner[ipart].interp_coeff = 0.0;
+	  } else {
+	    g[id].mol[i].partner[ipart].t_binlow = part.ntemp-2;
+	    g[id].mol[i].partner[ipart].interp_coeff = 1.0;
+	  }
+        } /* End loop over transitions. */
+      } /* End loop over grid points. */
+    } /* End loop over collision partners. */
+  } /* End loop over radiating molecules. */
 }
 
 void
@@ -611,7 +657,7 @@ buildGrid(configInfo *par, struct grid *g){
     g[k].x[2]=par->radius*z;
     g[k].sink=1;
     g[k].abun[0]=0;
-    g[k].dens[0]=1e-30;
+    g[k].dens[0]=1e-30;//************** what is the low but non zero value for?
     g[k].t[0]=par->tcmb;
     g[k].t[1]=par->tcmb;
     g[k++].dopb=0.;
