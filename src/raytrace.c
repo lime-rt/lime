@@ -3,7 +3,7 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015 The LIME development team
+ *  Copyright (C) 2016 The LIME development team
  *
  */
 
@@ -68,7 +68,7 @@ This function returns ds as the (always positive-valued) distance between the pr
 
 
 void
-traceray(rayData ray, int tmptrans, int im, configInfo *par, struct grid *gp, molData *md, image *img, double cutoff){
+traceray(rayData ray, int cmbMolI, int cmbLineI, int im, configInfo *par, struct grid *gp, molData *md, image *img, double cutoff){
   /*
 For a given image pixel position, this function evaluates the intensity of the total light emitted/absorbed along that line of sight through the (possibly rotated) model. The calculation is performed for several frequencies, one per channel of the output image.
 
@@ -159,9 +159,7 @@ Note that the algorithm employed here is similar to that employed in the functio
             }
           }
 
-          if(img[im].doline && img[im].trans > -1) sourceFunc_cont(&jnu,&alpha,gp,posn,0,img[im].trans);
-          else if(img[im].doline && img[im].trans == -1) sourceFunc_cont(&jnu,&alpha,gp,posn,0,tmptrans);
-          else sourceFunc_cont(&jnu,&alpha,gp,posn,0,0);
+          sourceFunc_cont(&jnu,&alpha,gp,posn,cmbMolI,cmbLineI);
           dtau=alpha*ds;
           calcSourceFn(dtau, par, &remnantSnu, &expDTau);
           remnantSnu *= jnu*md[0].norminv*ds;
@@ -183,19 +181,19 @@ Note that the algorithm employed here is similar to that employed in the functio
     /* Add or subtract cmb. */
     if(par->polarization){ /* just add it to Stokes I */
 #ifdef FASTEXP
-      ray.intensity[stokesIi]+=FastExp(ray.tau[stokesIi])*md[0].local_cmb[tmptrans];
+      ray.intensity[stokesIi]+=FastExp(ray.tau[stokesIi])*md[cmbMolI].local_cmb[cmbLineI];
 #else
-      ray.intensity[stokesIi]+=exp(   -ray.tau[stokesIi])*md[0].local_cmb[tmptrans];
+      ray.intensity[stokesIi]+=exp(   -ray.tau[stokesIi])*md[cmbMolI].local_cmb[cmbLineI];
 #endif
 
     }else{
 #ifdef FASTEXP
       for(ichan=0;ichan<img[im].nchan;ichan++){
-        ray.intensity[ichan]+=FastExp(ray.tau[ichan])*md[0].local_cmb[tmptrans];
+        ray.intensity[ichan]+=FastExp(ray.tau[ichan])*md[cmbMolI].local_cmb[cmbLineI];
       }
 #else
       for(ichan=0;ichan<img[im].nchan;ichan++){
-        ray.intensity[ichan]+=exp(-ray.tau[ichan])*md[0].local_cmb[tmptrans];
+        ray.intensity[ichan]+=exp(-ray.tau[ichan])*md[cmbMolI].local_cmb[cmbLineI];
       }
 #endif
     }
@@ -205,7 +203,7 @@ Note that the algorithm employed here is similar to that employed in the functio
 
 void
 raytrace(int im, configInfo *par, struct grid *gp, molData *md, image *img){
-  int aa,ichan,px,iline,tmptrans,i,threadI,nRaysDone;
+  int aa,ichan,px,iline,cmbMolI,cmbLineI,i,threadI,nRaysDone,molI,lineI;
   double size,minfreq,absDeltaFreq,totalNumPixelsMinus1=(double)(img[im].pxls*img[im].pxls-1);
   double cutoff;
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
@@ -228,27 +226,51 @@ raytrace(int im, configInfo *par, struct grid *gp, molData *md, image *img){
 
   size=img[im].distance*img[im].imgres;
 
-  /* Fix the image parameters.
-  */
-  if(img[im].freq < 0) img[im].freq=md[0].freq[img[im].trans];
-  if(img[im].nchan == 0 && img[im].bandwidth>0){
-    img[im].nchan=(int) (img[im].bandwidth/(img[im].velres/CLIGHT*img[im].freq));
-  } else if (img[im].velres<0 && img[im].bandwidth>0){
-    img[im].velres = img[im].bandwidth*CLIGHT/img[im].freq/img[im].nchan;
-  } else img[im].bandwidth = img[im].nchan*img[im].velres/CLIGHT * img[im].freq;
+  if(img[im].doline){
+    /* The user may have set img.trans/img.molI but not img.freq. If so, we calculate freq now.
+    */
+    if(img[im].trans>-1)
+      img[im].freq = md[img[im].molI].freq[img[im].trans];
 
-  if(img[im].trans<0){
-    iline=0;
-    minfreq=fabs(img[im].freq-md[0].freq[iline]);
-    tmptrans=iline;
-    for(iline=1;iline<md[0].nline;iline++){
-      absDeltaFreq=fabs(img[im].freq-md[0].freq[iline]);
-      if(absDeltaFreq<minfreq){
-        minfreq=absDeltaFreq;
-        tmptrans=iline;
+    /* Fill in the missing one of the triplet nchan/velres/bandwidth.
+    */
+    if(img[im].bandwidth > 0 && img[im].velres > 0){
+      img[im].nchan = (int)(img[im].bandwidth/(img[im].velres/CLIGHT*img[im].freq));
+
+    }else if(img[im].bandwidth > 0 && img[im].nchan > 0){
+      img[im].velres = img[im].bandwidth*CLIGHT/img[im].freq/img[im].nchan;
+
+    }else{ /*(img[im].velres > 0 && img[im].nchan > 0 */
+      img[im].bandwidth = img[im].nchan*img[im].velres/CLIGHT*img[im].freq;
+    }
+  } /* If not doline, we already have img.freq and nchan by now anyway. */
+
+  /*
+For both line and continuum images we have to access (currently in traceray() and sourceFunc_cont()) array elements m[i].local_cmb[j], g[id].mol[i].dust[j] and g[id].mol[i].knu[j]. For a continuum image, the molData object and the grid.mol object are simply convenient (if misleadingly named in this instance) repositories of appropriate cmb, dust and knu information; there is no actual molecule involved, and i and j are both simply 0.
+
+For a line image however, we may have a problem, because of the pair of quantities img.freq and img.trans, the user is allowed to specify freq and not trans. Since the cmb, dust and knu are assumed to be slowly-varying quantities, we can for 'trans' in this case use the line closest to the image frequency. (There must be some reasonably close line, else we would see no line emission in the image.)
+  */
+  if(img[im].doline){
+    if (img[im].trans>=0){
+      cmbMolI  = img[im].molI;
+      cmbLineI = img[im].trans;
+
+    }else{ /* User didn't set trans. Find the nearest line to the image frequency. */
+      for(molI=0;molI<par->nSpecies;molI++){
+        for(lineI=0;lineI<md[molI].nline;lineI++){
+          absDeltaFreq = fabs(img[im].freq - md[molI].freq[lineI]);
+          if((molI==0 && lineI==0) || absDeltaFreq < minfreq){
+            minfreq = absDeltaFreq;
+            cmbMolI = molI;
+            cmbLineI = lineI;
+          }
+        }
       }
     }
-  } else tmptrans=img[im].trans;
+  }else{ /* continuum image */
+    cmbMolI = 0;
+    cmbLineI = 0;
+  }
 
   cutoff = par->minScale*1.0e-7;
 
@@ -287,7 +309,7 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
         ray.x = -size*(gsl_rng_uniform(threadRans[threadI]) + px%img[im].pxls - 0.5*img[im].pxls);
         ray.y =  size*(gsl_rng_uniform(threadRans[threadI]) + px/img[im].pxls - 0.5*img[im].pxls);
 
-        traceray(ray, tmptrans, im, par, gp, md, img, cutoff);
+        traceray(ray, cmbMolI, cmbLineI, im, par, gp, md, img, cutoff);
 
         #pragma omp critical
         {
@@ -307,7 +329,6 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
   } /* End of parallel block. */
 
   gsl_set_error_handler(defaultErrorHandler);
-  img[im].trans=tmptrans;
 
   for (i=0;i<par->nThreads;i++){
     gsl_rng_free(threadRans[i]);

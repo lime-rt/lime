@@ -191,7 +191,7 @@ typedef struct {
 /* Image information */
 typedef struct {
   int doline;
-  int nchan,trans;
+  int nchan,trans,molI;
   spec *pixel;
   double velres;
   double imgres;
@@ -312,7 +312,7 @@ void	stateq(int, struct grid*, molData*, const int, configInfo*, struct blendInf
 void	statistics(int, molData *, struct grid *, int *, double *, double *, int *);
 void	stokesangles(double, double, double, double (*rotMat)[3], double*);
 double	taylor(const int, const float);
-void	traceray(rayData, int, int, configInfo*, struct grid*, molData*, image*, double);
+void    traceray(rayData, int, int, int, configInfo*, struct grid*, molData*, image*, double);
 void	velocityspline(struct grid *, int, int, double, double, double*);
 void	velocityspline2(double *, double *, double, double, double, double*);
 double	veloproject(double *, double *);

@@ -121,6 +121,7 @@ initParImg(inputPars *par, image **img)
     (*img)[i].nchan=0;
     (*img)[i].velres=-1.;
     (*img)[i].trans=-1;
+    (*img)[i].molI=-1;
     (*img)[i].freq=-1.;
     (*img)[i].bandwidth=-1.;
   }

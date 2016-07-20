@@ -131,7 +131,7 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
 
   /* Allocate pixel space and parse image information */
   for(i=0;i<par->nImages;i++){
-    if((*img)[i].nchan == 0 && (*img)[i].velres<0 ){
+    if((*img)[i].nchan == 0 && (*img)[i].velres<0 ){ /* => user has set neither nchan nor velres. One of the two is required for a line image. */
       /* Assume continuum image */
 
       if(par->polarization){
@@ -147,25 +147,69 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
       }else
         (*img)[i].nchan=1;
 
-      if((*img)[i].trans>-1 || (*img)[i].bandwidth>-1. || (*img)[i].freq==0 || inpar.dust==NULL){
-        if(!silent) bail_out("Image keywords are ambiguous");
+      if((*img)[i].freq<0){
+        if(!silent) bail_out("You must set image freq for a continuum image.");
         exit(1);
       }
+
+      if(par->dust==NULL){
+        if(!silent) bail_out("You must point par.dust to a dust opacity file for a continuum image.");
+        exit(1);
+      }
+
+      if((*img)[i].trans>-1 || (*img)[i].bandwidth>-1.)
+        if(!silent) warning("Image bandwidth and trans are ignored for a continuum image.");
+
       (*img)[i].doline=0;
-    } else if (((*img)[i].nchan>0 || (*img)[i].velres > 0)){
-      /* Assume line image. */
-      if(inpar.moldatfile==NULL){
-        if(!silent) bail_out("No data file is specified for line image.");
+
+    }else{ /* => user has set one of either nchan or velres, or possibly both. */
+      /* Assume line image */
+
+      /*
+For a valid line image, the user must set one of the following pairs:
+  bandwidth, velres (if they also set nchan, this is overwritten)
+  bandwidth, nchan (if they also set velres, this is overwritten)
+  velres, nchan (if they also set bandwidth, this is overwritten)
+
+The presence of one of these combinations at least is checked here, although the actual calculation is done in raytrace(), because it depends on moldata info which we have not yet got.
+      */
+      if((*img)[i].bandwidth > 0 && (*img)[i].velres > 0){
+        if(!silent && (*img)[i].nchan > 0)
+          warning("Your nchan value will be overwritten.");
+
+      }else if((*img)[i].bandwidth > 0 && (*img)[i].nchan > 0){
+        if(!silent && (*img)[i].velres > 0)
+          warning("Your velres value will be overwritten.");
+
+      }else if((*img)[i].velres > 0 && (*img)[i].nchan > 0){
+        if(!silent && (*img)[i].bandwidth > 0)
+          warning("Your bandwidth value will be overwritten.");
+
+      }else{
+        if(!silent) bail_out("Insufficient info to calculate nchan, velres and bandwidth.");
         exit(1);
       }
-      if(((*img)[i].trans>-1 && (*img)[i].freq>-1) || ((*img)[i].trans<0 && (*img)[i].freq<0)){
-        if(!silent) bail_out("Specify either frequency or transition ");
+
+      if(par->moldatfile==NULL){
+        if(!silent) bail_out("You must point par->moldatfile to a data file for a line image.");
         exit(1);
       }
-      if(((*img)[i].nchan==0 && (*img)[i].bandwidth<0) || ((*img)[i].bandwidth<0 && (*img)[i].velres<0)){
-        if(!silent) bail_out("Image keywords are not set properly");
+
+      /* Check that we have keywords which allow us to calculate the image frequency (if necessary) after reading in the moldata file:
+      */
+      if((*img)[i].trans>-1){ /* => user has set trans, possibly also freq. */
+        if(!silent && (*img)[i].freq > 0)
+          warning("You set image trans, so I'm ignoring freq.");
+
+        if((*img)[i].molI < 0){
+          if(par->nSpecies>1 && !silent) warning("You did not set image molI, so I'm assuming the 1st molecule.");
+          (*img)[i].molI = 0;
+        }
+      }else if((*img)[i].freq<0){ /* => user has set neither trans nor freq. */
+        if(!silent) bail_out("You must set either freq or trans (plus optionally molI).");
         exit(1);
-      }
+      }/* else => the user has set freq. */
+
       (*img)[i].doline=1;
     }
     (*img)[i].imgres=(*img)[i].imgres/206264.806;
@@ -511,13 +555,12 @@ levelPops(molData *m, configInfo *par, struct grid *g, int *popsdone){
     freePopulation( par, m, g[id].mol );
     g[id].mol=malloc(sizeof(struct populations)*par->nSpecies);
     int i;
-    for( i=0; i<par->nSpecies; i++ )
-      {
-        g[id].mol[i].dust = NULL;
-        g[id].mol[i].knu  = NULL;
-        g[id].mol[i].pops = NULL;
-        g[id].mol[i].partner = NULL;
-      }
+    for(i=0;i<par->nSpecies;i++){
+      g[id].mol[i].dust = NULL;
+      g[id].mol[i].knu  = NULL;
+      g[id].mol[i].pops = NULL;
+      g[id].mol[i].partner = NULL;
+    }
   }
 
   readMolData(par,m,&allCollPartIds,&numCollParts);

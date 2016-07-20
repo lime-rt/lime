@@ -598,6 +598,12 @@ below for additional information.
 
 .. code:: c
 
+    (integer) img[i]->molI (optional)
+
+If img[i]->trans is set, this parameter will also be read, although to preserve backward compatibility it is not at present required. This refers to the molecule whose transition should be used. Its default value is zero.
+
+.. code:: c
+
     (double) img[i]->freq (semi optional)
 
 Center frequency of the spectral axis in Hz. This parameter can be used
