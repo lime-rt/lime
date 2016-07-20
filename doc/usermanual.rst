@@ -114,7 +114,7 @@ line
 
 ::
 
-    bash$ lime model.c
+    lime model.c
 
 where model.c is the file containing the model (this file can have any
 name). This will cause the code to be compiled and the terminal window
@@ -215,7 +215,7 @@ model.c (although it may be given any name). Model.c is, as the name
 suggests, C source code which is compiled together with LIME at runtime,
 and therefore it must conform to the ANSI C standard. Setting up a model
 however, requires only little knowledge of the C programming language.
-For an in- depth introduction to C the user is referred to “The C
+For an in-depth introduction to C the user is referred to “The C
 Programming Language 2nd ed.” by Kernighan and Ritchie, and otherwise,
 numerous tutorials and introductions can be found on the Internet. The
 file lime\_cs.pdf, contained in the LimePackage directory, is a quick
@@ -337,9 +337,9 @@ unit). This is currently under development.
 
     (string) par->moldatfile[i] (optional)
 
-Path to the i’th molecular data file. Molecular data files contains the
+Path to the i’th molecular data file. Molecular data files contain the
 energy states, Einstein coefficients, and collisional rates which are
-needed by LIME to solve the excitation. These files need to conform to
+needed by LIME to solve the excitation. These files must conform to
 the standard of the LAMDA database
 (http://www.strw.leidenuniv.nl/~moldata). Data files can be downloaded
 from the LAMDA database but from LIME version 1.23, LIME can also
@@ -422,13 +422,6 @@ default lte\_only=0, i.e., full non-LTE calculation.
 
 .. code:: c
 
-    (integer) par->init_lte (optional)
-
-If set, LIME use LTE approximation as initial one for subsequent non-LTE calculations. The
-default init\_lte=0, i.e., the code will use constant value for level populations as initial solution.
-
-.. code:: c
-
     (integer) par->blend (optional)
 
 If set, LIME takes line blending into account, however, only if there
@@ -460,7 +453,33 @@ calculation only. The resulting image cube will have three channels
 containing the Stokes I, Q, and U. In order for the polarization to
 work, a magnetic field needs to be defined (see below). When
 polarization is switched on, LIME is identical to the DustPol code
-(Padovani et al., 2012).
+(Padovani et al., 2012), except that the expression Padovani et al. give for sigma2 has been shown by Ade et al. (2015) to be too small by a factor of 2. This correction has now been included in LIME.
+
+The next three (optional) parameters are linked to the density function you provide in model.c. All three are vector quantities, and should therefore be indexed, the same as moldatfile or img. If you choose to make use of any or all of the three (which is recommended though not mandatory), you must supply, for each one you use, the same number of elements as your density function returns. As described below in the relevant section, the density function can return multiple values per call, 1 for each species which is present in significant quantity. The contribution of such species to the physics of the situation is most usually via collisional excitation or quenching of levels of the radiating species of interest, and for this reason they are known in LIME as collision partners (CPs). 
+
+Because there are 2 independent sources of information about these so-called collision partners, namely via the density function on the one hand and via any collisional transition-rate tables present in the moldata file on the other, we have to be careful to match up these sources properly. That is the intent of the parameter
+
+.. code:: c
+
+    (integer) par->collPartIds (optional)
+
+The integer values are the codes given in `<http://home.strw.leidenuniv.nl/~moldata/molformat.html>`_. Currently recognized values range from 1 to 7 inclusive. E.g if the only colliding species of interest in your model is H2, your density function should return a single value, namely the density of molecular hydrogen, and (if you supply a collPartIds value at all) you should set collPartIds[0] = 1 (the LAMDA code for H2).
+
+LIME calculates the number density of each of its radiating species, at each grid point, by multiplying the abundance of the species (returned via the function of that name) by a weighted sum of the density values. The next parameter allows the user to specify the weights in that sum.
+
+.. code:: c
+
+    (double) par->nMolWeights (optional)
+
+An example of when this might be useful is if a density for electrons is provided, they being of collisional importance, but it is not desired to include electrons in the sum when calculating nmol values. In that case one would set the appropriate value of nMolWeights to zero.
+
+The final one of the density-linked parameters controls how the dust opacity is calculated. This again involves a weighted sum of provided density values, and this parameter allows the user to specify the weights to be used.
+
+.. code:: c
+
+    (double) par->dustWeights (optional)
+
+If none of the three density-linked parameters is provided, LIME will attempt to guess the information, in a manner as close as possible to the way it was done in version 1.5 and earlier. This is safe enough when a single density value is returned, and only H2 provided as collision partner in the moldata file(s), but more complicated situations can very easily result in the code guessing wrongly. For this reason we encourage users to make use of these three parameters, although in order to preserve backward compatibility with old model.c files, we have not (yet) made them mandatory.
 
 .. _par-nthreads:
 
@@ -639,8 +658,7 @@ be included for continuum polarization images.
 Density
 ~~~~~~~
 
-The density subroutine contains a user-defined description of the 3D
-density profile of the collision partner(s).
+The density subroutine contains a user-defined description of the 3D density profile of the collision partner(s).
 
 .. code:: c
 
@@ -652,25 +670,14 @@ density profile of the collision partner(s).
       density[n] = f(x,y,z);
     }
 
-LIME can deal with an unlimited number of collision partners (n).
-However, LIME will produce an error if more density profiles are given
-in the density subroutine than there are collision partners listed in
-the molecular data file. In most cases, a single density profile will
-suffice. The density is a number density, that is, the number of
-collision partners per unit volume (in cubic meters, not cubic
-centimeters). Please note that the current version of LIME always takes
-the abundance relative to the first collision partner. This is
-potentially a problem if the first collision partner is not the total H2
-density and the user will have to correct for this in the abundances
-(see below).
+LIME can deal with an unlimited number n of collision partners (CPs). In most cases, a single density profile will suffice. Note that the number of returned density function values no longer has to be the same as the number of CPs listed in the moldata file(s) so long as the user sets values for the collPartIds parameter, but if this parameter is not supplied, and the numbers are different, LIME may not be able to match the CPs associated with each density value to those in the moldata file(s). Note also that moldata CPs for which there is no matching density will be ignored.
+
+The density is a number density, that is, the number of molecules of the respective CP per unit volume (in cubic meters, not cubic centimeters).
 
 Molecular abundance
 ~~~~~~~~~~~~~~~~~~~
 
-The abundance subroutine contains descriptions of the molecular
-abundance profiles of the input model. The number of abundance profiles
-should match exactly the number of molecular data files defined in
-par->moldatfile.
+The abundance subroutine contains descriptions of the molecular abundance profiles of the radiating species in the input model. The number of abundance profiles should match exactly the number of molecular data files defined in par->moldatfile.
 
 .. code:: c
 
@@ -682,10 +689,9 @@ par->moldatfile.
       abundance[n] = f(x,y,z);
     }
 
-The abundance is the fractional abundance with respect to the primary
-collision partner (density[0]) so that the molecular density of the
-first species is given by abundance[0] x density[0]. The abundances are
-dimensionless.
+The abundance is the fractional abundance with respect to a weighted sum of the densities supplied for the collision partners. If the user does not supply the weights via the nMolWeights parameter, the code will try to guess them.
+
+Abundances are dimensionless.
 
 Temperature
 ~~~~~~~~~~~
@@ -755,7 +761,7 @@ grid points.
 Magnetic field
 ~~~~~~~~~~~~~~
 
-The magnetic field subroutine contains a description of the magnetic
+This is an optional function which contains a description of the magnetic
 field. The return type of this subroutine is a three component vector,
 with components for the x, y, and z axis. The magnetic field only has an
 effect for continuum polarization calulations, that is, if
@@ -773,7 +779,7 @@ par->polarization is set.
 Gas-to-dust ratio
 ~~~~~~~~~~~~~~~~~
 
-Finally the gas-to-dust ratio is an optional function which the user can
+The gas-to-dust ratio is an optional function which the user can
 choose to include in the model.c file. If this function is left out,
 LIME defaults to a dust-to-gas ratio of 100 everywhere. This number only
 has an effect if the continuum is included in the calculations.
@@ -784,6 +790,36 @@ has an effect if the continuum is included in the calculations.
     gasIIdust(double x, double y, double z, double *gtd){
       *gtd = f(x,y,z);
     }
+
+Grid point number density
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In LIME 1.5 and earlier, the number density of the random grid points was tied directly to the density of the first collision partner. The newly introduced function gridDensity now gives the user the ability to option this link and specify the grid point distribution as they please. Note that LIME defaults to the previous algorithm if the function is not supplied.
+
+.. code:: c
+
+    void
+    gridDensity(configInfo par, double x, double y, double z, double *fracDensity){
+      *fracDensity = f(x,y,z);
+    }
+
+Notes:
+  1. The returned variable is a scalar, like the doppler width described above. That's why you need to put the star in front of the variable name when setting its value.
+  2. This is the only function which includes the input parameters among the arguments. You cannot write to these, they are only supplied so that you can use their values if you wish to. Because of their 'read-only' character, you should invoke them as in the following example:
+  3. Due to the algorithm used to choose the grid points, we cannot yet make this function have quite the effect intended. Eventually we will manage to do so, but at present we cannot make a hard connection between the values for ``fracDensity`` you set and the actual grid point number density. In many ways LIME is still a work in progress. **In particular**, for the time being, you need to make sure that ``gridDensity()`` returns ``fracDensity=1`` for at least **one** location in the model space. Functions without steps are also recommended.
+
+.. code:: c
+
+    par.minScale
+
+rather than
+
+.. code:: c
+
+    par->minScale
+
+as in the input() function.
+
 
 Other settings
 ~~~~~~~~~~~~~~
@@ -962,7 +998,7 @@ and
 ::
 
     void
-    teperature(double x, double y, double z, double *temperature){
+    temperature(double x, double y, double z, double *temperature){
       temperature[0]=ratranInput("model.mdl", "te", x,y,z);
     }
 
@@ -1249,6 +1285,7 @@ or bugs needing to be fixed.
 Appendix: Bibliography
 ----------------------
 
+-  Ade et al., A&A 576, A105 (2015)
 -  Brinch & Hogerheijde, A&A, 523, A25, 2010; see also
    http://www.nbi.dk/~brinch/lime.php
 -  Hogerheijde & van der Tak, A&A, 362,697, 2000
