@@ -10,7 +10,7 @@
 #include "lime.h"
 
 void
-getVelosplines(inputPars *par, struct grid *g){
+getVelosplines(configInfo *par, struct grid *g){
   int i,k,j,l,s;
   double v[5], vel[3], x[3], d;
   gsl_matrix *matrix = gsl_matrix_alloc(5,5);
@@ -78,7 +78,7 @@ getVelosplines(inputPars *par, struct grid *g){
 
 
 void
-getVelosplines_lin(inputPars *par, struct grid *g){
+getVelosplines_lin(configInfo *par, struct grid *g){
   int i,k,j;
   double v[2];
   

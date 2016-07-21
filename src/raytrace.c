@@ -3,7 +3,7 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015 The LIME development team
+ *  Copyright (C) 2016 The LIME development team
  *
 TODO: - In raytrace(), look at rearranging the code to do the qhull step before choosing the rays. This would allow cells with all vertices outside the image boundaries to be excluded. If the image is much smaller than the model, this could lead to significant savings in time. The only downside might be memory useage...
  */
@@ -89,8 +89,8 @@ This function returns ds as the (always positive-valued) distance between the pr
 
 /*....................................................................*/
 void
-traceray(rayData ray, inputPars *par, const int tmptrans, image *img\
-  , const int im, struct grid *gp, struct gAuxType *gAux, molData *md\
+traceray(rayData ray, const int cmbMolI, const int cmbLineI, const int im\
+  , configInfo *par, struct grid *gp, molData *md, image *img, struct gAuxType *gAux\
   , const int nlinetot, int *allLineMolIs, int *allLineLineIs, const double cutoff\
   , const int nSteps, const double oneOnNSteps){
   /*
@@ -98,8 +98,8 @@ For a given image pixel position, this function evaluates the intensity of the t
 
 Note that the algorithm employed here is similar to that employed in the function photon() which calculates the average radiant flux impinging on a grid cell: namely the notional photon is started at the side of the model near the observer and 'propagated' in the receding direction until it 'reaches' the far side. This is rather non-physical in conception but it makes the calculation easier.
   */
-
-  int ichan,stokesId,di,i,posn,nposn,polMolI,polLineI,contMolI,contLineI,iline,molI,lineI;
+  const int stokesIi=0;
+  int ichan,stokesId,di,i,posn,nposn,polMolI,polLineI,iline,molI,lineI;
   double xp,yp,zp,x[DIM],dx[DIM],dist2,ndist2,col,ds,snu_pol[3],dtau;
   double contJnu,contAlpha,jnu,alpha,lineRedShift,vThisChan,deltav,vfac=0.;
   double remnantSnu,expDTau,brightnessIncrement;
@@ -126,15 +126,6 @@ Note that the algorithm employed here is similar to that employed in the functio
     dx[di]= img[im].rotMat[di][2]; /* This points away from the observer. */
   }
 
-  contMolI = 0; /****** Always?? */
-
-  if(img[im].doline && img[im].trans > -1)
-    contLineI = img[im].trans;
-  else if(img[im].doline && img[im].trans == -1)
-    contLineI = tmptrans;
-  else
-    contLineI = 0;
-
   /* Find the grid point nearest to the starting x. */
   i=0;
   dist2=(x[0]-gp[i].x[0])*(x[0]-gp[i].x[0]) + (x[1]-gp[i].x[1])*(x[1]-gp[i].x[1]) + (x[2]-gp[i].x[2])*(x[2]-gp[i].x[2]);
@@ -156,18 +147,22 @@ Note that the algorithm employed here is similar to that employed in the functio
     if(par->polarization){
       polMolI = 0; /****** Always?? */
       polLineI = 0; /****** Always?? */
-      for(stokesId=0;stokesId<img[im].nchan;stokesId++){
-        sourceFunc_pol(ds, gp[posn].B, md[polMolI], gAux[posn].mol[polMolI], polLineI, img[im].theta, snu_pol, &dtau);
+      sourceFunc_pol(gp[posn].B, gAux[posn].mol[polMolI], polLineI, img[im].rotMat, snu_pol, &alpha);
+      dtau=alpha*ds;
+      calcSourceFn(dtau, par, &remnantSnu, &expDTau);
+      remnantSnu *= md[polMolI].norminv*ds;
+
+      for(stokesId=0;stokesId<img[im].nchan;stokesId++){ /* Loop over I, Q and U */
 #ifdef FASTEXP
-        brightnessIncrement = FastExp(ray.tau[stokesId])*(1.-FastExp(dtau))*snu_pol[stokesId];
+        brightnessIncrement = FastExp(ray.tau[stokesId])*remnantSnu*snu_pol[stokesId];
 #else
-        brightnessIncrement =    exp(-ray.tau[stokesId])*(1.-   exp(-dtau))*snu_pol[stokesId];
+        brightnessIncrement =    exp(-ray.tau[stokesId])*remnantSnu*snu_pol[stokesId];
 #endif
         ray.intensity[stokesId] += brightnessIncrement;
-        ray.tau[stokesId]+=dtau;
+        ray.tau[stokesId]+=dtau; //**** But this will be the same for I, Q or U.
       }
     } else {
-      if(!par->pregrid){
+      if(!par->doPregrid){
         for(i=0;i<nSteps;i++){
           d = i*ds*oneOnNSteps;
           velocity(x[0]+(dx[0]*d),x[1]+(dx[1]*d),x[2]+(dx[2]*d),vel);
@@ -179,46 +174,46 @@ Note that the algorithm employed here is similar to that employed in the functio
       */
       contJnu = 0.0;
       contAlpha = 0.0;
-      sourceFunc_cont_raytrace(gAux[posn].mol[contMolI], contLineI, &contJnu, &contAlpha);
+      sourceFunc_cont_raytrace(gAux[posn].mol[cmbMolI], cmbLineI, &contJnu, &contAlpha);
 
       for(ichan=0;ichan<img[im].nchan;ichan++){
         jnu = contJnu;
         alpha = contAlpha;
         vThisChan = (ichan-(img[im].nchan-1)*0.5)*img[im].velres; /* Consistent with the WCS definition in writefits(). */
 
-        for(iline=0;iline<nlinetot;iline++){
-          molI = allLineMolIs[iline];
-          lineI = allLineLineIs[iline];
+        if(img[im].doline){
+          for(molI=0;molI<par->nSpecies;molI++){
+            for(lineI=0;lineI<md[molI].nline;lineI++){
+              if(md[molI].freq[lineI] > img[im].freq-img[im].bandwidth*0.5\
+              && md[molI].freq[lineI] < img[im].freq+img[im].bandwidth*0.5){
+                /* Calculate the red shift of the transition wrt to the frequency specified for the image.
+                */
+                if(img[im].trans > -1){
+                  lineRedShift=(md[molI].freq[img[im].trans]-md[molI].freq[lineI])/md[molI].freq[img[im].trans]*CLIGHT;
+                } else {
+                  lineRedShift=(img[im].freq-md[molI].freq[lineI])/img[im].freq*CLIGHT;
+                }
 
-          if(img[im].doline\
-          && md[molI].freq[lineI] > img[im].freq-img[im].bandwidth*0.5\
-          && md[molI].freq[lineI] < img[im].freq+img[im].bandwidth*0.5){
-            /* Calculate the red shift of the transition wrt to the frequency specified for the image.
-            */
-            if(img[im].trans > -1){
-              lineRedShift=(md[molI].freq[img[im].trans]-md[molI].freq[lineI])/md[molI].freq[img[im].trans]*CLIGHT;
-            } else {
-              lineRedShift=(img[im].freq-md[molI].freq[lineI])/img[im].freq*CLIGHT;
+                deltav = vThisChan - img[im].source_vel - lineRedShift;
+                /* Line centre occurs when deltav = the recession velocity of the radiating material. Explanation of the signs of the 2nd and 3rd terms on the RHS: (i) A bulk source velocity (which is defined as >0 for the receding direction) should be added to the material velocity field; this is equivalent to subtracting it from deltav, as here. (ii) A positive value of lineRedShift means the line is red-shifted wrt to the frequency specified for the image. The effect is the same as if the line and image frequencies were the same, but the bulk recession velocity were higher. lineRedShift should thus be added to the recession velocity, which is equivalent to subtracting it from deltav, as here. */
+
+                /* Calculate an approximate average line-shape function at deltav within the Voronoi cell. */
+                if(!par->doPregrid)
+                  calcLineAmpSample(x,dx,ds,gp[posn].mol[molI].binv,projVels,nSteps,oneOnNSteps,deltav,&vfac);
+                else
+                  vfac = gaussline(deltav-veloproject(dx,gp[posn].vel),gp[posn].mol[molI].binv);
+
+                /* Increment jnu and alpha for this Voronoi cell by the amounts appropriate to the spectral line. */
+                sourceFunc_line_raytrace(md[molI],vfac,gAux[posn].mol[molI],lineI,&jnu,&alpha);
+              }
             }
-
-            deltav = vThisChan - img[im].source_vel - lineRedShift;
-            /* Line centre occurs when deltav = the recession velocity of the radiating material. Explanation of the signs of the 2nd and 3rd terms on the RHS: (i) A bulk source velocity (which is defined as >0 for the receding direction) should be added to the material velocity field; this is equivalent to subtracting it from deltav, as here. (ii) A positive value of lineRedShift means the line is red-shifted wrt to the frequency specified for the image. The effect is the same as if the line and image frequencies were the same, but the bulk recession velocity were higher. lineRedShift should thus be added to the recession velocity, which is equivalent to subtracting it from deltav, as here. */
-
-            /* Calculate an approximate average line-shape function at deltav within the Voronoi cell. */
-            if(!par->pregrid)
-              calcLineAmpSample(x,dx,ds,gp[posn].mol[molI].binv,projVels,nSteps,oneOnNSteps,deltav,&vfac);
-            else
-              vfac = gaussline(deltav-veloproject(dx,gp[posn].vel),gp[posn].mol[molI].binv);
-
-            /* Increment jnu and alpha for this Voronoi cell by the amounts appropriate to the spectral line. */
-            sourceFunc_line_raytrace(md[molI],vfac,gAux[posn].mol[molI],lineI,&jnu,&alpha);
           }
         }
 
         dtau=alpha*ds;
 //???          if(dtau < -30) dtau = -30; // as in photon()?
         calcSourceFn(dtau, par, &remnantSnu, &expDTau);
-        remnantSnu *= jnu*md[0].norminv*ds;
+        remnantSnu *= jnu*md[molI].norminv*ds;
 #ifdef FASTEXP
         brightnessIncrement = FastExp(ray.tau[ichan])*remnantSnu;
 #else
@@ -236,21 +231,30 @@ Note that the algorithm employed here is similar to that employed in the functio
   } while(col < 2.0*fabs(zp));
 
   /* Add or subtract cmb. */
+  if(par->polarization){ /* just add it to Stokes I */
 #ifdef FASTEXP
-  for(ichan=0;ichan<img[im].nchan;ichan++){
-    ray.intensity[ichan]+=FastExp(ray.tau[ichan])*md[0].local_cmb[tmptrans];
-  }
+    ray.intensity[stokesIi]+=FastExp(ray.tau[stokesIi])*md[cmbMolI].local_cmb[cmbLineI];
 #else
-  for(ichan=0;ichan<img[im].nchan;ichan++){
-    ray.intensity[ichan]+=exp(-ray.tau[ichan])*md[0].local_cmb[tmptrans];
-  }
+    ray.intensity[stokesIi]+=exp(   -ray.tau[stokesIi])*md[cmbMolI].local_cmb[cmbLineI];
 #endif
+
+  }else{
+#ifdef FASTEXP
+    for(ichan=0;ichan<img[im].nchan;ichan++){
+      ray.intensity[ichan]+=FastExp(ray.tau[ichan])*md[cmbMolI].local_cmb[cmbLineI];
+    }
+#else
+    for(ichan=0;ichan<img[im].nchan;ichan++){
+      ray.intensity[ichan]+=exp(-ray.tau[ichan])*md[cmbMolI].local_cmb[cmbLineI];
+    }
+#endif
+  }
 }
 
 /*....................................................................*/
-void traceray_smooth(rayData ray, inputPars *par, const int tmptrans, image *img\
-  , const int im, struct grid *gp, struct gAuxType *gAux, molData *md, const int nlinetot\
-  , int *allLineMolIs, int *allLineLineIs, struct cell *dc\
+void traceray_smooth(rayData ray, const int cmbMolI, const int cmbLineI, const int im\
+  , configInfo *par, struct grid *gp, molData *md, image *img, struct gAuxType *gAux\
+  , const int nlinetot, int *allLineMolIs, int *allLineLineIs, struct cell *dc\
   , const unsigned long numCells, const double epsilon, gridInterp gips[3]\
   , const int numSegments, const double oneOnNumSegments, const int nSteps, const double oneOnNSteps){
   /*
@@ -260,10 +264,10 @@ Note that the algorithm employed here to solve the RTE is similar to that employ
 
 This version of traceray implements a new algorithm in which the population values are interpolated linearly from those at the vertices of the Delaunay cell which the working point falls within.
   */
-
+  const int stokesIi=0;
   const int numFaces = DIM+1, nVertPerFace=3;
   int ichan,stokesId,di,status,lenChainPtrs,entryI,exitI,vi,vvi,ci;
-  int si, contMolI, contLineI, polMolI, polLineI, iline, molI, lineI;
+  int si, polMolI, polLineI, iline, molI, lineI;
   double xp,yp,zp,x[DIM],dir[DIM],projVelRay,vel[DIM];
   double xCmpntsRay[nVertPerFace], ds, snu_pol[3], dtau, contJnu, contAlpha;
   double jnu, alpha, lineRedShift, vThisChan, deltav, vfac, remnantSnu, expDTau;
@@ -292,15 +296,6 @@ This version of traceray implements a new algorithm in which the population valu
     x[di]=xp*img[im].rotMat[di][0] + yp*img[im].rotMat[di][1] + zp*img[im].rotMat[di][2];
     dir[di]= img[im].rotMat[di][2]; /* This points away from the observer. */
   }
-
-  contMolI = 0; /****** Always?? */
-
-  if(img[im].doline && img[im].trans > -1)
-    contLineI = img[im].trans;
-  else if(img[im].doline && img[im].trans == -1)
-    contLineI = tmptrans;
-  else
-    contLineI = 0;
 
   /* Find the chain of cells the ray passes through.
   */
@@ -368,15 +363,19 @@ At the moment I will fix the number of segments, but it might possibly be faster
       if(par->polarization){
         polMolI = 0; /****** Always?? */
         polLineI = 0; /****** Always?? */
-        for(stokesId=0;stokesId<img[im].nchan;stokesId++){ /**** could also precalc continuum part here? */
-          sourceFunc_pol(ds, gips[2].B, md[polMolI], gips[2].mol[polMolI], polLineI, img[im].theta, snu_pol, &dtau);
+        sourceFunc_pol(gips[2].B, gips[2].mol[polMolI], polLineI, img[im].rotMat, snu_pol, &alpha);
+        dtau=alpha*ds;
+        calcSourceFn(dtau, par, &remnantSnu, &expDTau);
+        remnantSnu *= md[polMolI].norminv*ds;
+
+        for(stokesId=0;stokesId<img[im].nchan;stokesId++){ /* Loop over I, Q and U */
 #ifdef FASTEXP
-          brightnessIncrement = FastExp(ray.tau[stokesId])*(1.-FastExp(dtau))*snu_pol[stokesId];
+          brightnessIncrement = FastExp(ray.tau[stokesId])*remnantSnu*snu_pol[stokesId];
 #else
-          brightnessIncrement =    exp(-ray.tau[stokesId])*(1.-   exp(-dtau))*snu_pol[stokesId];
+          brightnessIncrement =    exp(-ray.tau[stokesId])*remnantSnu*snu_pol[stokesId];
 #endif
           ray.intensity[stokesId] += brightnessIncrement;
-          ray.tau[stokesId]+=dtau;
+          ray.tau[stokesId]+=dtau; //**** But this will be the same for I, Q or U.
         }
       } else {
         /* It appears to be necessary to sample the velocity function in the following way rather than interpolating it from the vertices of the Delaunay cell in the same way as with all the other quantities of interest. Velocity varies too much across the cells, and in a nonlinear way, for linear interpolation to yield a totally satisfactory result.
@@ -388,38 +387,38 @@ At the moment I will fix the number of segments, but it might possibly be faster
         */
         contJnu = 0.0;
         contAlpha = 0.0;
-        sourceFunc_cont_raytrace(gips[2].mol[contMolI], contLineI, &contJnu, &contAlpha);
+        sourceFunc_cont_raytrace(gips[2].mol[cmbMolI], cmbLineI, &contJnu, &contAlpha);
 
         for(ichan=0;ichan<img[im].nchan;ichan++){
           jnu = contJnu;
           alpha = contAlpha;
           vThisChan=(ichan-(img[im].nchan-1)*0.5)*img[im].velres; /* Consistent with the WCS definition in writefits(). */
 
-          for(iline=0;iline<nlinetot;iline++){
-            molI = allLineMolIs[iline];
-            lineI = allLineLineIs[iline];
+          if(img[im].doline){
+            for(molI=0;molI<par->nSpecies;molI++){
+              for(lineI=0;lineI<md[molI].nline;lineI++){
+                if(md[molI].freq[lineI] > img[im].freq-img[im].bandwidth*0.5\
+                && md[molI].freq[lineI] < img[im].freq+img[im].bandwidth*0.5){
+                  /* Calculate the red shift of the transition wrt to the frequency specified for the image.
+                  */
+                  if(img[im].trans > -1){
+                    lineRedShift=(md[molI].freq[img[im].trans]-md[molI].freq[lineI])/md[molI].freq[img[im].trans]*CLIGHT;
+                  } else {
+                    lineRedShift=(img[im].freq-md[molI].freq[lineI])/img[im].freq*CLIGHT;
+                  }
 
-            if(img[im].doline\
-            && md[molI].freq[lineI] > img[im].freq-img[im].bandwidth*0.5\
-            && md[molI].freq[lineI] < img[im].freq+img[im].bandwidth*0.5){
-              /* Calculate the red shift of the transition wrt to the frequency specified for the image.
-              */
-              if(img[im].trans > -1){
-                lineRedShift=(md[molI].freq[img[im].trans]-md[molI].freq[lineI])/md[molI].freq[img[im].trans]*CLIGHT;
-              } else {
-                lineRedShift=(img[im].freq-md[molI].freq[lineI])/img[im].freq*CLIGHT;
-              }
+                  deltav = vThisChan - img[im].source_vel - lineRedShift;
+                  /* Line centre occurs when deltav = the recession velocity of the radiating material. Explanation of the signs of the 2nd and 3rd terms on the RHS: (i) A bulk source velocity (which is defined as >0 for the receding direction) should be added to the material velocity field; this is equivalent to subtracting it from deltav, as here. (ii) A positive value of lineRedShift means the line is red-shifted wrt to the frequency specified for the image. The effect is the same as if the line and image frequencies were the same, but the bulk recession velocity were higher. lineRedShift should thus be added to the recession velocity, which is equivalent to subtracting it from deltav, as here. */
 
-              deltav = vThisChan - img[im].source_vel - lineRedShift;
-              /* Line centre occurs when deltav = the recession velocity of the radiating material. Explanation of the signs of the 2nd and 3rd terms on the RHS: (i) A bulk source velocity (which is defined as >0 for the receding direction) should be added to the material velocity field; this is equivalent to subtracting it from deltav, as here. (ii) A positive value of lineRedShift means the line is red-shifted wrt to the frequency specified for the image. The effect is the same as if the line and image frequencies were the same, but the bulk recession velocity were higher. lineRedShift should thus be added to the recession velocity, which is equivalent to subtracting it from deltav, as here. */
+                  calcLineAmpInterp(projVelRay, gips[2].mol[molI].binv, deltav, &vfac);
 
-              calcLineAmpInterp(projVelRay, gips[2].mol[molI].binv, deltav, &vfac);
-
-              /* Increment jnu and alpha for this Voronoi cell by the amounts appropriate to the spectral line.
-              */
-              sourceFunc_line_raytrace(md[molI], vfac, gips[2].mol[molI], lineI, &jnu, &alpha);
-            }
-          } /* end loop over all lines. */
+                  /* Increment jnu and alpha for this Voronoi cell by the amounts appropriate to the spectral line.
+                  */
+                  sourceFunc_line_raytrace(md[molI], vfac, gips[2].mol[molI], lineI, &jnu, &alpha);
+                } /* end if within freq range. */
+              } /* end loop over lines this mol. */
+            } /* end loop over all mols. */
+          } /* end if doLine. */
 
           dtau = alpha*ds;
 //???          if(dtau < -30) dtau = -30; // as in photon()?
@@ -441,15 +440,24 @@ At the moment I will fix the number of segments, but it might possibly be faster
   } /* End loop over cells in the chain traversed by the ray. */
 
   /* Add or subtract cmb. */
+  if(par->polarization){ /* just add it to Stokes I */
 #ifdef FASTEXP
-  for(ichan=0;ichan<img[im].nchan;ichan++){
-    ray.intensity[ichan]+=FastExp(ray.tau[ichan])*md[0].local_cmb[tmptrans];
-  }
+    ray.intensity[stokesIi]+=FastExp(ray.tau[stokesIi])*md[cmbMolI].local_cmb[cmbLineI];
 #else
-  for(ichan=0;ichan<img[im].nchan;ichan++){
-    ray.intensity[ichan]+=exp(-ray.tau[ichan])*md[0].local_cmb[tmptrans];
-  }
+    ray.intensity[stokesIi]+=exp(   -ray.tau[stokesIi])*md[cmbMolI].local_cmb[cmbLineI];
 #endif
+
+  }else{
+#ifdef FASTEXP
+    for(ichan=0;ichan<img[im].nchan;ichan++){
+      ray.intensity[ichan]+=FastExp(ray.tau[ichan])*md[cmbMolI].local_cmb[cmbLineI];
+    }
+#else
+    for(ichan=0;ichan<img[im].nchan;ichan++){
+      ray.intensity[ichan]+=exp(-ray.tau[ichan])*md[cmbMolI].local_cmb[cmbLineI];
+    }
+#endif
+  }
 
   free(chainOfCellIds);
   free(cellExitIntcpts);
@@ -457,11 +465,10 @@ At the moment I will fix the number of segments, but it might possibly be faster
 
 /*....................................................................*/
 void
-raytrace(int im, inputPars *par, struct grid *gp, molData *md, image *img){
+raytrace(int im, configInfo *par, struct grid *gp, molData *md, image *img){
   /*
 This function constructs an image cube by following sets of rays (at least 1 per image pixel) through the model, solving the radiative transfer equations as appropriate for each ray. The ray locations within each pixel are chosen randomly within the pixel, but the number of rays per pixel is set equal to the number of projected model grid points falling within that pixel, down to a minimum equal to par->alias.
   */
-
   const int maxNumRaysPerPixel=20; /**** Arbitrary - could make this a global, or an argument. Set it to zero to indicate there is no maximum. */
   const double cutoff = par->minScale*1.0e-7;
   const int numFaces=1+DIM, numInterpPoints=3, numSegments=5, minNumRaysForAverage=2;
@@ -472,8 +479,8 @@ This function constructs an image cube by following sets of rays (at least 1 per
 
   double size,oneOnNumActiveRaysMinus1,imgCentreXPixels,imgCentreYPixels,minfreq,absDeltaFreq,x[2],sum,oneOnNumRays;//,oneOnTotalNumPixelsMinus1
   unsigned int totalNumImagePixels,ppi,numPixelsForInterp;
-  int gi,molI,ei,li,nlinetot,iline,tmptrans,ichan,numActiveRays,i,di,xi,yi,ri,c,id,ids[3],vi;
-  int *allLineMolIs,*allLineLineIs;
+  int gi,molI,lineI,ei,li,nlinetot,iline,tmptrans,ichan,numActiveRays,i,di,xi,yi,ri,c,id,ids[3],vi;
+  int *allLineMolIs,*allLineLineIs,cmbMolI,cmbLineI;
   rayData *rays;
   struct cell *dc=NULL;
   unsigned long numCells,dci;
@@ -487,36 +494,58 @@ This function constructs an image cube by following sets of rays (at least 1 per
   int curlong, totlong;
   double triangle[3][2],barys[3];
   _Bool isOutsideImage;
+  gsl_error_handler_t *defaultErrorHandler=NULL;
 
   size = img[im].distance*img[im].imgres;
   totalNumImagePixels = img[im].pxls*img[im].pxls;
   imgCentreXPixels = img[im].pxls/2.0;
   imgCentreYPixels = img[im].pxls/2.0;
 
-  /* Determine whether there are blended lines or not. */
-  lineCount(par->nSpecies, md, &allLineMolIs, &allLineLineIs, &nlinetot); /* mallocs allLineMolIs, allLineLineIs */
-  if(img[im].doline==0) nlinetot=1;
+  if(img[im].doline){
+    /* The user may have set img.trans/img.molI but not img.freq. If so, we calculate freq now.
+    */
+    if(img[im].trans>-1)
+      img[im].freq = md[img[im].molI].freq[img[im].trans];
 
-  /* Fix the image parameters. */
-  if(img[im].freq < 0) img[im].freq = md[0].freq[img[im].trans];
-  if(img[im].nchan == 0 && img[im].bandwidth>0){
-    img[im].nchan=(int) (img[im].bandwidth/(img[im].velres/CLIGHT*img[im].freq));
-  } else if (img[im].velres<0 && img[im].bandwidth>0){
-    img[im].velres = img[im].bandwidth*CLIGHT/img[im].freq/img[im].nchan;
-  } else img[im].bandwidth = img[im].nchan*img[im].velres/CLIGHT * img[im].freq;
+    /* Fill in the missing one of the triplet nchan/velres/bandwidth.
+    */
+    if(img[im].bandwidth > 0 && img[im].velres > 0){
+      img[im].nchan = (int)(img[im].bandwidth/(img[im].velres/CLIGHT*img[im].freq));
 
-  if(img[im].trans<0){
-    iline=0;
-    minfreq=fabs(img[im].freq-md[0].freq[iline]);
-    tmptrans=iline;
-    for(iline=1;iline<md[0].nline;iline++){
-      absDeltaFreq=fabs(img[im].freq-md[0].freq[iline]);
-      if(absDeltaFreq<minfreq){
-        minfreq=absDeltaFreq;
-        tmptrans=iline;
+    }else if(img[im].bandwidth > 0 && img[im].nchan > 0){
+      img[im].velres = img[im].bandwidth*CLIGHT/img[im].freq/img[im].nchan;
+
+    }else{ /*(img[im].velres > 0 && img[im].nchan > 0 */
+      img[im].bandwidth = img[im].nchan*img[im].velres/CLIGHT*img[im].freq;
+    }
+  } /* If not doline, we already have img.freq and nchan by now anyway. */
+
+  /*
+For both line and continuum images we have to access (currently in traceray() and sourceFunc_cont()) array elements m[i].local_cmb[j], g[id].mol[i].dust[j] and g[id].mol[i].knu[j]. For a continuum image, the molData object and the grid.mol object are simply convenient (if misleadingly named in this instance) repositories of appropriate cmb, dust and knu information; there is no actual molecule involved, and i and j are both simply 0.
+
+For a line image however, we may have a problem, because of the pair of quantities img.freq and img.trans, the user is allowed to specify freq and not trans. Since the cmb, dust and knu are assumed to be slowly-varying quantities, we can for 'trans' in this case use the line closest to the image frequency. (There must be some reasonably close line, else we would see no line emission in the image.)
+  */
+  if(img[im].doline){
+    if (img[im].trans>=0){
+      cmbMolI  = img[im].molI;
+      cmbLineI = img[im].trans;
+
+    }else{ /* User didn't set trans. Find the nearest line to the image frequency. */
+      for(molI=0;molI<par->nSpecies;molI++){
+        for(lineI=0;lineI<md[molI].nline;lineI++){
+          absDeltaFreq = fabs(img[im].freq - md[molI].freq[lineI]);
+          if((molI==0 && lineI==0) || absDeltaFreq < minfreq){
+            minfreq = absDeltaFreq;
+            cmbMolI = molI;
+            cmbLineI = lineI;
+          }
+        }
       }
     }
-  } else tmptrans=img[im].trans;
+  }else{ /* continuum image */
+    cmbMolI = 0;
+    cmbLineI = 0;
+  }
 
   for(ppi=0;ppi<totalNumImagePixels;ppi++){
     for(ichan=0;ichan<img[im].nchan;ichan++){
@@ -626,6 +655,13 @@ This function constructs an image cube by following sets of rays (at least 1 per
 
   /* This is the start of loop 2/3, which loops over the rays. We trace each ray, then load into the image cube those for which the number of rays per pixel exceeds a minimum. The remaining image pixels we handle via an interpolation algorithm in loop 3.
   */
+  defaultErrorHandler = gsl_set_error_handler_off();
+  /*
+The GSL documentation does not recommend leaving the error handler at the default within multi-threaded code.
+
+While this is off however, gsl_* calls will not exit if they encounter a problem. We may need to pay some attention to trapping their errors.
+  */
+
   omp_set_dynamic(0);
   #pragma omp parallel num_threads(par->nThreads)
   {
@@ -650,13 +686,13 @@ This function constructs an image cube by following sets of rays (at least 1 per
 
     #pragma omp for schedule(dynamic)
     for(ri=0;ri<numActiveRays;ri++){
-      if(par->traceRayAlgorithm==0){
-        traceray(rays[ri], par, tmptrans, img, im, gp, gAux, md, nlinetot\
-          , allLineMolIs, allLineLineIs, cutoff, nStepsThruCell, oneOnNSteps);
-      }else if(par->traceRayAlgorithm==1)
-        traceray_smooth(rays[ri], par, tmptrans, img, im, gp, gAux, md, nlinetot\
-          , allLineMolIs, allLineLineIs, dc, numCells, epsilon, gips, numSegments\
-          , oneOnNumSegments, nStepsThruCell, oneOnNSteps);
+      if(par->traceRayAlgorithm==0)
+        traceray(rays[ri], cmbMolI, cmbLineI, im, par, gp, md, img, gAux\
+          , nlinetot, allLineMolIs, allLineLineIs, cutoff, nStepsThruCell, oneOnNSteps);
+      else if(par->traceRayAlgorithm==1)
+        traceray_smooth(rays[ri], cmbMolI, cmbLineI, im, par, gp, md, img, gAux\
+          , nlinetot, allLineMolIs, allLineLineIs, dc, numCells, epsilon, gips\
+          , numSegments, oneOnNumSegments, nStepsThruCell, oneOnNSteps);
 
       if (threadI == 0){ /* i.e., is master thread */
         if(!silent) progressbar((double)(ri)*oneOnNumActiveRaysMinus1, 13);
@@ -668,6 +704,8 @@ This function constructs an image cube by following sets of rays (at least 1 per
         freePop2(par->nSpecies, gips[ii].mol);
     }
   } /* End of parallel block. */
+
+  gsl_set_error_handler(defaultErrorHandler);
 
   /* For pixels with more than a cutoff number of rays, just average those rays into the pixel:
   */

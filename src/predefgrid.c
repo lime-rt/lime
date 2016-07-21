@@ -10,7 +10,7 @@
 #include "lime.h"
 
 void
-predefinedGrid(inputPars *par, struct grid *g){
+predefinedGrid(configInfo *par, struct grid *g){
   FILE *fp;
   int i;
   double x,y,z,scale;
@@ -52,6 +52,8 @@ predefinedGrid(inputPars *par, struct grid *g){
     if(!silent) progressbar((double) i/((double)par->pIntensity-1), 4);	
   }
 
+  checkGridDensities(par, g);
+
   for(i=par->pIntensity;i<par->ncell;i++){
     x=2*gsl_rng_uniform(ran)-1.;
     y=2*gsl_rng_uniform(ran)-1.;
@@ -79,5 +81,7 @@ predefinedGrid(inputPars *par, struct grid *g){
   getVelosplines_lin(par,g);
   if(par->gridfile) write_VTK_unstructured_Points(par, g);
   gsl_rng_free(ran);
-  if(dc!=NULL) free(dc);
+  free(dc);
+
+  par->numDensities = 1;
 }

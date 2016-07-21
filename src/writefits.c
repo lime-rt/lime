@@ -3,14 +3,14 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015 The LIME development team
+ *  Copyright (C) 2016 The LIME development team
  *
  */
 
 #include "lime.h"
 
 void 
-write3Dfits(int im, inputPars *par, molData *m, image *img){
+write3Dfits(int im, configInfo *par, molData *m, image *img){
   double bscale,bzero,epoch,lonpole,equinox,restfreq;
   double cdelt1,crpix1,crval1,cdelt2,crpix2,crval2;
   double cdelt3,crpix3,crval3,ru3,scale;
@@ -139,7 +139,7 @@ write3Dfits(int im, inputPars *par, molData *m, image *img){
 }
 
 void 
-write2Dfits(int im, inputPars *par, molData *m, image *img){
+write2Dfits(int im, configInfo *par, molData *m, image *img){
   double bscale,bzero,epoch,lonpole,equinox,restfreq;
   double cdelt1,crpix1,crval1,cdelt2,crpix2,crval2;
   double ru3,scale;

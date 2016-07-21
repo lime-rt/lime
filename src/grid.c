@@ -3,7 +3,7 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015 The LIME development team
+ *  Copyright (C) 2016 The LIME development team
  *
  */
 
@@ -11,21 +11,11 @@
 
 
 void
-gridAlloc(inputPars *par, struct grid **g){
+gridAlloc(configInfo *par, struct grid **g){
   int i;
-  double temp[99];
 
   *g=malloc(sizeof(struct grid)*(par->pIntensity+par->sinkPoints));
   memset(*g, 0., sizeof(struct grid) * (par->pIntensity+par->sinkPoints));
-
-  if(par->doPregrid || par->restart) par->collPart=1;
-  else{
-    for(i=0;i<99;i++) temp[i]=-1;
-    density(AU,AU,AU,temp);
-    i=0;
-    par->collPart=0;
-    while(temp[i++]>-1) par->collPart++;
-  }
 
   for(i=0;i<(par->pIntensity+par->sinkPoints); i++){
     (*g)[i].a0 = NULL;
@@ -38,145 +28,155 @@ gridAlloc(inputPars *par, struct grid **g){
     (*g)[i].neigh = NULL;
     (*g)[i].w = NULL;
     (*g)[i].ds = NULL;
-    (*g)[i].dens=malloc(sizeof(double)*par->collPart);
+    (*g)[i].dens=malloc(sizeof(double)*par->numDensities);
     (*g)[i].abun=malloc(sizeof(double)*par->nSpecies);
     (*g)[i].t[0]=-1;
     (*g)[i].t[1]=-1;
   }
 }
 
-void
-freePopulation(const inputPars *par, const molData* m, struct populations* pop ) {
-  if( pop !=NULL )
-    {
-      int j,k;
-      for( j=0; j<par->nSpecies; j++ )
-        {
-          if( pop[j].pops != NULL )
-            {
-              free( pop[j].pops );
-            }
-          if( pop[j].knu != NULL )
-            {
-              free( pop[j].knu );
-            }
-          if( pop[j].dust != NULL )
-            {
-              free( pop[j].dust );
-            }
-          if( pop[j].partner != NULL )
-            {
-              if( m != NULL )
-                {
-                  for(k=0; k<m[j].npart; k++)
-                    {
-                      if( pop[j].partner[k].up != NULL )
-                        {
-                          free(pop[j].partner[k].up);
-                        }
-                      if( pop[j].partner[k].down != NULL )
-                        {
-                          free(pop[j].partner[k].down);
-                        }
-                    }
-                }
-              free( pop[j].partner );
-            }
-        }
-      free(pop);
-    }
-}
+void gridLineInit(configInfo *par, molData *md, struct grid *gp){
+  int i,id, ilev;
 
-/*....................................................................*/
-void
-freePop2(const int numSpecies, struct pop2 *mol){
-  int i;
-
-  if(mol !=NULL){
-    for(i=0;i<numSpecies;i++){
-      if(mol[i].specNumDens != NULL)
-        free(mol[i].specNumDens);
-      if(mol[i].knu != NULL)
-        free(mol[i].knu);
-      if(mol[i].dust != NULL)
-        free(mol[i].dust);
+  for(i=0;i<par->nSpecies;i++){
+    /* Calculate Doppler and thermal line broadening */
+    for(id=0;id<par->ncell;id++) {
+      gp[id].mol[i].dopb = sqrt(gp[id].dopb*gp[id].dopb+2.*KBOLTZ/md[i].amass*gp[id].t[0]);
+      gp[id].mol[i].binv = 1./gp[id].mol[i].dopb;
     }
-    free(mol);
+
+    /* Allocate space for populations etc */
+    for(id=0;id<par->ncell; id++){
+      gp[id].mol[i].pops = malloc(sizeof(double)*md[i].nlev);
+      gp[id].mol[i].dust = malloc(sizeof(double)*md[i].nline);
+      gp[id].mol[i].knu  = malloc(sizeof(double)*md[i].nline);
+      for(ilev=0;ilev<md[i].nlev;ilev++) gp[id].mol[i].pops[ilev]=0.0;
+    }
   }
 }
 
+void calcGridMolDensities(configInfo *par, struct grid *g){
+  int id,ispec,i;
 
-/*....................................................................*/
-void
-freeGAux(const unsigned long numPoints, const int numSpecies, struct gAuxType *gAux) {
-  unsigned long ppi;
-
-  if(gAux !=NULL){
-    for(ppi=0;ppi<numPoints;ppi++){
-      freePop2(numSpecies, gAux[ppi].mol);
+  for(id=0;id<par->ncell; id++){
+    for(ispec=0;ispec<par->nSpecies;ispec++){
+      g[id].mol[ispec].nmol = 0.0;
+      for(i=0;i<par->numDensities;i++)
+        g[id].mol[ispec].nmol += g[id].abun[ispec]*g[id].dens[i]*par->nMolWeights[i];
     }
-    free(gAux);
   }
 }
 
-/*....................................................................*/
-void
-freeGrid(const inputPars *par, const molData* m ,struct grid* g){
-  int i;
-  if( g != NULL )
-    {
-      for(i=0;i<(par->ncell); i++){
-        if(g[i].a0 != NULL)
-          {
-            free(g[i].a0);
-          }
-        if(g[i].a1 != NULL)
-          {
-            free(g[i].a1);
-          }
-        if(g[i].a2 != NULL)
-          {
-            free(g[i].a2);
-          }
-        if(g[i].a3 != NULL)
-          {
-            free(g[i].a3);
-          }
-        if(g[i].a4 != NULL)
-          {
-            free(g[i].a4);
-          }
-        if(g[i].dir != NULL)
-          {
-            free(g[i].dir);
-          }
-        if(g[i].neigh != NULL)
-          {
-            free(g[i].neigh);
-          }
-        if(g[i].w != NULL)
-          {
-            free(g[i].w);
-          }
-        if(g[i].dens != NULL)
-          {
-            free(g[i].dens);
-          }
-        if(g[i].abun != NULL)
-          {
-            free(g[i].abun);
-          }
-        if(g[i].ds != NULL)
-          {
-            free(g[i].ds);
-          }
-        if(g[i].mol != NULL)
-          {
-            freePopulation( par, m, g[i].mol );
-          }
+void calcGridDustOpacity(configInfo *par, molData *md, struct grid *gp){
+  FILE *fp;
+  char string[80];
+  int i=0,k,j,iline,id,si,di;
+  double loglam, *lamtab, *kaptab, *kappatab, gtd, densityForDust;
+  gsl_spline *spline;
+
+  for(si=0;si<par->nSpecies;si++){
+    kappatab = malloc(sizeof(*kappatab)*md[si].nline);
+
+    if(par->dust == NULL){
+      for(i=0;i<md[si].nline;i++) kappatab[i]=0.;
+    } else {
+      gsl_interp_accel *acc=gsl_interp_accel_alloc();
+      if((fp=fopen(par->dust, "r"))==NULL){
+        if(!silent) bail_out("Error opening dust opacity data file!");
+        exit(1);
       }
-      free(g);
+      while(fgetc(fp) != EOF){
+        fgets(string,80,fp);
+        i++;
+      }
+      rewind(fp);
+      if(i>0){
+        lamtab=malloc(sizeof(*lamtab)*i);
+        kaptab=malloc(sizeof(*kaptab)*i);
+      } else {
+        if(!silent) bail_out("No opacities read");
+        exit(1);
+      }
+      for(k=0;k<i;k++){
+        fscanf(fp,"%lf %lf\n", &lamtab[k], &kaptab[k]);
+        lamtab[k]=log10(lamtab[k]/1e6);
+        kaptab[k]=log10(kaptab[k]);
+      }
+      fclose(fp);
+      spline=gsl_spline_alloc(gsl_interp_cspline,i);
+      gsl_spline_init(spline,lamtab,kaptab,i);
+      for(j=0;j<md[si].nline;j++) {
+        loglam=log10(CLIGHT/md[si].freq[j]);
+        if(loglam < lamtab[0]){
+          kappatab[j]=0.1*pow(10.,kaptab[0] + (loglam-lamtab[0]) * (kaptab[1]-kaptab[0])/(lamtab[1]-lamtab[0]));
+        } else if(loglam > lamtab[i-1]){
+          kappatab[j]=0.1*pow(10.,kaptab[i-2] + (loglam-lamtab[i-2]) * (kaptab[i-1]-kaptab[i-2])/(lamtab[i-1]-lamtab[i-2]));
+        } else kappatab[j]=0.1*pow(10.,gsl_spline_eval(spline,loglam,acc));
+      }
+      gsl_spline_free(spline);
+      gsl_interp_accel_free(acc);
+      free(kaptab);
+      free(lamtab);
     }
+
+    for(id=0;id<par->ncell;id++){
+      densityForDust = 0.0;
+      for(di=0;di<par->numDensities;di++)
+        densityForDust += gp[id].dens[di]*par->dustWeights[di];
+
+      for(iline=0;iline<md[si].nline;iline++){
+        gasIIdust(gp[id].x[0],gp[id].x[1],gp[id].x[2],&gtd);
+        gp[id].mol[si].knu[iline]=kappatab[iline]*2.4*AMU*densityForDust/gtd;
+        //Check if input model supplies a dust temperature. Otherwise use the kinetic temperature
+        if(gp[id].t[1]==-1) {
+          gp[id].mol[si].dust[iline]=planckfunc(iline,gp[id].t[0],md,si);
+        } else {
+          gp[id].mol[si].dust[iline]=planckfunc(iline,gp[id].t[1],md,si);
+        }
+      }
+    }
+
+    free(kappatab);
+  }
+
+  return;
+}
+
+void calcGridCollRates(configInfo *par, molData *md, struct grid *g){
+  int i,id,ipart,itrans,itemp,tnint=-1;
+  struct cpData part;
+  double fac, uprate, downrate=0.0;
+
+  for(i=0;i<par->nSpecies;i++){
+    for(id=0;id<par->ncell;id++){
+      g[id].mol[i].partner = malloc(sizeof(struct rates)*md[i].npart);
+    }
+
+    for(ipart=0;ipart<md[i].npart;ipart++){
+      part = md[i].part[ipart];
+      for(id=0;id<par->ncell;id++){
+        for(itrans=0;itrans<part.ntrans;itrans++){
+          if((g[id].t[0]>part.temp[0])&&(g[id].t[0]<part.temp[part.ntemp-1])){
+            for(itemp=0;itemp<part.ntemp-1;itemp++){
+              if((g[id].t[0]>part.temp[itemp])&&(g[id].t[0]<=part.temp[itemp+1])){
+                tnint=itemp;
+              }
+            }
+            fac=(g[id].t[0]-part.temp[tnint])/(part.temp[tnint+1]-part.temp[tnint]);
+            g[id].mol[i].partner[ipart].t_binlow = tnint;
+            g[id].mol[i].partner[ipart].interp_coeff = fac;
+
+	  } else if(g[id].t[0]<=part.temp[0]) {
+	    g[id].mol[i].partner[ipart].t_binlow = 0;
+	    g[id].mol[i].partner[ipart].interp_coeff = 0.0;
+	  } else {
+	    g[id].mol[i].partner[ipart].t_binlow = part.ntemp-2;
+	    g[id].mol[i].partner[ipart].interp_coeff = 1.0;
+	  }
+        } /* End loop over transitions. */
+      } /* End loop over grid points. */
+    } /* End loop over collision partners. */
+  } /* End loop over radiating molecules. */
 }
 
 /*....................................................................*/
@@ -333,7 +333,7 @@ Elements of structs are set as follows:
 }
 
 void
-distCalc(inputPars *par, struct grid *g){
+distCalc(configInfo *par, struct grid *g){
   int i,k,l;
 
   for(i=0;i<par->ncell;i++){
@@ -360,7 +360,7 @@ distCalc(inputPars *par, struct grid *g){
 
 
 void
-write_VTK_unstructured_Points(inputPars *par, struct grid *g){
+write_VTK_unstructured_Points(configInfo *par, struct grid *g){
   FILE *fp;
   double length;
   int i,j,l=0;
@@ -447,12 +447,12 @@ write_VTK_unstructured_Points(inputPars *par, struct grid *g){
 }
 
 void
-dumpGrid(inputPars *par, struct grid *g){
+dumpGrid(configInfo *par, struct grid *g){
   if(par->gridfile) write_VTK_unstructured_Points(par, g);
 }
 
 void
-getArea(inputPars *par, struct grid *g, const gsl_rng *ran){
+getArea(configInfo *par, struct grid *g, const gsl_rng *ran){
   int i,j,k,b;//=-1;
   double *angle,best;
   /*	double wsum; */
@@ -515,7 +515,7 @@ getArea(inputPars *par, struct grid *g, const gsl_rng *ran){
 
 
 void
-getMass(inputPars *par, struct grid *g, const gsl_rng *ran){
+getMass(configInfo *par, struct grid *g, const gsl_rng *ran){
   double mass=0.,dist;
   double vol=0.,dp,dpbest,*farea,suma;
   int i,k,j,best=-1;
@@ -624,15 +624,19 @@ getMass(inputPars *par, struct grid *g, const gsl_rng *ran){
 
 
 void
-buildGrid(inputPars *par, struct grid *g){
+buildGrid(configInfo *par, struct grid *g){
   double lograd;		/* The logarithm of the model radius		*/
   double logmin;	    /* Logarithm of par->minScale				*/
   double r,theta,phi,sinPhi,x,y,z,semiradius;	/* Coordinates								*/
   double temp;
-  int k=0,i;            /* counters									*/
+  int k=0,i,j;            /* counters									*/
   int flag;
   struct cell *dc=NULL; /* Not used at present. */
   unsigned long numCells;
+  const int maxNumAttempts=1000;
+  _Bool numRandomsThisPoint;
+  int numSecondRandoms=0;
+  char errStr[80];
 
   gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
 #ifdef TEST
@@ -646,42 +650,52 @@ buildGrid(inputPars *par, struct grid *g){
 
   /* Sample pIntensity number of points */
   for(k=0;k<par->pIntensity;k++){
-    temp=gsl_rng_uniform(ran);
     flag=0;
-    /* Pick a point and check if we like it or not */
+    numRandomsThisPoint=0;
     do{
-      if(par->sampling==0){
-        r=pow(10,logmin+gsl_rng_uniform(ran)*(lograd-logmin));
-        theta=2.*PI*gsl_rng_uniform(ran);
-        phi=PI*gsl_rng_uniform(ran);
-        sinPhi=sin(phi);
-        x=r*cos(theta)*sinPhi;
-        y=r*sin(theta)*sinPhi;
-        if(DIM==3) z=r*cos(phi);
-        else z=0.;
-      } else if(par->sampling==1){
-        x=(2*gsl_rng_uniform(ran)-1)*par->radius;
-        y=(2*gsl_rng_uniform(ran)-1)*par->radius;
-        if(DIM==3) z=(2*gsl_rng_uniform(ran)-1)*par->radius;
-        else z=0;
-      } else if(par->sampling==2){
-        r=pow(10,logmin+gsl_rng_uniform(ran)*(lograd-logmin));
-        theta=2.*PI*gsl_rng_uniform(ran);
-        if(DIM==3) {
-          z=2*gsl_rng_uniform(ran)-1.;
-          semiradius=r*sqrt(1.-z*z);
-          z*=r;
+      temp=gsl_rng_uniform(ran);
+
+      if(numRandomsThisPoint==1)
+        numSecondRandoms++;
+      numRandomsThisPoint++;
+
+      /* Pick a point and check if we like it or not */
+      j=0;
+      while(!flag && j<maxNumAttempts){
+        if(par->sampling==0){
+          r=pow(10,logmin+gsl_rng_uniform(ran)*(lograd-logmin));
+          theta=2.*PI*gsl_rng_uniform(ran);
+          phi=PI*gsl_rng_uniform(ran);
+          sinPhi=sin(phi);
+          x=r*cos(theta)*sinPhi;
+          y=r*sin(theta)*sinPhi;
+          if(DIM==3) z=r*cos(phi);
+          else z=0.;
+        } else if(par->sampling==1){
+          x=(2*gsl_rng_uniform(ran)-1)*par->radius;
+          y=(2*gsl_rng_uniform(ran)-1)*par->radius;
+          if(DIM==3) z=(2*gsl_rng_uniform(ran)-1)*par->radius;
+          else z=0;
+        } else if(par->sampling==2){
+          r=pow(10,logmin+gsl_rng_uniform(ran)*(lograd-logmin));
+          theta=2.*PI*gsl_rng_uniform(ran);
+          if(DIM==3) {
+            z=2*gsl_rng_uniform(ran)-1.;
+            semiradius=r*sqrt(1.-z*z);
+            z*=r;
+          } else {
+            z=0.;
+            semiradius=r;
+          }
+          x=semiradius*cos(theta);
+          y=semiradius*sin(theta);
         } else {
-          z=0.;
-          semiradius=r;
+          if(!silent) bail_out("Don't know how to sample model");
+          exit(1);
         }
-        x=semiradius*cos(theta);
-        y=semiradius*sin(theta);
-      } else {
-        if(!silent) bail_out("Don't know how to sample model");
-        exit(1);
+        if((x*x+y*y+z*z)<par->radiusSqu) flag=pointEvaluation(par,temp,x,y,z);
+        j++;
       }
-      if((x*x+y*y+z*z)<par->radiusSqu) flag=pointEvaluation(par,temp,x,y,z);
     } while(!flag);
     /* Now pointEvaluation has decided that we like the point */
 
@@ -703,6 +717,11 @@ buildGrid(inputPars *par, struct grid *g){
   /* end model grid point assignment */
   if(!silent) done(4);
 
+  if(!silent && numSecondRandoms>0){
+    sprintf(errStr, ">1 random point needed for %d grid points out of %d.", numSecondRandoms, par->pIntensity);
+    warning(errStr);
+  }
+
   /* Add surface sink particles */
   for(i=0;i<par->sinkPoints;i++){
     theta=gsl_rng_uniform(ran)*2*PI;
@@ -717,7 +736,7 @@ buildGrid(inputPars *par, struct grid *g){
     g[k].x[2]=par->radius*z;
     g[k].sink=1;
     g[k].abun[0]=0;
-    g[k].dens[0]=1e-30;
+    g[k].dens[0]=1e-30;//************** what is the low but non zero value for?
     g[k].t[0]=par->tcmb;
     g[k].t[1]=par->tcmb;
     g[k++].dopb=0.;
@@ -730,7 +749,7 @@ buildGrid(inputPars *par, struct grid *g){
   temperature(0.0,0.0,0.0, g[0].t);
   doppler(    0.0,0.0,0.0,&g[0].dopb);	
   abundance(  0.0,0.0,0.0, g[0].abun);
-  /* Note that velocity() is the only one of the 5 mandatory functions which is still needed (in raytrace) unless par->pregrid. Therefore we test it already in parseInput(). */
+  /* Note that velocity() is the only one of the 5 mandatory functions which is still needed (in raytrace) unless par->doPregrid. Therefore we test it already in parseInput(). */
 
   delaunay(DIM, g, (unsigned long)par->ncell, 0, &dc, &numCells);
   distCalc(par, g);
@@ -742,6 +761,8 @@ buildGrid(inputPars *par, struct grid *g){
     doppler(    g[i].x[0],g[i].x[1],g[i].x[2],&g[i].dopb);	
     abundance(  g[i].x[0],g[i].x[1],g[i].x[2], g[i].abun);
   }
+
+  checkGridDensities(par, g);
 
   if(par->polarization){
     for(i=0;i<par->pIntensity;i++)
@@ -758,7 +779,7 @@ buildGrid(inputPars *par, struct grid *g){
   //	getMass(par,g, ran);
   getVelosplines(par,g);
   dumpGrid(par,g);
-  if(dc!=NULL) free(dc);
+  free(dc);
 
   gsl_rng_free(ran);
   if(!silent) done(5);
