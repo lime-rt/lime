@@ -14,9 +14,8 @@ freeGAux(const unsigned long numPoints, const int numSpecies, struct gAuxType *g
   unsigned long ppi;
 
   if(gAux !=NULL){
-    for(ppi=0;ppi<numPoints;ppi++){
+    for(ppi=0;ppi<numPoints;ppi++)
       freePop2(numSpecies, gAux[ppi].mol);
-    }
     free(gAux);
   }
 }
@@ -91,10 +90,8 @@ void freeMolsWithBlends(struct molWithBlends *mols, const int numMolsWithBlends)
   if(mols != NULL){
     for(mi=0;mi<numMolsWithBlends;mi++){
       if(mols[mi].lines != NULL){
-        for(li=0;li<mols[mi].numLinesWithBlends;li++){
-          if(mols[mi].lines[li].blends != NULL){
-            free(mols[mi].lines[li].blends);
-          }
+        for(li=0;li<mols[mi].numLinesWithBlends;li++)
+          free(mols[mi].lines[li].blends);
         }
         free(mols[mi].lines);
       }
@@ -130,12 +127,9 @@ freePop2(const int numSpecies, struct pop2 *mol){
 
   if(mol !=NULL){
     for(i=0;i<numSpecies;i++){
-      if(mol[i].specNumDens != NULL)
-        free(mol[i].specNumDens);
-      if(mol[i].knu != NULL)
-        free(mol[i].knu);
-      if(mol[i].dust != NULL)
-        free(mol[i].dust);
+      free(mol[i].specNumDens);
+      free(mol[i].knu);
+      free(mol[i].dust);
     }
     free(mol);
   }
