@@ -124,8 +124,8 @@ void calcGridDustOpacity(configInfo *par, molData *md, struct grid *gp){
       for(di=0;di<par->numDensities;di++)
         densityForDust += gp[id].dens[di]*par->dustWeights[di];
 
+      gasIIdust(gp[id].x[0],gp[id].x[1],gp[id].x[2],&gtd);
       for(iline=0;iline<md[si].nline;iline++){
-        gasIIdust(gp[id].x[0],gp[id].x[1],gp[id].x[2],&gtd);
         gp[id].mol[si].knu[iline]=kappatab[iline]*2.4*AMU*densityForDust/gtd;
         //Check if input model supplies a dust temperature. Otherwise use the kinetic temperature
         if(gp[id].t[1]==-1) {
