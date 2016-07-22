@@ -92,7 +92,6 @@ void freeMolsWithBlends(struct molWithBlends *mols, const int numMolsWithBlends)
       if(mols[mi].lines != NULL){
         for(li=0;li<mols[mi].numLinesWithBlends;li++)
           free(mols[mi].lines[li].blends);
-        }
         free(mols[mi].lines);
       }
     }

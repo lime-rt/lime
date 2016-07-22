@@ -5,7 +5,9 @@
  *  Copyright (C) 2006-2014 Christian Brinch
  *  Copyright (C) 2016 The LIME development team
  *
-TODO: - In raytrace(), look at rearranging the code to do the qhull step before choosing the rays. This would allow cells with all vertices outside the image boundaries to be excluded. If the image is much smaller than the model, this could lead to significant savings in time. The only downside might be memory useage...
+TODO:
+  - In raytrace(), look at rearranging the code to do the qhull step before choosing the rays. This would allow cells with all vertices outside the image boundaries to be excluded. If the image is much smaller than the model, this could lead to significant savings in time. The only downside might be memory useage...
+  - We should not be multiplying remnantSnu by md[0].norminv, but to make it correct would be pretty fiddly.
  */
 
 #include "lime.h"
@@ -213,7 +215,7 @@ Note that the algorithm employed here is similar to that employed in the functio
         dtau=alpha*ds;
 //???          if(dtau < -30) dtau = -30; // as in photon()?
         calcSourceFn(dtau, par, &remnantSnu, &expDTau);
-        remnantSnu *= jnu*md[molI].norminv*ds;
+        remnantSnu *= jnu*md[0].norminv*ds;
 #ifdef FASTEXP
         brightnessIncrement = FastExp(ray.tau[ichan])*remnantSnu;
 #else
