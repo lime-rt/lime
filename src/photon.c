@@ -272,7 +272,7 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
           dtau=alpha*ds;
           if(dtau < -30) dtau = -30;
           calcSourceFn(dtau, par, &remnantSnu, &expDTau);
-          remnantSnu *= jnu*m[molI].norminv*ds;
+          remnantSnu *= jnu*ds;
 
           mp[molI].phot[lineI+iphot*m[molI].nline]+=expTau[iline]*remnantSnu;
           tau[iline]+=dtau;
@@ -303,7 +303,7 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
               dtau=alpha*ds;
               if(dtau < -30) dtau = -30;
               calcSourceFn(dtau, par, &remnantSnu, &expDTau);
-              remnantSnu *= jnu*m[molJ].norminv*ds;
+              remnantSnu *= jnu*ds;
 
               mp[molI].phot[lineI+iphot*m[molI].nline]+=expTau[iline]*remnantSnu;
               tau[iline]+=dtau;
@@ -368,7 +368,7 @@ getjbar(int posn, molData *m, struct grid *g, const int molI\
         sourceFunc_cont(&jnu,&alpha,g,posn,molI,lineI);
         tau=alpha*halfFirstDs[iphot];
         calcSourceFn(tau, par, &remnantSnu, &expTau);
-        remnantSnu *= jnu*m[molI].norminv*halfFirstDs[iphot];
+        remnantSnu *= jnu*halfFirstDs[iphot];
 
         mp[molI].jbar[lineI]+=mp[molI].vfac[iphot]*(expTau*mp[molI].phot[lineI+iphot*m[molI].nline]+remnantSnu);
 
@@ -385,7 +385,7 @@ getjbar(int posn, molData *m, struct grid *g, const int molI\
             sourceFunc_line(&jnu,&alpha,m,mp[molI].vfac[iphot],g,posn,molJ,lineJ);
             tau=alpha*halfFirstDs[iphot];
             calcSourceFn(tau, par, &remnantSnu, &expTau);
-            remnantSnu *= jnu*m[molJ].norminv*halfFirstDs[iphot];
+            remnantSnu *= jnu*halfFirstDs[iphot];
 
             mp[molI].jbar[lineI]+=mp[molI].vfac[iphot]*(expTau*mp[molI].phot[lineI+iphot*m[molI].nline]+remnantSnu);
           }
@@ -401,6 +401,6 @@ getjbar(int posn, molData *m, struct grid *g, const int molI\
       vsum+=mp[molI].vfac[iphot];
     }
   }
-  for(lineI=0;lineI<m[molI].nline;lineI++) mp[molI].jbar[lineI] *= m[molI].norm/vsum;
+  for(lineI=0;lineI<m[molI].nline;lineI++) mp[molI].jbar[lineI] /= vsum;
 }
 

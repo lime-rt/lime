@@ -94,12 +94,12 @@ writefits(int im, configInfo *par, molData *m, image *img){
   for(py=0;py<img[im].pxls;py++){
     for(ichan=0;ichan<img[im].nchan;ichan++){
       for(px=0;px<img[im].pxls;px++){
-        if(img[im].unit==0) row[px]=(float) img[im].pixel[px+py*img[im].pxls].intense[ichan]*(CLIGHT/img[im].freq)*(CLIGHT/img[im].freq)/2./KBOLTZ*m[0].norm; 
-        else if(img[im].unit==1) row[px]=(float) img[im].pixel[px+py*img[im].pxls].intense[ichan]*1e26*img[im].imgres*img[im].imgres*m[0].norm;
-        else if(img[im].unit==2) row[px]=(float) img[im].pixel[px+py*img[im].pxls].intense[ichan]*m[0].norm;
+        if(img[im].unit==0) row[px]=(float) img[im].pixel[px+py*img[im].pxls].intense[ichan]*(CLIGHT/img[im].freq)*(CLIGHT/img[im].freq)/(2.*KBOLTZ); 
+        else if(img[im].unit==1) row[px]=(float) img[im].pixel[px+py*img[im].pxls].intense[ichan]*1e26*img[im].imgres*img[im].imgres;
+        else if(img[im].unit==2) row[px]=(float) img[im].pixel[px+py*img[im].pxls].intense[ichan];
         else if(img[im].unit==3) {
           ru3 = img[im].distance/1.975e13;
-          row[px]=(float) img[im].pixel[px+py*img[im].pxls].intense[ichan]*4.*PI*ru3*ru3*img[im].freq*img[im].imgres*img[im].imgres*m[0].norm;
+          row[px]=(float) img[im].pixel[px+py*img[im].pxls].intense[ichan]*4.*PI*ru3*ru3*img[im].freq*img[im].imgres*img[im].imgres;
         }
         else if(img[im].unit==4) row[px]=(float) img[im].pixel[px+py*img[im].pxls].tau[ichan];
         else {

@@ -20,16 +20,13 @@ void calcMolCMBs(configInfo *par, molData *md){
     md[si].cmb	     = malloc(sizeof(double)*md[si].nline);
     md[si].local_cmb = malloc(sizeof(double)*md[si].nline);
 
-    /* fix the normalization at 230GHz */
-    md[si].norm=planckfunc(0,par->tcmb,md,0);
-    md[si].norminv=1./md[si].norm;
     for(iline=0;iline<md[si].nline;iline++){
       if(par->tcmb>0.)
-        md[si].cmb[iline] = planckfunc(iline,par->tcmb,md,si)/md[si].norm;
+        md[si].cmb[iline] = planckfunc(iline,par->tcmb,md,si);
       else
         md[si].cmb[iline]=0.;
 
-      md[si].local_cmb[iline] = planckfunc(iline,2.728,md,si)/md[si].norm;
+      md[si].local_cmb[iline] = planckfunc(iline,2.728,md,si);
     }
   }
 }

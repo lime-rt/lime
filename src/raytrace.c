@@ -117,7 +117,7 @@ Note that the algorithm employed here is similar to that employed in the functio
         sourceFunc_pol(snu_pol,&alpha,gp,posn,0,0,img[im].rotMat);
         dtau=alpha*ds;
         calcSourceFn(dtau, par, &remnantSnu, &expDTau);
-        remnantSnu *= md[0].norminv*ds;
+        remnantSnu *= ds;
 
         for(ichan=0;ichan<img[im].nchan;ichan++){ /* Loop over I, Q and U */
 #ifdef FASTEXP
@@ -162,7 +162,7 @@ Note that the algorithm employed here is similar to that employed in the functio
           sourceFunc_cont(&jnu,&alpha,gp,posn,cmbMolI,cmbLineI);
           dtau=alpha*ds;
           calcSourceFn(dtau, par, &remnantSnu, &expDTau);
-          remnantSnu *= jnu*md[0].norminv*ds;
+          remnantSnu *= jnu*ds;
 #ifdef FASTEXP
           ray.intensity[ichan]+=FastExp(ray.tau[ichan])*remnantSnu;
 #else

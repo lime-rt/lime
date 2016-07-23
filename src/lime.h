@@ -133,7 +133,7 @@ typedef struct {
   int nlev,nline,npart;
   int *lal,*lau;
   double *aeinst,*freq,*beinstu,*beinstl,*eterm,*gstat;
-  double norm,norminv,*cmb,*local_cmb,amass;
+  double *cmb,*local_cmb,amass;
   struct cpData *part;
 } molData;
 
@@ -304,7 +304,6 @@ void	report(int, configInfo *, struct grid *);
 void	setUpConfig(configInfo *, image **, molData **);
 void	setUpDensityAux(configInfo*, int*, const int);
 void	smooth(configInfo *, struct grid *);
-void	sourceFunc(double*, double*, double, molData*, double, struct grid*, int, int, int, int);
 void	sourceFunc_cont(double*, double*, struct grid*, int, int, int);
 void	sourceFunc_line(double*, double*, molData*, double, struct grid*, int, int, int);
 void	sourceFunc_pol(double*, double*, struct grid*, int, int, int, double (*rotMat)[3]);
