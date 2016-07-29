@@ -9,33 +9,6 @@
 
 #include "lime.h"
 
-
-void
-gridAlloc(inputPars *par, struct grid **g){
-  int i;
-
-  *g=malloc(sizeof(struct grid)*(par->pIntensity+par->sinkPoints));
-  memset(*g, 0., sizeof(struct grid) * (par->pIntensity+par->sinkPoints));
-
-  for(i=0;i<(par->pIntensity+par->sinkPoints); i++){
-    (*g)[i].a0 = NULL;
-    (*g)[i].a1 = NULL;
-    (*g)[i].a2 = NULL;
-    (*g)[i].a3 = NULL;
-    (*g)[i].a4 = NULL;
-    (*g)[i].mol = NULL;
-    (*g)[i].dir = NULL;
-    (*g)[i].neigh = NULL;
-    (*g)[i].w = NULL;
-    (*g)[i].ds = NULL;
-    (*g)[i].dens=malloc(sizeof(double)*par->collPart);
-    (*g)[i].abun=malloc(sizeof(double)*par->nSpecies);
-    (*g)[i].nmol=malloc(sizeof(double)*par->nSpecies);
-    (*g)[i].t[0]=-1;
-    (*g)[i].t[1]=-1;
-  }
-}
-
 void
 freePopulation(const inputPars *par, const molData* m, struct populations* pop ) {
   if( pop !=NULL )
@@ -77,67 +50,29 @@ freePopulation(const inputPars *par, const molData* m, struct populations* pop )
       free(pop);
     }
 }
+
 void
 freeGrid(const inputPars *par, const molData* m ,struct grid* g){
   int i;
-  if( g != NULL )
-    {
-      for(i=0;i<(par->pIntensity+par->sinkPoints); i++){
-        if(g[i].a0 != NULL)
-          {
-            free(g[i].a0);
-          }
-        if(g[i].a1 != NULL)
-          {
-            free(g[i].a1);
-          }
-        if(g[i].a2 != NULL)
-          {
-            free(g[i].a2);
-          }
-        if(g[i].a3 != NULL)
-          {
-            free(g[i].a3);
-          }
-        if(g[i].a4 != NULL)
-          {
-            free(g[i].a4);
-          }
-        if(g[i].dir != NULL)
-          {
-            free(g[i].dir);
-          }
-        if(g[i].neigh != NULL)
-          {
-            free(g[i].neigh);
-          }
-        if(g[i].w != NULL)
-          {
-            free(g[i].w);
-          }
-        if(g[i].dens != NULL)
-          {
-            free(g[i].dens);
-          }
-        if(g[i].nmol != NULL)
-          {
-            free(g[i].nmol);
-          }
-        if(g[i].abun != NULL)
-          {
-            free(g[i].abun);
-          }
-        if(g[i].ds != NULL)
-          {
-            free(g[i].ds);
-          }
-        if(g[i].mol != NULL)
-          {
-            freePopulation( par, m, g[i].mol );
-          }
-      }
-      free(g);
+  if(g != NULL){
+    for(i=0;i<par->ncell;i++){
+      free(g[i].a0);
+      free(g[i].a1);
+      free(g[i].a2);
+      free(g[i].a3);
+      free(g[i].a4);
+      free(g[i].dir);
+      free(g[i].neigh);
+      free(g[i].w);
+      free(g[i].dens);
+      free(g[i].nmol);
+      free(g[i].abun);
+      free(g[i].ds);
+      if(g[i].mol != NULL)
+        freePopulation( par, m, g[i].mol );
     }
+    free(g);
+  }
 }
 
 void
@@ -541,22 +476,10 @@ void readOrBuildGrid(inputPars *par, struct grid **gp){
   int numCollPartRead;
   char message[80];
 
-  par->dataStageI = 0;
+  par->dataFlags = 0;
   if(par->gridInFile!=NULL){
-    /* Set defaults for *gridInfoRead:
-    */
-    gridInfoRead.nInternalPoints = 0;
-    gridInfoRead.nSinkPoints = 0;
-    gridInfoRead.nLinks = 0;
-    gridInfoRead.nNNIndices = 0;
-    gridInfoRead.nDims = 0;
-    gridInfoRead.nSpecies = 0;
-    gridInfoRead.nDensities = 0;
-    gridInfoRead.nACoeffs = 0;
-    gridInfoRead.mols = NULL;
-
     status = readGrid(par->gridInFile, lime_FITS, &gridInfoRead, gp\
-      , &collPartNames, &numCollPartRead, &(par->dataStageI));
+      , &collPartNames, &numCollPartRead, &(par->dataFlags));
 
     if(status){
       if(!silent){
@@ -566,16 +489,37 @@ void readOrBuildGrid(inputPars *par, struct grid **gp){
       exit(1);
     }
 
+    /* Test that dataFlags obeys the rules. */
+    /* No other bit may be set if DS_bit_x is not: */
+    if(anyBitSet(par->dataFlags, (DS_mask_all & ~(1 << DS_bit_x))) && !bitIsSet(par->dataFlags, DS_bit_x)){
+      if(!silent) bail_out("You may not read a grid file without X, ID or IS_SINK data.");
+      exit(1);
+    }
+
+    /* DS_bit_ACOEFF may not be set if either DS_bit_neighbours or DS_bit_velocity is not: */
+    if(bitIsSet(par->dataFlags, DS_bit_ACOEFF)\
+    && !(bitIsSet(par->dataFlags, DS_bit_neighbours) && bitIsSet(par->dataFlags, DS_bit_velocity))){
+      if(!silent) bail_out("You may not read a grid file with ACOEFF but no VEL or neighbour data.");
+      exit(1);
+    }
+
+    /* DS_bit_populations may not be set unless all the others are set as well: */
+    if(bitIsSet(par->dataFlags, DS_bit_populations)\
+    && !allBitsSet(par->dataFlags, (DS_mask_all & ~(1 << DS_bit_populations)))){
+      if(!silent) bail_out("You may not read a grid file with pop data unless all other data is present.");
+      exit(1);
+    }
+
     /* Test gridInfoRead values against par values and overwrite the latter, with a warning, if necessary.
     */
     if(gridInfoRead.nSinkPoints>0 && par->sinkPoints>0){
-      if(gridInfoRead.nSinkPoints!=par->sinkPoints){
+      if((int)gridInfoRead.nSinkPoints!=par->sinkPoints){
         if(!silent) warning("par->sinkPoints will be overwritten");
-        par->sinkPoints = gridInfoRead.nSinkPoints;
+        par->sinkPoints = (int)gridInfoRead.nSinkPoints;
       }
-      if(gridInfoRead.nInternalPoints!=par->pIntensity){
+      if((int)gridInfoRead.nInternalPoints!=par->pIntensity){
         if(!silent) warning("par->pIntensity will be overwritten");
-        par->pIntensity = gridInfoRead.nInternalPoints;
+        par->pIntensity = (int)gridInfoRead.nInternalPoints;
       }
       par->ncell = par->sinkPoints + par->pIntensity;
     }
@@ -586,7 +530,7 @@ void readOrBuildGrid(inputPars *par, struct grid **gp){
       }
       exit(1);
     }
-    if(gridInfoRead.nSpecies>0 && par->nSpecies>0 && gridInfoRead.nSpecies!=par->nSpecies){
+    if(gridInfoRead.nSpecies>0 && par->nSpecies>0 && (int)gridInfoRead.nSpecies!=par->nSpecies){
       if(!silent){
         sprintf(message, "Grid file had %d species but you have provided moldata files for %d."\
           , (int)gridInfoRead.nSpecies, par->nSpecies);
@@ -595,7 +539,7 @@ void readOrBuildGrid(inputPars *par, struct grid **gp){
       exit(1);
 /**** should compare name to name - at some later time after we have read these from the moldata files? */
     }
-    if(gridInfoRead.nDensities>0 && par->collPart>0 && gridInfoRead.nDensities!=par->collPart){
+    if(gridInfoRead.nDensities>0 && par->collPart>0 && (int)gridInfoRead.nDensities!=par->collPart){
       if(!silent){
         sprintf(message, "Grid file had %d densities but you have provided %d."\
           , (int)gridInfoRead.nDensities, par->collPart);
@@ -609,11 +553,11 @@ void readOrBuildGrid(inputPars *par, struct grid **gp){
 
 **** Ideally we should also have a test on the mols entries - at some later time after we have read the corresponding values from the moldata files?
 */
-    if(par->dataStageI==4 && !silent)
+    if(allBitsSet(par->dataFlags, DS_mask_4) && !silent)
       warning("Sorry, LIME is not yet able to further process level populations read from file.");
   } /* End of read grid file. Whether and what we subsequently calculate will depend on the value of par->dataStageI returned. */
 
-  if(par->dataStageI<1){ /* This can only happen if we did not read a file. */
+  if(!anyBitSet(par->dataFlags, DS_mask_x)){ /* This should only happen if we did not read a file. Generate the grid point locations. */
     mallocAndSetDefaultGrid(gp, (unsigned int)par->ncell);
 
     gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
@@ -703,62 +647,86 @@ void readOrBuildGrid(inputPars *par, struct grid **gp){
     smooth(par, *gp);
     if(!silent) printDone(5);
 
-    par->dataStageI = 1;
-  }else if(par->dataStageI==1 && par->writeGridAtStage[par->dataStageI-1]){
-    sprintf(message, "You just read a grid file at data stage %d, now you want to write it again?", par->dataStageI);
-    if(!silent) warning(message);
+    par->dataFlags |= DS_mask_1;
   }
 
-  if(par->dataStageI==1) /* Only happens if (i) we read no file and have constructed this data within LIME, or (ii) we read a file at dataStageI==1. */
+  if(onlyBitsSet(par->dataFlags, DS_mask_1)) /* Only happens if (i) we read no file and have constructed this data within LIME, or (ii) we read a file at dataStageI==1. */
     writeGridIfRequired(par, *gp, NULL, lime_FITS);
 
-  if(par->dataStageI<2){
+  if(!allBitsSet(par->dataFlags, DS_mask_neighbours)){
     qhull(par, *gp); /* Mallocs and sets .neigh, sets .numNeigh */
 
-    par->dataStageI = 2;
-  }else if(par->dataStageI==2 && par->writeGridAtStage[par->dataStageI-1]){
-    sprintf(message, "You just read a grid file at data stage %d, now you want to write it again?", par->dataStageI);
-    if(!silent) warning(message);
+    par->dataFlags |= DS_mask_2;
   }
+  distCalc(par, *gp); /* Mallocs and sets .dir & .ds, sets .nphot. We don't store these values so we have to calculate them whether we read a file or not. */
 
-  if(par->dataStageI==2) /* Only happens if (i) we read no file and have constructed this data within LIME, or (ii) we read a file at dataStageI==2. */
+  if(onlyBitsSet(par->dataFlags, DS_mask_2)) /* Only happens if (i) we read no file and have constructed this data within LIME, or (ii) we read a file at dataStageI==2. */
     writeGridIfRequired(par, *gp, NULL, lime_FITS);
 
-  distCalc(par, *gp); /* Mallocs and sets .dir & .ds, sets .nphot */
-
-  if(par->dataStageI<3){
-    for(i=0;i<par->ncell; i++){
-      (*gp)[i].dens = malloc(sizeof(double)*par->collPart);
-      (*gp)[i].abun = malloc(sizeof(double)*par->nSpecies);
-      (*gp)[i].nmol = malloc(sizeof(double)*par->nSpecies);
-    }
-
-    for(i=0;i<par->pIntensity;i++){
-      density(    (*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2], (*gp)[i].dens);
-      temperature((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2], (*gp)[i].t);
-      doppler(    (*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],&(*gp)[i].dopb);	
-      abundance(  (*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2], (*gp)[i].abun);
-      velocity(   (*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2], (*gp)[i].vel);
-    }
-
+  if(!allBitsSet(par->dataFlags, DS_mask_velocity)){
+    for(i=0;i<par->pIntensity;i++)
+      velocity((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2], (*gp)[i].vel);
     for(i=par->pIntensity;i<par->ncell;i++){
-      (*gp)[i].dens[0]=1e-30;
-      (*gp)[i].t[0]=par->tcmb;
-      (*gp)[i].t[1]=par->tcmb;
-      (*gp)[i].dopb=0.;
-      (*gp)[i].abun[0]=0;
-      for(j=0;j<DIM;j++) (*gp)[i].vel[j]=0.;
+      for(j=0;j<DIM;j++)
+        (*gp)[i].vel[j]=0.;
     }
 
-    calcInterpCoeffs(par,*gp); /* Mallocs and sets .a0, .a1 etc. */
-
-    par->dataStageI = 3;
-  }else if(par->dataStageI==3 && par->writeGridAtStage[par->dataStageI-1]){
-    sprintf(message, "You just read a grid file at data stage %d, now you want to write it again?", par->dataStageI);
-    if(!silent) warning(message);
+    par->dataFlags |= DS_mask_velocity;
   }
 
-  if(par->dataStageI==3) /* Only happens if (i) we read no file and have constructed this data within LIME, or (ii) we read a file at dataStageI==3. */
+  if(!allBitsSet(par->dataFlags, DS_mask_density)){
+    for(i=0;i<par->ncell; i++)
+      (*gp)[i].dens = malloc(sizeof(double)*par->collPart);
+    for(i=0;i<par->pIntensity;i++)
+      density((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2], (*gp)[i].dens);
+    for(i=par->pIntensity;i<par->ncell;i++)
+      (*gp)[i].dens[0]=1e-30;
+
+    par->dataFlags |= DS_mask_density;
+  }
+
+  if(!allBitsSet(par->dataFlags, DS_mask_abundance)){
+    for(i=0;i<par->ncell; i++){
+      (*gp)[i].abun = malloc(sizeof(double)*par->nSpecies);
+    }
+    for(i=0;i<par->pIntensity;i++)
+      abundance((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2], (*gp)[i].abun);
+    for(i=par->pIntensity;i<par->ncell;i++)
+      (*gp)[i].abun[0]=0;
+
+    par->dataFlags |= DS_mask_abundance;
+  }
+
+  for(i=0;i<par->ncell; i++) /* We don't store the nmol values so we have to do this malloc whether we read a file or not. */
+    (*gp)[i].nmol = malloc(sizeof(double)*par->nSpecies); //**** mind you, it would be better to malloc them just before calculating them in molinit.
+
+  if(!allBitsSet(par->dataFlags, DS_mask_turb_doppler)){
+    for(i=0;i<par->pIntensity;i++)
+      doppler((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],&(*gp)[i].dopb);	
+    for(i=par->pIntensity;i<par->ncell;i++)
+      (*gp)[i].dopb=0.;
+
+    par->dataFlags |= DS_mask_turb_doppler;
+  }
+
+  if(!allBitsSet(par->dataFlags, DS_mask_temperatures)){
+    for(i=0;i<par->pIntensity;i++)
+      temperature((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2], (*gp)[i].t);
+    for(i=par->pIntensity;i<par->ncell;i++){
+      (*gp)[i].t[0]=par->tcmb;
+      (*gp)[i].t[1]=par->tcmb;
+    }
+
+    par->dataFlags |= DS_mask_temperatures;
+  }
+
+  if(!allBitsSet(par->dataFlags, DS_mask_ACOEFF)){
+    calcInterpCoeffs(par,*gp); /* Mallocs and sets .a0, .a1 etc. */
+
+    par->dataFlags |= DS_mask_3;
+  }
+
+  if(onlyBitsSet(par->dataFlags, DS_mask_3)) /* Only happens if (i) we read no file and have constructed this data within LIME, or (ii) we read a file at dataStageI==3. */
     writeGridIfRequired(par, *gp, NULL, lime_FITS);
 
   dumpGrid(par,*gp);

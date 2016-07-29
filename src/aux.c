@@ -48,7 +48,7 @@ parseInput(inputPars *par, image **img, molData **m){
     par->writeGridAtStage[i] = 0; /* The user is not expected to set this. */
     par->gridOutFiles[i] = "";
   };
-  par->dataStageI = 0; /* The user is not expected to set this. */
+  par->dataFlags = 0; /* The user is not expected to set this. */
 
   /* Allocate space for output fits images */
   (*img)=malloc(sizeof(image)*MAX_NSPECIES);
@@ -620,7 +620,7 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
     if(par->binoutputfile != NULL) binpopsout(par,g,m);
   }
 
-  par->dataStageI = 4;
+  par->dataFlags |= DS_mask_4;
 
   for (i=0;i<par->nThreads;i++){
     gsl_rng_free(threadRans[i]);

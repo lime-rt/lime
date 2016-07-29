@@ -20,7 +20,14 @@ predefinedGrid(inputPars *par, struct grid *g){
 #else
   gsl_rng_set(ran,time(0));
 #endif
-	
+
+  for(i=0;i<par->ncell;i++){
+    g[i].dens = malloc(sizeof(double)*par->collPart);
+    g[i].abun = malloc(sizeof(double)*par->nSpecies);
+//    g[i].nmol = malloc(sizeof(double)*par->nSpecies);
+g[i].nmol = malloc(sizeof(double)*1); /* Only 1 element is accessed in the present bodgy state of affairs. */
+  }
+
   fp=fopen(par->pregrid,"r");
   par->ncell=par->pIntensity+par->sinkPoints;
 
@@ -39,14 +46,14 @@ predefinedGrid(inputPars *par, struct grid *g){
 
 
     g[i].sink=0;
-	g[i].t[1]=g[i].t[0];
-	g[i].nmol[0]=g[i].abun[0]*g[i].dens[0];
+    g[i].t[1]=g[i].t[0];
+    g[i].nmol[0]=g[i].abun[0]*g[i].dens[0];
 		
-	/* This next step needs to be done, even though it looks stupid */
-	g[i].dir=malloc(sizeof(point)*1);
-	g[i].ds =malloc(sizeof(double)*1);
-	g[i].neigh =malloc(sizeof(struct grid *)*1);
-	if(!silent) progressbar((double) i/((double)par->pIntensity-1), 4);	
+    /* This next step needs to be done, even though it looks stupid */
+    g[i].dir   = malloc(sizeof(point)*1);
+    g[i].ds    = malloc(sizeof(double)*1);
+    g[i].neigh = malloc(sizeof(struct grid *)*1);
+    if(!silent) progressbar((double) i/((double)par->pIntensity-1), 4);	
   }
 
   for(i=par->pIntensity;i<par->ncell;i++){
@@ -62,6 +69,7 @@ predefinedGrid(inputPars *par, struct grid *g){
       g[i].sink=1;
       g[i].abun[0]=0;
       g[i].dens[0]=1e-30;
+      g[i].nmol[0]=0.0; /* Just to give it a value. */
       g[i].t[0]=par->tcmb;
       g[i].t[1]=par->tcmb;
       g[i].dopb=0.;
@@ -75,6 +83,18 @@ predefinedGrid(inputPars *par, struct grid *g){
   //  getArea(par,g, ran);
   //  getMass(par,g, ran);
   calcInterpCoeffs_lin(par,g);
+
+  par->dataFlags |= (1 << DS_bit_x);
+  par->dataFlags |= (1 << DS_bit_neighbours);
+  par->dataFlags |= (1 << DS_bit_velocity);
+  par->dataFlags |= (1 << DS_bit_density);
+  par->dataFlags |= (1 << DS_bit_abundance);
+  par->dataFlags |= (1 << DS_bit_turb_doppler);
+  par->dataFlags |= (1 << DS_bit_temperatures);
+  par->dataFlags |= (1 << DS_bit_ACOEFF);
+
+//**** should fill in any missing info via the appropriate function calls.
+
   if(par->gridfile) write_VTK_unstructured_Points(par, g);
   gsl_rng_free(ran);
 }

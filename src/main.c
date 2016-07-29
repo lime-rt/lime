@@ -46,14 +46,12 @@ int main () {
 
   if(par.doPregrid)
     {
-      gridAlloc(&par,&gp);
+      mallocAndSetDefaultGrid(&gp, (unsigned int)par.ncell);
       predefinedGrid(&par,gp);
-      par.dataStageI = 3; // Sort of.
     }
   else if(par.restart)
     {
       popsin(&par,&gp,&md,&popsdone);
-      par.dataStageI = 4; // Sort of.
     }
   else
     {
@@ -75,7 +73,8 @@ int main () {
 
   if(nLineImages>0 && !popsdone){ // eventually, replace !popdone by (!popsdone || dataStageI<4)? *Really* eventually we want to get rid of popsdone.
     levelPops(md,&par,gp,&popsdone);
-    par.dataStageI = 4;
+//    par.dataStageI = 4;
+    par.dataFlags |= (1 << DS_bit_populations);
 /* Disable the next lines for now, since we have not tested dataStageI<4 in the 'if' of this block, because we can't use an input grid file at dataStageI==4 yet: we have to disentangle all the functionality of molinit() before we can contemplate doing that. 
   }else if(par.dataStageI==4 && par->nSolveIters>0 && par.writeGridAtStage[par.dataStageI-1]){
     sprintf(message, "You just read a grid file at data stage %d, now you want to write it again?", par.dataStageI);
@@ -83,8 +82,8 @@ int main () {
 */
   }
 
-  if(par.dataStageI==4)
-    writeGridIfRequired(&par, gp, md, lime_FITS);
+//  if(par.dataStageI==4)
+  writeGridIfRequired(&par, gp, md, lime_FITS);
 
   /* Now make the line images.
   */
