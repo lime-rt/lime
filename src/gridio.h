@@ -7,6 +7,11 @@
  *
  */
 
+#ifndef GRIDIO_H
+#define GRIDIO_H
+
 #define lime_fptr	fitsfile
 #define lime_FITS	1
+
+#endif /* GRIDIO_H */
 

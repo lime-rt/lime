@@ -52,7 +52,8 @@ The number of coefficients N is currently hard-wired at 5.
 
     for(k=0;k<gp[i].numNeigh;k++){
       for(ri=0;ri<nCoeffs;ri++){
-        for(di=0;di<DIM;di++) x[di] = gp[i].x[di] + dFrac[ri]*gp[i].dir[k].xn[di]*gp[i].ds[k];
+        for(di=0;di<DIM;di++)
+          x[di] = gp[i].x[di] + dFrac[ri]*gp[i].dir[k].xn[di]*gp[i].ds[k];
         velocity(x[0],x[1],x[2],vel);
         velComp = veloproject(gp[i].dir[k].xn,vel); /* Component of velocity in the direction of the neighbour point. */
 
