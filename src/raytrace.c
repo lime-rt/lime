@@ -3,7 +3,7 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015 The LIME development team
+ *  Copyright (C) 2016 The LIME development team
  *
  */
 
@@ -38,28 +38,28 @@ The bulk velocity of the model material can vary significantly with position, th
 
 
 void
-line_plane_intersect(struct grid *gp, double *ds, int posn, int *nposn, double *dx, double *x, double cutoff){
+line_plane_intersect(struct grid *g, double *ds, int posn, int *nposn, double *dx, double *x, double cutoff){
   /*
 This function returns ds as the (always positive-valued) distance between the present value of x and the next Voronoi face in the direction of vector dx, and nposn as the id of the grid cell that abuts that face. 
   */
   double newdist, numerator, denominator ;
   int i;
 
-  for(i=0;i<gp[posn].numNeigh;i++) {
+  for(i=0;i<g[posn].numNeigh;i++) {
     /* Find the shortest distance between (x,y,z) and any of the posn Voronoi faces */
     /* ds=(p0-l0) dot n / l dot n */
 
-    numerator=((gp[posn].x[0]+gp[posn].dir[i].x[0]/2. - x[0]) * gp[posn].dir[i].x[0]+
-               (gp[posn].x[1]+gp[posn].dir[i].x[1]/2. - x[1]) * gp[posn].dir[i].x[1]+
-               (gp[posn].x[2]+gp[posn].dir[i].x[2]/2. - x[2]) * gp[posn].dir[i].x[2]);
+    numerator=((g[posn].x[0]+g[posn].dir[i].x[0]/2. - x[0]) * g[posn].dir[i].x[0]+
+               (g[posn].x[1]+g[posn].dir[i].x[1]/2. - x[1]) * g[posn].dir[i].x[1]+
+               (g[posn].x[2]+g[posn].dir[i].x[2]/2. - x[2]) * g[posn].dir[i].x[2]);
 
-    denominator=(dx[0]*gp[posn].dir[i].x[0]+dx[1]*gp[posn].dir[i].x[1]+dx[2]*gp[posn].dir[i].x[2]);
+    denominator=(dx[0]*g[posn].dir[i].x[0]+dx[1]*g[posn].dir[i].x[1]+dx[2]*g[posn].dir[i].x[2]);
     
     if(fabs(denominator) > 0){
       newdist=numerator/denominator;
       if(newdist<*ds && newdist > cutoff){
         *ds=newdist;
-        *nposn=gp[posn].neigh[i]->id;
+        *nposn=g[posn].neigh[i]->id;
       }
     }
   }
@@ -68,13 +68,14 @@ This function returns ds as the (always positive-valued) distance between the pr
 
 
 void
-traceray(rayData ray, int tmptrans, int im, inputPars *par, struct grid *gp, molData *md, image *img, int nlinetot, int *counta, int *countb, double cutoff){
+traceray(rayData ray, int cmbMolI, int cmbLineI, int im, configInfo *par, struct grid *gp, molData *md, image *img, double cutoff){
   /*
 For a given image pixel position, this function evaluates the intensity of the total light emitted/absorbed along that line of sight through the (possibly rotated) model. The calculation is performed for several frequencies, one per channel of the output image.
 
 Note that the algorithm employed here is similar to that employed in the function photon() which calculates the average radiant flux impinging on a grid cell: namely the notional photon is started at the side of the model near the observer and 'propagated' in the receding direction until it 'reaches' the far side. This is rather non-physical in conception but it makes the calculation easier.
   */
-  int ichan,posn,nposn,i,iline,molI,lineI;
+  const int stokesIi=0;
+  int ichan,posn,nposn,i,molI,lineI;
   double vfac=0.,x[3],dx[3],vThisChan;
   double deltav,ds,dist2,ndist2,xp,yp,zp,col,lineRedShift,jnu,alpha,remnantSnu,dtau,expDTau,snu_pol[3];
 
@@ -113,48 +114,52 @@ Note that the algorithm employed here is similar to that employed in the functio
       nposn=-1;
       line_plane_intersect(gp,&ds,posn,&nposn,dx,x,cutoff); /* Returns a new ds equal to the distance to the next Voronoi face, and nposn, the ID of the grid cell that abuts that face. */ 
       if(par->polarization){
-        for(ichan=0;ichan<img[im].nchan;ichan++){
-          sourceFunc_pol(snu_pol,&dtau,ds,md,vfac,gp,posn,0,0,img[im].theta);
+        sourceFunc_pol(snu_pol,&alpha,gp,posn,0,0,img[im].rotMat);
+        dtau=alpha*ds;
+        calcSourceFn(dtau, par, &remnantSnu, &expDTau);
+        remnantSnu *= md[0].norminv*ds;
+
+        for(ichan=0;ichan<img[im].nchan;ichan++){ /* Loop over I, Q and U */
 #ifdef FASTEXP
-          ray.intensity[ichan]+=FastExp(ray.tau[ichan])*(1.-exp(-dtau))*snu_pol[ichan];
+          ray.intensity[ichan]+=FastExp(ray.tau[ichan])*remnantSnu*snu_pol[ichan];
 #else
-          ray.intensity[ichan]+=   exp(-ray.tau[ichan])*(1.-exp(-dtau))*snu_pol[ichan];
+          ray.intensity[ichan]+=   exp(-ray.tau[ichan])*remnantSnu*snu_pol[ichan];
 #endif
-          ray.tau[ichan]+=dtau;
+          ray.tau[ichan]+=dtau; //**** But this will be the same for I, Q or U.
         }
       } else {
         for(ichan=0;ichan<img[im].nchan;ichan++){
           jnu=.0;
           alpha=0.;
 
-          for(iline=0;iline<nlinetot;iline++){
-            molI = counta[iline];
-            lineI = countb[iline];
-            if(img[im].doline && md[molI].freq[lineI] > img[im].freq-img[im].bandwidth/2.
-            && md[molI].freq[lineI] < img[im].freq+img[im].bandwidth/2.){
-              /* Calculate the red shift of the transition wrt to the frequency specified for the image. */
-              if(img[im].trans > -1){
-                lineRedShift=(md[molI].freq[img[im].trans]-md[molI].freq[lineI])/md[molI].freq[img[im].trans]*CLIGHT;
-              } else {
-                lineRedShift=(img[im].freq-md[molI].freq[lineI])/img[im].freq*CLIGHT;
+          if(img[im].doline){
+            for(molI=0;molI<par->nSpecies;molI++){
+              for(lineI=0;lineI<md[molI].nline;lineI++){
+                if(md[molI].freq[lineI] > img[im].freq-img[im].bandwidth*0.5
+                && md[molI].freq[lineI] < img[im].freq+img[im].bandwidth*0.5){
+                  /* Calculate the red shift of the transition wrt to the frequency specified for the image. */
+                  if(img[im].trans > -1){
+                    lineRedShift=(md[molI].freq[img[im].trans]-md[molI].freq[lineI])/md[molI].freq[img[im].trans]*CLIGHT;
+                  } else {
+                    lineRedShift=(img[im].freq-md[molI].freq[lineI])/img[im].freq*CLIGHT;
+                  }
+
+                  vThisChan=(ichan-(img[im].nchan-1)/2.)*img[im].velres; /* Consistent with the WCS definition in writefits(). */
+                  deltav = vThisChan - img[im].source_vel - lineRedShift;
+                  /* Line centre occurs when deltav = the recession velocity of the radiating material. Explanation of the signs of the 2nd and 3rd terms on the RHS: (i) A bulk source velocity (which is defined as >0 for the receding direction) should be added to the material velocity field; this is equivalent to subtracting it from deltav, as here. (ii) A positive value of lineRedShift means the line is red-shifted wrt to the frequency specified for the image. The effect is the same as if the line and image frequencies were the same, but the bulk recession velocity were higher. lineRedShift should thus be added to the recession velocity, which is equivalent to subtracting it from deltav, as here. */
+
+                  /* Calculate an approximate average line-shape function at deltav within the Voronoi cell. */
+                  if(!par->pregrid) velocityspline2(x,dx,ds,gp[posn].mol[molI].binv,deltav,&vfac);
+                  else vfac=gaussline(deltav-veloproject(dx,gp[posn].vel),gp[posn].mol[molI].binv);
+
+                  /* Increment jnu and alpha for this Voronoi cell by the amounts appropriate to the spectral line. */
+                  sourceFunc_line(&jnu,&alpha,md,vfac,gp,posn,molI,lineI);
+                }
               }
-
-              vThisChan=(ichan-(img[im].nchan-1)/2.)*img[im].velres; /* Consistent with the WCS definition in writefits(). */
-              deltav = vThisChan - img[im].source_vel - lineRedShift;
-              /* Line centre occurs when deltav = the recession velocity of the radiating material. Explanation of the signs of the 2nd and 3rd terms on the RHS: (i) A bulk source velocity (which is defined as >0 for the receding direction) should be added to the material velocity field; this is equivalent to subtracting it from deltav, as here. (ii) A positive value of lineRedShift means the line is red-shifted wrt to the frequency specified for the image. The effect is the same as if the line and image frequencies were the same, but the bulk recession velocity were higher. lineRedShift should thus be added to the recession velocity, which is equivalent to subtracting it from deltav, as here. */
-
-              /* Calculate an approximate average line-shape function at deltav within the Voronoi cell. */
-              if(!par->pregrid) velocityspline2(x,dx,ds,gp[posn].mol[molI].binv,deltav,&vfac);
-              else vfac=gaussline(deltav-veloproject(dx,gp[posn].vel),gp[posn].mol[molI].binv);
-
-              /* Increment jnu and alpha for this Voronoi cell by the amounts appropriate to the spectral line. */
-              sourceFunc_line(&jnu,&alpha,md,vfac,gp,posn,molI,lineI);
             }
           }
 
-          if(img[im].doline && img[im].trans > -1) sourceFunc_cont(&jnu,&alpha,gp,posn,0,img[im].trans);
-          else if(img[im].doline && img[im].trans == -1) sourceFunc_cont(&jnu,&alpha,gp,posn,0,tmptrans);
-          else sourceFunc_cont(&jnu,&alpha,gp,posn,0,0);
+          sourceFunc_cont(&jnu,&alpha,gp,posn,cmbMolI,cmbLineI);
           dtau=alpha*ds;
           calcSourceFn(dtau, par, &remnantSnu, &expDTau);
           remnantSnu *= jnu*md[0].norminv*ds;
@@ -174,26 +179,35 @@ Note that the algorithm employed here is similar to that employed in the functio
     } while(col < 2.0*fabs(zp));
 
     /* Add or subtract cmb. */
+    if(par->polarization){ /* just add it to Stokes I */
 #ifdef FASTEXP
-    for(ichan=0;ichan<img[im].nchan;ichan++){
-      ray.intensity[ichan]+=FastExp(ray.tau[ichan])*md[0].local_cmb[tmptrans];
-    }
+      ray.intensity[stokesIi]+=FastExp(ray.tau[stokesIi])*md[cmbMolI].local_cmb[cmbLineI];
 #else
-    for(ichan=0;ichan<img[im].nchan;ichan++){
-      ray.intensity[ichan]+=exp(-ray.tau[ichan])*md[0].local_cmb[tmptrans];
-    }
+      ray.intensity[stokesIi]+=exp(   -ray.tau[stokesIi])*md[cmbMolI].local_cmb[cmbLineI];
 #endif
+
+    }else{
+#ifdef FASTEXP
+      for(ichan=0;ichan<img[im].nchan;ichan++){
+        ray.intensity[ichan]+=FastExp(ray.tau[ichan])*md[cmbMolI].local_cmb[cmbLineI];
+      }
+#else
+      for(ichan=0;ichan<img[im].nchan;ichan++){
+        ray.intensity[ichan]+=exp(-ray.tau[ichan])*md[cmbMolI].local_cmb[cmbLineI];
+      }
+#endif
+    }
   }
 }
 
 
 void
-raytrace(int im, inputPars *par, struct grid *gp, molData *md, image *img){
-  int *counta, *countb,nlinetot,aa;
-  int ichan,px,iline,tmptrans,i,threadI,nRaysDone;
+raytrace(int im, configInfo *par, struct grid *gp, molData *md, image *img){
+  int aa,ichan,px,iline,cmbMolI,cmbLineI,i,threadI,nRaysDone,molI,lineI;
   double size,minfreq,absDeltaFreq,totalNumPixelsMinus1=(double)(img[im].pxls*img[im].pxls-1);
   double cutoff;
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
+  gsl_error_handler_t *defaultErrorHandler=NULL;
 
   gsl_rng *ran = gsl_rng_alloc(ranNumGenType);	/* Random number generator */
 #ifdef TEST
@@ -212,30 +226,51 @@ raytrace(int im, inputPars *par, struct grid *gp, molData *md, image *img){
 
   size=img[im].distance*img[im].imgres;
 
-  /* Determine whether there are blended lines or not. */
-  lineCount(par->nSpecies, md, &counta, &countb, &nlinetot);
-  if(img[im].doline==0) nlinetot=1;
+  if(img[im].doline){
+    /* The user may have set img.trans/img.molI but not img.freq. If so, we calculate freq now.
+    */
+    if(img[im].trans>-1)
+      img[im].freq = md[img[im].molI].freq[img[im].trans];
 
-  /* Fix the image parameters. */
-  if(img[im].freq < 0) img[im].freq=md[0].freq[img[im].trans];
-  if(img[im].nchan == 0 && img[im].bandwidth>0){
-    img[im].nchan=(int) (img[im].bandwidth/(img[im].velres/CLIGHT*img[im].freq));
-  } else if (img[im].velres<0 && img[im].bandwidth>0){
-    img[im].velres = img[im].bandwidth*CLIGHT/img[im].freq/img[im].nchan;
-  } else img[im].bandwidth = img[im].nchan*img[im].velres/CLIGHT * img[im].freq;
+    /* Fill in the missing one of the triplet nchan/velres/bandwidth.
+    */
+    if(img[im].bandwidth > 0 && img[im].velres > 0){
+      img[im].nchan = (int)(img[im].bandwidth/(img[im].velres/CLIGHT*img[im].freq));
 
-  if(img[im].trans<0){
-    iline=0;
-    minfreq=fabs(img[im].freq-md[0].freq[iline]);
-    tmptrans=iline;
-    for(iline=1;iline<md[0].nline;iline++){
-      absDeltaFreq=fabs(img[im].freq-md[0].freq[iline]);
-      if(absDeltaFreq<minfreq){
-        minfreq=absDeltaFreq;
-        tmptrans=iline;
+    }else if(img[im].bandwidth > 0 && img[im].nchan > 0){
+      img[im].velres = img[im].bandwidth*CLIGHT/img[im].freq/img[im].nchan;
+
+    }else{ /*(img[im].velres > 0 && img[im].nchan > 0 */
+      img[im].bandwidth = img[im].nchan*img[im].velres/CLIGHT*img[im].freq;
+    }
+  } /* If not doline, we already have img.freq and nchan by now anyway. */
+
+  /*
+For both line and continuum images we have to access (currently in traceray() and sourceFunc_cont()) array elements m[i].local_cmb[j], g[id].mol[i].dust[j] and g[id].mol[i].knu[j]. For a continuum image, the molData object and the grid.mol object are simply convenient (if misleadingly named in this instance) repositories of appropriate cmb, dust and knu information; there is no actual molecule involved, and i and j are both simply 0.
+
+For a line image however, we may have a problem, because of the pair of quantities img.freq and img.trans, the user is allowed to specify freq and not trans. Since the cmb, dust and knu are assumed to be slowly-varying quantities, we can for 'trans' in this case use the line closest to the image frequency. (There must be some reasonably close line, else we would see no line emission in the image.)
+  */
+  if(img[im].doline){
+    if (img[im].trans>=0){
+      cmbMolI  = img[im].molI;
+      cmbLineI = img[im].trans;
+
+    }else{ /* User didn't set trans. Find the nearest line to the image frequency. */
+      for(molI=0;molI<par->nSpecies;molI++){
+        for(lineI=0;lineI<md[molI].nline;lineI++){
+          absDeltaFreq = fabs(img[im].freq - md[molI].freq[lineI]);
+          if((molI==0 && lineI==0) || absDeltaFreq < minfreq){
+            minfreq = absDeltaFreq;
+            cmbMolI = molI;
+            cmbLineI = lineI;
+          }
+        }
       }
     }
-  } else tmptrans=img[im].trans;
+  }else{ /* continuum image */
+    cmbMolI = 0;
+    cmbLineI = 0;
+  }
 
   cutoff = par->minScale*1.0e-7;
 
@@ -245,6 +280,13 @@ raytrace(int im, inputPars *par, struct grid *gp, molData *md, image *img){
       img[im].pixel[px].tau[ichan]=0.0;
     }
   }
+
+  defaultErrorHandler = gsl_set_error_handler_off();
+  /*
+The GSL documentation does not recommend leaving the error handler at the default within multi-threaded code.
+
+While this is off however, gsl_* calls will not exit if they encounter a problem. We may need to pay some attention to trapping their errors.
+  */
 
   nRaysDone=0;
   omp_set_dynamic(0);
@@ -267,7 +309,7 @@ raytrace(int im, inputPars *par, struct grid *gp, molData *md, image *img){
         ray.x = -size*(gsl_rng_uniform(threadRans[threadI]) + px%img[im].pxls - 0.5*img[im].pxls);
         ray.y =  size*(gsl_rng_uniform(threadRans[threadI]) + px/img[im].pxls - 0.5*img[im].pxls);
 
-        traceray(ray, tmptrans, im, par, gp, md, img, nlinetot, counta, countb, cutoff);
+        traceray(ray, cmbMolI, cmbLineI, im, par, gp, md, img, cutoff);
 
         #pragma omp critical
         {
@@ -286,258 +328,12 @@ raytrace(int im, inputPars *par, struct grid *gp, molData *md, image *img){
     free(ray.intensity);
   } /* End of parallel block. */
 
-  img[im].trans=tmptrans;
+  gsl_set_error_handler(defaultErrorHandler);
 
-  free(counta);
-  free(countb);
   for (i=0;i<par->nThreads;i++){
     gsl_rng_free(threadRans[i]);
   }
   free(threadRans);
   gsl_rng_free(ran);
-
-  if(!silent) printDone(13);
 }
-
-
-void
-raytrace_1_4(int im, inputPars *par, struct grid *g, molData *m, image *img){
-  /*
-This is an alternative raytracing algorithm which was implemented by
-C Brinch in version 1.4 (the original parallelized version) of LIME.
-I've adapted it slightly so it makes use of the function traceray(),
-which was modified from the function tracerays() in v1.4. This algorithm
-is not currently used, but may be useful as an option; that's why I have
-kept it.
-  */
-
-  int *counta, *countb,nlinetot;
-  int ichan,i,px,iline,tmptrans,count;
-  double size,xp,yp,minfreq,absDeltaFreq;
-  double cutoff;
-
-  gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
-#ifdef TEST
-  gsl_rng_set(ran,178490);
-#else
-  gsl_rng_set(ran,time(0));
-#endif
-  rayData *rays;
-  
-  int sg,n;
-  double cx,cy;
-
-  double x1,x2,x3,y1,y2,y3,z1,z2,z3,xt[3],yt[3],di,p,d1,d2,d3,temp1;
-  int zt[3];
-  int c;
-  
-  char flags[255];
-  boolT ismalloc = False;
-  facetT *facet, *neighbor, **neighborp;;
-  vertexT *vertex,**vertexp;
-  coordT *pt_array;
-
-  int id;
-  coordT point[3];
-  boolT isoutside;
-  realT bestdist;
-
-  size=img[im].distance*img[im].imgres;
-
-  /* Determine whether there are blended lines or not */
-  lineCount(par->nSpecies, m, &counta, &countb, &nlinetot);
-  if(img[im].doline==0) nlinetot=1;
-
-  /* Fix the image parameters */
-  if(img[im].freq < 0) img[im].freq=m[0].freq[img[im].trans];
-  if(img[im].nchan == 0 && img[im].bandwidth>0){
-    img[im].nchan=(int) (img[im].bandwidth/(img[im].velres/CLIGHT*img[im].freq));
-  } else if (img[im].velres<0 && img[im].bandwidth>0){
-    img[im].velres = img[im].bandwidth*CLIGHT/img[im].freq/img[im].nchan;
-  } else img[im].bandwidth = img[im].nchan*img[im].velres/CLIGHT * img[im].freq;
-
-  if(img[im].trans<0){
-    iline=0;
-    minfreq=fabs(img[im].freq-m[0].freq[iline]);
-    tmptrans=iline;
-    for(iline=1;iline<m[0].nline;iline++){
-      absDeltaFreq=fabs(img[im].freq-m[0].freq[iline]);
-      if(absDeltaFreq<minfreq){
-        minfreq=absDeltaFreq;
-        tmptrans=iline;
-      }
-    }
-  } else tmptrans=img[im].trans;
-
-  /* Allocate dynamical arrays */
-  rays = malloc(sizeof(rayData) * (par->pIntensity));
-  
-  for(i=0;i<par->pIntensity;i++){
-    rays[i].x=g[i].x[0];
-    rays[i].y=g[i].x[1];
-    rays[i].tau=malloc(sizeof(double) * img[im].nchan);
-    rays[i].intensity=malloc(sizeof(double) * img[im].nchan);
-    for(ichan=0;ichan<img[im].nchan;ichan++) {
-      rays[i].tau[ichan]=0.0;
-      rays[i].intensity[ichan]=0.0;
-    }
-  }
-  
-
-  /* Smooth out the distribution of rays */
-  for(sg=0;sg<20;sg++){
-    pt_array=malloc(2*sizeof(coordT)*par->pIntensity);
-          
-    for(i=0;i<par->pIntensity;i++) {
-      pt_array[i*2+0]=rays[i].x;
-      pt_array[i*2+1]=rays[i].y;
-    }
-    
-    sprintf(flags,"qhull v s Qbb T0");
-    if (!qh_new_qhull(2, par->pIntensity, pt_array, ismalloc, flags, NULL, NULL)) {
-
-      qh_setvoronoi_all();
-      
-      FORALLvertices {
-        i=qh_pointid(vertex->point);
-        
-        cx=0.;
-        cy=0.;
-        n=0;
-        FOREACHneighbor_(vertex) {
-          if (!neighbor->upperdelaunay) n++;
-        }
-        if(n>0){
-        
-          
-        } else {
-          if(!silent) bail_out("Qhull error");
-          exit(0);
-        }
-        
-        FOREACHneighbor_(vertex) {
-          if (!neighbor->upperdelaunay) {
-            cx+=neighbor->center[0];
-            cy+=neighbor->center[1];
-          }
-        }
-
-        rays[i].x = rays[i].x - (rays[i].x-cx/ (double) n)*0.1;
-        rays[i].y = rays[i].y - (rays[i].y-cy/ (double) n)*0.1;
-      }
-    } else {
-      printf("qhull error\n");
-    }
-    
-    qh_freeqhull(!qh_ALL);
-    free(pt_array);  
-  }
-
-  cutoff = par->minScale*1.0e-7;
-
-  /* Main loop through rays */
-  count=0;
-  for(px=0;px<par->pIntensity;px++){
-    traceray(rays[px], tmptrans, im, par, g, m, img, nlinetot, counta, countb, cutoff);
-    ++count;
-    if(!silent) progressbar((double)(count)/(double)(par->pIntensity-1), 13);
-  }
-
-  /* Remap rays onto pixel grid */
-  pt_array=malloc(2*sizeof(coordT)*par->pIntensity);
-
-  for(i=0;i<par->pIntensity;i++) {
-    pt_array[i*2+0]=rays[i].x;
-    pt_array[i*2+1]=rays[i].y;
-  }
-
-/* This allocation belongs to "Shepard's method" below
-  d=malloc(sizeof(double)*par->pIntensity);
-*/
-  size=img[im].distance*img[im].imgres;
-
-  sprintf(flags,"qhull d Qbb");
-  if (!qh_new_qhull(2, par->pIntensity, pt_array, ismalloc, flags, NULL, NULL)) {
-    for(px=0;px<img[im].pxls*img[im].pxls;px++){
-      for(ichan=0;ichan<img[im].nchan;ichan++){
-        img[im].pixel[px].intense[ichan]=0.0;
-        img[im].pixel[px].tau[ichan]=0.0;
-      }
-      xp=size*(0.5+px%img[im].pxls)-size*img[im].pxls/2.;
-      yp=size*(0.5+px/img[im].pxls)-size*img[im].pxls/2.;
-
-/*
-This part works great! This is "Shepard's method" with a weight of 8. Slow, unfortunately. Could it be parallelized?
-
-      for(ichan=0;ichan<img[im].nchan;ichan++){
-        img[im].pixel[px].intense[ichan] = 0.;
-        di=0;
-        for(i=0;i<par->pIntensity;i++){
-          // d[i]=1./pow(sqrt(pow(xp-rays[i].x,2)+ pow(yp-rays[i].y,2)),8.);
-          temp1 = (xp-rays[i].x)*(xp-rays[i].x)+ (yp-rays[i].y)*(yp-rays[i].y)
-          d[i]=1./(temp1*temp1*temp1*temp1);
-          img[im].pixel[px].intense[ichan] += rays[i].intensity[ichan]*d[i];
-**** how to handle img[im].pixel[px].tau[ichan]?
-          di+=d[i];
-        }
-        img[im].pixel[px].intense[ichan] /= di;
-      }
-*/
-      
-      
-      point[0]=xp;
-      point[1]=yp;
-      point[2]=0.;
-     
-      qh_setdelaunay (3, 1, point);
-      facet= qh_findbestfacet (point, qh_ALL, &bestdist, &isoutside);
-      
-      c=0;
-      FOREACHvertex_( facet->vertices ) {
-        id=qh_pointid(vertex->point);
-        xt[c]=rays[id].x; yt[c]=rays[id].y; zt[c]=id;
-        c++;
-      }
-      
-      
-      x1=xt[0];x2=xt[1];x3=xt[2];
-      y1=yt[0];y2=yt[1];y3=yt[2];
-
-      for(ichan=0;ichan<img[im].nchan;ichan++){
-        z1=rays[zt[2]].intensity[ichan];z2=rays[zt[1]].intensity[ichan];z3=rays[zt[2]].intensity[ichan];
-      
-        
-        p=1.;
-        // d1=1./pow(sqrt(pow(xp-x1,2)+ pow(yp-y1,2)),p);
-        // d2=1./pow(sqrt(pow(xp-x2,2)+ pow(yp-y2,2)),p);
-        // d3=1./pow(sqrt(pow(xp-x3,2)+ pow(yp-y3,2)),p);
-
-        d1=1./sqrt((xp-x1)*(xp-x1) + (yp-y1)*(yp-y1));
-        d2=1./sqrt((xp-x2)*(xp-x2) + (yp-y2)*(yp-y2));
-        d3=1./sqrt((xp-x3)*(xp-x3) + (yp-y3)*(yp-y3));
-
-        di=d1+d2+d3;
-        img[im].pixel[px].intense[ichan] = 1./di * (z1*d1 + z2*d2 + z3*d3);
-//**** how to handle img[im].pixel[px].tau[ichan]?
-      }
-
-      
-    }
-  } else {
-	if(!silent) bail_out("Qhull failed to triangulate");
-	exit(1);
-  }
-
-  img[im].trans=tmptrans;
-
-  free(pt_array);
-  for(i=0;i<par->pIntensity;i++){
-    free(rays[i].tau);
-    free(rays[i].intensity);
-  }
-  free(rays);
-  free(counta);
-  free(countb);
-}
-
 

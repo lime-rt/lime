@@ -3,10 +3,8 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015 The LIME development team
+ *  Copyright (C) 2016 The LIME development team
  *
-TODO:
-  - After merging with master, try to unify freeReadGrid and freeGrid.
  */
 
 #include "lime.h"
@@ -59,7 +57,7 @@ Since 'firstNearNeigh' has a single entry for each grid point, it can be stored 
 */
 
 /*....................................................................*/
-void writeGridIfRequired(inputPars *par, struct grid *gp, molData *md, const int fileFormatI){
+void writeGridIfRequired(configInfo *par, struct grid *gp, molData *md, const int fileFormatI){
   int status = 0;
   char **collPartNames=NULL; /*** this is a placeholder until we start reading these. */
   char message[80];
@@ -274,7 +272,7 @@ void closeAndFree(lime_fptr *fptr, const int fileFormatI\
 }
 
 /*....................................................................*/
-int writeGridTable(lime_fptr *fptr, const int fileFormatI, inputPars par\
+int writeGridTable(lime_fptr *fptr, const int fileFormatI, configInfo par\
   , unsigned short numDims, struct grid *gp, unsigned int *firstNearNeigh\
   , char **collPartNames, const int dataFlags){
 
@@ -338,7 +336,7 @@ int writePopsTable(lime_fptr *fptr, const int fileFormatI\
 }
 
 /*....................................................................*/
-int writeGrid(char *outFileName, const int fileFormatI, inputPars par\
+int writeGrid(char *outFileName, const int fileFormatI, configInfo par\
   , unsigned short numDims, unsigned short numACoeffs, struct grid *gp\
   , molData *md, char **collPartNames, const int dataFlags){
 
@@ -432,40 +430,6 @@ lime_fptr *openFileForRead(char *inFileName, const int fileFormatI){
   }
 
   return fptr;
-}
-
-/*....................................................................*/
-void freeReadGrid(const unsigned int numPoints, const unsigned short numSpecies\
-  , struct grid *gp){
-
-  unsigned int i_u;
-  unsigned short i_s;
-
-  if(gp != NULL){
-    for(i_u=0;i_u<numPoints;i_u++){
-      free(gp[i_u].a0);
-      free(gp[i_u].a1);
-      free(gp[i_u].a2);
-      free(gp[i_u].a3);
-      free(gp[i_u].a4);
-      free(gp[i_u].dir);
-      free(gp[i_u].neigh);
-      free(gp[i_u].w);
-      free(gp[i_u].dens);
-      free(gp[i_u].nmol);
-      free(gp[i_u].abun);
-      free(gp[i_u].ds);
-      if(gp[i_u].mol != NULL){
-        for(i_s=0;i_s<numSpecies;i_s++){
-          free(gp[i_u].mol[i_s].pops );
-          free(gp[i_u].mol[i_s].knu );
-          free(gp[i_u].mol[i_s].dust );
-        }
-        free(gp[i_u].mol);
-      }
-    }
-    free(gp);
-  }
 }
 
 /*....................................................................*/
@@ -726,7 +690,7 @@ NOTE that gp should not be allocated before this routine is called.
   totalNumGridPoints = gridInfoRead->nSinkPoints + gridInfoRead->nInternalPoints;
   if(status){
     closeAndFree(fptr, fileFormatI, firstNearNeigh, nnLinks, links, 0);
-    freeReadGrid(totalNumGridPoints, gridInfoRead->nSpecies, *gp);
+    freeGrid(totalNumGridPoints, gridInfoRead->nSpecies, *gp);
     return 1;
   }
 
@@ -734,7 +698,7 @@ NOTE that gp should not be allocated before this routine is called.
   */
   if((*dataFlags)!=0 && gridInfoRead->nSinkPoints<=0 || gridInfoRead->nInternalPoints<=0 || gridInfoRead->nDims<=0){
     closeAndFree(fptr, fileFormatI, firstNearNeigh, nnLinks, links, 0);
-    freeReadGrid(totalNumGridPoints, gridInfoRead->nSpecies, *gp);
+    freeGrid(totalNumGridPoints, gridInfoRead->nSpecies, *gp);
 
     if(gridInfoRead->nSinkPoints<=0)
       return 2;
@@ -754,7 +718,7 @@ NOTE that gp should not be allocated before this routine is called.
   if((allBitsSet(*dataFlags, DS_mask_density)   && gridInfoRead->nDensities<=0)\
   || (allBitsSet(*dataFlags, DS_mask_abundance) && gridInfoRead->nSpecies<=0)){
     closeAndFree(fptr, fileFormatI, firstNearNeigh, nnLinks, links, 0);
-    freeReadGrid(totalNumGridPoints, gridInfoRead->nSpecies, *gp);
+    freeGrid(totalNumGridPoints, gridInfoRead->nSpecies, *gp);
 
     if(gridInfoRead->nDensities<=0)
       return 5;
@@ -770,7 +734,7 @@ NOTE that gp should not be allocated before this routine is called.
   status = readLinksTable(fptr, fileFormatI, gridInfoRead, *gp, &links, dataFlags); /* Sets appropriate bits of dataFlags. */
   if(status){
     closeAndFree(fptr, fileFormatI, firstNearNeigh, nnLinks, links, gridInfoRead->nLinks);
-    freeReadGrid(totalNumGridPoints, gridInfoRead->nSpecies, *gp);
+    freeGrid(totalNumGridPoints, gridInfoRead->nSpecies, *gp);
     return 7;
   }
 
@@ -778,14 +742,14 @@ NOTE that gp should not be allocated before this routine is called.
   */
   if (allBitsSet(*dataFlags, DS_mask_ACOEFF) && gridInfoRead->nACoeffs<=0){
     closeAndFree(fptr, fileFormatI, firstNearNeigh, nnLinks, links, gridInfoRead->nLinks);
-    freeReadGrid(totalNumGridPoints, gridInfoRead->nSpecies, *gp);
+    freeGrid(totalNumGridPoints, gridInfoRead->nSpecies, *gp);
     return 8;
   }
 
   status = readNnIndicesTable(fptr, fileFormatI, links, &nnLinks, gridInfoRead, dataFlags); /* Sets appropriate bits of dataFlags. */
   if(status){
     closeAndFree(fptr, fileFormatI, firstNearNeigh, nnLinks, links, gridInfoRead->nLinks);
-    freeReadGrid(totalNumGridPoints, gridInfoRead->nSpecies, *gp);
+    freeGrid(totalNumGridPoints, gridInfoRead->nSpecies, *gp);
     return 9;
   }
 
@@ -801,7 +765,7 @@ NOTE that gp should not be allocated before this routine is called.
   status = getNumPopsTables(fptr, fileFormatI, &numTables);
   if(status){
     closeAndFree(fptr, fileFormatI, firstNearNeigh, nnLinks, links, gridInfoRead->nLinks);
-    freeReadGrid(totalNumGridPoints, gridInfoRead->nSpecies, *gp);
+    freeGrid(totalNumGridPoints, gridInfoRead->nSpecies, *gp);
     return 10;
   }
 
@@ -809,7 +773,7 @@ NOTE that gp should not be allocated before this routine is called.
   */
   if(numTables>0 && numTables!=gridInfoRead->nSpecies){
     closeAndFree(fptr, fileFormatI, firstNearNeigh, nnLinks, links, gridInfoRead->nLinks);
-    freeReadGrid(totalNumGridPoints, gridInfoRead->nSpecies, *gp);
+    freeGrid(totalNumGridPoints, gridInfoRead->nSpecies, *gp);
     return 11;
   }
 
@@ -828,7 +792,7 @@ NOTE that gp should not be allocated before this routine is called.
       status = readPopsTable(fptr, fileFormatI, i_s, *gp, gridInfoRead); /* Sets defaults for all the fields under grid.mol. */
       if(status){
         closeAndFree(fptr, fileFormatI, firstNearNeigh, nnLinks, links, gridInfoRead->nLinks);
-        freeReadGrid(totalNumGridPoints, gridInfoRead->nSpecies, *gp);
+        freeGrid(totalNumGridPoints, gridInfoRead->nSpecies, *gp);
         return 12;
       }
 
@@ -836,7 +800,7 @@ NOTE that gp should not be allocated before this routine is called.
       */
       if(gridInfoRead->mols[i_s].nLevels<=0){
         closeAndFree(fptr, fileFormatI, firstNearNeigh, nnLinks, links, gridInfoRead->nLinks);
-        freeReadGrid(totalNumGridPoints, gridInfoRead->nSpecies, *gp);
+        freeGrid(totalNumGridPoints, gridInfoRead->nSpecies, *gp);
         return 13;
       }
     }

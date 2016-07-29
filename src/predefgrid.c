@@ -3,14 +3,14 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015 The LIME development team
+ *  Copyright (C) 2016 The LIME development team
  *
  */
 
 #include "lime.h"
 
 void
-predefinedGrid(inputPars *par, struct grid *g){
+predefinedGrid(configInfo *par, struct grid *g){
   FILE *fp;
   int i,j;
   double x,y,z,scale;
@@ -20,13 +20,6 @@ predefinedGrid(inputPars *par, struct grid *g){
 #else
   gsl_rng_set(ran,time(0));
 #endif
-
-  for(i=0;i<par->ncell;i++){
-    g[i].dens = malloc(sizeof(double)*par->collPart);
-    g[i].abun = malloc(sizeof(double)*par->nSpecies);
-//    g[i].nmol = malloc(sizeof(double)*par->nSpecies);
-g[i].nmol = malloc(sizeof(double)*1); /* Only 1 element is accessed in the present bodgy state of affairs. */
-  }
 
   fp=fopen(par->pregrid,"r");
   par->ncell=par->pIntensity+par->sinkPoints;
@@ -44,17 +37,18 @@ g[i].nmol = malloc(sizeof(double)*1); /* Only 1 element is accessed in the prese
     g[i].dopb=200;
     g[i].abun[0]=1e-9;
 
-
     g[i].sink=0;
     g[i].t[1]=g[i].t[0];
     g[i].nmol[0]=g[i].abun[0]*g[i].dens[0];
-		
+
     /* This next step needs to be done, even though it looks stupid */
     g[i].dir   = malloc(sizeof(point)*1);
     g[i].ds    = malloc(sizeof(double)*1);
     g[i].neigh = malloc(sizeof(struct grid *)*1);
     if(!silent) progressbar((double) i/((double)par->pIntensity-1), 4);	
   }
+
+  checkGridDensities(par, g);
 
   for(i=par->pIntensity;i<par->ncell;i++){
     x=2*gsl_rng_uniform(ran)-1.;
@@ -97,4 +91,7 @@ g[i].nmol = malloc(sizeof(double)*1); /* Only 1 element is accessed in the prese
 
   if(par->gridfile) write_VTK_unstructured_Points(par, g);
   gsl_rng_free(ran);
+
+  par->numDensities = 1;
 }
+

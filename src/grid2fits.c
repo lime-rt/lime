@@ -101,7 +101,7 @@ void closeFITSFile(fitsfile *fptr){
 }
 
 /*....................................................................*/
-void writeGridExtToFits(fitsfile *fptr, inputPars par, unsigned short numDims\
+void writeGridExtToFits(fitsfile *fptr, configInfo par, unsigned short numDims\
   , struct grid *gp, unsigned int *firstNearNeigh, char **collPartNames\
   , const int dataFlags){
   /*
@@ -141,7 +141,7 @@ Ok we have a bit of a tricky situation here in that the number of columns we wri
 
 	colDataTypes  - This just contains the data types for the valid columns.
   */
-  defineAndLoadColumns(fptr, numDims, (unsigned short)par.nSpecies, (unsigned short)par.collPart\
+  defineAndLoadColumns(fptr, numDims, (unsigned short)par.nSpecies, (unsigned short)par.numDensities\
     , dataFlags, numColNameChars, &allColNames, &allColNumbers, &maxNumCols, &colDataTypes);
 
   /* Write the columns:
@@ -227,7 +227,7 @@ Ok we have a bit of a tricky situation here in that the number of columns we wri
   colI = allColNumbers[getColIndex(allColNames, maxNumCols, "DENSITY1")];
   if(colI>0){
     densn = malloc(sizeof(*densn)*par.ncell);
-    for(n=0;n<par.collPart;n++){
+    for(n=0;n<par.numDensities;n++){
       sprintf(colName, "DENSITY%d", n+1);
       colI = allColNumbers[getColIndex(allColNames, maxNumCols, colName)];
       if(colI<=0){
@@ -296,14 +296,14 @@ Ok we have a bit of a tricky situation here in that the number of columns we wri
   processFitsError(status);
 
   if (collPartNames!=NULL){
-    if(par.collPart>maxNumCollPart){
+    if(par.numDensities>maxNumCollPart){
       if(!silent){
-        sprintf(message, "There seem to be %d collision partners but keywords can only be written for %d.", par.collPart, maxNumCollPart);
+        sprintf(message, "There seem to be %d collision partners but keywords can only be written for %d.", par.numDensities, maxNumCollPart);
         warning(message);
       }
       localNumCollPart = maxNumCollPart;
     }else{
-      localNumCollPart = par.collPart;
+      localNumCollPart = par.numDensities;
     }
 
     for(i=0;i<localNumCollPart;i++){

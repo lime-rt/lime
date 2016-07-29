@@ -114,7 +114,7 @@ line
 
 ::
 
-    bash$ lime model.c
+    lime model.c
 
 where model.c is the file containing the model (this file can have any
 name). This will cause the code to be compiled and the terminal window
@@ -148,17 +148,17 @@ chapter 2). If one or more non-LTE line images are asked for, LIME will
 proceed to calculate the level populations. This too is an iterative
 process where the radiation field and the populations are recalculated
 repeatedly. The radiation field is obtained by propagating photons
-through the grid, a fix number for each grid point, and using the
+through the grid, a fixed number for each grid point; using the
 resulting radiation field, the code enters a minor iteration loop where
 a set of linear equations, determining the statistical equilibrium, are
 iterated upon in order to converge upon a set of populations. This is
-done for each grid point in turn. Once all the grid points has gotten
+done for each grid point in turn. Once all the grid points have
 new populations, the process is repeated.
 
 When the solution has converged, the code will ray-trace the model to
-obtain an image. Ray-tracing is done for each user- defined image in
+obtain an image. Ray-tracing is done for each user-defined image in
 turn. At the end of the ray-tracing, FITS files will be written to the
-disk at the code will clean up the memory and terminate.
+disk, after which the code will clean up the memory and terminate.
 
 .. _lime-options:
 
@@ -213,20 +213,20 @@ The model file
 All basic setup of a model is done in a single file which we refer to as
 model.c (although it may be given any name). Model.c is, as the name
 suggests, C source code which is compiled together with LIME at runtime,
-and therefore it must conform to the ansi C standard. Setting up a model
+and therefore it must conform to the ANSI C standard. Setting up a model
 however, requires only little knowledge of the C programming language.
-For an in- depth introduction to C the user is referred to “The C
+For an in-depth introduction to C the user is referred to “The C
 Programming Language 2nd ed.” by Kernighan and Ritchie, and otherwise,
 numerous tutorials and introductions can be found on the Internet. The
 file lime\_cs.pdf, contained in the LimePackage directory, is a quick
-reference for setting up models for LIME. Please not that all physical
-numbers in model.c should be given in SI-units.
+reference for setting up models for LIME. Please note that all physical
+numbers in model.c should be given in SI units. A number of macros are available however for easier expression of some quantities: PI, PC (= the number of metres in a parsec) and AU (= 1 Astronomical Unit in metres).
 
 In most common cases, everything about a model should be described
 within model.c. However, model.c can be set up as a wrapper that will
 call other files containing parts of the model or even call external
 codes or subroutines. Examples of such usage are given below in the
-section Advanced setup.
+section `Advanced Setup`.
 
 model.c should always begin with the following inclusion
 
@@ -235,13 +235,16 @@ model.c should always begin with the following inclusion
     #include "lime.h"
 
 to make model.c aware of the global LIME variable structures. Other
-header files may be included in model.c if needed, with the possible
-need of modifying the Makefile accordingly. Following the preprocessor
-commands, the main model function should appear
+header files may be included in model.c if needed, although you may need to modify the Makefile accordingly.
+
+Following the preprocessor
+commands, the main model function should appear as
 
 .. code:: c
 
-    void input(inputPars *, image *);
+    void input(inputPars *par, image *img){
+      // Define the needed parts of par and img
+    }
 
 This function should contain the parameter and image settings.
 
@@ -272,9 +275,9 @@ rather the distance from the center to the corner of the (r,z)-plane.
 
 minScale is the smallest scales sampled by the code. Structures smaller
 than minScale will not be sampled properly. If one uses spherical
-sampling (see below) this number can also be though upon as the inner
+sampling (see below) this number can also be though of as the inner
 edge of the grid. This number should not be set smaller than needed,
-because an undesirable large number of grid point will end up near the
+because that will cause an undesirably large number of grid points to end up near the
 center of the model.
 
 .. code:: c
@@ -293,8 +296,8 @@ about one hundred thousand.
 
 The sinkPoints are grid points that are distributed randomly at
 par->radius forming the surface of the model. As a photon from within
-the model reaches a sink point it is said to escape and is not traced
-any longer. The number of sink points is a user defined quantity since
+the model reaches a sink point it is said to escape and is not tracked
+any longer. The number of sink points is a user-defined quantity since
 the exact number may affect the resulting image as well as the running
 time of the code. One should choose a number that gives a surface
 density large enough not to cause artifacts in the image and low enough
@@ -334,9 +337,9 @@ unit). This is currently under development.
 
     (string) par->moldatfile[i] (optional)
 
-Path to the i’th molecular data file. Molecular data files contains the
+Path to the i’th molecular data file. Molecular data files contain the
 energy states, Einstein coefficients, and collisional rates which are
-needed by LIME to solve the excitation. These files need to conform to
+needed by LIME to solve the excitation. These files must conform to
 the standard of the LAMDA database
 (http://www.strw.leidenuniv.nl/~moldata). Data files can be downloaded
 from the LAMDA database but from LIME version 1.23, LIME can also
@@ -344,7 +347,7 @@ download these files automatically. If a data file name is give that
 cannot be found locally, LIME will try and download the file instead.
 When downloading data files, the filename can be give both with and
 without the surname .dat (i.e., “co” or “co.dat”). moldatfile is an
-array so multiple data files can be used for a single LIME run. There is
+array, so multiple data files can be used for a single LIME run. There is
 no default value.
 
 .. code:: c
@@ -419,13 +422,6 @@ default lte\_only=0, i.e., full non-LTE calculation.
 
 .. code:: c
 
-    (integer) par->init_lte (optional)
-
-If set, LIME use LTE approximation as initial one for subsequent non-LTE calculations. The
-default init\_lte=0, i.e., the code will use constant value for level populations as initial solution.
-
-.. code:: c
-
     (integer) par->blend (optional)
 
 If set, LIME takes line blending into account, however, only if there
@@ -442,7 +438,7 @@ file. The default is blend=0 (no line blending).
 If set, LIME will anti-alias the output image. anti-alias can take the
 value of any positive integer, with the value 1 (default) being no
 anti-aliasing. Greater values correspond to stronger anti-aliasing. LIME
-uses stochastic super-sampling anti- aliasing. This is very effective in
+uses stochastic super-sampling anti-aliasing. This is very effective in
 minimizing artifacts in the image, but it also slows down the ray-tracer
 by a factor equal to the value of antialias. This parameter is the only
 one that will not be ignored in case par->restart is set.
@@ -457,7 +453,33 @@ calculation only. The resulting image cube will have three channels
 containing the Stokes I, Q, and U. In order for the polarization to
 work, a magnetic field needs to be defined (see below). When
 polarization is switched on, LIME is identical to the DustPol code
-(Padovani et al., 2012).
+(Padovani et al., 2012), except that the expression Padovani et al. give for sigma2 has been shown by Ade et al. (2015) to be too small by a factor of 2. This correction has now been included in LIME.
+
+The next three (optional) parameters are linked to the density function you provide in model.c. All three are vector quantities, and should therefore be indexed, the same as moldatfile or img. If you choose to make use of any or all of the three (which is recommended though not mandatory), you must supply, for each one you use, the same number of elements as your density function returns. As described below in the relevant section, the density function can return multiple values per call, 1 for each species which is present in significant quantity. The contribution of such species to the physics of the situation is most usually via collisional excitation or quenching of levels of the radiating species of interest, and for this reason they are known in LIME as collision partners (CPs). 
+
+Because there are 2 independent sources of information about these so-called collision partners, namely via the density function on the one hand and via any collisional transition-rate tables present in the moldata file on the other, we have to be careful to match up these sources properly. That is the intent of the parameter
+
+.. code:: c
+
+    (integer) par->collPartIds (optional)
+
+The integer values are the codes given in `<http://home.strw.leidenuniv.nl/~moldata/molformat.html>`_. Currently recognized values range from 1 to 7 inclusive. E.g if the only colliding species of interest in your model is H2, your density function should return a single value, namely the density of molecular hydrogen, and (if you supply a collPartIds value at all) you should set collPartIds[0] = 1 (the LAMDA code for H2).
+
+LIME calculates the number density of each of its radiating species, at each grid point, by multiplying the abundance of the species (returned via the function of that name) by a weighted sum of the density values. The next parameter allows the user to specify the weights in that sum.
+
+.. code:: c
+
+    (double) par->nMolWeights (optional)
+
+An example of when this might be useful is if a density for electrons is provided, they being of collisional importance, but it is not desired to include electrons in the sum when calculating nmol values. In that case one would set the appropriate value of nMolWeights to zero.
+
+The final one of the density-linked parameters controls how the dust opacity is calculated. This again involves a weighted sum of provided density values, and this parameter allows the user to specify the weights to be used.
+
+.. code:: c
+
+    (double) par->dustWeights (optional)
+
+If none of the three density-linked parameters is provided, LIME will attempt to guess the information, in a manner as close as possible to the way it was done in version 1.5 and earlier. This is safe enough when a single density value is returned, and only H2 provided as collision partner in the moldata file(s), but more complicated situations can very easily result in the code guessing wrongly. For this reason we encourage users to make use of these three parameters, although in order to preserve backward compatibility with old model.c files, we have not (yet) made them mandatory.
 
 .. _par-nthreads:
 
@@ -473,7 +495,7 @@ Images
 LIME can output a number of images per run. The information about each
 image is contained in a structure array called img. The images defined
 in the image array can be either line or continuum images or both. All
-definitions of an image may be changed between images (i.e., distance,
+definitions of an image may be different between images (i.e., distance,
 resolution, inclination, etc.) so that a number of images with varying
 source distance or image resolution can be made in one go. In the
 following, i should be replaced by the image number (0, 1, 2, ...)
@@ -482,7 +504,7 @@ following, i should be replaced by the image number (0, 1, 2, ...)
 
     (integer) img[i]->pxls (required)
 
-This is the number of pixels per spatial dimensions of the FITS file.
+This is the number of pixels per spatial dimension of the FITS file.
 The total amount of pixels in the image is thus the square of this
 number.
 
@@ -500,14 +522,13 @@ seconds. The image field of view is therefore pxls x imgres.
 Theta is the viewing angle (the angle between the model z axis and the
 ray-tracers line of sight). This number is given in radians, not
 degrees, so that a face-on view (of models where this term is
-applicable) is 0 and edge-on view is π/2.
+applicable) is 0 and edge-on view is π/2. Note that you can use the predefined PI macro: e.g. to express π/2, write PI/2.0 in your model file.
 
 .. code:: c
 
     (double) img[i]->distance (required)
 
-The source distance in meters. LIME knows the conversion between parsec,
-AU, and meters, so the distance can be given as 100\*pc, for example. If
+The source distance in meters. LIME predefines macros PC and AU which express respectively the sizes of the parsec and the Astronomical Unit in meters, so it is valid to write the distance as 100\*PC for example. If
 the source is located at a cosmological distance, this parameter is the
 luminosity distance.
 
@@ -524,7 +545,7 @@ an optical depth image cube (dimensionless).
 
     (string) img[i]->filename (required)
 
-This variable is the name of the FITS file. It has no default value.
+This variable is the name of the output FITS file. It has no default value.
 
 .. code:: c
 
@@ -541,8 +562,8 @@ position angle on the sky. The default value is 0.
     (double) img[i]->source_vel (optional)
 
 The source velocity is an optional parameter that gives the spectra a
-velocity offset. This parameter is useful when comparing the model to an
-astronomical source with a known relative velocity.
+velocity offset (receding velocities are positive-valued). This parameter is useful when comparing the model to an
+astronomical source with a known relative line-of-sight velocity.
 
 .. code:: c
 
@@ -574,6 +595,12 @@ zero and for CO J=6-5 the trans label would be 5. For molecules with a
 complex level configuration (e.g., H2O), the user needs to refer to the
 datafile to find the correct label for a given transition. See the note
 below for additional information.
+
+.. code:: c
+
+    (integer) img[i]->molI (optional)
+
+If img[i]->trans is set, this parameter will also be read, although to preserve backward compatibility it is not at present required. This refers to the molecule whose transition should be used. Its default value is zero.
 
 .. code:: c
 
@@ -631,8 +658,7 @@ be included for continuum polarization images.
 Density
 ~~~~~~~
 
-The density subroutine contains a user-defined description of the 3D
-density profile of the collision partner(s).
+The density subroutine contains a user-defined description of the 3D density profile of the collision partner(s).
 
 .. code:: c
 
@@ -644,25 +670,14 @@ density profile of the collision partner(s).
       density[n] = f(x,y,z);
     }
 
-LIME can deal with an unlimited number of collision partners (n).
-However, LIME will produce an error if more density profiles are given
-in the density subroutine than there are collision partners listed in
-the molecular data file. In most cases, a single density profile will
-suffice. The density is a number density, that is, the number of
-collision partners per unit volume (in cubic meters, not cubic
-centimeters). Please note that the current version of LIME always takes
-the abundance relative to the first collision partner. This is
-potentially a problem if the first collision partner is not the total H2
-density and the user will have to correct for this in the abundances
-(see below).
+LIME can deal with an unlimited number n of collision partners (CPs). In most cases, a single density profile will suffice. Note that the number of returned density function values no longer has to be the same as the number of CPs listed in the moldata file(s) so long as the user sets values for the collPartIds parameter, but if this parameter is not supplied, and the numbers are different, LIME may not be able to match the CPs associated with each density value to those in the moldata file(s). Note also that moldata CPs for which there is no matching density will be ignored.
+
+The density is a number density, that is, the number of molecules of the respective CP per unit volume (in cubic meters, not cubic centimeters).
 
 Molecular abundance
 ~~~~~~~~~~~~~~~~~~~
 
-The abundance subroutine contains descriptions of the molecular
-abundance profiles of the input model. The number of abundance profiles
-should match exactly the number of molecular data files defined in
-par->moldatfile.
+The abundance subroutine contains descriptions of the molecular abundance profiles of the radiating species in the input model. The number of abundance profiles should match exactly the number of molecular data files defined in par->moldatfile.
 
 .. code:: c
 
@@ -674,10 +689,9 @@ par->moldatfile.
       abundance[n] = f(x,y,z);
     }
 
-The abundance is the fractional abundance with respect to the primary
-collision partner (density[0]) so that the molecular density of the
-first species is given by abundance[0] x density[0]. The abundances are
-dimensionless.
+The abundance is the fractional abundance with respect to a weighted sum of the densities supplied for the collision partners. If the user does not supply the weights via the nMolWeights parameter, the code will try to guess them.
+
+Abundances are dimensionless.
 
 Temperature
 ~~~~~~~~~~~
@@ -747,7 +761,7 @@ grid points.
 Magnetic field
 ~~~~~~~~~~~~~~
 
-The magnetic field subroutine contains a description of the magnetic
+This is an optional function which contains a description of the magnetic
 field. The return type of this subroutine is a three component vector,
 with components for the x, y, and z axis. The magnetic field only has an
 effect for continuum polarization calulations, that is, if
@@ -765,7 +779,7 @@ par->polarization is set.
 Gas-to-dust ratio
 ~~~~~~~~~~~~~~~~~
 
-Finally the gas-to-dust ratio is an optional function which the user can
+The gas-to-dust ratio is an optional function which the user can
 choose to include in the model.c file. If this function is left out,
 LIME defaults to a dust-to-gas ratio of 100 everywhere. This number only
 has an effect if the continuum is included in the calculations.
@@ -776,6 +790,36 @@ has an effect if the continuum is included in the calculations.
     gasIIdust(double x, double y, double z, double *gtd){
       *gtd = f(x,y,z);
     }
+
+Grid point number density
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In LIME 1.5 and earlier, the number density of the random grid points was tied directly to the density of the first collision partner. The newly introduced function gridDensity now gives the user the ability to option this link and specify the grid point distribution as they please. Note that LIME defaults to the previous algorithm if the function is not supplied.
+
+.. code:: c
+
+    void
+    gridDensity(configInfo par, double x, double y, double z, double *fracDensity){
+      *fracDensity = f(x,y,z);
+    }
+
+Notes:
+  1. The returned variable is a scalar, like the doppler width described above. That's why you need to put the star in front of the variable name when setting its value.
+  2. This is the only function which includes the input parameters among the arguments. You cannot write to these, they are only supplied so that you can use their values if you wish to. Because of their 'read-only' character, you should invoke them as in the following example:
+  3. Due to the algorithm used to choose the grid points, we cannot yet make this function have quite the effect intended. Eventually we will manage to do so, but at present we cannot make a hard connection between the values for ``fracDensity`` you set and the actual grid point number density. In many ways LIME is still a work in progress. **In particular**, for the time being, you need to make sure that ``gridDensity()`` returns ``fracDensity=1`` for at least **one** location in the model space. Functions without steps are also recommended.
+
+.. code:: c
+
+    par.minScale
+
+rather than
+
+.. code:: c
+
+    par->minScale
+
+as in the input() function.
+
 
 Other settings
 ~~~~~~~~~~~~~~
@@ -954,7 +998,7 @@ and
 ::
 
     void
-    teperature(double x, double y, double z, double *temperature){
+    temperature(double x, double y, double z, double *temperature){
       temperature[0]=ratranInput("model.mdl", "te", x,y,z);
     }
 
@@ -1241,6 +1285,7 @@ or bugs needing to be fixed.
 Appendix: Bibliography
 ----------------------
 
+-  Ade et al., A&A 576, A105 (2015)
 -  Brinch & Hogerheijde, A&A, 523, A25, 2010; see also
    http://www.nbi.dk/~brinch/lime.php
 -  Hogerheijde & van der Tak, A&A, 362,697, 2000

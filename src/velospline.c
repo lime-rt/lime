@@ -3,13 +3,13 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015 The LIME development team
+ *  Copyright (C) 2016 The LIME development team
  *
  */
 
 #include "lime.h"
 
-void calcInterpCoeffs(inputPars *par, struct grid *gp){
+void calcInterpCoeffs(configInfo *par, struct grid *gp){
   /*
 The velocity v(d) (or rather the scalar component of vector velocity in the direction of the edge) at a distance d along the line (or 'edge' in triangulation jargon) between a given grid point and its neighbour is approximated in LIME by the polynomial expression
 
@@ -109,7 +109,7 @@ a_i is the ith coefficient, and v_i is the ith sample of the velocity component 
   gsl_matrix_free (matrix);
 }
 
-void calcInterpCoeffs_lin(inputPars *par, struct grid *g){
+void calcInterpCoeffs_lin(configInfo *par, struct grid *g){
   /*
 This is the same as calcInterpCoeffs() except only 2 coefficients are calculated, allowing a linear interpolation of the velocity component along the line between 2 grid points. This can be used if the velocities have been calculated elsewhere at the grid points themselves but the velocity function is not available for further sampling.
   */

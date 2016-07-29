@@ -152,7 +152,7 @@ progressbar(double percent, int line){
 }
 
 void
-progressbar2(inputPars *par, int flag, int prog, double percent, double minsnr, double median){
+progressbar2(configInfo *par, int flag, int prog, double percent, double minsnr, double median){
 #ifdef NO_NCURSES
   if (flag == 0) {
     printf("  Iteration %i / max %i: Starting\n", prog + 1, par->nSolveIters);

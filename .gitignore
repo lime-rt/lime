@@ -5,8 +5,12 @@
 .DS_Store
 
 # Ignore example files
-example/grid.vtk
+example/*.vtk
 example/*.pop
 example/*.fits*
+<<<<<<< HEAD
 example/lime_*.x
+=======
+example/*.dat
+>>>>>>> 9eaa28365db1403277606d20aaf7c97bdd053092
 
