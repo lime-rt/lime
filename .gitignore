@@ -7,4 +7,6 @@
 # Ignore example files
 example/grid.vtk
 example/*.pop
-example/*.fits
+example/*.fits*
+example/lime_*.x
+

@@ -636,5 +636,39 @@ levelPops(molData *m, inputPars *par, struct grid *g, int *popsdone){
   *popsdone=1;
 }
 
+_Bool allBitsSet(const int flags, const int mask){
+  /* Returns true only if all the masked bits of flags are set. */
 
+  if(~flags & mask)
+    return 0;
+  else
+    return 1;
+}
+
+_Bool anyBitSet(const int flags, const int mask){
+  /* Returns true if any of the masked bits of flags are set. */
+
+  if(flags & mask)
+    return 1;
+  else
+    return 0;
+}
+
+_Bool bitIsSet(const int flags, const int bitI){
+  /* Returns true if the designated bit of flags is set. */
+
+  if(flags & (1 << bitI))
+    return 1;
+  else
+    return 0;
+}
+
+_Bool onlyBitsSet(const int flags, const int mask){
+  /* Returns true if flags has no bits set apart from those which are true in mask. */
+
+  if(flags & ~mask)
+    return 0;
+  else
+    return 1;
+}
 

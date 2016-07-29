@@ -79,6 +79,33 @@
 #define FAST_EXP_NUM_BITS	8
 #define NUM_GRID_STAGES		4
 
+/* Bit locations for the grid data-stage mask, that records the information which is present in the grid struct: */
+#define DS_bit_x             0	/* id, x, sink */
+#define DS_bit_neighbours    1	/* neigh, dir, ds, numNeigh */
+#define DS_bit_velocity      2	/* vel */
+#define DS_bit_density       3	/* dens */
+#define DS_bit_abundance     4	/* abun, nmol */
+#define DS_bit_turb_doppler  5	/* dopb */
+#define DS_bit_temperatures  6	/* t */
+#define DS_bit_ACOEFF        7	/* a0, a1, a2, a3, a4 */
+#define DS_bit_populations   8	/* mol */
+
+#define DS_mask_x            (1 << DS_bit_x)
+#define DS_mask_neighbours   (1 << DS_bit_neighbours)   | DS_mask_x
+#define DS_mask_velocity     (1 << DS_bit_velocity)     | DS_mask_x
+#define DS_mask_density      (1 << DS_bit_density)      | DS_mask_x
+#define DS_mask_abundance    (1 << DS_bit_abundance)    | DS_mask_x
+#define DS_mask_turb_doppler (1 << DS_bit_turb_doppler) | DS_mask_x
+#define DS_mask_temperatures (1 << DS_bit_temperatures) | DS_mask_x
+#define DS_mask_ACOEFF       (1 << DS_bit_ACOEFF)       | DS_mask_neighbours | DS_mask_velocity
+
+#define DS_mask_1 DS_mask_x
+#define DS_mask_2 DS_mask_neighbours
+#define DS_mask_3 DS_mask_2|DS_mask_density|DS_mask_abundance|DS_mask_turb_doppler|DS_mask_temperatures|DS_mask_ACOEFF
+#define DS_mask_populations  (1 << DS_bit_populations) | DS_mask_3
+#define DS_mask_4 DS_mask_populations
+#define DS_mask_all DS_mask_populations
+
 /* input parameters */
 typedef struct {
   double radius,radiusSqu,minScale,minScaleSqu,tcmb,taylorCutoff;
@@ -207,6 +234,11 @@ void magfield(double,double,double,double *);
 void gasIIdust(double,double,double,double *);
 
 /* More functions */
+
+_Bool	allBitsSet(const int flags, const int mask);
+_Bool	anyBitSet(const int flags, const int mask);
+_Bool	bitIsSet(const int flags, const int bitI);
+_Bool	onlyBitsSet(const int flags, const int mask);
 
 void   	binpopsout(inputPars*, struct grid*, molData*);
 void	calcAvRelLineAmp(struct grid*, int, int, double, double, double*);
