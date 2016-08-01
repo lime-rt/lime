@@ -10,7 +10,18 @@
 #include "lime.h"
 
 void
-freeGrid(configInfo *par, const molData *m ,struct grid *g){
+freeGAux(const unsigned long numPoints, const int numSpecies, struct gAuxType *gAux) {
+  unsigned long ppi;
+
+  if(gAux !=NULL){
+    for(ppi=0;ppi<numPoints;ppi++)
+      freePop2(numSpecies, gAux[ppi].mol);
+    free(gAux);
+  }
+}
+
+void
+freeGrid(configInfo *par, molData *m , struct grid *g){
   int i;
   if(g != NULL){
     for(i=0;i<(par->pIntensity+par->sinkPoints); i++){
@@ -23,7 +34,6 @@ freeGrid(configInfo *par, const molData *m ,struct grid *g){
       free(g[i].neigh);
       free(g[i].w);
       free(g[i].dens);
-      free(g[i].nmol);
       free(g[i].abun);
       free(g[i].ds);
       freePopulation( par, m, g[i].mol );
@@ -80,11 +90,8 @@ void freeMolsWithBlends(struct molWithBlends *mols, const int numMolsWithBlends)
   if(mols != NULL){
     for(mi=0;mi<numMolsWithBlends;mi++){
       if(mols[mi].lines != NULL){
-        for(li=0;li<mols[mi].numLinesWithBlends;li++){
-          if(mols[mi].lines[li].blends != NULL){
-            free(mols[mi].lines[li].blends);
-          }
-        }
+        for(li=0;li<mols[mi].numLinesWithBlends;li++)
+          free(mols[mi].lines[li].blends);
         free(mols[mi].lines);
       }
     }
@@ -114,7 +121,21 @@ freeParImg(const int nImages, inputPars *par, image *img){
 }
 
 void
-freePopulation(configInfo *par, const molData *m, struct populations *pop ){
+freePop2(const int numSpecies, struct pop2 *mol){
+  int i;
+
+  if(mol !=NULL){
+    for(i=0;i<numSpecies;i++){
+      free(mol[i].specNumDens);
+      free(mol[i].knu);
+      free(mol[i].dust);
+    }
+    free(mol);
+  }
+}
+
+void
+freePopulation(configInfo *par, molData *m, struct populations *pop ){
   if(pop != NULL){
     int j,k;
     for(j=0; j<par->nSpecies; j++){

@@ -14,6 +14,9 @@ predefinedGrid(configInfo *par, struct grid *g){
   FILE *fp;
   int i;
   double x,y,z,scale;
+  struct cell *dc=NULL; /* Not used at present. */
+  unsigned long numCells;
+
   gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);
 #ifdef TEST
   gsl_rng_set(ran,6611304);
@@ -39,13 +42,14 @@ predefinedGrid(configInfo *par, struct grid *g){
 
 
     g[i].sink=0;
-	g[i].t[1]=g[i].t[0];
-		
-	/* This next step needs to be done, even though it looks stupid */
-	g[i].dir=malloc(sizeof(point)*1);
-	g[i].ds =malloc(sizeof(double)*1);
-	g[i].neigh =malloc(sizeof(struct grid *)*1);
-	if(!silent) progressbar((double) i/((double)par->pIntensity-1), 4);	
+    g[i].t[1]=g[i].t[0];
+    g[i].mol[0].nmol=g[i].abun[0]*g[i].dens[0];
+
+    /* This next step needs to be done, even though it looks stupid */
+    g[i].dir=malloc(sizeof(point)*1);
+    g[i].ds =malloc(sizeof(double)*1);
+    g[i].neigh =malloc(sizeof(struct grid *)*1);
+    if(!silent) progressbar((double) i/((double)par->pIntensity-1), 4);	
   }
 
   checkGridDensities(par, g);
@@ -70,13 +74,14 @@ predefinedGrid(configInfo *par, struct grid *g){
   }
   fclose(fp);
 
-  qhull(par,g);
+  delaunay(DIM, g, (unsigned long)par->ncell, 0, &dc, &numCells);
   distCalc(par,g);
   //  getArea(par,g, ran);
   //  getMass(par,g, ran);
   getVelosplines_lin(par,g);
   if(par->gridfile) write_VTK_unstructured_Points(par, g);
   gsl_rng_free(ran);
+  free(dc);
 
   par->numDensities = 1;
 }

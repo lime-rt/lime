@@ -5,6 +5,8 @@
  *  Copyright (C) 2006-2014 Christian Brinch
  *  Copyright (C) 2015 The LIME development team
  *
+***TODO:
+	- Change the definition of the file format so that nmol is now read with the other mol[] scalars.
  */
 
 #include "lime.h"
@@ -25,7 +27,7 @@ popsout(configInfo *par, struct grid *g, molData *m){
   for(j=0;j<par->ncell-par->sinkPoints;j++){
     dens=0.;
     for(l=0;l<par->numDensities;l++) dens+=g[j].dens[l];
-    fprintf(fp,"%e %e %e %e %e %e %d ", g[j].x[0], g[j].x[1], g[j].x[2], dens, g[j].t[0], g[j].nmol[0]/dens, g[j].conv);
+    fprintf(fp,"%e %e %e %e %e %e %d ", g[j].x[0], g[j].x[1], g[j].x[2], dens, g[j].t[0], g[j].mol[0].nmol/dens, g[j].conv);
     for(k=0;k<m[0].nlev;k++) fprintf(fp,"%e ",g[j].mol[0].pops[k]);
     fprintf(fp,"\n");
     //fprintf(fp,"%i %lf %lf %lf %lf %lf %lf %lf %lf\n", g[j].id, g[j].x[0], g[j].x[1], g[j].x[2],  g[j].dens[0], g[j].t[0], g[j].vel[0], g[j].vel[1], g[j].vel[2]);
@@ -76,7 +78,8 @@ binpopsout(configInfo *par, struct grid *g, molData *m){
     fwrite(&g[i].x,  3*sizeof(double),   1, fp);
     fwrite(&g[i].vel,3*sizeof(double),   1, fp);
     fwrite(&g[i].sink, sizeof(int),      1, fp);
-    fwrite(g[i].nmol,  sizeof(double)*par->nSpecies,1, fp);
+    for(j=0;j<par->nSpecies;j++)
+      fwrite(&g[i].mol[j].nmol,  sizeof(double),           1, fp);
     fwrite(&g[i].dopb, sizeof g[i].dopb, 1, fp);
     for(j=0;j<par->nSpecies;j++){
       fwrite(g[i].mol[j].pops,  sizeof(double)*m[j].nlev, 1, fp);
@@ -96,5 +99,3 @@ binpopsout(configInfo *par, struct grid *g, molData *m){
   free(nTrans);
 }
 
-  
-  

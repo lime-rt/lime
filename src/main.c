@@ -69,6 +69,7 @@ initParImg(inputPars *par, image **img)
   par->antialias=1;
   par->polarization=0;
   par->nThreads = NTHREADS;
+  par->traceRayAlgorithm=0;
 
   /* Allocate initial space for molecular data file names */
   par->moldatfile=malloc(sizeof(char *)*MAX_NSPECIES);
@@ -190,7 +191,7 @@ run(inputPars inpars, image *img)
       else
         continuumSetup(i,img,m,&par,g);
       raytrace(i,&par,g,m,img);
-      writefits(i,&par,m,img);
+      writeFits(i,&par,m,img);
     }
   }
 
@@ -202,7 +203,7 @@ run(inputPars inpars, image *img)
   for(i=0;i<par.nImages;i++){
     if(img[i].doline){
       raytrace(i,&par,g,m,img);
-      writefits(i,&par,m,img);
+      writeFits(i,&par,m,img);
     }
   }
   
@@ -216,6 +217,16 @@ run(inputPars inpars, image *img)
   free(par.dustWeights);
 }
 
+void writeFits(const int i, configInfo *par, molData *m, image *img){
+  if(img[i].unit<5)
+    write3Dfits(i,par,m,img);
+  else if(img[i].unit==5)
+    write2Dfits(i,par,m,img);
+  else{
+    if(!silent) bail_out("Image unit number invalid");
+    exit(0);
+  }
+}
 
 int main () {
   /* Main program for stand-alone LIME */
@@ -234,3 +245,4 @@ int main () {
 
   return 0;
 }
+

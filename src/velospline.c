@@ -53,12 +53,14 @@ getVelosplines(configInfo *par, struct grid *g){
   }
   
   for(i=par->pIntensity;i<par->ncell;i++){
+    /* Set velocity values also for sink points (otherwise Delaunay ray-tracing has problems) */
+    velocity(g[i].x[0],g[i].x[1],g[i].x[2],g[i].vel);
+
     g[i].a0=malloc(g[i].numNeigh*sizeof(double));
     g[i].a1=malloc(g[i].numNeigh*sizeof(double));
     g[i].a2=malloc(g[i].numNeigh*sizeof(double));
     g[i].a3=malloc(g[i].numNeigh*sizeof(double));
     g[i].a4=malloc(g[i].numNeigh*sizeof(double));
-    for(j=0;j<3;j++) g[i].vel[j]=0.;
     for(j=0;j<g[i].numNeigh;j++){
       g[i].a0[j]=0.;
       g[i].a1[j]=0.;
