@@ -38,7 +38,6 @@ initParImg(inputPars *par, image **img)
   */
 
   int i,id,nImages;
-  FILE *fp;
 
   /* Set 'impossible' default values for mandatory parameters */
   par->radius    = 0;

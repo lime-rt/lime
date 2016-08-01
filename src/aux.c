@@ -17,7 +17,7 @@ TODO:
 
 void
 parseInput(inputPars inpar, configInfo *par, image **img, molData **m){
-  int i,id,ispec;
+  int i,id;
   double BB[3],normBSquared,dens[MAX_N_COLL_PART];
   double cosPhi,sinPhi,cosTheta,sinTheta,dummyVel[DIM];
   FILE *fp;
@@ -556,7 +556,7 @@ Pointers are indicated by a * before the attribute name and an arrow to the memo
 
 void
 levelPops(molData *m, configInfo *par, struct grid *g, int *popsdone){
-  int id,conv=0,iter,ilev,prog=0,ispec,c=0,n,i,threadI,nVerticesDone,nlinetot,numCollParts;
+  int id,conv=0,iter,ilev,ispec,c=0,n,i,threadI,nVerticesDone,nItersDone,nlinetot,numCollParts;
   int *allCollPartIds=NULL;
   double percent=0.,*median,result1=0,result2=0,snr,delta_pop;
   int nextMolWithBlend;
@@ -645,8 +645,9 @@ This is done to allow proper handling of errors which may arise in the LU solver
 While this is off however, other gsl_* etc calls will not exit if they encounter a problem. We may need to pay some attention to trapping their errors.
     */
 
-    do{
-      if(!silent) progressbar2(0, prog++, 0, result1, result2);
+    nItersDone=0;
+    while(nItersDone < par->nSolveIters){ /* Not a 'for' loop because we will probably later want to add a convergence criterion. */
+      if(!silent) progressbar2(par, 0, nItersDone, 0, result1, result2);
 
       for(id=0;id<par->ncell && !g[id].sink;id++){
         for(ilev=0;ilev<m[0].nlev;ilev++) {
@@ -677,8 +678,8 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
 #pragma omp atomic
           ++nVerticesDone;
 
-          if (threadI == 0){ // i.e., is master thread
-            if(!silent) progressbar((double)nVerticesDone/par->pIntensity,10);
+          if (threadI == 0){ /* i.e., is master thread. */
+            if(!silent) progressbar(nVerticesDone/(double)par->pIntensity,10);
           }
           if(g[id].dens[0] > 0 && g[id].t[0] > 0){
             photon(id,g,m,0,threadRans[threadI],par,nlinetot,blends,mp,halfFirstDs);
@@ -739,9 +740,11 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
       }
       free(median);
 
-      if(!silent) progressbar2(1, prog, percent, result1, result2);
-      if(par->outputfile) popsout(par,g,m);
-    } while(conv++<NITERATIONS);
+      if(!silent) progressbar2(par, 1, nItersDone, percent, result1, result2);
+      if(par->outputfile != NULL) popsout(par,g,m);
+      nItersDone++;
+    }
+
     gsl_set_error_handler(defaultErrorHandler);
 
     freeMolsWithBlends(blends.mols, blends.numMolsWithBlends);
@@ -762,7 +765,7 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
 
   par->dataFlags |= DS_mask_4;
 
-  if(par->binoutputfile) binpopsout(par,g,m);
+  if(par->binoutputfile != NULL) binpopsout(par,g,m);
 
   *popsdone=1;
 }

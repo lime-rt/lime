@@ -49,7 +49,8 @@ endif
 ##
 
 TARGET  = lime.x 
-CC		= gcc -fopenmp
+#CC	= gcc -fopenmp -g -Wunused -Wno-unused-result
+CC	= gcc -fopenmp
 SRCS    = src/aux.c src/messages.c src/grid.c src/LTEsolution.c		\
 	  src/main.c src/molinit.c src/photon.c src/popsin.c		\
 	  src/popsout.c src/predefgrid.c src/ratranInput.c		\

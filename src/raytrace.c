@@ -203,7 +203,7 @@ Note that the algorithm employed here is similar to that employed in the functio
 
 void
 raytrace(int im, configInfo *par, struct grid *gp, molData *md, image *img){
-  int aa,ichan,px,iline,cmbMolI,cmbLineI,i,threadI,nRaysDone,molI,lineI;
+  int aa,ichan,px,cmbMolI,cmbLineI,i,threadI,nRaysDone,molI,lineI;
   double size,minfreq,absDeltaFreq,totalNumPixelsMinus1=(double)(img[im].pxls*img[im].pxls-1);
   double cutoff;
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;

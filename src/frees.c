@@ -13,7 +13,6 @@ void freeGrid(const unsigned int numPoints, const unsigned short numSpecies\
   , struct grid *gp){
 
   unsigned int i_u;
-  unsigned short i_s;
 
   if(gp != NULL){
     for(i_u=0;i_u<numPoints;i_u++){

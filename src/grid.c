@@ -122,7 +122,7 @@ void calcGridDustOpacity(configInfo *par, molData *md, struct grid *gp){
 void calcGridCollRates(configInfo *par, molData *md, struct grid *g){
   int i,id,ipart,itrans,itemp,tnint=-1;
   struct cpData part;
-  double fac, uprate, downrate=0.0;
+  double fac;
 
   for(i=0;i<par->nSpecies;i++){
     for(id=0;id<par->ncell;id++){
