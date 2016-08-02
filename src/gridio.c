@@ -17,13 +17,13 @@ Notes:
   - Only a few combinations are not allowed, as follows:
     * No other bit may be set if DS_bit_x is not.
     * DS_bit_ACOEFF may not be set if either DS_bit_neighbours or DS_bit_velocity is not.
-    * DS_bit_populations may not be set unless all the others are set as well.
+    * DS_bit_populations may not be set unless all the others are set as well (except DS_bit_magfield may be set or not).
 
 Writing the grid file:
 ----------------------
 To make things simpler, four stages have been defined at which the user may write the grid data to file. These are described in the following table:
 
-	Data mask bits set:	dataStageI=0	dataStageI=1	dataStageI=2	dataStageI=3	dataStageI=4
+	Data mask bits set:	    stage 0	    stage 1	    stage 2	    stage 3	    stage 4
 	.....................................................................................................
 	DS_bit_x             		0		1		1		1		1
 	DS_bit_neighbours    		0		0		1		1		1
@@ -32,6 +32,7 @@ To make things simpler, four stages have been defined at which the user may writ
 	DS_bit_abundance     		0		0		0		1		1
 	DS_bit_turb_doppler  		0		0		0		1		1
 	DS_bit_temperatures  		0		0		0		1		1
+	DS_bit_magfield  		0		0		0		x		x
 	DS_bit_ACOEFF        		0		0		0		1		1
 	DS_bit_populations   		0		0		0		0		1
 	.....................................................................................................

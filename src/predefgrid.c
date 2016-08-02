@@ -14,6 +14,9 @@ predefinedGrid(configInfo *par, struct grid *g){
   FILE *fp;
   int i,j;
   double x,y,z,scale;
+  struct cell *dc=NULL; /* Not used at present. */
+  unsigned long numCells;
+
   gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);
 #ifdef TEST
   gsl_rng_set(ran,6611304);
@@ -39,12 +42,15 @@ predefinedGrid(configInfo *par, struct grid *g){
 
     g[i].sink=0;
     g[i].t[1]=g[i].t[0];
-    g[i].nmol[0]=g[i].abun[0]*g[i].dens[0];
+    g[i].mol[0].nmol=g[i].abun[0]*g[i].dens[0];
+    g[i].B[0]=0.0;
+    g[i].B[1]=0.0;
+    g[i].B[2]=0.0;
 
     /* This next step needs to be done, even though it looks stupid */
-    g[i].dir   = malloc(sizeof(point)*1);
-    g[i].ds    = malloc(sizeof(double)*1);
-    g[i].neigh = malloc(sizeof(struct grid *)*1);
+    g[i].dir=malloc(sizeof(point)*1);
+    g[i].ds =malloc(sizeof(double)*1);
+    g[i].neigh =malloc(sizeof(struct grid *)*1);
     if(!silent) progressbar((double) i/((double)par->pIntensity-1), 4);	
   }
 
@@ -63,16 +69,19 @@ predefinedGrid(configInfo *par, struct grid *g){
       g[i].sink=1;
       g[i].abun[0]=0;
       g[i].dens[0]=1e-30;
-      g[i].nmol[0]=0.0; /* Just to give it a value. */
+      g[i].mol[0].nmol=0.0; /* Just to give it a value. */
       g[i].t[0]=par->tcmb;
       g[i].t[1]=par->tcmb;
+      g[i].B[0]=0.0;
+      g[i].B[1]=0.0;
+      g[i].B[2]=0.0;
       g[i].dopb=0.;
       for(j=0;j<DIM;j++) g[i].vel[j]=0.;
     } else i--;
   }
   fclose(fp);
 
-  qhull(par,g);
+  delaunay(DIM, g, (unsigned long)par->ncell, 0, &dc, &numCells);
   distCalc(par,g);
   //  getArea(par,g, ran);
   //  getMass(par,g, ran);
@@ -85,12 +94,14 @@ predefinedGrid(configInfo *par, struct grid *g){
   par->dataFlags |= (1 << DS_bit_abundance);
   par->dataFlags |= (1 << DS_bit_turb_doppler);
   par->dataFlags |= (1 << DS_bit_temperatures);
+  par->dataFlags |= (1 << DS_bit_magfield);
   par->dataFlags |= (1 << DS_bit_ACOEFF);
 
 //**** should fill in any missing info via the appropriate function calls.
 
   if(par->gridfile) write_VTK_unstructured_Points(par, g);
   gsl_rng_free(ran);
+  free(dc);
 
   par->numDensities = 1;
 }

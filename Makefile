@@ -58,7 +58,8 @@ SRCS    = src/aux.c src/messages.c src/grid.c src/LTEsolution.c		\
 	  src/stateq.c src/statistics.c src/magfieldfit.c		\
 	  src/stokesangles.c src/writefits.c src/weights.c		\
 	  src/velospline.c src/getclosest.c src/grid2fits.c		\
-	  src/tcpsocket.c src/defaults.c src/fastexp.c src/gridio.c
+	  src/tcpsocket.c src/defaults.c src/fastexp.c src/gridio.c	\
+	  src/raythrucells.c
 MODELS  = model.c
 OBJS    = src/aux.o src/messages.o src/grid.o src/LTEsolution.o		\
 	  src/main.o src/molinit.o src/photon.o src/popsin.o		\
@@ -67,7 +68,8 @@ OBJS    = src/aux.o src/messages.o src/grid.o src/LTEsolution.o		\
 	  src/stateq.o src/statistics.o src/magfieldfit.o		\
 	  src/stokesangles.o src/writefits.o src/weights.o		\
 	  src/velospline.o src/getclosest.o src/grid2fits.o		\
-	  src/tcpsocket.o src/defaults.o src/fastexp.o src/gridio.o
+	  src/tcpsocket.o src/defaults.o src/fastexp.o src/gridio.o	\
+	  src/raythrucells.o
 MODELO 	= src/model.o
 
 #CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing -DTEST

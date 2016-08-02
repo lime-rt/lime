@@ -15,6 +15,11 @@ TODO:
 void gridLineInit(configInfo *par, molData *md, struct grid *gp){
   int i,id, ilev;
 
+  for(id=0;id<par->ncell;id++) {
+    freePopulation((unsigned short)par->nSpecies, gp[id].mol );
+    gp[id].mol=malloc(sizeof(struct populations)*par->nSpecies);
+  }
+
   for(i=0;i<par->nSpecies;i++){
     /* Calculate Doppler and thermal line broadening */
     for(id=0;id<par->ncell;id++) {
@@ -24,22 +29,23 @@ void gridLineInit(configInfo *par, molData *md, struct grid *gp){
 
     /* Allocate space for populations etc */
     for(id=0;id<par->ncell; id++){
+      gp[id].mol[i].partner = NULL;
       gp[id].mol[i].pops = malloc(sizeof(double)*md[i].nlev);
-      gp[id].mol[i].dust = malloc(sizeof(double)*md[i].nline);
-      gp[id].mol[i].knu  = malloc(sizeof(double)*md[i].nline);
+      gp[id].mol[i].dust = NULL;
+      gp[id].mol[i].knu  = NULL;
       for(ilev=0;ilev<md[i].nlev;ilev++) gp[id].mol[i].pops[ilev]=0.0;
     }
   }
 }
 
-void calcGridMolDensities(configInfo *par, struct grid *g){
+void calcGridMolDensities(configInfo *par, struct grid *gp){
   int id,ispec,i;
 
   for(id=0;id<par->ncell; id++){
     for(ispec=0;ispec<par->nSpecies;ispec++){
-      g[id].nmol[ispec] = 0.0;
+      gp[id].mol[ispec].nmol = 0.0;
       for(i=0;i<par->numDensities;i++)
-        g[id].nmol[ispec] += g[id].abun[ispec]*g[id].dens[i]*par->nMolWeights[i];
+        gp[id].mol[ispec].nmol += gp[id].abun[ispec]*gp[id].dens[i]*par->nMolWeights[i];
     }
   }
 }
@@ -52,6 +58,12 @@ void calcGridDustOpacity(configInfo *par, molData *md, struct grid *gp){
   gsl_spline *spline;
 
   for(si=0;si<par->nSpecies;si++){
+    /* Allocate space for populations etc */
+    for(id=0;id<par->ncell; id++){
+      gp[id].mol[si].dust = malloc(sizeof(double)*md[si].nline);
+      gp[id].mol[si].knu  = malloc(sizeof(double)*md[si].nline);
+    }
+
     kappatab = malloc(sizeof(*kappatab)*md[si].nline);
 
     if(par->dust == NULL){
@@ -101,10 +113,10 @@ void calcGridDustOpacity(configInfo *par, molData *md, struct grid *gp){
       for(di=0;di<par->numDensities;di++)
         densityForDust += gp[id].dens[di]*par->dustWeights[di];
 
+      gasIIdust(gp[id].x[0],gp[id].x[1],gp[id].x[2],&gtd);
       for(iline=0;iline<md[si].nline;iline++){
-        gasIIdust(gp[id].x[0],gp[id].x[1],gp[id].x[2],&gtd);
         gp[id].mol[si].knu[iline]=kappatab[iline]*2.4*AMU*densityForDust/gtd;
-        //Check if input model supplies a dust temperature. Otherwise use the kinetic temperature
+        /* Check if input model supplies a dust temperature. Otherwise use the kinetic temperature. */
         if(gp[id].t[1]==-1) {
           gp[id].mol[si].dust[iline]=planckfunc(iline,gp[id].t[0],md,si);
         } else {
@@ -119,36 +131,36 @@ void calcGridDustOpacity(configInfo *par, molData *md, struct grid *gp){
   return;
 }
 
-void calcGridCollRates(configInfo *par, molData *md, struct grid *g){
+void calcGridCollRates(configInfo *par, molData *md, struct grid *gp){
   int i,id,ipart,itrans,itemp,tnint=-1;
   struct cpData part;
   double fac;
 
   for(i=0;i<par->nSpecies;i++){
     for(id=0;id<par->ncell;id++){
-      g[id].mol[i].partner = malloc(sizeof(struct rates)*md[i].npart);
+      gp[id].mol[i].partner = malloc(sizeof(struct rates)*md[i].npart);
     }
 
     for(ipart=0;ipart<md[i].npart;ipart++){
       part = md[i].part[ipart];
       for(id=0;id<par->ncell;id++){
         for(itrans=0;itrans<part.ntrans;itrans++){
-          if((g[id].t[0]>part.temp[0])&&(g[id].t[0]<part.temp[part.ntemp-1])){
+          if((gp[id].t[0]>part.temp[0])&&(gp[id].t[0]<part.temp[part.ntemp-1])){
             for(itemp=0;itemp<part.ntemp-1;itemp++){
-              if((g[id].t[0]>part.temp[itemp])&&(g[id].t[0]<=part.temp[itemp+1])){
+              if((gp[id].t[0]>part.temp[itemp])&&(gp[id].t[0]<=part.temp[itemp+1])){
                 tnint=itemp;
               }
             }
-            fac=(g[id].t[0]-part.temp[tnint])/(part.temp[tnint+1]-part.temp[tnint]);
-            g[id].mol[i].partner[ipart].t_binlow = tnint;
-            g[id].mol[i].partner[ipart].interp_coeff = fac;
+            fac=(gp[id].t[0]-part.temp[tnint])/(part.temp[tnint+1]-part.temp[tnint]);
+            gp[id].mol[i].partner[ipart].t_binlow = tnint;
+            gp[id].mol[i].partner[ipart].interp_coeff = fac;
 
-	  } else if(g[id].t[0]<=part.temp[0]) {
-	    g[id].mol[i].partner[ipart].t_binlow = 0;
-	    g[id].mol[i].partner[ipart].interp_coeff = 0.0;
+	  } else if(gp[id].t[0]<=part.temp[0]) {
+	    gp[id].mol[i].partner[ipart].t_binlow = 0;
+	    gp[id].mol[i].partner[ipart].interp_coeff = 0.0;
 	  } else {
-	    g[id].mol[i].partner[ipart].t_binlow = part.ntemp-2;
-	    g[id].mol[i].partner[ipart].interp_coeff = 1.0;
+	    gp[id].mol[i].partner[ipart].t_binlow = part.ntemp-2;
+	    gp[id].mol[i].partner[ipart].interp_coeff = 1.0;
 	  }
         } /* End loop over transitions. */
       } /* End loop over grid points. */
@@ -156,74 +168,153 @@ void calcGridCollRates(configInfo *par, molData *md, struct grid *g){
   } /* End loop over radiating molecules. */
 }
 
-void
-qhull(configInfo *par, struct grid *gp){
-  int i,j,k,id;
+/*....................................................................*/
+void delaunay(const int numDims, struct grid *gp, const unsigned long numPoints\
+  , const _Bool getCells, struct cell **dc, unsigned long *numCells){
+  /*
+The principal purpose of this function is to perform a Delaunay triangulation for the set of points defined by the input argument 'g'. This is achieved via routines in the 3rd-party package qhull.
+
+A note about qhull nomenclature: a vertex is what you think it is - i.e., a point; but a facet means in this context a Delaunay triangle (in 2D) or tetrahedron (in 3D).
+
+Required elements of structs:
+	struct grid *gp:
+		.id
+		.x
+
+Elements of structs are set as follows:
+	struct grid *gp:
+		.numNeigh
+		.neigh (this is malloc'd too large and at present not realloc'd.)
+
+	cellType *dc (if getCells>0):
+		.id
+		.neigh
+		.vertx
+  */
+
+  coordT *pt_array=NULL;
+  unsigned long ppi,id,pointIdsThisFacet[numDims+1],idI,idJ,fi,ffi;
+  int i,j,k;
   char flags[255];
   boolT ismalloc = False;
-  facetT *facet;
   vertexT *vertex,**vertexp;
-  coordT *pt_array;
-  int simplex[DIM+1];
+  facetT *facet, *neighbor, **neighborp;
   int curlong, totlong;
+  _Bool neighbourNotFound;
 
-  pt_array=malloc(DIM*sizeof(coordT)*par->ncell);
-
-  for(i=0;i<par->ncell;i++) {
-    for(j=0;j<DIM;j++) {
-      pt_array[i*DIM+j]=gp[i].x[j];
+  pt_array=malloc(sizeof(coordT)*numDims*numPoints);
+  for(ppi=0;ppi<numPoints;ppi++) {
+    for(j=0;j<numDims;j++) {
+      pt_array[ppi*numDims+j]=gp[ppi].x[j];
     }
   }
 
   sprintf(flags,"qhull d Qbb");
-  if (!qh_new_qhull(DIM, par->ncell, pt_array, ismalloc, flags, NULL, NULL)) {
-    /* Identify points */
-    FORALLvertices {
-      id=qh_pointid(vertex->point);
-      gp[id].numNeigh=qh_setsize(vertex->neighbors);
-      if(  gp[id].neigh != NULL )
-        {
-          free( gp[id].neigh );
-        }
-      gp[id].neigh=malloc(sizeof(struct grid *)*gp[id].numNeigh);
-      for(k=0;k<gp[id].numNeigh;k++) {
-        gp[id].neigh[k]=NULL;
-      }
-    }
-    
-    /* Identify neighbors */
-    FORALLfacets {
-      if (!facet->upperdelaunay) {
-        j=0;
-        FOREACHvertex_ (facet->vertices) simplex[j++]=qh_pointid(vertex->point);
-        for(i=0;i<DIM+1;i++){
-          for(j=0;j<DIM+1;j++){
-            k=0;
-            if(i!=j){
-              while(gp[simplex[i]].neigh[k] != NULL && gp[simplex[i]].neigh[k]->id != gp[simplex[j]].id) {
-                k++;
-              }
-              gp[simplex[i]].neigh[k]=&gp[simplex[j]];
-            }
-          }
-        }
-      }
-    }
-  } else {
+  if (qh_new_qhull(numDims, (int)numPoints, pt_array, ismalloc, flags, NULL, NULL)) {
     if(!silent) bail_out("Qhull failed to triangulate");
     exit(1);
   }
 
-  for(i=0;i<par->ncell;i++){
-    j=0;
-    for(k=0;k<gp[i].numNeigh;k++){
-      if(gp[i].neigh[k] != NULL)
-        {
-          j++;
-        }
+  /* Identify points */
+  FORALLvertices {
+    id=(unsigned long)qh_pointid(vertex->point);
+    /* Note this is NOT the same value as vertex->id. Only the id gained via the call to qh_pointid() is the same as the index of the point in the input list. */
+
+    gp[id].numNeigh=qh_setsize(vertex->neighbors);
+    /* Note that vertex->neighbors refers to facets abutting the vertex, not other vertices. In general there seem to be more facets surrounding a point than vertices (in fact there seem to be exactly 2x as many). In any case, mallocing to N_facets gives extra room. */
+
+    free( gp[id].neigh );
+    gp[id].neigh=malloc(sizeof(struct grid *)*gp[id].numNeigh);
+    for(k=0;k<gp[id].numNeigh;k++) {
+      gp[id].neigh[k]=NULL;
     }
-    gp[i].numNeigh=j;
   }
+
+  /* Identify the Delaunay neighbors of each point. This is a little involved, because the only direct information we have about which vertices are linked to which others is stored in qhull's facetT objects.
+  */
+  *numCells = 0;
+  FORALLfacets {
+    if (!facet->upperdelaunay) {
+      /* Store the point IDs in a list for convenience. These ID values are conveniently ordered such that qh_pointid() returns ppi for gp[ppi]. 
+      */
+      j=0;
+      FOREACHvertex_ (facet->vertices) pointIdsThisFacet[j++]=(unsigned long)qh_pointid(vertex->point);
+
+      for(i=0;i<numDims+1;i++){
+        idI = pointIdsThisFacet[i];
+        for(j=0;j<numDims+1;j++){
+          idJ = pointIdsThisFacet[j];
+          if(i!=j){
+            /* Cycle through all the non-NULL links of gp[idI], storing the link if it is new.
+            */
+            k=0;
+            while(gp[idI].neigh[k] != NULL && gp[idI].neigh[k]->id != gp[idJ].id)
+              k++;
+            gp[idI].neigh[k]=&gp[idJ];
+          }
+        }
+      }
+      (*numCells)++;
+    }
+  }
+
+  for(ppi=0;ppi<numPoints;ppi++){
+    j=0;
+    for(k=0;k<gp[ppi].numNeigh;k++){
+      if(gp[ppi].neigh[k] != NULL)
+        j++;
+    }
+    gp[ppi].numNeigh=j;
+  }
+
+  if(getCells){
+    (*dc) = malloc(sizeof(**dc)*(*numCells));
+    fi = 0;
+    FORALLfacets {
+      if (!facet->upperdelaunay) {
+        (*dc)[fi].id = (unsigned long)facet->id; /* Do NOT expect this to be equal to fi. */
+        fi++;
+      }
+    }
+
+    fi = 0;
+    FORALLfacets {
+      if (!facet->upperdelaunay) {
+        i = 0;
+        FOREACHneighbor_(facet) {
+          if(neighbor->upperdelaunay){
+            (*dc)[fi].neigh[i] = NULL;
+          }else{
+            /* Have to find the member of *dc with the same id as neighbour.*/
+            ffi = 0;
+            neighbourNotFound=1;
+            while(ffi<(*numCells) && neighbourNotFound){
+              if((*dc)[ffi].id==(unsigned long)neighbor->id){
+                (*dc)[fi].neigh[i] = &(*dc)[ffi];
+                neighbourNotFound = 0;
+              }
+              ffi++;
+            }
+            if(ffi>=(*numCells) && neighbourNotFound){
+              if(!silent) bail_out("Something weird going on.");
+              exit(1);
+            }
+          }
+          i++;
+        }
+
+        i = 0;
+        FOREACHvertex_( facet->vertices ) {
+          id = (unsigned long)qh_pointid(vertex->point);
+          (*dc)[fi].vertx[i] = &gp[id];
+          i++;
+        }
+
+        fi++;
+      }
+    }
+  }
+
   qh_freeqhull(!qh_ALL);
   qh_memfreeshort (&curlong, &totlong);
   free(pt_array);
@@ -234,14 +325,8 @@ distCalc(configInfo *par, struct grid *gp){
   int i,k,l;
 
   for(i=0;i<par->ncell;i++){
-    if( gp[i].dir != NULL )
-      {
-        free( gp[i].dir );
-      }
-    if( gp[i].ds != NULL )
-      {
-        free( gp[i].ds );
-      }
+    free(gp[i].dir);
+    free(gp[i].ds);
     gp[i].dir=malloc(sizeof(point)*gp[i].numNeigh);
     gp[i].ds =malloc(sizeof(double)*gp[i].numNeigh);
     memset(gp[i].dir, 0., sizeof(point) * gp[i].numNeigh);
@@ -537,9 +622,11 @@ void mallocAndSetDefaultGrid(struct grid **gp, const unsigned int numPoints){
     (*gp)[i].ds = NULL;
     (*gp)[i].dens=NULL;
     (*gp)[i].abun=NULL;
-    (*gp)[i].nmol=NULL;
     (*gp)[i].t[0]=-1;
     (*gp)[i].t[1]=-1;
+    (*gp)[i].B[0]=-1;
+    (*gp)[i].B[1]=-1;
+    (*gp)[i].B[2]=-1;
     (*gp)[i].conv=0;
   }
 }
@@ -551,6 +638,8 @@ void readOrBuildGrid(configInfo *par, struct grid **gp){
   double temp;
   int k=0,i,j;            /* counters									*/
   int flag;
+  struct cell *dc=NULL; /* Not used at present. */
+  unsigned long numCells;
   struct gridInfoType gridInfoRead;
   int status;
   char **collPartNames;
@@ -588,9 +677,9 @@ void readOrBuildGrid(configInfo *par, struct grid **gp){
       exit(1);
     }
 
-    /* DS_bit_populations may not be set unless all the others are set as well: */
+    /* DS_bit_populations may not be set unless all the others (except DS_bit_magfield) are set as well: */
     if(bitIsSet(par->dataFlags, DS_bit_populations)\
-    && !allBitsSet(par->dataFlags, (DS_mask_all & ~(1 << DS_bit_populations)))){
+    && !allBitsSet(par->dataFlags & DS_mask_all_but_mag, DS_mask_populations)){
       if(!silent) bail_out("You may not read a grid file with pop data unless all other data is present.");
       exit(1);
     }
@@ -754,7 +843,7 @@ void readOrBuildGrid(configInfo *par, struct grid **gp){
     writeGridIfRequired(par, *gp, NULL, lime_FITS);
 
   if(!allBitsSet(par->dataFlags, DS_mask_neighbours)){
-    qhull(par, *gp); /* Mallocs and sets .neigh, sets .numNeigh */
+    delaunay(DIM, *gp, (unsigned long)par->ncell, 0, &dc, &numCells);
 
     par->dataFlags |= DS_mask_2;
   }
@@ -799,9 +888,6 @@ void readOrBuildGrid(configInfo *par, struct grid **gp){
     par->dataFlags |= DS_mask_abundance;
   }
 
-  for(i=0;i<par->ncell; i++) /* We don't store the nmol values so we have to do this malloc whether we read a file or not. */
-    (*gp)[i].nmol = malloc(sizeof(double)*par->nSpecies); //**** mind you, it would be better to malloc them just before calculating them in molinit.
-
   if(!allBitsSet(par->dataFlags, DS_mask_turb_doppler)){
     for(i=0;i<par->pIntensity;i++)
       doppler((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],&(*gp)[i].dopb);	
@@ -822,16 +908,39 @@ void readOrBuildGrid(configInfo *par, struct grid **gp){
     par->dataFlags |= DS_mask_temperatures;
   }
 
+  if(!allBitsSet(par->dataFlags, DS_mask_magfield)){
+    if(par->polarization){
+      for(i=0;i<par->pIntensity;i++)
+        magfield((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2], (*gp)[i].B);
+
+      par->dataFlags |= DS_mask_magfield;
+
+    }else{
+      for(i=0;i<par->pIntensity;i++){
+        (*gp)[i].B[0]=0.0;
+        (*gp)[i].B[1]=0.0;
+        (*gp)[i].B[2]=0.0;
+      }
+    }
+
+    for(i=par->pIntensity;i<par->ncell;i++){
+      (*gp)[i].B[0]=0.0;
+      (*gp)[i].B[1]=0.0;
+      (*gp)[i].B[2]=0.0;
+    }
+  }
+
   if(!allBitsSet(par->dataFlags, DS_mask_ACOEFF)){
     calcInterpCoeffs(par,*gp); /* Mallocs and sets .a0, .a1 etc. */
 
     par->dataFlags |= DS_mask_3;
   }
 
-  if(onlyBitsSet(par->dataFlags, DS_mask_3)) /* Only happens if (i) we read no file and have constructed this data within LIME, or (ii) we read a file at dataStageI==3. */
+  if(onlyBitsSet(par->dataFlags & DS_mask_all_but_mag, DS_mask_3)) /* Only happens if (i) we read no file and have constructed this data within LIME, or (ii) we read a file at dataStageI==3. */
     writeGridIfRequired(par, *gp, NULL, lime_FITS);
 
   dumpGrid(par,*gp);
+  free(dc);
 }
 
 

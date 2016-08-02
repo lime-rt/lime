@@ -19,12 +19,14 @@ smooth(configInfo *par, struct grid *gp){
   int cn;
   double move[3];	/* Auxillary array for smoothing the grid	*/
   double dist;		/* Distance to a neighbor					*/
-  	
-  for(sg=0;sg<N_SMOOTH_ITERS;sg++){
-    qhull(par, gp);	
-    distCalc(par, gp);	    
+  struct cell *dc=NULL; /* Not used at present. */
+  unsigned long numCells;
 
-    for(i=0;i<par->ncell && !gp[i].sink;i++){
+  for(sg=0;sg<N_SMOOTH_ITERS;sg++){
+    delaunay(DIM, gp, (unsigned long)par->ncell, 0, &dc, &numCells);
+    distCalc(par, gp);
+
+    for(i=0;i<par->pIntensity;i++){
       mindist=1e30;
       cn=-1;
       for(k=0;k<gp[i].numNeigh;k++){
@@ -37,7 +39,7 @@ smooth(configInfo *par, struct grid *gp){
       }
 
       if(par->radius-sqrt(gp[i].x[0]*gp[i].x[0] + gp[i].x[1]*gp[i].x[1] + gp[i].x[2]*gp[i].x[2])<mindist) cn=-1;
-      			
+
       if(cn>-1) {
         for(k=0;k<DIM;k++){
           move[k] = gp[i].x[k] - gp[i].dir[cn].x[k]*0.20;
@@ -71,6 +73,7 @@ smooth(configInfo *par, struct grid *gp){
     }
 		
     if(!silent) progressbar((double)(sg+1)/(double)N_SMOOTH_ITERS, 5);	
+    free(dc);
   }	
 }
 

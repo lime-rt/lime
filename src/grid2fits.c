@@ -118,8 +118,8 @@ Note that data types in all capitals are defined in fitsio.h.
   _Bool *sink=NULL;/* Probably should be char* but this seems to work. */
   unsigned short *numNeigh=NULL, i_us;
   double *velj=NULL, *densn=NULL;
-  float *dopb=NULL, *t=NULL, *abunm=NULL;
-  int status=0, colI=0, i, j, m, n, localNumCollPart, maxNumCols;
+  float *dopb=NULL, *t=NULL, *abunm=NULL, *bField=NULL;
+  int status=0, colI=0, i, j, m, n, di, localNumCollPart, maxNumCols;
   LONGLONG firstRow=1, firstElem=1;
   char genericComment[80];
   char genericKwd[numKwdChars], message[80];
@@ -290,6 +290,26 @@ Ok we have a bit of a tricky situation here in that the number of columns we wri
     free(t);
   }
 
+  /* Check if first B_FIELD column has info:
+  */
+  colI = allColNumbers[getColIndex(allColNames, maxNumCols, "B_FIELD1")];
+  if(colI>0){
+    bField = malloc(sizeof(*bField)*par.ncell);
+    for(di=0;di<3;di++){
+      sprintf(colName, "B_FIELD%d", di+1);
+      colI = allColNumbers[getColIndex(allColNames, maxNumCols, colName)];
+      if(colI<=0){
+        if(!silent) bail_out("This should not occur, it is some sort of bug.");
+        exit(1);
+      }
+
+      for(i=0;i<par.ncell;i++) bField[i] = (float)gp[i].B[di];
+      fits_write_col(fptr, colDataTypes[colI-1], colI, firstRow, firstElem, (LONGLONG)par.ncell, bField, &status);
+      processFitsError(status);
+    }
+    free(bField);
+  }
+
   /* Write keywords.
   */
   fits_write_key(fptr, TDOUBLE, "RADIUS  ", &(par.radius), "[m] Model radius.", &status);
@@ -374,7 +394,7 @@ NOTES:
     exit(1);
   }
 
-  *maxNumCols = 7 + numDims*2 + numSpecies + numDensities;
+  *maxNumCols = 10 + numDims*2 + numSpecies + numDensities;
 
   *allColNames    = malloc(sizeof(**allColNames)   *(*maxNumCols));
   *allColNumbers  = malloc(sizeof(**allColNumbers) *(*maxNumCols));
@@ -510,6 +530,19 @@ NOTES:
   tformAllCols[colI] = "E";
   tunitAllCols[colI] = "K";
   dataTypeAllCols[colI] = TFLOAT;
+
+  /* should rather have a vector column? */
+  for(i=0;i<3;i++){
+    colI++;
+    sprintf((*allColNames)[colI], "B_FIELD%d", i+1);
+    if(bitIsSet(dataFlags, DS_bit_magfield)){
+      colToWriteI++;
+      (*allColNumbers)[colI] = colToWriteI;
+    }
+    tformAllCols[colI] = "E";
+    tunitAllCols[colI] = "T";
+    dataTypeAllCols[colI] = TFLOAT;
+  }
 
   /* Define the name, format, datatype, and physical units for the columns which will actually be written.
   */
@@ -839,7 +872,7 @@ If a COLLPARn keywords are found in the GRID extension header then collPartNames
   _Bool *sink=NULL;/* Probably should be char* but this seems to work. */
   unsigned short *numNeigh=NULL, i_us;
   double *velj=NULL, *densn=NULL;
-  float *dopb=NULL, *t=NULL, *abunm=NULL;
+  float *dopb=NULL, *t=NULL, *abunm=NULL, *bField=NULL;
 
   /* Go to the GRID extension.
   */
@@ -1095,6 +1128,34 @@ If a COLLPARn keywords are found in the GRID extension header then collPartNames
       (*dataFlags) |= (1 << DS_bit_temperatures);
     }
     free(t);
+  }
+
+  /* See if there are any B_FIELD columns:
+  */
+  status = 0;
+  sprintf(colName, "B_FIELD1");
+  fits_get_colnum(fptr, CASEINSEN, colName, &colNum, &status);
+  if(status!=COL_NOT_FOUND){
+    processFitsError(status);
+
+    /* Read the B_FIELD columns:
+    */
+    bField = malloc(sizeof(*bField)*numGridCells);
+    for(i=0;i<3;i++){
+      sprintf(colName, "B_FIELD%d", i+1);
+      fits_get_colnum(fptr, CASEINSEN, colName, &colNum, &status);
+      processFitsError(status);
+
+      fits_read_col(fptr, TFLOAT, colNum, firstRow, firstElem, numGridCells, 0, bField, &anynul, &status);
+      processFitsError(status);
+
+      for(i_LL=0;i_LL<numGridCells;i_LL++) {
+        (*gp)[i_LL].B[i] = (double)bField[i_LL];
+      }
+    }
+    free(bField);
+
+    (*dataFlags) |= (1 << DS_bit_magfield);
   }
 
   /* Read kwds:
@@ -1428,6 +1489,7 @@ long naxes[2];
     gp[i_u].mol[speciesI].pops = malloc(sizeof(double)*gridInfoRead->mols[speciesI].nLevels);
     for(xi=0;xi<gridInfoRead->mols[speciesI].nLevels;xi++)
       gp[i_u].mol[speciesI].pops[xi] = (double)row[xi];
+
   }
 
   free(row);

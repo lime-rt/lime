@@ -25,7 +25,7 @@ where
 
 The coefficients a_j are calculated in the present function for each grid point (which uses twice the memory needed). This is done by sampling velocity at N points along the edge with at distances evenly spread between 0 and ds, then solving the system of equations to obtain the interpolation coefficients.
 
-A Chebyshev interpolation would probably be preferred, but we wil leave that for future generations.
+A Chebyshev interpolation would probably be preferred, but we will leave that for future generations.
 
 Note that, given coefficients calculated for edge AB, the present definition allows easy conversion from the values calculated for grid point A to those for grid point B: coefficient j for B is just (-1)^j times the respective coefficient for A.
 
@@ -89,6 +89,9 @@ a_i is the ith coefficient, and v_i is the ith sample of the velocity component 
   }
 
   for(i=par->pIntensity;i<par->ncell;i++){
+    /* Set velocity values also for sink points (otherwise Delaunay ray-tracing has problems) */
+    velocity(gp[i].x[0],gp[i].x[1],gp[i].x[2],gp[i].vel);
+
     gp[i].a0=malloc(gp[i].numNeigh*sizeof(double));
     gp[i].a1=malloc(gp[i].numNeigh*sizeof(double));
     gp[i].a2=malloc(gp[i].numNeigh*sizeof(double));

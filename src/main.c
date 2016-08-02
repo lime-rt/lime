@@ -70,6 +70,7 @@ initParImg(inputPars *par, image **img)
   par->polarization=0;
   par->nThreads = NTHREADS;
   par->nSolveIters=17;
+  par->traceRayAlgorithm=0;
 
   par->gridOutFiles = malloc(sizeof(char *)*NUM_GRID_STAGES);
   for(i=0;i<NUM_GRID_STAGES;i++)
@@ -147,13 +148,14 @@ run(inputPars inpars, image *img)
      programs. In this case, inpars and img must be specified by the
      external program.
   */
-  int i,nLineImages;
+  int i,nLineImages,nlinetot;
   int initime=time(0);
   int popsdone=0;
   molData*     md = NULL;
   configInfo  par;
   struct grid* gp = NULL;
   char message[80];
+  struct blendInfo blends;
 
   /*Set locale to avoid trouble when reading files*/
   setlocale(LC_ALL, "C");
@@ -200,28 +202,26 @@ run(inputPars inpars, image *img)
       else
         continuumSetup(i,img,md,&par,gp);
       raytrace(i,&par,gp,md,img);
-      writefits(i,&par,md,img);
+      writeFits(i,&par,md,img);
     }
   }
 
   if(nLineImages>0 && !popsdone){
-    levelPops(md,&par,gp,&popsdone);
+    lineSetup(&par, md, gp, &nlinetot, &blends);
+    levelPops(md, &par, gp, nlinetot, blends, &popsdone);
+
     par.dataFlags |= (1 << DS_bit_populations);
-/* Disable the next lines for now, since we have not tested dataStageI<4 in the 'if' of this block, because we can't use an input grid file at dataStageI==4 yet: we have to disentangle all the functionality of molinit() before we can contemplate doing that. 
-  }else if(par.dataStageI==4 && par->nSolveIters>0 && par.writeGridAtStage[par.dataStageI-1]){
-    sprintf(message, "You just read a grid file at data stage %d, now you want to write it again?", par.dataStageI);
-    if(!silent) warning(message);
-*/
   }
 
   writeGridIfRequired(&par, gp, md, lime_FITS);
+  freeSomeGridFields((unsigned int)par.ncell, gp);
 
   /* Now make the line images.
   */
   for(i=0;i<par.nImages;i++){
     if(img[i].doline){
       raytrace(i,&par,gp,md,img);
-      writefits(i,&par,md,img);
+      writeFits(i,&par,md,img);
     }
   }
   

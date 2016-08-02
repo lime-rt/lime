@@ -9,6 +9,17 @@
 
 #include "lime.h"
 
+void
+freeGAux(const unsigned long numPoints, const int numSpecies, struct gAuxType *gAux) {
+  unsigned long ppi;
+
+  if(gAux !=NULL){
+    for(ppi=0;ppi<numPoints;ppi++)
+      freePop2(numSpecies, gAux[ppi].mol);
+    free(gAux);
+  }
+}
+
 void freeGrid(const unsigned int numPoints, const unsigned short numSpecies\
   , struct grid *gp){
 
@@ -25,7 +36,6 @@ void freeGrid(const unsigned int numPoints, const unsigned short numSpecies\
       free(gp[i_u].neigh);
       free(gp[i_u].w);
       free(gp[i_u].dens);
-      free(gp[i_u].nmol);
       free(gp[i_u].abun);
       free(gp[i_u].ds);
       freePopulation(numSpecies, gp[i_u].mol);
@@ -82,11 +92,8 @@ void freeMolsWithBlends(struct molWithBlends *mols, const int numMolsWithBlends)
   if(mols != NULL){
     for(mi=0;mi<numMolsWithBlends;mi++){
       if(mols[mi].lines != NULL){
-        for(li=0;li<mols[mi].numLinesWithBlends;li++){
-          if(mols[mi].lines[li].blends != NULL){
-            free(mols[mi].lines[li].blends);
-          }
-        }
+        for(li=0;li<mols[mi].numLinesWithBlends;li++)
+          free(mols[mi].lines[li].blends);
         free(mols[mi].lines);
       }
     }
@@ -116,6 +123,20 @@ freeParImg(const int nImages, inputPars *par, image *img){
   free(par->gridOutFiles);
 }
 
+void
+freePop2(const int numSpecies, struct pop2 *mol){
+  int i;
+
+  if(mol !=NULL){
+    for(i=0;i<numSpecies;i++){
+      free(mol[i].specNumDens);
+      free(mol[i].knu);
+      free(mol[i].dust);
+    }
+    free(mol);
+  }
+}
+
 void freePopulation(const unsigned short numSpecies, struct populations *pop){
   if(pop != NULL){
     unsigned short j;
@@ -129,4 +150,31 @@ void freePopulation(const unsigned short numSpecies, struct populations *pop){
   }
 }
 
+void freeSomeGridFields(const unsigned int numPoints, struct grid *gp){
+  unsigned int i_u;
+
+  if(gp != NULL){
+    for(i_u=0;i_u<numPoints;i_u++){
+      free(gp[i_u].a0);
+      gp[i_u].a0 = NULL;
+      free(gp[i_u].a1);
+      gp[i_u].a1 = NULL;
+      free(gp[i_u].a2);
+      gp[i_u].a2 = NULL;
+      free(gp[i_u].a3);
+      gp[i_u].a3 = NULL;
+      free(gp[i_u].a4);
+      gp[i_u].a4 = NULL;
+//      free(gp[i_u].dir); // this too after changing raytrace to remove the call to line_plane_intersect.
+      free(gp[i_u].w);
+      gp[i_u].w    = NULL;
+      free(gp[i_u].dens);
+      gp[i_u].dens = NULL;
+      free(gp[i_u].abun);
+      gp[i_u].abun = NULL;
+      free(gp[i_u].ds);
+      gp[i_u].ds   = NULL;
+    }
+  }
+}
 

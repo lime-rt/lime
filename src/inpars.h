@@ -4,7 +4,7 @@
 /* input parameters */
 typedef struct {
   double radius,minScale,tcmb,*nMolWeights,*dustWeights;
-  int sinkPoints,pIntensity,blend,*collPartIds;
+  int sinkPoints,pIntensity,blend,*collPartIds,traceRayAlgorithm;
   char *outputfile,*binoutputfile;
 //  char *inputfile; unused at present.
   char *gridfile;

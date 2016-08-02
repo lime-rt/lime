@@ -10,16 +10,16 @@
 #include "lime.h"
 
 void
-LTE(configInfo *par, struct grid *g, molData *m){
+LTE(configInfo *par, struct grid *gp, molData *m){
   int id,ispec;
 
   for(id=0;id<par->pIntensity;id++){
     for(ispec=0;ispec<par->nSpecies;ispec++){
-      g[id].nmol[ispec]=g[id].abun[ispec]*g[id].dens[0];
-      lteOnePoint(par, m, ispec, g[id].t[0], g[id].mol[ispec].pops);
+      gp[id].mol[ispec].nmol = gp[id].abun[ispec]*gp[id].dens[0];
+      lteOnePoint(par, m, ispec, gp[id].t[0], gp[id].mol[ispec].pops);
     }
   }
-  if(par->outputfile) popsout(par,g,m);
+  if(par->outputfile) popsout(par,gp,m);
 }
 
 void lteOnePoint(configInfo *par, molData *m, const int ispec, const double temp, double *pops){
