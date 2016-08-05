@@ -41,6 +41,7 @@ parseInput(inputPars inpar, configInfo *par, image **img, molData **m){
   par->antialias    = inpar.antialias;
   par->polarization = inpar.polarization;
   par->nThreads     = inpar.nThreads;
+  par->traceRayAlgorithm = inpar.traceRayAlgorithm;
 
   /* Now set the additional values in par. */
   par->ncell = inpar.pIntensity + inpar.sinkPoints;
@@ -108,9 +109,9 @@ parseInput(inputPars inpar, configInfo *par, image **img, molData **m){
   while((*img)[par->nImages].filename!=NULL && par->nImages<MAX_NIMAGES)
     par->nImages++;
 
-  /* Check that the user has supplied this function (needed unless par->pregrid):
+  /* Check that the user has supplied this function (needed unless par->doPregrid):
   */
-  if(!par->doPregrid)
+  if(!par->doPregrid || par->traceRayAlgorithm==1)
     velocity(0.0,0.0,0.0, dummyVel);
 
   /*

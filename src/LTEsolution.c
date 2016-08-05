@@ -15,7 +15,7 @@ LTE(configInfo *par, struct grid *g, molData *m){
 
   for(id=0;id<par->pIntensity;id++){
     for(ispec=0;ispec<par->nSpecies;ispec++){
-      g[id].nmol[ispec]=g[id].abun[ispec]*g[id].dens[0];
+      g[id].mol[ispec].nmol = g[id].abun[ispec]*g[id].dens[0];
       lteOnePoint(par, m, ispec, g[id].t[0], g[id].mol[ispec].pops);
     }
   }

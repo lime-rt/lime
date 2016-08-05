@@ -3,13 +3,13 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015 The LIME development team
+ *  Copyright (C) 2016 The LIME development team
  *
  */
 
 #include "lime.h"
 
-void stokesangles(double x, double y, double z, double (*rotMat)[3], double *trigFuncs){
+void stokesangles(double B[3], double (*rotMat)[3], double *trigFuncs){
   /*
 This function rotates the B-field vector from the model frame to the observer frame, then calculates and returns some useful values which will in function sourceFunc_pol() make it easy to obtain the Stokes parameters of polarized submillimetre dust emission. (For an explanation of the reasons for choosing the particular quantities we do, see the comment in that function.)
 
@@ -42,12 +42,10 @@ A vector defined in the LIME model basis can be converted to the observer basis 
 where ^T denotes transpose.
   */
   const int nDim=3;
-  double B[nDim],Bp[nDim];
+  double Bp[nDim];
   int i, j;
   double BxySquared, BSquared;
-
-  magfield(x,y,z,B);
-
+	
   /* Rotate B to the observer frame.
   */
   for(i=0;i<nDim;i++){

@@ -5,6 +5,8 @@
  *  Copyright (C) 2006-2014 Christian Brinch
  *  Copyright (C) 2015 The LIME development team
  *
+***TODO:
+	- Change the definition of the file format so that nmol is now written with the other mol[] scalars.
  */
 
 #include "lime.h"
@@ -15,6 +17,8 @@ popsin(configInfo *par, struct grid **gp, molData **md, int *popsdone){
   FILE *fp;
   int i,j,k,dummyNPart,dummyNTrans;
   double dummy;
+  struct cell *dc=NULL; /* Not used at present. */
+  unsigned long numCells;
 
   if((fp=fopen(par->restart, "rb"))==NULL){
     if(!silent) bail_out("Error reading binary output populations file!");
@@ -68,7 +72,6 @@ popsin(configInfo *par, struct grid **gp, molData **md, int *popsdone){
     (*gp)[i].a4 = NULL;
     (*gp)[i].dens = NULL;
     (*gp)[i].abun = NULL;
-    (*gp)[i].nmol = NULL;
     (*gp)[i].dir = NULL;
     (*gp)[i].neigh = NULL;
     (*gp)[i].w = NULL;
@@ -77,10 +80,10 @@ popsin(configInfo *par, struct grid **gp, molData **md, int *popsdone){
     fread(&(*gp)[i].x, sizeof (*gp)[i].x, 1, fp);
     fread(&(*gp)[i].vel, sizeof (*gp)[i].vel, 1, fp);
     fread(&(*gp)[i].sink, sizeof (*gp)[i].sink, 1, fp);
-    (*gp)[i].nmol=malloc(par->nSpecies*sizeof(double));
-    for(j=0;j<par->nSpecies;j++) fread(&(*gp)[i].nmol[j], sizeof(double), 1, fp);
-    fread(&(*gp)[i].dopb, sizeof (*gp)[i].dopb, 1, fp);
     (*gp)[i].mol=malloc(par->nSpecies*sizeof(struct populations));
+    for(j=0;j<par->nSpecies;j++)
+      fread(&(*gp)[i].mol[j].nmol, sizeof(double), 1, fp);
+    fread(&(*gp)[i].dopb, sizeof (*gp)[i].dopb, 1, fp);
     for(j=0;j<par->nSpecies;j++){
       (*gp)[i].mol[j].pops=malloc(sizeof(double)*(*md)[j].nlev);
       for(k=0;k<(*md)[j].nlev;k++) fread(&(*gp)[i].mol[j].pops[k], sizeof(double), 1, fp);
@@ -98,9 +101,11 @@ popsin(configInfo *par, struct grid **gp, molData **md, int *popsdone){
   }
   fclose(fp);
 
-  qhull(par, *gp);
+  delaunay(DIM, *gp, (unsigned long)par->ncell, 0, &dc, &numCells);
   distCalc(par, *gp);
   getVelosplines(par,*gp);
   *popsdone=1;
+
+  free(dc);
 }
 

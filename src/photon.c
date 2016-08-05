@@ -3,7 +3,7 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015 The LIME development team
+ *  Copyright (C) 2016 The LIME development team
  *
  */
 
@@ -64,8 +64,10 @@ int getNextEdge(double *inidir, int id, struct grid *g, const gsl_rng *ran){
 
 }
 
-void
-velocityspline(struct grid *g, int id, int k, double binv, double deltav, double *vfac){
+/*....................................................................*/
+void calcLineAmpSpline(struct grid *g, const int id, const int k\
+  , const double binv, const double deltav, double *vfac){
+
   int nspline,ispline,naver,iaver;
   double v1,v2,s1,s2,sd,v,vfacsub,d;
   
@@ -96,9 +98,10 @@ velocityspline(struct grid *g, int id, int k, double binv, double deltav, double
   return;
 }
 
+/*....................................................................*/
+void calcLineAmpLinear(struct grid *g, const int id, const int k\
+  , const double binv, const double deltav, double *vfac){
 
-void
-velocityspline_lin(struct grid *g, int id, int k, double binv, double deltav, double *vfac){
   int nspline,ispline,naver,iaver;
   double v1,v2,s1,s2,sd,v,vfacsub,d;
   
@@ -242,9 +245,9 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
 
         for(molI=0;molI<par->nSpecies;molI++){
           if(!par->doPregrid)
-            velocityspline(    g,here,neighI,g[id].mol[molI].binv,deltav,&vfac[molI]);
+            calcLineAmpSpline(g,here,neighI,g[id].mol[molI].binv,deltav,&vfac[molI]);
           else
-            velocityspline_lin(g,here,neighI,g[id].mol[molI].binv,deltav,&vfac[molI]);
+            calcLineAmpLinear(g,here,neighI,g[id].mol[molI].binv,deltav,&vfac[molI]);
           mp[molI].vfac[iphot]=vfac[molI];
         }
       } else {
@@ -252,9 +255,9 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
       
         for(molI=0;molI<par->nSpecies;molI++){
           if(!par->doPregrid)
-            velocityspline(    g,here,neighI,g[id].mol[molI].binv,deltav,&vfac[molI]);
+            calcLineAmpSpline(g,here,neighI,g[id].mol[molI].binv,deltav,&vfac[molI]);
           else
-            velocityspline_lin(g,here,neighI,g[id].mol[molI].binv,deltav,&vfac[molI]);
+            calcLineAmpLinear(g,here,neighI,g[id].mol[molI].binv,deltav,&vfac[molI]);
         }
       }
 
@@ -266,8 +269,8 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
           jnu=0.;
           alpha=0.;
 
-          sourceFunc_line(&jnu,&alpha,m,vfac[molI],g,here,molI,lineI);
-          sourceFunc_cont(&jnu,&alpha,g,here,molI,lineI);
+          sourceFunc_line(m[molI],vfac[molI],g[here].mol[molI],lineI,&jnu,&alpha);
+          sourceFunc_cont(g[here].mol[molI],lineI,&jnu,&alpha);
 
           dtau=alpha*ds;
           if(dtau < -30) dtau = -30;
@@ -295,11 +298,11 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
               velProj = deltav - blends.mols[nextMolWithBlend].lines[nextLineWithBlend].blends[bi].deltaV;
 
               if(!par->doPregrid)
-                velocityspline(    g,here,neighI,g[id].mol[molJ].binv,velProj,&vblend);
+                calcLineAmpSpline(g,here,neighI,g[id].mol[molJ].binv,velProj,&vblend);
               else
-                velocityspline_lin(g,here,neighI,g[id].mol[molJ].binv,velProj,&vblend);
+                calcLineAmpLinear(g,here,neighI,g[id].mol[molJ].binv,velProj,&vblend);
 
-              sourceFunc_line(&jnu,&alpha,m,vblend,g,here,molJ,lineJ);
+              sourceFunc_line(m[molJ],vblend,g[here].mol[molJ],lineJ,&jnu,&alpha);
               dtau=alpha*ds;
               if(dtau < -30) dtau = -30;
               calcSourceFn(dtau, par, &remnantSnu, &expDTau);
@@ -364,8 +367,8 @@ getjbar(int posn, molData *m, struct grid *g, const int molI\
         jnu=0.;
         alpha=0.;
 
-        sourceFunc_line(&jnu,&alpha,m,mp[molI].vfac[iphot],g,posn,molI,lineI);
-        sourceFunc_cont(&jnu,&alpha,g,posn,molI,lineI);
+        sourceFunc_line(m[molI],mp[molI].vfac[iphot],g[posn].mol[molI],lineI,&jnu,&alpha);
+        sourceFunc_cont(g[posn].mol[molI],lineI,&jnu,&alpha);
         tau=alpha*halfFirstDs[iphot];
         calcSourceFn(tau, par, &remnantSnu, &expTau);
         remnantSnu *= jnu*halfFirstDs[iphot];
@@ -382,7 +385,7 @@ getjbar(int posn, molData *m, struct grid *g, const int molI\
             molJ  = blends.mols[nextMolWithBlend].lines[nextLineWithBlend].blends[bi].molJ;
             lineJ = blends.mols[nextMolWithBlend].lines[nextLineWithBlend].blends[bi].lineJ;
 
-            sourceFunc_line(&jnu,&alpha,m,mp[molI].vfac[iphot],g,posn,molJ,lineJ);
+            sourceFunc_line(m[molJ],mp[molI].vfac[iphot],g[posn].mol[molJ],lineJ,&jnu,&alpha);
             tau=alpha*halfFirstDs[iphot];
             calcSourceFn(tau, par, &remnantSnu, &expTau);
             remnantSnu *= jnu*halfFirstDs[iphot];
