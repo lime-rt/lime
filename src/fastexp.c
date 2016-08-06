@@ -13,6 +13,15 @@
 extern double EXP_TABLE_2D[128][10];
 extern double EXP_TABLE_3D[256][2][10];
 
+extern double ERF_TABLE[10000];
+
+void fillErfTable() {
+  int i;
+  for (i=0;i<10000;i++) {
+    ERF_TABLE[i]=(SPI/2.)*erf(i*1./100.);		// TODO: check normalization
+  }
+}
+
 
 int factorial(const int n){
   int i, result;

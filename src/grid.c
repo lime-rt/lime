@@ -18,11 +18,9 @@ gridAlloc(configInfo *par, struct grid **g){
   memset(*g, 0., sizeof(struct grid) * (par->pIntensity+par->sinkPoints));
 
   for(i=0;i<(par->pIntensity+par->sinkPoints); i++){
-    (*g)[i].a0 = NULL;
-    (*g)[i].a1 = NULL;
-    (*g)[i].a2 = NULL;
-    (*g)[i].a3 = NULL;
-    (*g)[i].a4 = NULL;
+    (*g)[i].v1 = NULL;
+    (*g)[i].v2 = NULL;
+    (*g)[i].v3 = NULL;
     (*g)[i].mol = NULL;
     (*g)[i].dir = NULL;
     (*g)[i].neigh = NULL;
@@ -777,7 +775,7 @@ buildGrid(configInfo *par, struct grid *g){
 
   //	getArea(par,g, ran);
   //	getMass(par,g, ran);
-  getVelosplines(par,g);
+  getVelocities(par,g);
   dumpGrid(par,g);
   free(dc);
 

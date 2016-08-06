@@ -65,11 +65,9 @@ popsin(configInfo *par, struct grid **gp, molData **md, int *popsdone){
   *gp=malloc(sizeof(struct grid)*par->ncell);
 
   for(i=0;i<par->ncell;i++){
-    (*gp)[i].a0 = NULL;
-    (*gp)[i].a1 = NULL;
-    (*gp)[i].a2 = NULL;
-    (*gp)[i].a3 = NULL;
-    (*gp)[i].a4 = NULL;
+    (*gp)[i].v1 = NULL;
+    (*gp)[i].v2 = NULL;
+    (*gp)[i].v3 = NULL;
     (*gp)[i].dens = NULL;
     (*gp)[i].abun = NULL;
     (*gp)[i].dir = NULL;
@@ -103,7 +101,7 @@ popsin(configInfo *par, struct grid **gp, molData **md, int *popsdone){
 
   delaunay(DIM, *gp, (unsigned long)par->ncell, 0, &dc, &numCells);
   distCalc(par, *gp);
-  getVelosplines(par,*gp);
+  getVelocities(par,*gp);
   *popsdone=1;
 
   free(dc);

@@ -654,6 +654,7 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
         for (ispec=0;ispec<par->nSpecies;ispec++){
           mp[ispec].phot = malloc(sizeof(double)*m[ispec].nline*max_phot);
           mp[ispec].vfac = malloc(sizeof(double)*               max_phot);
+          mp[ispec].vfac_loc = malloc(sizeof(double)*           max_phot);
           mp[ispec].jbar = malloc(sizeof(double)*m[ispec].nline);
         }
         halfFirstDs = malloc(sizeof(*halfFirstDs)*max_phot);

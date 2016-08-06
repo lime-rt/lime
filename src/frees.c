@@ -25,11 +25,9 @@ freeGrid(configInfo *par, molData *m , struct grid *g){
   int i;
   if(g != NULL){
     for(i=0;i<(par->pIntensity+par->sinkPoints); i++){
-      free(g[i].a0);
-      free(g[i].a1);
-      free(g[i].a2);
-      free(g[i].a3);
-      free(g[i].a4);
+      free(g[i].v1);
+      free(g[i].v2);
+      free(g[i].v3);
       free(g[i].dir);
       free(g[i].neigh);
       free(g[i].w);
@@ -50,6 +48,7 @@ freeGridPointData(configInfo *par, gridPointData *mol){
       free(mol[i].jbar);
       free(mol[i].phot);
       free(mol[i].vfac);
+      free(mol[i].vfac_loc);
     }
     free(mol);
   }
