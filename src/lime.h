@@ -84,7 +84,7 @@
 #define MAX_NSPECIES            100
 #define MAX_NIMAGES             100
 #define N_RAN_PER_SEGMENT       3
-#define FAST_EXP_MAX_TAYLOR	3
+#define FAST_EXP_MAX_TAYLOR	3		/* don't increase this to >8 without changing the oneOver_i lookup */
 #define FAST_EXP_NUM_BITS	8
 #define MAX_N_COLL_PART		7
 #define N_SMOOTH_ITERS          20
@@ -408,7 +408,7 @@ double EXP_TABLE_2D[1][1]; // nominal definitions so the fastexp.c module will c
 double EXP_TABLE_3D[1][1][1];
 #endif
 
-extern double ERF_TABLE[10000];
+extern double ERF_TABLE[6145];
 extern const double oneOver_i[9];
 
 /* Inline functions */

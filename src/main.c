@@ -28,7 +28,7 @@ double EXP_TABLE_2D[1][1]; // nominal definitions so the fastexp.c module will c
 double EXP_TABLE_3D[1][1][1];
 #endif
 
-double ERF_TABLE[10000];
+double ERF_TABLE[6145];
 const double oneOver_i[9] = {0.0, 1./1., 1./2., 1./3., 1./4., 1./5., 1./6., 1./7., 1./8.};
 
 

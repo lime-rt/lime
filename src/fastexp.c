@@ -11,8 +11,9 @@
 
 void fillErfTable() {
   int i;
-  for (i=0;i<10000;i++) {
-    ERF_TABLE[i]=(SPI/2.)*erf(i*1./100.);		// TODO: check normalization
+  for (i=0;i<6145;i++) {
+    /* for x>6 erf(x)-1<machine epsilon */
+    ERF_TABLE[i]=(SPI/2.)*erf(i*1./1024.);		// TODO: check normalization
   }
 }
 
