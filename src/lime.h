@@ -108,7 +108,6 @@
 #define CP_He			6
 #define CP_Hplus		7
 
-
 typedef struct {
   double radius,minScale,tcmb,*nMolWeights,*dustWeights;
   double radiusSqu,minScaleSqu,taylorCutoff;
@@ -139,7 +138,7 @@ typedef struct {
 
 /* Data concerning a single grid vertex which is passed from photon() to stateq(). This data needs to be thread-safe. */
 typedef struct {
-  double *jbar,*phot,*vfac;
+  double *jbar,*phot,*vfac,*vfac_loc;
 } gridPointData;
 
 typedef struct {
@@ -168,7 +167,7 @@ struct populations {
 struct grid {
   int id;
   double x[DIM], vel[DIM], B[3]; /* B field only makes physical sense in 3 dimensions. */
-  double *a0,*a1,*a2,*a3,*a4;
+  double *v1,*v2,*v3;
   int numNeigh;
   point *dir;
   struct grid **neigh;
@@ -300,9 +299,7 @@ void	calcGridCollRates(configInfo*, molData*, struct grid*);
 void	calcGridDustOpacity(configInfo*, molData*, struct grid*);
 void	calcGridMolDensities(configInfo*, struct grid*);
 void	calcLineAmpInterp(const double, const double, const double, double*);
-void	calcLineAmpLinear(struct grid*, const int, const int, const double, const double, double*);
 void	calcLineAmpSample(const double x[3], const double dx[3], const double, const double, double*, const int, const double, const double, double*);
-void   	calcLineAmpSpline(struct grid*, const int, const int, const double, const double, double*);
 void	calcMolCMBs(configInfo*, molData*);
 void	calcSourceFn(double, const configInfo*, double*, double*);
 void	calcTableEntries(const int, const int);
@@ -317,7 +314,8 @@ void	doBaryInterp(const intersectType, struct grid*, struct gAuxType*, double*, 
 void	doSegmentInterp(gridInterp*, const int, molData*, const int, const double, const int);
 faceType extractFace(struct grid*, struct cell*, const unsigned long, const int);
 int	factorial(const int);
-double	FastExp(const float);
+// double	FastExp(const float);
+void    fillErfTable();
 void	fit_d1fi(double, double, double*);
 void	fit_fi(double, double, double*);
 void	fit_rr(double, double, double*);
@@ -330,7 +328,7 @@ void	freeMolsWithBlends(struct molWithBlends*, const int);
 void	freeParImg(const int, inputPars*, image*);
 void	freePopulation(configInfo*, molData*, struct populations*);
 void	freePop2(const int, struct pop2*);
-double	gaussline(double, double);
+double  gaussline(const double, const double);
 void	getArea(configInfo *, struct grid *, const gsl_rng *);
 void	getclosest(double, double, double, long *, long *, double *, double *, double *);
 void	getjbar(int, molData*, struct grid*, const int, configInfo*, struct blendInfo, int, gridPointData*, double*);
@@ -338,8 +336,8 @@ void	getMass(configInfo *, struct grid *, const gsl_rng *);
 void	getmatrix(int, gsl_matrix *, molData *, struct grid *, int, gridPointData *);
 int	getNewEntryFaceI(const unsigned long, const struct cell);
 int	getNextEdge(double*, int, struct grid*, const gsl_rng*);
-void	getVelosplines(configInfo *, struct grid *);
-void	getVelosplines_lin(configInfo *, struct grid *);
+void	getVelocities(configInfo *, struct grid *);
+void	getVelocities_pregrid(configInfo *, struct grid *);
 void	gridAlloc(configInfo *, struct grid **);
 void	gridLineInit(configInfo*, molData*, struct grid*);
 void	input(inputPars *, image *);
@@ -367,8 +365,8 @@ void	report(int, configInfo *, struct grid *);
 void	setUpConfig(configInfo *, image **, molData **);
 void	setUpDensityAux(configInfo*, int*, const int);
 void	smooth(configInfo *, struct grid *);
-void    sourceFunc_line(const molData, const double, const struct populations, const int, double*, double*);
-void    sourceFunc_cont(const struct populations, const int, double*, double*);
+// void    sourceFunc_line(const molData, const double, const struct populations, const int, double*, double*);
+// void    sourceFunc_cont(const struct populations, const int, double*, double*);
 void    sourceFunc_line_raytrace(const molData, const double, const struct pop2, const int, double*, double*);
 void    sourceFunc_cont_raytrace(const struct pop2, const int, double*, double*);
 void	sourceFunc_pol(double*, const struct pop2, int, double (*rotMat)[3], double*, double*);
@@ -378,7 +376,7 @@ void	stokesangles(double*, double (*rotMat)[3], double*);
 double	taylor(const int, const float);
 void	traceray(rayData, const int, const int, const int, configInfo*, struct grid*, molData*, image*, struct gAuxType*, const int, int*, int*, const double, const int, const double);
 void	traceray_smooth(rayData, const int, const int, const int, configInfo*, struct grid*, molData*, image*, struct gAuxType*, const int, int*, int*, struct cell*, const unsigned long, const double, gridInterp*, const int, const double, const int, const double);
-double	veloproject(double *, double *);
+double	veloproject(const double *, const double *);
 void	write2Dfits(int, configInfo *, molData *, image *);
 void	write3Dfits(int, configInfo *, molData *, image *);
 void	writeFits(const int, configInfo*, molData*, image*);
@@ -401,6 +399,103 @@ void	bail_out(char *);
 void    collpartmesg(char *, int);
 void    collpartmesg2(char *, int);
 void    collpartmesg3(int, int);
+
+#ifdef FASTEXP
+extern double EXP_TABLE_2D[128][10];
+extern double EXP_TABLE_3D[256][2][10];
+#else
+double EXP_TABLE_2D[1][1]; // nominal definitions so the fastexp.c module will compile.
+double EXP_TABLE_3D[1][1][1];
+#endif
+
+extern double ERF_TABLE[10000];
+extern const double oneOver_i[9];
+
+/* Inline functions */
+
+/*....................................................................*/
+inline void
+sourceFunc_cont(const struct populations gm, const int lineI, double *jnu\
+  , double *alpha){
+
+  /* Emission */
+  /* Continuum part:	j_nu = T_dust * kappa_nu */
+  *jnu   += gm.dust[lineI]*gm.knu[lineI];
+
+  /* Absorption */
+  /* Continuum part: Dust opacity */
+  *alpha += gm.knu[lineI];
+
+  return;
+}
+
+/*....................................................................*/
+inline void
+sourceFunc_line(const molData md, const double vfac, const struct populations gm\
+  , const int lineI, double *jnu, double *alpha){
+
+  double factor = vfac*HPIP*gm.binv*gm.nmol;
+  /* Line part:		j_nu = v*consts*1/b*rho*n_i*A_ij */
+  *jnu   += factor*gm.pops[md.lau[lineI]]*md.aeinst[lineI];
+
+  /* Line part: alpha_nu = v*const*1/b*rho*(n_j*B_ij-n_i*B_ji) */
+  *alpha += factor*(gm.pops[md.lal[lineI]]*md.beinstl[lineI]
+                                      -gm.pops[md.lau[lineI]]*md.beinstu[lineI]);
+
+  return;
+}
+
+inline double 
+FastExp(const float negarg){
+  /*
+See description of the lookup algorithm in function calcFastExpRange(). ****NOTE!**** Most numbers here are hard-wired for the sake of speed. If need be, they can be verified (or recalculated for different conditions) via calcTableEntries().
+  */
+  int exponentMask=0x7f800000,ieee754NumMantBits=23;
+  int exponentOffset=122,numExponentsUsed=10;
+  /*
+This value should be calculated from 127+lowestExponent, where 127 is the offset for an exponent of zero laid down in the IEEE 754 standard, and both lowestExponent and numExponentsUsed can be calculated via calcFastExpRange().
+
+  exponentOffset = ieee754ExpOffset + lowestExponent;
+  */
+
+  int mantMask0=0x007f0000, mantMask1=0x0000ff00, mantMask2=0x000000ff;
+  int mantOffset0=16, mantOffset1=8, mantOffset2=0;
+  int i,j0,j1,j2,l;
+  union
+  {
+    float f;
+    int m;
+  } floPo;
+  double result;
+
+  // Should raise an exception here #ifndef FASTEXP?
+
+  if (negarg<0.0) return exp(-negarg);
+  if (negarg==0.0) return 1.0;
+
+  floPo.f = negarg;
+  l = ((floPo.m & exponentMask)>>ieee754NumMantBits)-exponentOffset;
+
+  if (l<0){ // do the Taylor approximation.
+    result = 1.0;
+    for (i=FAST_EXP_MAX_TAYLOR;i>0;i--){
+      result = 1.0 - negarg*result*oneOver_i[i];
+    }
+    return result;
+
+  }else if(l>=numExponentsUsed){
+    return 0.0;
+  }
+
+  j0 = (floPo.m & mantMask0)>>mantOffset0;
+  j1 = (floPo.m & mantMask1)>>mantOffset1;
+  j2 = (floPo.m & mantMask2)>>mantOffset2;
+
+  return (EXP_TABLE_2D[j0]   [l]*
+          EXP_TABLE_3D[j1][0][l]*
+          EXP_TABLE_3D[j2][1][l]);
+}
+
 
 #endif /* LIME_H */
 

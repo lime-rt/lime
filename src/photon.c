@@ -7,9 +7,14 @@
  *
  */
 
-extern double ERF_TABLE[10000];
 
 #include "lime.h"
+
+extern inline void sourceFunc_cont(const struct populations, const int, double*, double*);
+extern inline void sourceFunc_line(const molData, const double, const struct populations, const int, double*, double*);
+extern inline double FastExp(const float);
+
+extern double ERF_TABLE[10000];
 
 
 double veloproject(const double dx[3], const double *vel){
@@ -180,13 +185,13 @@ void calcSourceFn(double dTau, const configInfo *par, double *remnantSnu, double
 #ifdef FASTEXP
   *expDTau = FastExp(dTau);
   if (fabs(dTau)<par->taylorCutoff){
-    *remnantSnu = 1. - dTau*(1. - dTau/3.)/2.;
+    *remnantSnu = 1. - dTau*(1. - dTau*(1./3.))*(1./2.);
   } else {
     *remnantSnu = (1.-(*expDTau))/dTau;
   }
 #else
   if (fabs(dTau)<par->taylorCutoff){
-    *remnantSnu = 1. - dTau*(1. - dTau/3.)/2.;
+    *remnantSnu = 1. - dTau*(1. - dTau*(1./3.))*(1./2.);
     *expDTau = 1. - dTau*(*remnantSnu);
   } else {
     *expDTau = exp(-dTau);
