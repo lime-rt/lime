@@ -9,6 +9,17 @@
 
 #include "lime.h"
 
+void writeFits(const int i, configInfo *par, molData *m, image *img){
+  if(img[i].unit<5)
+    write3Dfits(i,par,m,img);
+  else if(img[i].unit==5)
+    write2Dfits(i,par,m,img);
+  else{
+    if(!silent) bail_out("Image unit number invalid");
+    exit(0);
+  }
+}
+
 void 
 write3Dfits(int im, configInfo *par, molData *m, image *img){
   double bscale,bzero,epoch,lonpole,equinox,restfreq;
@@ -92,14 +103,14 @@ write3Dfits(int im, configInfo *par, molData *m, image *img){
   if(img[im].unit==4) fits_write_key(fptr, TSTRING, "BUNIT", &"        ", "", &status);
 
   if(     img[im].unit==0)
-    scale=(CLIGHT/img[im].freq)*(CLIGHT/img[im].freq)/2./KBOLTZ*m[0].norm; 
+    scale=(CLIGHT/img[im].freq)*(CLIGHT/img[im].freq)/2./KBOLTZ;
   else if(img[im].unit==1)
-    scale=1e26*img[im].imgres*img[im].imgres*m[0].norm;
+    scale=1e26*img[im].imgres*img[im].imgres;
   else if(img[im].unit==2)
-    scale=m[0].norm;
+    scale=1.0;
   else if(img[im].unit==3) {
     ru3 = img[im].distance/1.975e13;
-    scale=4.*PI*ru3*ru3*img[im].freq*img[im].imgres*img[im].imgres*m[0].norm;
+    scale=4.*PI*ru3*ru3*img[im].freq*img[im].imgres*img[im].imgres;
   }
   else if(img[im].unit!=4) {
     if(!silent) bail_out("Image unit number invalid");
@@ -135,7 +146,7 @@ write3Dfits(int im, configInfo *par, molData *m, image *img){
 
   free(row);
 
-  if(!silent) done(13);
+  if(!silent) printDone(13);
 }
 
 void 
@@ -215,14 +226,14 @@ write2Dfits(int im, configInfo *par, molData *m, image *img){
   if(img[im].unit==5) fits_write_key(fptr, TSTRING, "BUNIT", &"N_RAYS  ", "", &status);
 
   if(     img[im].unit==0)
-    scale=(CLIGHT/img[im].freq)*(CLIGHT/img[im].freq)/2./KBOLTZ*m[0].norm; 
+    scale=(CLIGHT/img[im].freq)*(CLIGHT/img[im].freq)/2./KBOLTZ;
   else if(img[im].unit==1)
-    scale=1e26*img[im].imgres*img[im].imgres*m[0].norm;
+    scale=1e26*img[im].imgres*img[im].imgres;
   else if(img[im].unit==2)
-    scale=m[0].norm;
+    scale=1.0;
   else if(img[im].unit==3) {
     ru3 = img[im].distance/1.975e13;
-    scale=4.*PI*ru3*ru3*img[im].freq*img[im].imgres*img[im].imgres*m[0].norm;
+    scale=4.*PI*ru3*ru3*img[im].freq*img[im].imgres*img[im].imgres;
   }
   else if(img[im].unit!=4 && img[im].unit!=5) {
     if(!silent) bail_out("Image unit number invalid");
@@ -262,6 +273,6 @@ write2Dfits(int im, configInfo *par, molData *m, image *img){
 
   free(row);
 
-  if(!silent) done(13);
+  if(!silent) printDone(13);
 }
 
