@@ -17,7 +17,7 @@ TODO:
 
 void
 parseInput(inputPars inpar, configInfo *par, image **img, molData **m){
-  int i,id,ispec;
+  int i,id;
   double BB[3],normBSquared,dens[MAX_N_COLL_PART];
   double cosPhi,sinPhi,cosTheta,sinTheta,dummyVel[DIM];
   FILE *fp;
@@ -129,6 +129,8 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
 
   */
   par->taylorCutoff = pow(24.*DBL_EPSILON, 0.25);
+
+  par->numDims = DIM;
 
   /* Allocate pixel space and parse image information */
   for(i=0;i<par->nImages;i++){

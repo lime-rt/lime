@@ -137,7 +137,7 @@ freePop2(const int numSpecies, struct pop2 *mol){
 void
 freePopulation(configInfo *par, molData *m, struct populations *pop ){
   if(pop != NULL){
-    int j,k;
+    int j;
     for(j=0; j<par->nSpecies; j++){
       free( pop[j].pops );
       free( pop[j].knu );

@@ -9,13 +9,12 @@
 
 #include "lime.h"
 
-int
-pointEvaluation(configInfo *par, double ran, double x, double y, double z){
+int pointEvaluation(configInfo *par, const double uniformRandom, double *r){
   double fracDensity;
 
-  gridDensity(*par, x, y, z, &fracDensity);
+  fracDensity = gridDensity(par, r);
 
-  if(ran < fracDensity) return 1;
+  if(uniformRandom < fracDensity) return 1;
   else return 0;
 }
 
