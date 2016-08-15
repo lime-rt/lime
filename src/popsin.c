@@ -81,7 +81,7 @@ popsin(configInfo *par, struct grid **gp, molData **md, int *popsdone){
     (*gp)[i].mol=malloc(par->nSpecies*sizeof(struct populations));
     for(j=0;j<par->nSpecies;j++)
       fread(&(*gp)[i].mol[j].nmol, sizeof(double), 1, fp);
-    fread(&(*gp)[i].dopb, sizeof (*gp)[i].dopb, 1, fp);
+    fread(&(*gp)[i].dopb_turb, sizeof (*gp)[i].dopb_turb, 1, fp);
     for(j=0;j<par->nSpecies;j++){
       (*gp)[i].mol[j].pops=malloc(sizeof(double)*(*md)[j].nlev);
       for(k=0;k<(*md)[j].nlev;k++) fread(&(*gp)[i].mol[j].pops[k], sizeof(double), 1, fp);

@@ -175,7 +175,7 @@ struct grid {
   int sink;
   int nphot;
   int conv;
-  double *dens,t[2],*abun, dopb;
+  double *dens,t[2],*abun, dopb_turb;
   double *ds;
   struct populations *mol;
 };

@@ -78,7 +78,7 @@ binpopsout(configInfo *par, struct grid *g, molData *m){
     fwrite(&g[i].sink, sizeof(int),      1, fp);
     for(j=0;j<par->nSpecies;j++)
       fwrite(&g[i].mol[j].nmol,  sizeof(double),           1, fp);
-    fwrite(&g[i].dopb, sizeof g[i].dopb, 1, fp);
+    fwrite(&g[i].dopb_turb, sizeof g[i].dopb_turb, 1, fp);
     for(j=0;j<par->nSpecies;j++){
       fwrite(g[i].mol[j].pops,  sizeof(double)*m[j].nlev, 1, fp);
       fwrite(g[i].mol[j].knu,   sizeof(double)*m[j].nline,1, fp);

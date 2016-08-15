@@ -135,18 +135,18 @@ void calcLineAmpPWLin(struct grid *g, const int id, const int k\
 
   if (fabs(v[1]-v[0])*binv_this>1./512.) {
      *vfac_out=0.5*geterf(v[0]*binv_this,v[1]*binv_this);
-  } else *vfac_out+=0.5*gaussline(0.5*(v[0]+v[1]),binv_this);
+  } else *vfac_out=0.5*gaussline(0.5*(v[0]+v[1]),binv_this);
   if (fabs(v[2]-v[1])*binv_this>1./512.) {
-    *vfac_out=0.5*geterf(v[1]*binv_this,v[2]*binv_this);
+    *vfac_out+=0.5*geterf(v[1]*binv_this,v[2]*binv_this);
   } else *vfac_out+=0.5*gaussline(0.5*(v[1]+v[2]),binv_this);
   
   *vfac_in=0.0;
 
   if (fabs(v[3]-v[2])*binv_next>1./512.) {
      *vfac_in=0.5*geterf(v[2]*binv_next,v[3]*binv_next);
-  } else *vfac_in+=0.5*gaussline(0.5*(v[2]+v[3]),binv_next);
+  } else *vfac_in=0.5*gaussline(0.5*(v[2]+v[3]),binv_next);
   if (fabs(v[4]-v[3])*binv_next>1./512.) {
-    *vfac_in=0.5*geterf(v[3]*binv_next,v[4]*binv_next);
+    *vfac_in+=0.5*geterf(v[3]*binv_next,v[4]*binv_next);
   } else *vfac_in+=0.5*gaussline(0.5*(v[3]+v[4]),binv_next);
 }
 
@@ -216,7 +216,8 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
 
   int iphot,iline,here,there,firststep,neighI,np_per_line,ip_at_line;
   int nextMolWithBlend, nextLineWithBlend, molI, lineI, molJ, lineJ, bi;
-  double deltav,segment,vblend_in,vblend_out,dtau,expDTau,jnu,alpha,ds_in=0.0,ds_out=0.0,vfac_in[par->nSpecies],vfac_out[par->nSpecies],vfac_inprev[par->nSpecies],pt_theta,pt_z,semiradius;
+  double segment,vblend_in,vblend_out,dtau,expDTau,jnu,alpha,ds_in=0.0,ds_out=0.0,pt_theta,pt_z,semiradius;
+  double deltav[par->nSpecies],vfac_in[par->nSpecies],vfac_out[par->nSpecies],vfac_inprev[par->nSpecies];
   double *tau,*expTau,inidir[3];
   double remnantSnu, velProj;
 
@@ -256,18 +257,21 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
     entire ensemble of photons) between -0.5 and +0.5, and are chosen
     from a sequence of possible values separated by
     1/(N_RAN_PER_SEGMENT*ininphot).
+
     */
 
-    here=g[id].id;
-    deltav=segment*4.3*g[id].dopb+veloproject(inidir,g[id].vel);
     for (molI=0;molI<par->nSpecies;molI++){
+      /* Is factor 4.3=[-2.15,2.15] enough?? */
+      deltav[molI]=4.3*segment*g[id].mol[molI].dopb+veloproject(inidir,g[id].vel);
+
       /*
       This is the local (=evaluated at a grid point, not averaged over the local cell) lineshape.
       We store this for later use in ALI loops.
       */
-      mp[molI].vfac_loc[iphot]=gaussline(deltav,g[id].mol[molI].binv);
-      
+      mp[molI].vfac_loc[iphot]=gaussline(deltav[molI]-veloproject(inidir,g[id].vel),g[id].mol[molI].binv);
     }
+
+    here=g[id].id;
 
     /* Photon propagation loop */
     do{
@@ -281,9 +285,9 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
 
         for(molI=0;molI<par->nSpecies;molI++){
           if(!par->doPregrid) {
-            calcLineAmpPWLin(g,here,neighI,molI,deltav,inidir,&vfac_in[molI],&vfac_out[molI]);
+            calcLineAmpPWLin(g,here,neighI,molI,deltav[molI],inidir,&vfac_in[molI],&vfac_out[molI]);
          } else
-            calcLineAmpLin(g,here,neighI,molI,deltav,inidir,&vfac_in[molI],&vfac_out[molI]);
+            calcLineAmpLin(g,here,neighI,molI,deltav[molI],inidir,&vfac_in[molI],&vfac_out[molI]);
 
           mp[molI].vfac[iphot]=vfac_out[molI];
         }
@@ -300,9 +304,9 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
         for(molI=0;molI<par->nSpecies;molI++){
           vfac_inprev[molI]=vfac_in[molI];
           if(!par->doPregrid)
-            calcLineAmpPWLin(g,here,neighI,molI,deltav,inidir,&vfac_in[molI],&vfac_out[molI]);
+            calcLineAmpPWLin(g,here,neighI,molI,deltav[molI],inidir,&vfac_in[molI],&vfac_out[molI]);
           else
-            calcLineAmpLin(g,here,neighI,molI,deltav,inidir,&vfac_in[molI],&vfac_out[molI]);
+            calcLineAmpLin(g,here,neighI,molI,deltav[molI],inidir,&vfac_in[molI],&vfac_out[molI]);
         }
       }
 
@@ -311,17 +315,19 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
       for(molI=0;molI<par->nSpecies;molI++){
         nextLineWithBlend = 0;
         for(lineI=0;lineI<m[molI].nline;lineI++){
-          jnu=0.;
+          double jnu_in=0., jnu_out=0.;
+          double alpha_in=0., alpha_out=0.;
           alpha=0.;
+          jnu=0.;
 
-          sourceFunc_line(m[molI],vfac_inprev[molI],g[here].mol[molI],lineI,&jnu,&alpha);
-          sourceFunc_line(m[molI],vfac_out[molI],g[here].mol[molI],lineI,&jnu,&alpha);
+          sourceFunc_line(m[molI],vfac_inprev[molI],g[here].mol[molI],lineI,&jnu_in,&alpha_in);
+          sourceFunc_line(m[molI],vfac_out[molI],g[here].mol[molI],lineI,&jnu_out,&alpha_out);
           sourceFunc_cont(g[here].mol[molI],lineI,&jnu,&alpha);
+          dtau=alpha_in*ds_in+alpha_out*ds_out+alpha*(ds_in+ds_out);
 
-          dtau=alpha*(ds_in+ds_out);
           if(dtau < -30) dtau = -30;
           calcSourceFn(dtau, par, &remnantSnu, &expDTau);
-          remnantSnu *= jnu*(ds_in+ds_out);
+          remnantSnu *= jnu*(ds_in+ds_out)+jnu_in*ds_in+jnu_out*ds_out;
 
           mp[molI].phot[lineI+iphot*m[molI].nline]+=expTau[iline]*remnantSnu;
           tau[iline]+=dtau;
@@ -341,14 +347,14 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
             for(bi=0;bi<blends.mols[nextMolWithBlend].lines[nextLineWithBlend].numBlends;bi++){
               molJ  = blends.mols[nextMolWithBlend].lines[nextLineWithBlend].blends[bi].molJ;
               lineJ = blends.mols[nextMolWithBlend].lines[nextLineWithBlend].blends[bi].lineJ;
-              velProj = deltav - blends.mols[nextMolWithBlend].lines[nextLineWithBlend].blends[bi].deltaV;
+              velProj = deltav[molI] - blends.mols[nextMolWithBlend].lines[nextLineWithBlend].blends[bi].deltaV;
 	      /*  */
               if(!par->doPregrid)
                 calcLineAmpPWLin(g,here,neighI,molJ,velProj,inidir,&vblend_in,&vblend_out);
               else
                 calcLineAmpLin(g,here,neighI,molJ,velProj,inidir,&vblend_in,&vblend_out);
 
-	      /* we should really use the previous vblend_in, but I don't feel like writing the necessary code... */
+	      /* we should really use the previous vblend_in, but I don't feel like writing the necessary code now... */
               sourceFunc_line(m[molJ],vblend_out,g[here].mol[molJ],lineJ,&jnu,&alpha);
               dtau=alpha*(ds_in+ds_out);
               if(dtau < -30) dtau = -30;
