@@ -119,7 +119,7 @@ typedef struct {
   char *pregrid;
   char *restart;
   char *dust;
-  int sampling,lte_only,init_lte,antialias,polarization,nThreads;
+  int sampling,lte_only,init_lte,antialias,polarization,nThreads,numDims;
   char **moldatfile;
 } configInfo;
 
@@ -286,7 +286,7 @@ void doppler(double,double,double, double *);
 void velocity(double,double,double,double *);
 void magfield(double,double,double,double *);
 void gasIIdust(double,double,double,double *);
-void gridDensity(configInfo,double,double,double,double*);
+double gridDensity(configInfo*, double*);
 
 /* More functions */
 void	run(inputPars, image *);
@@ -354,7 +354,7 @@ void	openSocket(char*);
 void	parseInput(inputPars, configInfo*, image**, molData**);
 void	photon(int, struct grid*, molData*, int, const gsl_rng*, configInfo*, const int, struct blendInfo, gridPointData*, double*);
 double	planckfunc(int, double, molData *, int);
-int	pointEvaluation(configInfo*, double, double, double, double);
+int	pointEvaluation(configInfo*, const double, double*);
 void	popsin(configInfo *, struct grid **, molData **, int *);
 void	popsout(configInfo *, struct grid *, molData *);
 void	predefinedGrid(configInfo *, struct grid *);

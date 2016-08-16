@@ -145,7 +145,7 @@ void calcGridDustOpacity(configInfo *par, molData *md, struct grid *gp){
 void calcGridCollRates(configInfo *par, molData *md, struct grid *g){
   int i,id,ipart,itrans,itemp,tnint=-1;
   struct cpData part;
-  double fac, uprate, downrate=0.0;
+  double fac;
 
   for(i=0;i<par->nSpecies;i++){
     for(id=0;id<par->ncell;id++){
@@ -627,22 +627,23 @@ void
 buildGrid(configInfo *par, struct grid *g){
   double lograd;		/* The logarithm of the model radius		*/
   double logmin;	    /* Logarithm of par->minScale				*/
-  double r,theta,phi,sinPhi,x,y,z,semiradius;	/* Coordinates								*/
-  double temp;
+  double r,theta,phi,sinPhi,z,semiradius;	/* Coordinates								*/
+  double uniformRandom;
   int k=0,i,j;            /* counters									*/
-  int flag;
+  int pointIsAccepted;
   struct cell *dc=NULL; /* Not used at present. */
   unsigned long numCells;
+  double x[DIM];
   const int maxNumAttempts=1000;
   _Bool numRandomsThisPoint;
   int numSecondRandoms=0;
   char errStr[80];
 
-  gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
+  gsl_rng *randGen = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
 #ifdef TEST
-  gsl_rng_set(ran,342971);
+  gsl_rng_set(randGen,342971);
 #else
-  gsl_rng_set(ran,time(0));
+  gsl_rng_set(randGen,time(0));
 #endif  
   
   lograd=log10(par->radius);
@@ -650,10 +651,10 @@ buildGrid(configInfo *par, struct grid *g){
 
   /* Sample pIntensity number of points */
   for(k=0;k<par->pIntensity;k++){
-    flag=0;
+    pointIsAccepted=0;
     numRandomsThisPoint=0;
     do{
-      temp=gsl_rng_uniform(ran);
+      uniformRandom=gsl_rng_uniform(randGen);
 
       if(numRandomsThisPoint==1)
         numSecondRandoms++;
@@ -661,51 +662,48 @@ buildGrid(configInfo *par, struct grid *g){
 
       /* Pick a point and check if we like it or not */
       j=0;
-      while(!flag && j<maxNumAttempts){
+      while(!pointIsAccepted && j<maxNumAttempts){
         if(par->sampling==0){
-          r=pow(10,logmin+gsl_rng_uniform(ran)*(lograd-logmin));
-          theta=2.*PI*gsl_rng_uniform(ran);
-          phi=PI*gsl_rng_uniform(ran);
+          r=pow(10,logmin+gsl_rng_uniform(randGen)*(lograd-logmin));
+          theta=2.*PI*gsl_rng_uniform(randGen);
+          phi=PI*gsl_rng_uniform(randGen);
           sinPhi=sin(phi);
-          x=r*cos(theta)*sinPhi;
-          y=r*sin(theta)*sinPhi;
-          if(DIM==3) z=r*cos(phi);
-          else z=0.;
+          x[0]=r*cos(theta)*sinPhi;
+          x[1]=r*sin(theta)*sinPhi;
+          if(DIM==3) x[2]=r*cos(phi);
         } else if(par->sampling==1){
-          x=(2*gsl_rng_uniform(ran)-1)*par->radius;
-          y=(2*gsl_rng_uniform(ran)-1)*par->radius;
-          if(DIM==3) z=(2*gsl_rng_uniform(ran)-1)*par->radius;
-          else z=0;
+          x[0]=(2*gsl_rng_uniform(randGen)-1)*par->radius;
+          x[1]=(2*gsl_rng_uniform(randGen)-1)*par->radius;
+          if(DIM==3) x[2]=(2*gsl_rng_uniform(randGen)-1)*par->radius;
         } else if(par->sampling==2){
-          r=pow(10,logmin+gsl_rng_uniform(ran)*(lograd-logmin));
-          theta=2.*PI*gsl_rng_uniform(ran);
+          r=pow(10,logmin+gsl_rng_uniform(randGen)*(lograd-logmin));
+          theta=2.*PI*gsl_rng_uniform(randGen);
           if(DIM==3) {
-            z=2*gsl_rng_uniform(ran)-1.;
+            z=2*gsl_rng_uniform(randGen)-1.;
             semiradius=r*sqrt(1.-z*z);
             z*=r;
+            x[2]=z;
           } else {
-            z=0.;
             semiradius=r;
           }
-          x=semiradius*cos(theta);
-          y=semiradius*sin(theta);
+          x[0]=semiradius*cos(theta);
+          x[1]=semiradius*sin(theta);
         } else {
           if(!silent) bail_out("Don't know how to sample model");
           exit(1);
         }
-        if((x*x+y*y+z*z)<par->radiusSqu) flag=pointEvaluation(par,temp,x,y,z);
+        pointIsAccepted = pointEvaluation(par, uniformRandom, x);
         j++;
       }
-    } while(!flag);
+    } while(!pointIsAccepted);
     /* Now pointEvaluation has decided that we like the point */
 
     /* Assign values to the k'th grid point */
     /* I don't think we actually need to do this here... */
     g[k].id=k;
-    g[k].x[0]=x;
-    g[k].x[1]=y;
-    if(DIM==3) g[k].x[2]=z;
-    else g[k].x[2]=0.;
+    g[k].x[0]=x[0];
+    g[k].x[1]=x[1];
+    if(DIM==3) g[k].x[2]=x[2];
 
     g[k].sink=0;
     /* This next step needs to be done, even though it looks stupid */
@@ -724,16 +722,22 @@ buildGrid(configInfo *par, struct grid *g){
 
   /* Add surface sink particles */
   for(i=0;i<par->sinkPoints;i++){
-    theta=gsl_rng_uniform(ran)*2*PI;
-    if(DIM==3) z=2*gsl_rng_uniform(ran)-1.;
-    else z=0.;
-    semiradius=sqrt(1.-z*z);
-    x=semiradius*cos(theta);
-    y=semiradius*sin(theta);;
+    theta=gsl_rng_uniform(randGen)*2*PI;
+
+    if(DIM==3) {
+      z=2*gsl_rng_uniform(randGen)-1.;
+      semiradius=sqrt(1.-z*z);
+      x[2]=z;
+    } else {
+      semiradius=1.0;
+    }
+
+    x[0]=semiradius*cos(theta);
+    x[1]=semiradius*sin(theta);;
     g[k].id=k;
-    g[k].x[0]=par->radius*x;
-    g[k].x[1]=par->radius*y;
-    g[k].x[2]=par->radius*z;
+    g[k].x[0]=par->radius*x[0];
+    g[k].x[1]=par->radius*x[1];
+    if(DIM==3) g[k].x[2]=par->radius*x[2];
     g[k].sink=1;
     g[k].abun[0]=0;
     g[k].dens[0]=1e-30;//************** what is the low but non zero value for?
@@ -775,13 +779,13 @@ buildGrid(configInfo *par, struct grid *g){
     }
   }
 
-  //	getArea(par,g, ran);
-  //	getMass(par,g, ran);
+  //	getArea(par,g, randGen);
+  //	getMass(par,g, randGen);
   getVelosplines(par,g);
   dumpGrid(par,g);
   free(dc);
 
-  gsl_rng_free(ran);
+  gsl_rng_free(randGen);
   if(!silent) done(5);
 }
 

@@ -101,7 +101,7 @@ For a given image pixel position, this function evaluates the intensity of the t
 Note that the algorithm employed here is similar to that employed in the function photon() which calculates the average radiant flux impinging on a grid cell: namely the notional photon is started at the side of the model near the observer and 'propagated' in the receding direction until it 'reaches' the far side. This is rather non-physical in conception but it makes the calculation easier.
   */
   const int stokesIi=0;
-  int ichan,stokesId,di,i,posn,nposn,polMolI,polLineI,iline,molI,lineI;
+  int ichan,stokesId,di,i,posn,nposn,polMolI,polLineI,molI,lineI;
   double xp,yp,zp,x[DIM],dx[DIM],dist2,ndist2,col,ds,snu_pol[3],dtau;
   double contJnu,contAlpha,jnu,alpha,lineRedShift,vThisChan,deltav,vfac=0.;
   double remnantSnu,expDTau,brightnessIncrement;
@@ -269,7 +269,7 @@ This version of traceray implements a new algorithm in which the population valu
   const int stokesIi=0;
   const int numFaces = DIM+1, nVertPerFace=3;
   int ichan,stokesId,di,status,lenChainPtrs,entryI,exitI,vi,vvi,ci;
-  int si, polMolI, polLineI, iline, molI, lineI;
+  int si, polMolI, polLineI, molI, lineI;
   double xp,yp,zp,x[DIM],dir[DIM],projVelRay,vel[DIM];
   double xCmpntsRay[nVertPerFace], ds, snu_pol[3], dtau, contJnu, contAlpha;
   double jnu, alpha, lineRedShift, vThisChan, deltav, vfac, remnantSnu, expDTau;
@@ -481,7 +481,7 @@ This function constructs an image cube by following sets of rays (at least 1 per
 
   double size,oneOnNumActiveRaysMinus1,imgCentreXPixels,imgCentreYPixels,minfreq,absDeltaFreq,x[2],sum,oneOnNumRays;//,oneOnTotalNumPixelsMinus1
   unsigned int totalNumImagePixels,ppi,numPixelsForInterp;
-  int gi,molI,lineI,ei,li,nlinetot,iline,tmptrans,ichan,numActiveRays,i,di,xi,yi,ri,c,id,ids[3],vi;
+  int gi,molI,lineI,ei,li,nlinetot,tmptrans,ichan,numActiveRays,i,di,xi,yi,ri,c,id,ids[3],vi;
   int *allLineMolIs,*allLineLineIs,cmbMolI,cmbLineI;
   rayData *rays;
   struct cell *dc=NULL;
