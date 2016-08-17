@@ -21,12 +21,12 @@ double veloproject(const double dx[3], const double *vel){
 double geterf(const double x0, const double x1) {
   /* table lookup erf thingy */
 
-  double val0, val1;
+  double val0=0.,val1=0.;
   
   if (fabs(x0)>=6) val0=1.0;
   else {
     int index = (int)(fabs(x0*1024.));
-    double inter_coeff = (1024.*x0-index);
+    double inter_coeff = (fabs(1024.*x0)-index);
     val0=(1-inter_coeff)*ERF_TABLE[index]+inter_coeff*ERF_TABLE[index+1];
   }
   if (x0<0) val0=-val0;
@@ -34,8 +34,8 @@ double geterf(const double x0, const double x1) {
   if (fabs(x1)>=6) val1=1.0;
   else {
     int index = (int)(fabs(x1*1024.));
-    double inter_coeff = (1024.*x1-index);
-    val0=(1-inter_coeff)*ERF_TABLE[index]+inter_coeff*ERF_TABLE[index+1];
+    double inter_coeff = (fabs(1024.*x1)-index);
+    val1=(1-inter_coeff)*ERF_TABLE[index]+inter_coeff*ERF_TABLE[index+1];
   }
   if (x1<0) val1=-val1;
 
