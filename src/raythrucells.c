@@ -199,8 +199,15 @@ At a successful termination, therefore, details of all the cells to the edge of 
     exitFi = marginalExitFis[i];
     (*cellExitIntcpts)[nCellsInChain] = intcpt[exitFi];
 
-    if(dc[dci].neigh[exitFi]==NULL){
+    if(dc[dci].neigh[exitFi]==NULL){ /* Signals that we have reached the edge of the model. */
+      /* Realloc the ptrs to their final sizes: */
+      nCellsInChain++;
+      *chainOfCellIds  = realloc(*chainOfCellIds,  sizeof(**chainOfCellIds) *nCellsInChain);
+      *cellExitIntcpts = realloc(*cellExitIntcpts, sizeof(**cellExitIntcpts)*nCellsInChain);
+      *lenChainPtrs = nCellsInChain;
+
       status = 0;
+
     }else{
       newEntryFaceI = getNewEntryFaceI(dci, *(dc[dci].neigh[exitFi]));
 
