@@ -13,48 +13,88 @@
 
 void
 input(inputPars *par, image *img){
+  int i;
+
   /*
    * Basic parameters. See cheat sheet for details.
    */
-  par->radius			= 2000*AU;
-  par->minScale	   		= 0.5*AU;
-  par->pIntensity    	= 4000;
-  par->sinkPoints    	= 3000;
-  par->dust				= "jena_thin_e6.tab";
-  par->moldatfile[0] 	= "hco+@xpol.dat";
-  par->antialias		= 4;
-//  par->samplingAlgorithm	= 1; // 0= the previous 'flattened rejection' algorithm; 1= the new 'tree' algorithm.
-  par->sampling			= 2; // log distr. for radius, directions distr. uniformly on a sphere.
+  par->radius                   = 2000*AU;
+  par->minScale                 = 0.5*AU;
+  par->pIntensity               = 4000;
+  par->sinkPoints               = 3000;
+  par->dust                     = "jena_thin_e6.tab";
+  par->moldatfile[0]            = "hco+@xpol.dat";
+  par->antialias                = 4;
+  par->sampling                 = 2; // log distr. for radius, directions distr. uniformly on a sphere.
 
-  par->outputfile 		= "populations.pop";
-  par->binoutputfile 	= "restart.pop";
-  par->gridfile			= "grid.vtk";
-//  par->minPointNumDensity	= 1000; // You should specify this in terms of the number of points in the spherical model volume.
-
-//  par->numDensityMaxima = 1;
-//  par->densityMaxLoc[0].x[0] = 0.0;
-//  par->densityMaxLoc[0].x[1] = 0.0;
-//  par->densityMaxLoc[0].x[2] = 0.0;
-
-//  double *vals;
-//  vals=malloc(sizeof(double)*1);
-//  density(0.0,0.0,0.0,vals);
-//  par->densityMaxValue[0] = vals[0];
-//  free(vals);
+  par->outputfile               = "populations.pop";
+  par->binoutputfile            = "restart.pop";
+  par->gridfile                 = "grid.vtk";
 
   /*
-   * Definitions for image #0. Add blocks for additional images.
+    Setting elements of the following three arrays is optional. NOTE
+    that, if you do set any of their values, you should set as many as
+    the number of elements returned by your function density(). The
+    ith element of the array in question will then be assumed to refer
+    to the ith element in the density function return. The current
+    maximum number of elements allowed is 7, which is the number of
+    types of collision partner recognized in the LAMBDA database.
+
+    Note that there is no (longer) a hard connection between the
+    number of density elements and the number of collision-partner
+    species named in the moldata files. This means in practice that,
+    if you set the values for par->collPartIds, you can, if you like,
+    set some for which there are no transition rates supplied in the
+    moldatfiles. This might happen for example if there is a molecule
+    which contributes significantly to the total molecular density but
+    for which there are no measured collision rates for the radiating
+    species you are interested in.
+
+    You may also omit to mention in par->collPartIds a collision
+    partner which is specified in the moldatfiles. In this case LIME
+    will assume the density of the respective molecules is zero.
+
+    If you don't set any values for any or all of these arrays,
+    i.e. if you omit any mention of them here (we preserve this
+    possibility for purposes of backward compatibility), LIME will
+    attempt to replicate the algorithms employed in version 1.5, which
+    involve guessing which collision partner corresponds to which
+    density element. Since this was not exactly a rigorous procedure,
+    we recommend use of the arrays.
+
+    par->nMolWeights: this specifies how you want the number density
+    of each radiating species to be calculated. At each grid point a
+    sum (weighted by par->nMolWeights) of the density values is made,
+    then this is multiplied by the abundance to return the number
+    density.
+
+    par->dustWeights: this is similar, but the weighted sum of
+    densities now feeds into the calculation of the dust opacity.
+
+    Note that there are convenient macros defined in ../src/lime.h for
+    7 types of collision partner.
+
+    Below is an example of how you might use these parameters:
+  */
+
+  par->collPartIds[0]           = CP_H2;
+  par->nMolWeights[0]           = 1.0;
+  par->dustWeights[0]           = 1.0;
+
+  /*
+   * Definitions for image #0. Add blocks with successive values of i for additional images.
    */
-  img[0].nchan			= 61;		  // Number of channels
-  img[0].velres			= 500.;       // Channel resolution in m/s
-  img[0].trans			= 3;          // zero-indexed J quantum number
-  img[0].pxls			= 100;	      // Pixels per dimension
-  img[0].imgres			= 0.1;		  // Resolution in arc seconds
-  img[0].theta			= 0.0;		  // 0: face-on, pi/2: edge-on
-  img[0].distance		= 140*PC;	  // source distance in m
-  img[0].source_vel		= 0;          // source velocity in m/s
-  img[0].unit			= 0;		  // 0:Kelvin 1:Jansky/pixel 2:SI 3:Lsun/pixel 4:tau
-  img[0].filename		= "image0.fits";	// Output filename
+  i=0;
+  img[i].nchan                  = 61;             // Number of channels
+  img[i].velres                 = 500.;           // Channel resolution in m/s
+  img[i].trans                  = 3;              // zero-indexed J quantum number
+  img[i].pxls                   = 100;            // Pixels per dimension
+  img[i].imgres                 = 0.1;            // Resolution in arc seconds
+  img[i].theta                  = 0.0;            // 0: face-on, pi/2: edge-on
+  img[i].distance               = 140*PC;         // source distance in m
+  img[i].source_vel             = 0;              // source velocity in m/s
+  img[i].unit                   = 0;              // 0:Kelvin 1:Jansky/pixel 2:SI 3:Lsun/pixel 4:tau
+  img[i].filename               = "image0.fits";  // Output filename
 }
 
 /******************************************************************************/
@@ -64,7 +104,9 @@ density(double x, double y, double z, double *density){
   /*
    * Define variable for radial coordinate
    */
-  double r, rMin=0.5*AU;
+  double r, rToUse;
+  const double rMin = 0.1*AU; /* This cutoff should be chosen smaller than par->minScale but greater than zero (to avoid a singularity at the origin). */
+
   /*
    * Calculate radial distance from origin
    */
@@ -73,10 +115,12 @@ density(double x, double y, double z, double *density){
    * Calculate a spherical power-law density profile
    * (Multiply with 1e6 to go to SI-units)
    */
-  if(r<rMin)
-    density[0] = 1.5e6*pow(rMin/(300*AU),-1.5)*1e6;
+  if(r>rMin)
+    rToUse = r;
   else
-    density[0] = 1.5e6*pow(r/(300*AU),-1.5)*1e6;
+    rToUse = rMin; /* Just to prevent overflows at r==0! */
+
+  density[0] = 1.5e6*pow(rToUse/(300*AU),-1.5)*1e6;
 }
 
 /******************************************************************************/
@@ -94,7 +138,7 @@ temperature(double x, double y, double z, double *temperature){
       {44.777, 31.037, 25.718, 22.642, 20.560, 19.023, 17.826, 16.857, 16.050, 15.364}
   };
   /*
-   * Calculate coordinate distance from origin
+   * Calculate radial distance from origin
    */
   r=sqrt(x*x+y*y+z*z);
   /*
@@ -141,24 +185,27 @@ doppler(double x, double y, double z, double *doppler){
 
 void
 velocity(double x, double y, double z, double *vel){
-  double R, r;
+  double r, rToUse, ffSpeed;
+  const double rMin = 0.1*AU; /* This cutoff should be chosen smaller than par->minScale but greater than zero (to avoid a singularity at the origin). */
 
-  R=sqrt(x*x+y*y+z*z);
-  if (R>0.){
-/*
- * Free-fall velocity in the radial direction onto a central 
- * mass of 1.0 solar mass
- */  
-    r=-sqrt(2*6.67e-11*1.989e30/R);
+  /*
+   * Calculate radial distance from origin
+   */
+  r = sqrt(x*x+y*y+z*z);
+  if(r>rMin)
+    rToUse = r;
+  else
+    rToUse = rMin;
 
-    vel[0]=x*r/R;
-    vel[1]=y*r/R;
-    vel[2]=z*r/R;
-  } else {
-    vel[0]=0.0;
-    vel[1]=0.0;
-    vel[2]=0.0;
-  }
+  /*
+   * Free-fall velocity in the radial direction onto a central 
+   * mass of 1.0 solar mass
+   */  
+  ffSpeed = sqrt(2*GRAV*1.989e30/rToUse);
+
+  vel[0] = -x*ffSpeed/rToUse;
+  vel[1] = -y*ffSpeed/rToUse;
+  vel[2] = -z*ffSpeed/rToUse;
 }
 
 /******************************************************************************/

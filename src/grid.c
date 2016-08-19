@@ -719,7 +719,7 @@ void
 buildGrid(configInfo *par, struct grid *g){
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
   int i, k, di, numSubFields, levelI=0;
-  double theta,semiradius,z,fieldVolume,sumDensity,maxDensity,minNumDensity,nToP,sphereVolume;
+  double theta,semiradius,x,y,z,fieldVolume,sumDensity,maxDensity,minNumDensity,nToP,sphereVolume;
   double vals[MAX_N_COLL_PART];
   double *outRandDensities=NULL;
   double (*outRandLocations)[DIM]=NULL;
@@ -814,7 +814,7 @@ buildGrid(configInfo *par, struct grid *g){
     theta=gsl_rng_uniform(rinc.randGen)*2*PI;
 
     if(DIM==3) {
-      z=2*gsl_rng_uniform(rinc.randGen)-1.;
+      z=2*gsl_rng_uniform(randGen)-1.;
       semiradius=sqrt(1.-z*z);
       x[2]=z;
     } else {
@@ -872,8 +872,8 @@ buildGrid(configInfo *par, struct grid *g){
     }
   }
 
-  //	getArea(par,g, rinc.randGen);
-  //	getMass(par,g, rinc.randGen);
+  //	getArea(par,g, randGen);
+  //	getMass(par,g, randGen);
   getVelosplines(par,g);
   dumpGrid(par,g);
   free(dc);
