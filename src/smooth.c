@@ -12,16 +12,17 @@
 
 /* Based on Lloyds Algorithm (Lloyd, S. IEEE, 1982) */	
 void
-smooth(inputPars *par, struct grid *g){
+smooth(configInfo *par, struct grid *g){
   double mindist;	/* Distance to closest neighbor				*/
   int k=0,j,i;		/* counters									*/
   int sg;		/* counter for smoothing the grid			*/
   int cn;
-  int smooth=20;	/* Amount of grid smoothing					*/
   double move[3];	/* Auxillary array for smoothing the grid	*/
   double dist;		/* Distance to a neighbor					*/
-  	
-  for(sg=0;sg<smooth;sg++){
+  struct cell *dc=NULL; /* Not used at present. */
+  unsigned long numCells;
+
+  for(sg=0;sg<N_SMOOTH_ITERS;sg++){
     for(i=0;i<par->ncell && !g[i].sink;i++){
       mindist=1e30;
       cn=-1;
@@ -68,9 +69,10 @@ smooth(inputPars *par, struct grid *g){
       }	
     }
 		
-    qhull(par, g);	
+    delaunay(DIM, g, (unsigned long)par->ncell, 0, &dc, &numCells);
     distCalc(par, g);	    
-    if(!silent) progressbar((double)(sg+1)/(double)smooth, 5);	
+    if(!silent) progressbar((double)(sg+1)/(double)N_SMOOTH_ITERS, 5);	
+    free(dc);
   }	
 }
 

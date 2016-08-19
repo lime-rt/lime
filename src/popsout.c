@@ -5,12 +5,14 @@
  *  Copyright (C) 2006-2014 Christian Brinch
  *  Copyright (C) 2015 The LIME development team
  *
+***TODO:
+	- Change the definition of the file format so that nmol is now read with the other mol[] scalars.
  */
 
 #include "lime.h"
 
 void
-popsout(inputPars *par, struct grid *g, molData *m){
+popsout(configInfo *par, struct grid *g, molData *m){
   FILE *fp;
   int j,k,l;
   double dens;
@@ -24,8 +26,8 @@ popsout(inputPars *par, struct grid *g, molData *m){
   fprintf(fp,"# Column definition: x, y, z, H2 density, kinetic gas temperature, molecular abundance, convergence flag, pops_0...pops_n\n");
   for(j=0;j<par->ncell-par->sinkPoints;j++){
     dens=0.;
-    for(l=0;l<par->collPart;l++) dens+=g[j].dens[l];
-    fprintf(fp,"%e %e %e %e %e %e %d ", g[j].x[0], g[j].x[1], g[j].x[2], dens, g[j].t[0], g[j].nmol[0]/dens, g[j].conv);
+    for(l=0;l<par->numDensities;l++) dens+=g[j].dens[l];
+    fprintf(fp,"%e %e %e %e %e %e %d ", g[j].x[0], g[j].x[1], g[j].x[2], dens, g[j].t[0], g[j].mol[0].nmol/dens, g[j].conv);
     for(k=0;k<m[0].nlev;k++) fprintf(fp,"%e ",g[j].mol[0].pops[k]);
     fprintf(fp,"\n");
     //fprintf(fp,"%i %lf %lf %lf %lf %lf %lf %lf %lf\n", g[j].id, g[j].x[0], g[j].x[1], g[j].x[2],  g[j].dens[0], g[j].t[0], g[j].vel[0], g[j].vel[1], g[j].vel[2]);
@@ -35,10 +37,12 @@ popsout(inputPars *par, struct grid *g, molData *m){
 
 
 void
-binpopsout(inputPars *par, struct grid *g, molData *m){
+binpopsout(configInfo *par, struct grid *g, molData *m){
   FILE *fp;
-  int i,j;
-  
+  int i,j,*nTrans=NULL;
+
+  nTrans = malloc(sizeof(int)*1);
+
   if((fp=fopen(par->binoutputfile, "wb"))==NULL){
     if(!silent) bail_out("Error writing binary output populations file!");
     exit(1);
@@ -49,10 +53,15 @@ binpopsout(inputPars *par, struct grid *g, molData *m){
   fwrite(&par->nSpecies, sizeof(int), 1, fp);
   
   for(i=0;i<par->nSpecies;i++){
+    if(m[i].part==NULL)
+      nTrans[0] = 1;
+    else
+      nTrans[0] = m[i].part[0].ntrans;
+
     fwrite(&m[i].nlev,  sizeof(int),               1,fp);
     fwrite(&m[i].nline, sizeof(int),               1,fp);
     fwrite(&m[i].npart, sizeof(int),               1,fp);
-    fwrite(m[i].ntrans, sizeof(int)*m[i].npart,    1,fp);
+    fwrite(nTrans,      sizeof(int)*m[i].npart,    1,fp);
     fwrite(m[i].lal,    sizeof(int)*m[i].nline,    1,fp);
     fwrite(m[i].lau,    sizeof(int)*m[i].nline,    1,fp);
     fwrite(m[i].aeinst, sizeof(double)*m[i].nline, 1,fp);
@@ -69,7 +78,8 @@ binpopsout(inputPars *par, struct grid *g, molData *m){
     fwrite(&g[i].x,  3*sizeof(double),   1, fp);
     fwrite(&g[i].vel,3*sizeof(double),   1, fp);
     fwrite(&g[i].sink, sizeof(int),      1, fp);
-    fwrite(g[i].nmol,  sizeof(double)*par->nSpecies,1, fp);
+    for(j=0;j<par->nSpecies;j++)
+      fwrite(&g[i].mol[j].nmol,  sizeof(double),           1, fp);
     fwrite(&g[i].dopb, sizeof g[i].dopb, 1, fp);
     for(j=0;j<par->nSpecies;j++){
       fwrite(g[i].mol[j].pops,  sizeof(double)*m[j].nlev, 1, fp);
@@ -86,7 +96,6 @@ binpopsout(inputPars *par, struct grid *g, molData *m){
   
   fclose(fp);
 
+  free(nTrans);
 }
 
-  
-  

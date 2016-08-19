@@ -5,6 +5,8 @@
  *  Copyright (C) 2006-2014 Christian Brinch
  *  Copyright (C) 2015 The LIME development team
  *
+TODO:
+  - Merge sourceFunc_*_raytrace() and sourceFunc_*() after changes to the way grid data is stored makes this possible.
  */
 
 #include "lime.h"
@@ -18,7 +20,7 @@ sourceFunc(double *snu, double *dtau, double ds, molData *m,double vfac,struct g
   jnu	 = g[pos].mol[ispec].dust[iline]*g[pos].mol[ispec].knu[iline];
   
   /* Line part:		j_nu = v*consts*1/b*rho*n_i*A_ij */
-  if(doline) jnu	+= vfac*HPIP*g[pos].mol[ispec].binv*g[pos].nmol[ispec]*g[pos].mol[ispec].pops[m[ispec].lau[iline]]*m[ispec].aeinst[iline];
+  if(doline) jnu	+= vfac*HPIP*g[pos].mol[ispec].binv*g[pos].mol[ispec].nmol*g[pos].mol[ispec].pops[m[ispec].lau[iline]]*m[ispec].aeinst[iline];
   
   
   
@@ -28,8 +30,10 @@ sourceFunc(double *snu, double *dtau, double ds, molData *m,double vfac,struct g
   
   
   /* Line part: alpha_nu = v*const*1/b*rho*(n_j*B_ij-n_i*B_ji) */
-  if(doline) alpha += vfac*HPIP*g[pos].mol[ispec].binv*g[pos].nmol[ispec]*(g[pos].mol[ispec].pops[m[ispec].lal[iline]]*m[ispec].beinstl[iline]
-                                                                          -g[pos].mol[ispec].pops[m[ispec].lau[iline]]*m[ispec].beinstu[iline]);
+  if(doline)\
+    alpha += vfac*HPIP*g[pos].mol[ispec].binv*g[pos].mol[ispec].nmol\
+    *(g[pos].mol[ispec].pops[m[ispec].lal[iline]]*m[ispec].beinstl[iline]\
+    - g[pos].mol[ispec].pops[m[ispec].lau[iline]]*m[ispec].beinstu[iline]);
   
   
   /* Calculate source function and tau */
@@ -43,63 +47,93 @@ sourceFunc(double *snu, double *dtau, double ds, molData *m,double vfac,struct g
 }
 
 
+/*....................................................................*/
 void
-sourceFunc_line(double *jnu, double *alpha, molData *m,double vfac,struct grid *g,int pos,int ispec, int iline){
-  
+sourceFunc_line(const molData md, const double vfac, const struct populations gm\
+  , const int lineI, double *jnu, double *alpha){
+
   /* Line part:		j_nu = v*consts*1/b*rho*n_i*A_ij */
-  *jnu   += vfac*HPIP*g[pos].mol[ispec].binv*g[pos].nmol[ispec]*g[pos].mol[ispec].pops[m[ispec].lau[iline]]*m[ispec].aeinst[iline];
-  
+  *jnu   += vfac*HPIP*gm.binv*gm.nmol*gm.pops[md.lau[lineI]]*md.aeinst[lineI];
+
   /* Line part: alpha_nu = v*const*1/b*rho*(n_j*B_ij-n_i*B_ji) */
-  *alpha += vfac*HPIP*g[pos].mol[ispec].binv*g[pos].nmol[ispec]*(g[pos].mol[ispec].pops[m[ispec].lal[iline]]*m[ispec].beinstl[iline]
-                                                                -g[pos].mol[ispec].pops[m[ispec].lau[iline]]*m[ispec].beinstu[iline]);
-  
+  *alpha += vfac*HPIP*gm.binv*gm.nmol*(gm.pops[md.lal[lineI]]*md.beinstl[lineI]
+                                      -gm.pops[md.lau[lineI]]*md.beinstu[lineI]);
+
   return;
 }
 
+/*....................................................................*/
 void
-sourceFunc_cont(double *jnu, double *alpha,struct grid *g,int pos,int ispec, int iline){
-  
+sourceFunc_line_raytrace(const molData md, const double vfac\
+  , const struct pop2 gm, const int lineI, double *jnu, double *alpha){
+
+  /* Line part:		j_nu = v*consts*1/b*rho*n_i*A_ij */
+  *jnu   += vfac*HPIP*gm.specNumDens[md.lau[lineI]]*md.aeinst[lineI];
+
+  /* Line part: alpha_nu = v*const*1/b*rho*(n_j*B_ij-n_i*B_ji) */
+  *alpha += vfac*HPIP*(gm.specNumDens[md.lal[lineI]]*md.beinstl[lineI]
+                      -gm.specNumDens[md.lau[lineI]]*md.beinstu[lineI]);
+
+  return;
+}
+
+/*....................................................................*/
+void
+sourceFunc_cont(const struct populations gm, const int lineI, double *jnu\
+  , double *alpha){
+
   /* Emission */
   /* Continuum part:	j_nu = T_dust * kappa_nu */
-  *jnu   += g[pos].mol[ispec].dust[iline]*g[pos].mol[ispec].knu[iline];
-  
+  *jnu   += gm.dust[lineI]*gm.knu[lineI];
+
   /* Absorption */
   /* Continuum part: Dust opacity */
-  *alpha += g[pos].mol[ispec].knu[iline];
-  
+  *alpha += gm.knu[lineI];
+
   return;
 }
 
+/*....................................................................*/
 void
-sourceFunc_pol(double *snu, double *dtau, double ds, molData *m,double vfac,struct grid *g,int pos,int ispec, int iline,double incl){
-  double dSigma, dSigma2, dI, dQ, dU, alpha;
-  double angle[3];
-  
-  stokesangles(g[pos].x[0],g[pos].x[1],g[pos].x[2],incl,angle);
-  
+sourceFunc_cont_raytrace(const struct pop2 gm, const int lineI, double *jnu\
+  , double *alpha){
+
+  /* Emission */
+  /* Continuum part:	j_nu = T_dust * kappa_nu */
+  *jnu   += gm.dust[lineI]*gm.knu[lineI];
+
+  /* Absorption */
+  /* Continuum part: Dust opacity */
+  *alpha += gm.knu[lineI];
+
+  return;
+}
+
+/*....................................................................*/
+void
+sourceFunc_pol(double B[3], const struct pop2 gm, int iline\
+  , double (*rotMat)[3], double *snu, double *alpha){
+  /*
+The theory behind this was originally drawn from
+
+  Padovani, M. et al, A&A 543, A16 (2012)
+
+and references therein. However, as pointed out in Ade, P. A. R. et al, A&A 576, A105 (2015), Padovani's expression for sigma2 is too small by a factor of 2. This correction has been propagated here.
+  */
+
+  double jnu, trigFuncs[3];
+
+  stokesangles(B, rotMat, trigFuncs);
+
   /* Emission */
   /* Continuum part:	j_nu = rho_dust * kappa_nu */
-  dSigma	 = g[pos].mol[ispec].dust[iline]*g[pos].mol[ispec].knu[iline];
-  dSigma2	 = maxp*g[pos].mol[ispec].dust[iline]*g[pos].mol[ispec].knu[iline]*(0.5*angle[2]*angle[2]-1./3.);
-  dI	     = dSigma - dSigma2;
-  dQ		 = maxp*g[pos].mol[ispec].dust[iline]*g[pos].mol[ispec].knu[iline]*(2.*angle[0]*angle[0]-1.)*angle[2]*angle[2];
-  dU		 = maxp*g[pos].mol[ispec].dust[iline]*g[pos].mol[ispec].knu[iline]*(2.*angle[0]*angle[1]*angle[2]*angle[2]);
+  jnu = gm.dust[iline]*gm.knu[iline];
+  snu[0] = jnu*(1.0 - maxp*(trigFuncs[0] - 2.0/3.0));
+  snu[1] = jnu*maxp*trigFuncs[1]*trigFuncs[0];
+  snu[2] = jnu*maxp*trigFuncs[2]*trigFuncs[0];
   
   /* Absorption */
   /* Continuum part: Dust opacity */
-  alpha  = g[pos].mol[ispec].knu[iline];
-  
-  /* Calculate source function and tau */
-  *snu=0.;
-  *dtau=0.;
-  if(fabs(alpha)>0.){
-    snu[0]=(dI/alpha)*m[ispec].norminv;
-    snu[1]=-(dQ/alpha)*m[ispec].norminv;
-    snu[2]=-(dU/alpha)*m[ispec].norminv;
-    
-    *dtau= alpha*ds;
-  }
-  return;
+  *alpha = gm.knu[iline];
 }
-
 

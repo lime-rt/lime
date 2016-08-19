@@ -16,7 +16,7 @@
 int close(int);
 
 void
-openSocket(inputPars *par, int id){
+openSocket(char *moldatfile){
   struct sockaddr_in *remote;
   int tmpres;
   int sock;
@@ -29,25 +29,25 @@ openSocket(inputPars *par, int id){
   char *tpl= "GET /%s HTTP/1.0\r\nHost: %s\r\nUser-Agent: %s\r\n\r\n";
   FILE *fp;
 
-  // Check if moldatfile contains .dat
-  if(strstr(par->moldatfile[id], ".dat") == NULL){
-    size_t length = strlen(par->moldatfile[id]);
+  /* Check if moldatfile contains .dat */
+  if(strstr(moldatfile, ".dat") == NULL){
+    size_t length = strlen(moldatfile);
     s = (char*)malloc(sizeof(char) * (length + 5));
-    strcpy(s,par->moldatfile[id]);
+    strcpy(s,moldatfile);
     strcat(s, ".dat");
     s[length+5]='\0';
-    par->moldatfile[id]=s;
+    moldatfile=s;
   }
 
   size_t length1 = strlen(page);
-  size_t length2 = strlen(par->moldatfile[id]);
+  size_t length2 = strlen(moldatfile);
   t = (char*)malloc(sizeof(char) * (length1 + length2 + 1));
   strcpy(t,page);
-  strcat(t, par->moldatfile[id]);
+  strcat(t, moldatfile);
   page=t;
 
 
-  // Create socket (similar to open file)
+  /* Create socket (similar to open file) */
   if((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0){
     if(!silent) bail_out("Can't create TCP socket");
     exit(1);
@@ -70,13 +70,13 @@ openSocket(inputPars *par, int id){
     exit(1);
   }
 
-  // -5 is to consider the %s %s %s in tpl and the ending \0
+  /* -5 is to consider the %s %s %s in tpl and the ending \0 */
   get = (char *)malloc(strlen(host)+strlen(page)+strlen(USERAGENT)+strlen(tpl)-5);
   sprintf(get, tpl, page, host, USERAGENT);
 
   //fprintf(stderr, "Query is:\n<<START>>\n%s<<END>>\n", get);
 
-  //Send the query to the server
+  /* Send the query to the server */
   int sent = 0;
   while(sent < strlen(get)){
     tmpres = send(sock, get+sent, strlen(get)-sent, 0);
@@ -88,7 +88,7 @@ openSocket(inputPars *par, int id){
   }
 
   memset(buf, 0, sizeof(buf));
-  if((fp=fopen(par->moldatfile[id], "w"))==NULL) {
+  if((fp=fopen(moldatfile, "w"))==NULL) {
     if(!silent) bail_out("Failed to write moldata!");
     exit(1);
   }

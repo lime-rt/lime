@@ -55,18 +55,20 @@ SRCS    = src/aux.c src/messages.c src/grid.c src/LTEsolution.c \
 	  src/popsout.c src/predefgrid.c src/ratranInput.c      \
           src/raytrace.c src/smooth.c src/sourcefunc.c          \
 	  src/stateq.c src/statistics.c src/magfieldfit.c       \
-	  src/stokesangles.c src/writefits.c src/random_points.c\
-	  src/velospline.c src/getclosest.c  \
-	  src/tcpsocket.c src/defaults.c src/fastexp.c
+	  src/stokesangles.c src/writefits.c src/tree_random.c\
+	  src/velospline.c src/getclosest.c src/frees.c \
+	  src/tcpsocket.c src/defaults.c src/fastexp.c	\
+	  src/raythrucells.c
 MODELS  = model.c
 OBJS    = src/aux.o src/messages.o src/grid.o src/LTEsolution.o \
 	  src/main.o src/molinit.o src/photon.o src/popsin.o    \
 	  src/popsout.o src/predefgrid.o src/raytrace.o         \
 	  src/ratranInput.o src/smooth.o src/sourcefunc.o       \
 	  src/stateq.o src/statistics.o src/magfieldfit.o       \
-	  src/stokesangles.o src/writefits.o src/random_points.o\
-	  src/velospline.o src/getclosest.o  \
-	  src/tcpsocket.o src/defaults.o src/fastexp.o
+	  src/stokesangles.o src/writefits.o src/tree_random.o\
+	  src/velospline.o src/getclosest.o src/frees.o \
+	  src/tcpsocket.o src/defaults.o src/fastexp.o	\
+	  src/raythrucells.o
 MODELO 	= src/model.o
 
 #CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing -DTEST
