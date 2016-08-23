@@ -10,10 +10,6 @@
 
 #include "lime.h"
 
-extern inline void sourceFunc_cont(const struct populations, const int, double*, double*);
-extern inline void sourceFunc_line(const molData, const double, const struct populations, const int, double*, double*);
-extern inline double FastExp(const float);
-
 double veloproject(const double dx[3], const double *vel){
   return dx[0]*vel[0]+dx[1]*vel[1]+dx[2]*vel[2];
 }
@@ -320,9 +316,9 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
           alpha=0.;
           jnu=0.;
 
-          sourceFunc_line(m[molI],vfac_inprev[molI],g[here].mol[molI],lineI,&jnu_in,&alpha_in);
-          sourceFunc_line(m[molI],vfac_out[molI],g[here].mol[molI],lineI,&jnu_out,&alpha_out);
-          sourceFunc_cont(g[here].mol[molI],lineI,&jnu,&alpha);
+          sourceFunc_line(&m[molI],vfac_inprev[molI],&g[here].mol[molI],lineI,&jnu_in,&alpha_in);
+          sourceFunc_line(&m[molI],vfac_out[molI],&g[here].mol[molI],lineI,&jnu_out,&alpha_out);
+          sourceFunc_cont(&g[here].mol[molI],lineI,&jnu,&alpha);
           dtau=alpha_in*ds_in+alpha_out*ds_out+alpha*(ds_in+ds_out);
 
           if(dtau < -30) dtau = -30;
@@ -355,7 +351,7 @@ photon(int id, struct grid *g, molData *m, int iter, const gsl_rng *ran\
                 calcLineAmpLin(g,here,neighI,molJ,velProj,inidir,&vblend_in,&vblend_out);
 
 	      /* we should really use the previous vblend_in, but I don't feel like writing the necessary code now... */
-              sourceFunc_line(m[molJ],vblend_out,g[here].mol[molJ],lineJ,&jnu,&alpha);
+              sourceFunc_line(&m[molJ],vblend_out,&g[here].mol[molJ],lineJ,&jnu,&alpha);
               dtau=alpha*(ds_in+ds_out);
               if(dtau < -30) dtau = -30;
               calcSourceFn(dtau, par, &remnantSnu, &expDTau);
@@ -420,8 +416,8 @@ getjbar(int posn, molData *m, struct grid *g, const int molI\
         jnu=0.;
         alpha=0.;
 
-        sourceFunc_line(m[molI],mp[molI].vfac[iphot],g[posn].mol[molI],lineI,&jnu,&alpha);
-        sourceFunc_cont(g[posn].mol[molI],lineI,&jnu,&alpha);
+        sourceFunc_line(&m[molI],mp[molI].vfac[iphot],&g[posn].mol[molI],lineI,&jnu,&alpha);
+        sourceFunc_cont(&g[posn].mol[molI],lineI,&jnu,&alpha);
         tau=alpha*halfFirstDs[iphot];
         calcSourceFn(tau, par, &remnantSnu, &expTau);
         remnantSnu *= jnu*halfFirstDs[iphot];
@@ -441,7 +437,7 @@ getjbar(int posn, molData *m, struct grid *g, const int molI\
             /* 
             The next line is not quite correct, because vfac may be different for other molecules due to different values of binv. Unfortunately we don't necessarily have vfac for molJ available yet.
             */
-            sourceFunc_line(m[molJ],mp[molI].vfac[iphot],g[posn].mol[molJ],lineJ,&jnu,&alpha);
+            sourceFunc_line(&m[molJ],mp[molI].vfac[iphot],&g[posn].mol[molJ],lineJ,&jnu,&alpha);
             tau=alpha*halfFirstDs[iphot];
             calcSourceFn(tau, par, &remnantSnu, &expTau);
             remnantSnu *= jnu*halfFirstDs[iphot];

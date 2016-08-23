@@ -187,4 +187,55 @@ See description of the lookup algorithm in function calcFastExpRange().
   }
 }
 
+double
+FastExp(const float negarg){
+  /*
+See description of the lookup algorithm in function calcFastExpRange(). ****NOTE!**** Most numbers here are hard-wired for the sake of speed. If need be, they can be verified (or recalculated for different conditions) via calcTableEntries().
+  */
+  int exponentMask=0x7f800000,ieee754NumMantBits=23;
+  int exponentOffset=122,numExponentsUsed=10;
+  /*
+This value should be calculated from 127+lowestExponent, where 127 is the offset for an exponent of zero laid down in the IEEE 754 standard, and both lowestExponent and numExponentsUsed can be calculated via calcFastExpRange().
+
+  exponentOffset = ieee754ExpOffset + lowestExponent;
+  */
+
+  int mantMask0=0x007f0000, mantMask1=0x0000ff00, mantMask2=0x000000ff;
+  int mantOffset0=16, mantOffset1=8, mantOffset2=0;
+  int i,j0,j1,j2,l;
+  union
+  {
+    float f;
+    int m;
+  } floPo;
+  double result;
+
+  // Should raise an exception here #ifndef FASTEXP?
+
+  if (negarg<0.0) return exp(-negarg);
+  if (negarg==0.0) return 1.0;
+
+  floPo.f = negarg;
+  l = ((floPo.m & exponentMask)>>ieee754NumMantBits)-exponentOffset;
+
+  if (l<0){ // do the Taylor approximation.
+    result = 1.0;
+    for (i=FAST_EXP_MAX_TAYLOR;i>0;i--){
+      result = 1.0 - negarg*result*oneOver_i[i];
+    }
+    return result;
+
+  }else if(l>=numExponentsUsed){
+    return 0.0;
+  }
+
+  j0 = (floPo.m & mantMask0)>>mantOffset0;
+  j1 = (floPo.m & mantMask1)>>mantOffset1;
+  j2 = (floPo.m & mantMask2)>>mantOffset2;
+
+  return (EXP_TABLE_2D[j0]   [l]*
+          EXP_TABLE_3D[j1][0][l]*
+          EXP_TABLE_3D[j2][1][l]);
+}
+
 

@@ -14,6 +14,40 @@ TODO:
 
 /*....................................................................*/
 void
+sourceFunc_cont(const struct populations *gm, const int lineI, double *jnu\
+  , double *alpha){
+
+  /* Emission */
+  /* Continuum part:	j_nu = T_dust * kappa_nu */
+  *jnu   += (*gm).dust[lineI]*(*gm).knu[lineI];
+
+  /* Absorption */
+  /* Continuum part: Dust opacity */
+  *alpha += (*gm).knu[lineI];
+
+  return;
+}
+
+/*....................................................................*/
+void
+sourceFunc_line(const molData *md, const double vfac, const struct populations *gm\
+  , const int lineI, double *jnu, double *alpha){
+
+  double factor = vfac*HPIP*(*gm).binv*(*gm).nmol;
+  /* Line part:		j_nu = v*consts*1/b*rho*n_i*A_ij */
+  *jnu   += factor*(*gm).pops[(*md).lau[lineI]]*(*md).aeinst[lineI];
+
+  /* Line part: alpha_nu = v*const*1/b*rho*(n_j*B_ij-n_i*B_ji) */
+  *alpha += factor*((*gm).pops[(*md).lal[lineI]]*(*md).beinstl[lineI]
+                                      -(*gm).pops[(*md).lau[lineI]]*(*md).beinstu[lineI]);
+
+  return;
+}
+
+
+
+/*....................................................................*/
+void
 sourceFunc_line_raytrace(const molData md, const double vfac\
   , const struct pop2 gm, const int lineI, double *jnu, double *alpha){
 
