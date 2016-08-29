@@ -275,7 +275,7 @@ rather the distance from the center to the corner of the (r,z)-plane.
 
 minScale is the smallest scales sampled by the code. Structures smaller
 than minScale will not be sampled properly. If one uses spherical
-sampling (see below) this number can also be though of as the inner
+sampling (see below) this number can also be thought of as the inner
 edge of the grid. This number should not be set smaller than needed,
 because that will cause an undesirably large number of grid points to end up near the
 center of the model.
@@ -858,7 +858,7 @@ Numerical input model can roughly be divided into two groups: those
 where the model properties are described as cell averages and those
 where the model properties are described at cell nodes (see figure). In
 either case, LIME will send a coordinate to the model functions and
-expect a value back. It is the up to the user to write an interface that
+expect a value back. It is then up to the user to write an interface that
 will look up the appropriate return value.
 
 In the simplest case where the numerical model is described as cell
