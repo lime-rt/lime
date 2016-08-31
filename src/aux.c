@@ -255,7 +255,7 @@ LIME provides two different schemes of {R_1, R_2, R_3}: {PA, phi, theta} and {PA
 
     */
 
-    doThetaPhi = (((*img)[i].incl<-900.) || ((*img)[i].azimuth<-900.))?1:0;
+    doThetaPhi = (((*img)[i].incl<-900.)||((*img)[i].azimuth<-900.)||((*img)[i].posang<-900.))?1:0;
 
     if(doThetaPhi){
       /* For the present PA is not implemented for the theta/phi scheme. Thus we just load the identity matrix at present.
