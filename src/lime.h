@@ -200,7 +200,7 @@ typedef struct {
   double freq,bandwidth;
   char *filename;
   double source_vel;
-  double theta,phi;
+  double theta,phi,incl,posang,azimuth;
   double distance;
   double rotMat[3][3];
 } image;
