@@ -38,6 +38,7 @@ initParImg(inputPars *par, image **img)
   */
 
   int i,id,nImages;
+  const double defaultAngle=-999.0;
 
   /* Set 'impossible' default values for mandatory parameters */
   par->radius    = 0;
@@ -124,6 +125,9 @@ initParImg(inputPars *par, image **img)
     (*img)[i].molI=-1;
     (*img)[i].freq=-1.;
     (*img)[i].bandwidth=-1.;
+    (*img)[i].incl    = defaultAngle;
+    (*img)[i].azimuth = defaultAngle;
+    (*img)[i].posang  = defaultAngle;
   }
 
   /* Second-pass reading of the user-set parameters (this time just to read the par->moldatfile and img stuff). */
