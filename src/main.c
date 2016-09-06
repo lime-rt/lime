@@ -81,6 +81,7 @@ initParImg(inputPars *par, image **img)
   (*img)=malloc(sizeof(image)*MAX_NIMAGES);
   for(i=0;i<MAX_NIMAGES;i++){
     (*img)[i].filename=NULL;
+    (*img)[i].imgunits= NULL;
   }
 
   /* First call to the user function which sets par, img values. Note that, as far as img is concerned, here we just want to find out how many images the user wants, so we can malloc the array properly. We call input() a second time then to get the actual per-image parameter values.
@@ -128,6 +129,7 @@ initParImg(inputPars *par, image **img)
     (*img)[i].incl    = defaultAngle;
     (*img)[i].azimuth = defaultAngle;
     (*img)[i].posang  = defaultAngle;
+    (*img)[i].units = "0";
   }
 
   /* Second-pass reading of the user-set parameters (this time just to read the par->moldatfile and img stuff). */
@@ -146,12 +148,13 @@ run(inputPars inpars, image *img)
      programs. In this case, inpars and img must be specified by the
      external program.
   */
-  int i,nLineImages;
+  int i,j,nLineImages;
   int initime=time(0);
   int popsdone=0;
   molData*     m = NULL;
   configInfo  par;
   struct grid* g = NULL;
+  char fits_filename[100] = "";
 
   /*Set locale to avoid trouble when reading files*/
   setlocale(LC_ALL, "C");
@@ -194,7 +197,11 @@ run(inputPars inpars, image *img)
       else
         continuumSetup(i,img,m,&par,g);
       raytrace(i,&par,g,m,img);
-      writeFits(i,&par,m,img);
+      for(j=0;j<img[i].numunits;j++) {
+        fitsFilename(fits_filename, &par, img, i, j);
+        writeFits(fits_filename, &par, m, img, i, j);
+        if(!silent) output(fits_filename);
+      }
     }
   }
 
@@ -206,11 +213,15 @@ run(inputPars inpars, image *img)
   for(i=0;i<par.nImages;i++){
     if(img[i].doline){
       raytrace(i,&par,g,m,img);
-      writeFits(i,&par,m,img);
+      for(j=0;j<img[i].numunits;j++){
+        fitsFilename(fits_filename, &par, img, i, j);
+        writeFits(fits_filename, &par, m, img, i, j);
+        if(!silent) output(fits_filename);
+      }
     }
   }
   
-  if(!silent) goodnight(initime,img[0].filename);
+  if(!silent) goodnight(initime);
 
   freeGrid( &par, m, g);
   freeMolData(par.nSpecies, m);
@@ -220,14 +231,15 @@ run(inputPars inpars, image *img)
   free(par.dustWeights);
 }
 
-void writeFits(const int i, configInfo *par, molData *m, image *img){
-  if(img[i].unit<5)
-    write3Dfits(i,par,m,img);
-  else if(img[i].unit==5)
-    write2Dfits(i,par,m,img);
+void writeFits(const char *fits_filename, configInfo *par, molData *m, image *img, const int im, const int unit){
+  if(img[im].doline == 1 || (img[im].doline==0 && par->polarization)){
+    write3Dfits(fits_filename, par, m, img, im, unit);
+  }
+  else if(img[im].doline == 0){
+    write2Dfits(fits_filename, par, m, img, im, unit);
+  }
   else{
-    if(!silent) bail_out("Image unit number invalid");
-    exit(0);
+    if(!silent) bail_out("FITS output unclear");
   }
 }
 
@@ -247,5 +259,6 @@ int main () {
   freeParImg(nImages, &par, img);
 
   return 0;
+
 }
 
