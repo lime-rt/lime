@@ -112,6 +112,7 @@
 typedef struct {
   double radius,minScale,tcmb,*nMolWeights,*dustWeights;
   double radiusSqu,minScaleSqu,taylorCutoff;
+  double *nref;
   int sinkPoints,pIntensity,blend,*collPartIds,traceRayAlgorithm;
   int ncell,nImages,nSpecies,numDensities,doPregrid;
   char *outputfile, *binoutputfile;
@@ -281,14 +282,14 @@ typedef struct {
 int silent;
 
 /* User-specifiable functions */
-void density(double,double,double,double *);
-void temperature(double,double,double,double *);
-void abundance(double,double,double,double *);
-void doppler(double,double,double, double *);
-void velocity(double,double,double,double *);
-void magfield(double,double,double,double *);
-void gasIIdust(double,double,double,double *);
-double gridDensity(configInfo*, double*);
+void    density(double, double, double, double *);
+void    temperature(double, double, double, double *);
+void    abundance(double, double, double, double *);
+void    doppler(double, double, double, double *);
+void    velocity(double, double, double, double *);
+void    magfield(double, double, double, double *);
+void    gasIIdust(double, double, double, double *);
+double  gridDensity(configInfo *, double *, double *);
 
 /* More functions */
 void	run(inputPars, image *);
@@ -296,7 +297,7 @@ void	run(inputPars, image *);
 void	assignMolCollPartsToDensities(configInfo*, molData*);
 void	binpopsout(configInfo *, struct grid *, molData *);
 void	buildGrid(configInfo *, struct grid *);
-int	buildRayCellChain(double*, double*, struct grid*, struct cell*, _Bool**, unsigned long, int, int, int, const double, unsigned long**, intersectType**, int*);
+int	    buildRayCellChain(double*, double*, struct grid*, struct cell*, _Bool**, unsigned long, int, int, int, const double, unsigned long**, intersectType**, int*);
 void	calcFastExpRange(const int, const int, int*, int*, int*);
 void	calcGridCollRates(configInfo*, molData*, struct grid*);
 void	calcGridDustOpacity(configInfo*, molData*, struct grid*);
@@ -318,13 +319,13 @@ void	distCalc(configInfo*, struct grid*);
 void	doBaryInterp(const intersectType, struct grid*, struct gAuxType*, double*, unsigned long*, molData*, const int, gridInterp*);
 void	doSegmentInterp(gridInterp*, const int, molData*, const int, const double, const int);
 faceType extractFace(struct grid*, struct cell*, const unsigned long, const int);
-int	factorial(const int);
+int	    factorial(const int);
 double	FastExp(const float);
 void	fit_d1fi(double, double, double*);
 void	fit_fi(double, double, double*);
 void	fit_rr(double, double, double*);
 void    fitsFilename(char *, configInfo *, image *, const int, const int);
-int	followRayThroughDelCells(double*, double*, struct grid*, struct cell*, const unsigned long, const double, intersectType*, unsigned long**, intersectType**, int*);
+int	    followRayThroughDelCells(double*, double*, struct grid*, struct cell*, const unsigned long, const double, intersectType*, unsigned long**, intersectType**, int*);
 void	freeGAux(const unsigned long, const int, struct gAuxType*);
 void	freeGrid(configInfo*, molData*, struct grid*);
 void	freeGridPointData(configInfo*, gridPointData*);
@@ -339,8 +340,8 @@ void	getclosest(double, double, double, long *, long *, double *, double *, doub
 void	getjbar(int, molData*, struct grid*, const int, configInfo*, struct blendInfo, int, gridPointData*, double*);
 void	getMass(configInfo *, struct grid *, const gsl_rng *);
 void	getmatrix(int, gsl_matrix *, molData *, struct grid *, int, gridPointData *);
-int	getNewEntryFaceI(const unsigned long, const struct cell);
-int	getNextEdge(double*, int, struct grid*, const gsl_rng*);
+int	    getNewEntryFaceI(const unsigned long, const struct cell);
+int	    getNextEdge(double*, int, struct grid*, const gsl_rng*);
 void	getVelosplines(configInfo *, struct grid *);
 void	getVelosplines_lin(configInfo *, struct grid *);
 void	gridAlloc(configInfo *, struct grid **);
@@ -357,7 +358,7 @@ void	openSocket(char*);
 void	parseInput(inputPars, configInfo*, image**, molData**);
 void	photon(int, struct grid*, molData*, int, const gsl_rng*, configInfo*, const int, struct blendInfo, gridPointData*, double*);
 double	planckfunc(int, double, molData *, int);
-int	pointEvaluation(configInfo*, const double, double*);
+int	    pointEvaluation(configInfo *, const double, double *, double *);
 void	popsin(configInfo *, struct grid **, molData **, int *);
 void	popsout(configInfo *, struct grid *, molData *);
 void	predefinedGrid(configInfo *, struct grid *);

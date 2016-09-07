@@ -54,31 +54,36 @@ void __attribute__((weak))
     }
 
 double __attribute__((weak))
-    gridDensity(configInfo *par, double *r){
+    gridDensity(configInfo *par, double *r, double *nref){
       /* The grid points within the model are chosen randomly via the rejection method with a probability distribution which the present function is intended to provide. The user may supply their own version of this within model.c; the default here implements the grid-point selection function used in LIME<=1.5.
       */
       double val[99],totalDensity=0.0,rSquared=0.0,fracDensity=0.0;
       int i;
-      static double maxTotalDensity=0.0;
+      static double referenceDensity=0.0;
 
       rSquared = r[0]*r[0]+r[1]*r[1]+r[2]*r[2];
       if(rSquared>=par->radiusSqu)
         return 0.0;
 
-      if(maxTotalDensity==0.0){
-        density(par->minScale,par->minScale,par->minScale,val);
-        for (i=0;i<par->numDensities;i++)
-          maxTotalDensity += val[i];
+      if(referenceDensity==0.0){
+          density(par->minScale,par->minScale,par->minScale,val);
+          for (i=0;i<par->numDensities;i++)
+              if(nref[i] != -1){
+                  referenceDensity += nref[i];
+              }
+              else{
+                  referenceDensity += val[i];
+              }
 
-        if (maxTotalDensity<=0.){
-          if(!silent) bail_out("Error: Sum of reference densities equals 0");
-          exit(1);
-        }
+          if (referenceDensity<=0.){
+              if(!silent) bail_out("Error: Sum of reference densities equals 0");
+              exit(1);
+          }
       }
 
       density(r[0],r[1],r[2],val);
       for (i=0;i<par->numDensities;i++) totalDensity += val[i];
-      fracDensity = pow(totalDensity/maxTotalDensity,0.2);
+      fracDensity = pow(totalDensity/referenceDensity,0.2);
 
       return fracDensity;
     }

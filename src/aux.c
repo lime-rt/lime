@@ -47,6 +47,7 @@ parseInput(inputPars inpar, configInfo *par, image **img, molData **m){
   par->polarization = inpar.polarization;
   par->nThreads     = inpar.nThreads;
   par->traceRayAlgorithm = inpar.traceRayAlgorithm;
+  par->nref         = inpar.nref;
 
   /* Now set the additional values in par. */
   par->ncell = inpar.pIntensity + inpar.sinkPoints;
