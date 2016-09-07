@@ -11,16 +11,21 @@
 
 void fitsFilename(char* fits_filename, configInfo *par, image *img, const int im, const int unit){
   char temp_filename[200];
-  static char* unit_names[] = {"Kelvin", "Jansky-per-px", "SI", "LSun-per-px", "tau"};
+  static char* unit_names[] = {"Kelvin", "Jansky-per-px", "SI", "LSun-per-px", "Tau", "#Rays"};
 
-  // Append units name to temporary filename
+  /* Check unit number has a corresponding unit name */
+  if(img[im].numunits < 0 || img[im].numunits > sizeof(unit_names)/sizeof(*unit_names) - 1){
+    if(!silent) bail_out("Image unit number does not have a corresponding unit name");
+    exit(0);
+  }
+
+  /* Append unit name to temporary filename */
   strcpy(temp_filename, img[im].filename);
   strcat(temp_filename, "_");
   strcat(temp_filename, unit_names[img[im].imgunits[unit]]);
   strcat(temp_filename, ".fits");
 
-  // Update image filename from temporary filename
-//  img[im].filename = (char *)malloc(strlen(temp_filename));
+  /* Update image filename from temporary filename */
   strcpy(fits_filename, temp_filename);
 }
 
