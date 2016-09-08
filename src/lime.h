@@ -44,7 +44,7 @@
 #endif
 
 #define DIM 3
-#define VERSION	"1.5"
+#define VERSION	"1.6"
 #define DEFAULT_NTHREADS 1
 #ifndef NTHREADS /* Value passed from the LIME script */
 #define NTHREADS DEFAULT_NTHREADS
