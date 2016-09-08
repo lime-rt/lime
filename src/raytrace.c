@@ -517,7 +517,7 @@ This function constructs an image cube by following sets of rays (at least 1 per
   const int nStepsThruCell=10;
   const double oneOnNSteps=1.0/(double)nStepsThruCell;
 
-  double size,oneOnNumActiveRaysMinus1,imgCentreXPixels,imgCentreYPixels,minfreq,absDeltaFreq,x[2],sum,oneOnNumRays;//,oneOnTotalNumPixelsMinus1
+  double size,oneOnNumActiveRaysMinus1,imgCentreXPixels,imgCentreYPixels,minfreq,absDeltaFreq,x,xs[2],sum,oneOnNumRays;//,oneOnTotalNumPixelsMinus1
   unsigned int totalNumImagePixels,ppi,numPixelsForInterp;
   int nlinetot,tmptrans,ichan,numCircleRays,numActiveRaysInternal,numActiveRays;
   int gi,molI,lineI,ei,li,i,di,xi,yi,ri,c,id,ids[3],vi;
@@ -534,6 +534,7 @@ This function constructs an image cube by following sets of rays (at least 1 per
   vertexT *vertex,**vertexp;
   int curlong, totlong;
   double triangle[3][2],barys[3],circleSpacing,scale,angle;
+  double *xySquared=NULL;
   _Bool isOutsideImage;
   gsl_error_handler_t *defaultErrorHandler=NULL;
 
@@ -599,9 +600,9 @@ For a line image however, we may have a problem, because of the pair of quantiti
     img[im].pixel[ppi].numRays = 0;
 
   /*
-The set of rays which we plan to follow is taken from the set of grid points, projected onto a plane parallel to the observer's X and Y axes with Z coordinate on the observer's side of the model (because solution of the raytracing equations requires that iterate 'backwards' through the model). In addition to these points we will add another tranche located on a circle in this plane with its centre at (X,Y) == (0,0) and radius equal to the model radius. We choose evenly-spaced points on this circle and choose the spacing such that it is the same as the average nearest-neighbour spacing of the grid points, assuming the grid points were evenly distributed within the circle.
+The set of rays which we plan to follow is taken from the set of (non-sink) grid points, projected onto a plane parallel to the observer's X and Y axes with Z coordinate on the observer's side of the model (because solution of the raytracing equations requires that iterate 'backwards' through the model). In addition to these points we will add another tranche located on a circle in this plane with its centre at (X,Y) == (0,0) and radius equal to the model radius. Addition of these circle points seems to be necessary to make qhull behave properly. We choose evenly-spaced points on this circle and choose the spacing such that it is the same as the average nearest-neighbour spacing of the grid points, assuming the grid points were evenly distributed within the circle.
 
-How to calculate this distance? Well if we have N points randomly but evenly distributed inside a circle of radius R it is not hard to show that the mean NN spacing is G(3/2)*R/sqrt(N), where G() is the gamma function. (In fact G(3/2)=sqrt(pi)/2.) This will add about 4*sqrt(pi*N) points.
+How to calculate this distance? Well if we have N points randomly but evenly distributed inside a circle of radius R it is not hard to show that the mean NN spacing is G(3/2)*R/sqrt(N), where G() is the gamma function. In fact G(3/2)=sqrt(pi)/2. This will add about 4*sqrt(pi*N) points.
   */
   circleSpacing = 0.5*par->radius*sqrt(PI/(double)par->pIntensity);
   numCircleRays = (int)(2.0*PI*par->radius/circleSpacing);
@@ -614,13 +615,13 @@ How to calculate this distance? Well if we have N points randomly but evenly dis
     /* Apply the inverse (i.e. transpose) rotation matrix. (We use the inverse matrix here because here we want to rotate grid coordinates to the observer frame, whereas inside traceray() we rotate observer coordinates to the grid frame.)
     */
     for(i=0;i<2;i++){
-      x[i]=0.0;
+      xs[i]=0.0;
       for(di=0;di<DIM;di++){
-        x[i] += gp[gi].x[di]*img[im].rotMat[di][i];
+        xs[i] += gp[gi].x[di]*img[im].rotMat[di][i];
       }
     }
 
-    locateRayOnImage(x, size, imgCentreXPixels, imgCentreYPixels, img, im, maxNumRaysPerPixel, rays, &numActiveRaysInternal);
+    locateRayOnImage(xs, size, imgCentreXPixels, imgCentreYPixels, img, im, maxNumRaysPerPixel, rays, &numActiveRaysInternal);
   } /* End loop 1, over grid points. */
 
   /* Add the circle rays:
@@ -629,9 +630,9 @@ How to calculate this distance? Well if we have N points randomly but evenly dis
   scale = 2.0*PI/(double)numCircleRays;
   for(i=0;i<numCircleRays;i++){
     angle = i*scale;
-    x[0] = par->radius*cos(angle);
-    x[1] = par->radius*sin(angle);
-    locateRayOnImage(x, size, imgCentreXPixels, imgCentreYPixels, img, im, maxNumRaysPerPixel, rays, &numActiveRays);
+    xs[0] = par->radius*cos(angle);
+    xs[1] = par->radius*sin(angle);
+    locateRayOnImage(xs, size, imgCentreXPixels, imgCentreYPixels, img, im, maxNumRaysPerPixel, rays, &numActiveRays);
   }
 
   oneOnNumActiveRaysMinus1 = 1.0/(double)(numActiveRays-1);
@@ -738,6 +739,14 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
 
   gsl_set_error_handler(defaultErrorHandler);
 
+  /* Set up for testing image pixel coords against model radius:
+  */
+  xySquared = malloc(sizeof(*xySquared)*img[im].pxls);
+  for(xi=0;xi<img[im].pxls;xi++){
+    x = size*(0.5 + xi - imgCentreXPixels); // In all this I'm assuming that the image is square and the X centre is the same as the Y centre. This may not always be the case!
+    xySquared[xi] = x*x;
+  }
+
   /* For pixels with more than a cutoff number of rays, just average those rays into the pixel:
   */
   for(ri=0;ri<numActiveRays;ri++){
@@ -781,6 +790,9 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
       if(img[im].pixel[ppi].numRays < minNumRaysForAverage){
         xi = (int)(ppi%(unsigned int)img[im].pxls);
         yi = floor(ppi/(double)img[im].pxls);
+        if(xySquared[xi] + xySquared[yi] > par->radiusSqu)
+          continue;
+
         point[0] = size*(0.5 + xi - imgCentreXPixels);
         point[1] = size*(0.5 + yi - imgCentreYPixels);
 
@@ -818,6 +830,7 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
 
   img[im].trans=tmptrans;
 
+  free(xySquared);
   freeGAux((unsigned long)par->ncell, par->nSpecies, gAux);
   if(par->traceRayAlgorithm==1)
     free(dc);
