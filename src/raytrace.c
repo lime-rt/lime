@@ -466,6 +466,44 @@ At the moment I will fix the number of segments, but it might possibly be faster
 }
 
 /*....................................................................*/
+void locateRayOnImage(double x[2], const double size, const double imgCentreXPixels, const double imgCentreYPixels, image *img, const int im, const int maxNumRaysPerPixel, rayData *rays, int *numActiveRays){
+  int xi,yi,ichan;
+  _Bool isOutsideImage;
+  unsigned int ppi;
+
+  /* Calculate which pixel the projected position (x[0],x[1]) falls within.
+  */
+  xi = floor(x[0]/size + imgCentreXPixels);
+  yi = floor(x[1]/size + imgCentreYPixels);
+  if(xi<0 || xi>=img[im].pxls || yi<0 || yi>=img[im].pxls){
+    isOutsideImage = 1;
+    ppi = 0; /* Under these circumstances it ought never to be accessed, but it is not good to leave it without a value at all. */
+  }else{
+    isOutsideImage = 0;
+    ppi = (unsigned int)yi*(unsigned int)img[im].pxls + (unsigned int)xi;
+  }
+
+  /* See if we want to keep the ray. For the time being we will include those outside the image bounds, but a cleverer algorithm would exclude some of them. Note that maxNumRaysPerPixel<1 is used to flag that there is no upper limit to the number of rays per pixel.
+  */
+  if(isOutsideImage || maxNumRaysPerPixel<1 || img[im].pixel[ppi].numRays<maxNumRaysPerPixel){
+    if(!isOutsideImage)
+      img[im].pixel[ppi].numRays++;
+
+    rays[*numActiveRays].ppi = ppi;
+    rays[*numActiveRays].x = x[0];
+    rays[*numActiveRays].y = x[1];
+    rays[*numActiveRays].tau       = malloc(sizeof(double)*img[im].nchan);
+    rays[*numActiveRays].intensity = malloc(sizeof(double)*img[im].nchan);
+    for(ichan=0;ichan<img[im].nchan;ichan++) {
+      rays[*numActiveRays].tau[ichan] = 0.0;
+      rays[*numActiveRays].intensity[ichan] = 0.0;
+    }
+
+    (*numActiveRays)++;
+  }
+}
+
+/*....................................................................*/
 void
 raytrace(int im, configInfo *par, struct grid *gp, molData *md, image *img){
   /*
@@ -481,7 +519,8 @@ This function constructs an image cube by following sets of rays (at least 1 per
 
   double size,oneOnNumActiveRaysMinus1,imgCentreXPixels,imgCentreYPixels,minfreq,absDeltaFreq,x[2],sum,oneOnNumRays;//,oneOnTotalNumPixelsMinus1
   unsigned int totalNumImagePixels,ppi,numPixelsForInterp;
-  int gi,molI,lineI,ei,li,nlinetot,tmptrans,ichan,numActiveRays,i,di,xi,yi,ri,c,id,ids[3],vi;
+  int nlinetot,tmptrans,ichan,numCircleRays,numActiveRaysInternal,numActiveRays;
+  int gi,molI,lineI,ei,li,i,di,xi,yi,ri,c,id,ids[3],vi;
   int *allLineMolIs,*allLineLineIs,cmbMolI,cmbLineI;
   rayData *rays;
   struct cell *dc=NULL;
@@ -494,7 +533,7 @@ This function constructs an image cube by following sets of rays (at least 1 per
   facetT *facet;//, *neighbor, **neighborp;
   vertexT *vertex,**vertexp;
   int curlong, totlong;
-  double triangle[3][2],barys[3];
+  double triangle[3][2],barys[3],circleSpacing,scale,angle;
   _Bool isOutsideImage;
   gsl_error_handler_t *defaultErrorHandler=NULL;
 
@@ -559,10 +598,18 @@ For a line image however, we may have a problem, because of the pair of quantiti
   for(ppi=0;ppi<totalNumImagePixels;ppi++)
     img[im].pixel[ppi].numRays = 0;
 
+  /*
+The set of rays which we plan to follow is taken from the set of grid points, projected onto a plane parallel to the observer's X and Y axes with Z coordinate on the observer's side of the model (because solution of the raytracing equations requires that iterate 'backwards' through the model). In addition to these points we will add another tranche located on a circle in this plane with its centre at (X,Y) == (0,0) and radius equal to the model radius. We choose evenly-spaced points on this circle and choose the spacing such that it is the same as the average nearest-neighbour spacing of the grid points, assuming the grid points were evenly distributed within the circle.
+
+How to calculate this distance? Well if we have N points randomly but evenly distributed inside a circle of radius R it is not hard to show that the mean NN spacing is G(3/2)*R/sqrt(N), where G() is the gamma function. (In fact G(3/2)=sqrt(pi)/2.) This will add about 4*sqrt(pi*N) points.
+  */
+  circleSpacing = 0.5*par->radius*sqrt(PI/(double)par->pIntensity);
+  numCircleRays = (int)(2.0*PI*par->radius/circleSpacing);
+
   /* The following is the first of the 3 main loops in raytrace. Here we loop over the (internal or non-sink) grid points. We're doing 2 things: loading the rotated, projected coordinates into the rays list, and counting the rays per image pixel.
   */
-  rays = malloc(sizeof(rayData)*par->pIntensity); /* We may need to reallocate this later. */
-  numActiveRays = 0;
+  rays = malloc(sizeof(rayData)*(par->pIntensity+numCircleRays)); /* We may need to reallocate this later. */
+  numActiveRaysInternal = 0;
   for(gi=0;gi<par->pIntensity;gi++){
     /* Apply the inverse (i.e. transpose) rotation matrix. (We use the inverse matrix here because here we want to rotate grid coordinates to the observer frame, whereas inside traceray() we rotate observer coordinates to the grid frame.)
     */
@@ -573,37 +620,19 @@ For a line image however, we may have a problem, because of the pair of quantiti
       }
     }
 
-    /* Calculate which pixel the projected position (x[0],x[1]) falls within.
-    */
-    xi = floor(x[0]/size + imgCentreXPixels);
-    yi = floor(x[1]/size + imgCentreYPixels);
-    if(xi<0 || xi>=img[im].pxls || yi<0 || yi>=img[im].pxls){
-      isOutsideImage = 1;
-      ppi = 0; /* Under these circumstances it ought never to be accessed, but it is not good to leave it without a value at all. */
-    }else{
-      isOutsideImage = 0;
-      ppi = (unsigned int)yi*(unsigned int)img[im].pxls + (unsigned int)xi;
-    }
-
-    /* See if we want to keep the ray. For the time being we will include those outside the image bounds, but a cleverer algorithm would exclude some of them. Note that maxNumRaysPerPixel<1 is used to flag that there is no upper limit to the number of rays per pixel.
-    */
-    if(isOutsideImage || maxNumRaysPerPixel<1 || img[im].pixel[ppi].numRays<maxNumRaysPerPixel){
-      if(!isOutsideImage)
-        img[im].pixel[ppi].numRays++;
-
-      rays[numActiveRays].ppi = ppi;
-      rays[numActiveRays].x = x[0];
-      rays[numActiveRays].y = x[1];
-      rays[numActiveRays].tau       = malloc(sizeof(double)*img[im].nchan);
-      rays[numActiveRays].intensity = malloc(sizeof(double)*img[im].nchan);
-      for(ichan=0;ichan<img[im].nchan;ichan++) {
-        rays[numActiveRays].tau[ichan] = 0.0;
-        rays[numActiveRays].intensity[ichan] = 0.0;
-      }
-
-      numActiveRays++;
-    }
+    locateRayOnImage(x, size, imgCentreXPixels, imgCentreYPixels, img, im, maxNumRaysPerPixel, rays, &numActiveRaysInternal);
   } /* End loop 1, over grid points. */
+
+  /* Add the circle rays:
+  */
+  numActiveRays = numActiveRaysInternal;
+  scale = 2.0*PI/(double)numCircleRays;
+  for(i=0;i<numCircleRays;i++){
+    angle = i*scale;
+    x[0] = par->radius*cos(angle);
+    x[1] = par->radius*sin(angle);
+    locateRayOnImage(x, size, imgCentreXPixels, imgCentreYPixels, img, im, maxNumRaysPerPixel, rays, &numActiveRays);
+  }
 
   oneOnNumActiveRaysMinus1 = 1.0/(double)(numActiveRays-1);
 
