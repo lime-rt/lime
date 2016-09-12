@@ -112,6 +112,7 @@
 typedef struct {
   double radius,minScale,tcmb,*nMolWeights,*dustWeights;
   double radiusSqu,minScaleSqu,taylorCutoff;
+  double *nref;
   int sinkPoints,pIntensity,blend,*collPartIds,traceRayAlgorithm;
   int ncell,nImages,nSpecies,numDensities,doPregrid;
   char *outputfile, *binoutputfile;
@@ -196,7 +197,9 @@ typedef struct {
   double velres;
   double imgres;
   int pxls;
-  int unit;
+  char *units;
+  int *imgunits;
+  int numunits;
   double freq,bandwidth;
   char *filename;
   double source_vel;
@@ -279,14 +282,14 @@ typedef struct {
 int silent;
 
 /* User-specifiable functions */
-void density(double,double,double,double *);
-void temperature(double,double,double,double *);
-void abundance(double,double,double,double *);
-void doppler(double,double,double, double *);
-void velocity(double,double,double,double *);
-void magfield(double,double,double,double *);
-void gasIIdust(double,double,double,double *);
-double gridDensity(configInfo*, double*);
+void    density(double, double, double, double *);
+void    temperature(double, double, double, double *);
+void    abundance(double, double, double, double *);
+void    doppler(double, double, double, double *);
+void    velocity(double, double, double, double *);
+void    magfield(double, double, double, double *);
+void    gasIIdust(double, double, double, double *);
+double  gridDensity(configInfo *, double *, double *);
 
 /* More functions */
 void	run(inputPars, image *);
@@ -294,7 +297,7 @@ void	run(inputPars, image *);
 void	assignMolCollPartsToDensities(configInfo*, molData*);
 void	binpopsout(configInfo *, struct grid *, molData *);
 void	buildGrid(configInfo *, struct grid *);
-int	buildRayCellChain(double*, double*, struct grid*, struct cell*, _Bool**, unsigned long, int, int, int, const double, unsigned long**, intersectType**, int*);
+int	    buildRayCellChain(double*, double*, struct grid*, struct cell*, _Bool**, unsigned long, int, int, int, const double, unsigned long**, intersectType**, int*);
 void	calcFastExpRange(const int, const int, int*, int*, int*);
 void	calcGridCollRates(configInfo*, molData*, struct grid*);
 void	calcGridDustOpacity(configInfo*, molData*, struct grid*);
@@ -316,12 +319,13 @@ void	distCalc(configInfo*, struct grid*);
 void	doBaryInterp(const intersectType, struct grid*, struct gAuxType*, double*, unsigned long*, molData*, const int, gridInterp*);
 void	doSegmentInterp(gridInterp*, const int, molData*, const int, const double, const int);
 faceType extractFace(struct grid*, struct cell*, const unsigned long, const int);
-int	factorial(const int);
+int	    factorial(const int);
 double	FastExp(const float);
 void	fit_d1fi(double, double, double*);
 void	fit_fi(double, double, double*);
 void	fit_rr(double, double, double*);
-int	followRayThroughDelCells(double*, double*, struct grid*, struct cell*, const unsigned long, const double, intersectType*, unsigned long**, intersectType**, int*);
+void    fitsFilename(char *, configInfo *, image *, const int, const int);
+int	    followRayThroughDelCells(double*, double*, struct grid*, struct cell*, const unsigned long, const double, intersectType*, unsigned long**, intersectType**, int*);
 void	freeGAux(const unsigned long, const int, struct gAuxType*);
 void	freeGrid(configInfo*, molData*, struct grid*);
 void	freeGridPointData(configInfo*, gridPointData*);
@@ -336,8 +340,8 @@ void	getclosest(double, double, double, long *, long *, double *, double *, doub
 void	getjbar(int, molData*, struct grid*, const int, configInfo*, struct blendInfo, int, gridPointData*, double*);
 void	getMass(configInfo *, struct grid *, const gsl_rng *);
 void	getmatrix(int, gsl_matrix *, molData *, struct grid *, int, gridPointData *);
-int	getNewEntryFaceI(const unsigned long, const struct cell);
-int	getNextEdge(double*, int, struct grid*, const gsl_rng*);
+int	    getNewEntryFaceI(const unsigned long, const struct cell);
+int	    getNextEdge(double*, int, struct grid*, const gsl_rng*);
 void	getVelosplines(configInfo *, struct grid *);
 void	getVelosplines_lin(configInfo *, struct grid *);
 void	gridAlloc(configInfo *, struct grid **);
@@ -354,7 +358,7 @@ void	openSocket(char*);
 void	parseInput(inputPars, configInfo*, image**, molData**);
 void	photon(int, struct grid*, molData*, int, const gsl_rng*, configInfo*, const int, struct blendInfo, gridPointData*, double*);
 double	planckfunc(int, double, molData *, int);
-int	pointEvaluation(configInfo*, const double, double*);
+int	    pointEvaluation(configInfo *, const double, double *, double *);
 void	popsin(configInfo *, struct grid **, molData **, int *);
 void	popsout(configInfo *, struct grid *, molData *);
 void	predefinedGrid(configInfo *, struct grid *);
@@ -380,9 +384,9 @@ double	taylor(const int, const float);
 void	traceray(rayData, const int, const int, const int, configInfo*, struct grid*, molData*, image*, struct gAuxType*, const int, int*, int*, const double, const int, const double);
 void	traceray_smooth(rayData, const int, const int, const int, configInfo*, struct grid*, molData*, image*, struct gAuxType*, const int, int*, int*, struct cell*, const unsigned long, const double, gridInterp*, const int, const double, const int, const double);
 double	veloproject(double *, double *);
-void	write2Dfits(int, configInfo *, molData *, image *);
-void	write3Dfits(int, configInfo *, molData *, image *);
-void	writeFits(const int, configInfo*, molData*, image*);
+void	write2Dfits(const char *, configInfo *, molData *, image *, const int, const int);
+void	write3Dfits(const char *, configInfo *, molData *, image *, const int, const int);
+void	writeFits(const char *, configInfo*, molData*, image*, const int, const int);
 void	write_VTK_unstructured_Points(configInfo *, struct grid *);
 
 
@@ -395,7 +399,8 @@ void 	done(int);
 void 	progressbar(double,int);
 void 	progressbar2(int,int,double,double,double);
 void	casaStyleProgressBar(const int,int);
-void 	goodnight(int, char *);
+void    output(char *);
+void 	goodnight(int);
 void	quotemass(double);
 void 	warning(char *);
 void	bail_out(char *);

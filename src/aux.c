@@ -25,6 +25,7 @@ parseInput(inputPars inpar, configInfo *par, image **img, molData **m){
   double cos_pa,sin_pa,cosPhi,sinPhi,cos_incl,sin_incl,cosTheta,sinTheta,cos_az,sin_az;
   double tempRotMat[3][3],auxRotMat[3][3];
   int row,col;
+  char *pch_sep = " ,:_", *pch, units_str[10];
 
   /* Copy over user-set parameters to the configInfo versions. (This seems like duplicated effort but it is a good principle to separate the two structs, for several reasons, as follows. (i) We will usually want more config parameters than user-settable ones. The separation leaves it clearer which things the user needs to (or can) set. (ii) The separation allows checking and screening out of impossible combinations of parameters. (iii) We can adopt new names (for clarity) for config parameters without bothering the user with a changed interface.) */
   par->radius       = inpar.radius;
@@ -46,6 +47,7 @@ parseInput(inputPars inpar, configInfo *par, image **img, molData **m){
   par->polarization = inpar.polarization;
   par->nThreads     = inpar.nThreads;
   par->traceRayAlgorithm = inpar.traceRayAlgorithm;
+  par->nref         = inpar.nref;
 
   /* Now set the additional values in par. */
   par->ncell = inpar.pIntensity + inpar.sinkPoints;
@@ -138,6 +140,22 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
 
   /* Allocate pixel space and parse image information */
   for(i=0;i<par->nImages;i++){
+
+    /* Parse image units, populate imgunits array with appropriate image identifiers and track number of units
+     * requested for each image */
+    strcpy(units_str, (*img)[i].units);
+    pch = strtok(units_str, pch_sep);
+    j = 0;
+    while(pch){
+      (*img)[i].imgunits = realloc((*img)[i].imgunits, sizeof(int) * j++);
+      if((*img)[i].imgunits == NULL){
+        if(!silent) bail_out("Error allocating memory for units");
+      }
+      (*img)[i].imgunits[j-1] = strtol(pch, NULL, 0);
+      pch = strtok(NULL, pch_sep);
+    }
+    (*img)[i].numunits = j;
+
     if((*img)[i].nchan == 0 && (*img)[i].velres<0 ){ /* => user has set neither nchan nor velres. One of the two is required for a line image. */
       /* Assume continuum image */
 

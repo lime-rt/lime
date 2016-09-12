@@ -11,6 +11,8 @@
 #include <curses.h>
 #include <time.h>
 
+int num_files = 0;
+
 void
 greetings(){
 #ifdef NO_NCURSES
@@ -219,16 +221,23 @@ void casaStyleProgressBar(const int maxI, int i){
   }
 }
 
-void
-goodnight(int initime, char filename[80]){
-  int runtime=time(0)-initime;
+void output(char filename[80]){
 #ifdef NO_NCURSES
   printf("Output written to %s\n", filename);
+#else
+  move(14 + num_files,4); printw("Output written to %s", filename);
+#endif
+  num_files++;
+}
+
+void
+goodnight(int initime){
+  int runtime=time(0)-initime;
+#ifdef NO_NCURSES
   printf("*** Program ended successfully               \n");
   printf("    Runtime: %3dh %2dm %2ds\n\n", runtime / 3600, runtime / 60 % 60, runtime % 60);
 
 #else
-  move(14,4); printw("Output written to %s", filename);
   move(22,0); printw("*** Program ended successfully               ");
   move(22,58); printw("runtime: %3dh %2dm %2ds", runtime/3600, runtime/60%60, runtime%60);
   move(23,0); printw("*** [Press any key to quit]");

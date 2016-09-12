@@ -692,7 +692,7 @@ buildGrid(configInfo *par, struct grid *g){
           if(!silent) bail_out("Don't know how to sample model");
           exit(1);
         }
-        pointIsAccepted = pointEvaluation(par, uniformRandom, x);
+        pointIsAccepted = pointEvaluation(par, uniformRandom, x, par->nref);
         j++;
       }
     } while(!pointIsAccepted);
