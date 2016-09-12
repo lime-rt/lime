@@ -82,7 +82,14 @@ input(inputPars *par, image *img){
   par->dustWeights[0]           = 1.0;
 
   /*
-   * Definitions for image #0. Add blocks with successive values of i for additional images.
+     par->nref: this is used to define n0 in the equation (n/n0)^w used for point evaluation- where a higher n0 means
+     that a stronger density weighting will be applied. If undefined then the density at r=par->minScale is used and
+     if defined then a value is needed for each density profile.
+  */
+  par->nref[0]                  = 1.0E16;
+
+  /*
+     Definitions for image #0. Add blocks with successive values of i for additional images.
    */
   i=0;
   img[i].nchan                  = 61;             // Number of channels
@@ -92,11 +99,16 @@ input(inputPars *par, image *img){
   img[i].imgres                 = 0.1;            // Resolution in arc seconds
   img[i].distance               = 140*PC;         // source distance in m
   img[i].source_vel             = 0;              // source velocity in m/s
-  img[i].unit                   = 0;              // 0:Kelvin 1:Jansky/pixel 2:SI 3:Lsun/pixel 4:tau
-  img[i].filename               = "image0.fits";  // Output filename
   img[i].azimuth                = 0.0;
   img[i].incl                   = 0.0;
   img[i].posang                 = 0.0;
+  img[i].filename               = "image0";  // Output filename (extension is not needed)
+  /*
+     Multiple units can be set for each image block by using a space-delimited string of the desired integers,
+     where: 0=Kelvin, 1=Jansky/pixel, 2=SI, 3=Lsun/pixel, 4=Tau, 5=#Rays
+  */
+  img[i].units                  = "0 4 5";
+
 }
 
 /******************************************************************************/
