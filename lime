@@ -6,7 +6,7 @@
 # Copyright (C) 2015 The LIME development team
 
 function version {
-    echo "This is LIME, The versatile line modeling engine, version 1.5"
+    echo "This is LIME, The versatile line modeling engine, version 1.6.1"
     echo "Copyright (C) 2006-2014 Christian Brinch"
     echo "Copyright (C) 2015 The LIME development team"
 }
