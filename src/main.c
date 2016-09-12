@@ -234,10 +234,10 @@ run(inputPars inpars, image *img)
 }
 
 void writeFits(const char *fits_filename, configInfo *par, molData *m, image *img, const int im, const int unit){
-  if(img[im].doline == 1 || (img[im].doline==0 && par->polarization)){
+  if((img[im].doline == 1 || (img[im].doline==0 && par->polarization)) && img[im].imgunits[unit] != 5){
     write3Dfits(fits_filename, par, m, img, im, unit);
   }
-  else if(img[im].doline == 0){
+  else if(img[im].doline == 0 || img[im].imgunits[unit] == 5){
     write2Dfits(fits_filename, par, m, img, im, unit);
   }
   else{

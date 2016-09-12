@@ -83,8 +83,9 @@ input(inputPars *par, image *img){
 
   /*
      par->nref: this is used to define n0 in the equation (n/n0)^w used for point evaluation- where a higher n0 means
-     that a stronger density weighting will be applied. If undefined then the density at r=par->minScale is used and
-     if defined then a value is needed for each density profile.
+     that a stronger density weighting will be applied. This is useful if you want to focus on a particular structure
+     in the model that has a density that is different to that at r=par->minScale. If undefined then the density at
+     r=par->minScale is used and if defined then a value is needed for each density profile.
   */
   par->nref[0]                  = 1.0E16;
 
