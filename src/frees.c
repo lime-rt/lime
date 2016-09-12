@@ -108,6 +108,7 @@ freeParImg(const int nImages, inputPars *par, image *img){
   free(par->collPartIds);
   free(par->nMolWeights);
   free(par->dustWeights);
+  free(par->collScale);
 }
 
 void freePopulation(const unsigned short numSpecies, struct populations *pop){

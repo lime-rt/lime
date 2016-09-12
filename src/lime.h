@@ -102,7 +102,7 @@
 
 
 typedef struct {
-  double radius,minScale,tcmb,*nMolWeights,*dustWeights;
+  double radius,minScale,tcmb,*nMolWeights,*dustWeights,*collScale;
   double radiusSqu,minScaleSqu,taylorCutoff;
   int sinkPoints,pIntensity,blend,*collPartIds,traceRayAlgorithm;
   int ncell,nImages,nSpecies,numDensities,doPregrid;
