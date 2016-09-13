@@ -672,12 +672,10 @@ buildGrid(configInfo *par, struct grid *g){
           x[0]=r*cos(theta)*sinPhi;
           x[1]=r*sin(theta)*sinPhi;
           if(DIM==3) x[2]=r*cos(phi);
-          n0 = par->nref;
         } else if(par->sampling==1){
           x[0]=(2*gsl_rng_uniform(randGen)-1)*par->radius;
           x[1]=(2*gsl_rng_uniform(randGen)-1)*par->radius;
           if(DIM==3) x[2]=(2*gsl_rng_uniform(randGen)-1)*par->radius;
-          n0 = par->nref;
         } else if(par->sampling==2){
           r=pow(10,logmin+gsl_rng_uniform(randGen)*(lograd-logmin));
           theta=2.*PI*gsl_rng_uniform(randGen);
@@ -691,10 +689,20 @@ buildGrid(configInfo *par, struct grid *g){
           }
           x[0]=semiradius*cos(theta);
           x[1]=semiradius*sin(theta);
-          n0 = par->nref;
         } else {
           if(!silent) bail_out("Don't know how to sample model");
           exit(1);
+        }
+        /* Assign n0 values from par->nref */
+        if(par->sampling==0 || par->sampling==1 || par->sampling==2){
+          for(i=0; i<99; i++){
+            if(par->nref[i] == -1.0){
+              break;
+            }
+            else{
+              n0[i] = par->nref[i];
+            }
+          }
         }
         pointIsAccepted = pointEvaluation(par, uniformRandom, x, n0);
         j++;
