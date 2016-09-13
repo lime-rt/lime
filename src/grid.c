@@ -629,6 +629,7 @@ buildGrid(configInfo *par, struct grid *g){
   double logmin;	    /* Logarithm of par->minScale				*/
   double r,theta,phi,sinPhi,z,semiradius;	/* Coordinates								*/
   double uniformRandom;
+  double n0[99];
   int k=0,i,j;            /* counters									*/
   int pointIsAccepted;
   struct cell *dc=NULL; /* Not used at present. */
@@ -671,10 +672,12 @@ buildGrid(configInfo *par, struct grid *g){
           x[0]=r*cos(theta)*sinPhi;
           x[1]=r*sin(theta)*sinPhi;
           if(DIM==3) x[2]=r*cos(phi);
+          n0 = par->nref;
         } else if(par->sampling==1){
           x[0]=(2*gsl_rng_uniform(randGen)-1)*par->radius;
           x[1]=(2*gsl_rng_uniform(randGen)-1)*par->radius;
           if(DIM==3) x[2]=(2*gsl_rng_uniform(randGen)-1)*par->radius;
+          n0 = par->nref;
         } else if(par->sampling==2){
           r=pow(10,logmin+gsl_rng_uniform(randGen)*(lograd-logmin));
           theta=2.*PI*gsl_rng_uniform(randGen);
@@ -688,11 +691,12 @@ buildGrid(configInfo *par, struct grid *g){
           }
           x[0]=semiradius*cos(theta);
           x[1]=semiradius*sin(theta);
+          n0 = par->nref;
         } else {
           if(!silent) bail_out("Don't know how to sample model");
           exit(1);
         }
-        pointIsAccepted = pointEvaluation(par, uniformRandom, x, par->nref);
+        pointIsAccepted = pointEvaluation(par, uniformRandom, x, n0);
         j++;
       }
     } while(!pointIsAccepted);
