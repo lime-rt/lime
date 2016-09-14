@@ -475,6 +475,8 @@ The final one of the density-linked parameters controls how the dust opacity is 
 
 If none of the three density-linked parameters is provided, LIME will attempt to guess the information, in a manner as close as possible to the way it was done in version 1.5 and earlier. This is safe enough when a single density value is returned, and only H2 provided as collision partner in the moldata file(s), but more complicated situations can very easily result in the code guessing wrongly. For this reason we encourage users to make use of these three parameters, although in order to preserve backward compatibility with old model.c files, we have not (yet) made them mandatory.
 
+.. code:: c
+
     (integer) par->traceRayAlgorithm (optional)
 
 This parameter specifies the algorithm used by LIME to solve the radiative-transfer equations during ray-tracing. The default value of zero invokes the algorithm used in LIME-1.5 and previous; a value of 1 invokes a new algorithm which is much more time-consuming but which produces much smoother images, free from step-artifacts.
