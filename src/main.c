@@ -96,8 +96,10 @@ initParImg(inputPars *par, image **img)
 
   /* Allocate initial space for molecular data file names */
   par->moldatfile=malloc(sizeof(char *)*MAX_NSPECIES);
+  par->girdatfile=malloc(sizeof(char *)*MAX_NSPECIES);
   for(id=0;id<MAX_NSPECIES;id++){
     par->moldatfile[id]=NULL;
+    par->girdatfile[id]=NULL;
   }
 
   /* Allocate initial space for (non-LAMDA) collision partner names */

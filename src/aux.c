@@ -192,8 +192,11 @@ The parameters visible to the user have now been strictly confined to members of
 
   } else {
     par->moldatfile=malloc(sizeof(char *)*par->nSpecies);
-    for(id=0;id<par->nSpecies;id++)
+    par->girdatfile=malloc(sizeof(char *)*par->nSpecies);
+    for(id=0;id<par->nSpecies;id++){
       copyInparStr(inpar.moldatfile[id], &(par->moldatfile[id]));
+      copyInparStr(inpar.girdatfile[id], &(par->girdatfile[id]));
+    }
 
     /* Check if files exist. */
     for(id=0;id<par->nSpecies;id++){
@@ -631,6 +634,7 @@ Eventually I hope readOrBuildGrid() will be unilaterally called within LIME; if 
       (*md)[i].lal = NULL;
       (*md)[i].lau = NULL;
       (*md)[i].aeinst = NULL;
+      (*md)[i].gir = NULL;
       (*md)[i].freq = NULL;
       (*md)[i].beinstu = NULL;
       (*md)[i].beinstl = NULL;

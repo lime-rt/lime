@@ -21,7 +21,6 @@ struct collPartMatrixType {
 void
 getFixedMatrix(molData *md, int ispec, struct grid *gp, int id, struct collPartMatrixType **collPartMat){
   int ipart,k,l,ti;
-
   (*collPartMat) = malloc(sizeof(**collPartMat)*md[ispec].npart);
 
   /* Initialize matrix with zeros */
@@ -67,6 +66,9 @@ getFixedMatrix(molData *md, int ispec, struct grid *gp, int id, struct collPartM
 void
 getMatrix(int id, gsl_matrix *matrix, molData *md, struct grid *gp, int ispec, gridPointData *mp, struct collPartMatrixType *collPartMat){
   int k,l,li,ipart,di;
+  double *girtot;
+
+  girtot = malloc(sizeof(double)*md[ispec].nlev);
 
   /* Initialize matrix with zeros */
   for(k=0;k<md[ispec].nlev+1;k++){
@@ -86,11 +88,18 @@ getMatrix(int id, gsl_matrix *matrix, molData *md, struct grid *gp, int ispec, g
   }
 
   for(k=0;k<md[ispec].nlev;k++){
+    girtot[k] = 0;
+    for(l=0;l<md[ispec].nlev;l++)
+      girtot[k] += md[ispec].gir[k*md[ispec].nlev+l];
+  }
+
+  for(k=0;k<md[ispec].nlev;k++){
     for(ipart=0;ipart<md[ispec].npart;ipart++){
       di = md[ispec].part[ipart].densityIndex;
       if(di>=0)
         gsl_matrix_set(matrix,k,k,gsl_matrix_get(matrix,k,k)+gp[id].dens[di]*collPartMat[ipart].ctot[k]);
     }
+    gsl_matrix_set(matrix,k,k,gsl_matrix_get(matrix,k,k)+girtot[k]);
     for(l=0;l<md[ispec].nlev;l++){
       if(k!=l){
         for(ipart=0;ipart<md[ispec].npart;ipart++){
@@ -98,6 +107,7 @@ getMatrix(int id, gsl_matrix *matrix, molData *md, struct grid *gp, int ispec, g
           if(di>=0)
             gsl_matrix_set(matrix,k,l,gsl_matrix_get(matrix,k,l)-gp[id].dens[di]*gsl_matrix_get(collPartMat[ipart].colli,l,k));
         }
+        gsl_matrix_set(matrix,k,l,gsl_matrix_get(matrix,k,l)-md[ispec].gir[l*md[ispec].nlev+k]);
       }
     }
     gsl_matrix_set(matrix, md[ispec].nlev, k, 1.);
@@ -205,6 +215,5 @@ stateq(int id, struct grid *gp, molData *md, const int ispec, configInfo *par\
   free(opop);
   free(oopop);
 }
-
 
 

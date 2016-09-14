@@ -60,7 +60,7 @@ checkFirstLineMolDat(FILE *fp, char *moldatfile){
 void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *numUniqueCollPartsFound){
   /* NOTE! allUniqueCollPartIds is malloc'd in the present function, but not freed. The calling program must free it elsewhere.
   */
-  int i,j,k,ilev,idummy,iline,numPartsAcceptedThisMol,ipart,collPartId,itemp,itrans;
+  int i,j,k,ilev,jlev,idummy,iline,numPartsAcceptedThisMol,ipart,collPartId,itemp,itrans;
   double dummy;
   _Bool cpWasFoundInUserList,previousCpFound;
   const int sizeI=200;
@@ -105,6 +105,7 @@ void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *
     md[i].lal     = malloc(sizeof(int)   *md[i].nline);
     md[i].lau     = malloc(sizeof(int)   *md[i].nline);
     md[i].aeinst  = malloc(sizeof(double)*md[i].nline);
+    md[i].gir     = malloc(sizeof(double)*md[i].nlev*md[i].nlev);
     md[i].freq    = malloc(sizeof(double)*md[i].nline);
     md[i].beinstu = malloc(sizeof(double)*md[i].nline);
     md[i].beinstl = malloc(sizeof(double)*md[i].nline);
@@ -247,6 +248,20 @@ void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *
     }
 
     fclose(fp);
+
+    /* Read the pumping rate coefficients onto gir array */
+    for(ilev=0;ilev<md[i].nlev;ilev++){
+      for(jlev=0;jlev<md[i].nlev;jlev++){
+        md[i].gir[ilev*md[i].nlev+jlev] = 0.;
+      }
+    }
+    if((fp=fopen(par->girdatfile[i], "r")) != NULL){
+      while (fscanf(fp, "%d %d %lf", &ilev, &jlev, &dummy) != EOF) {
+        md[i].gir[(ilev-1)*md[i].nlev+jlev-1] = dummy;
+      }
+      fclose(fp);
+    }
+
   } /* end loop over molecule index i */
 
   if((*numUniqueCollPartsFound)<=0){
