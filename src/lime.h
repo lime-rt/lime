@@ -349,7 +349,7 @@ void	levelPops(molData *, configInfo *, struct grid *, int *);
 void	line_plane_intersect(struct grid *, double *, int , int *, double *, double *, double);
 void	lineBlend(molData*, configInfo*, struct blendInfo*);
 void	LTE(configInfo *, struct grid *, molData *);
-void	lteOnePoint(configInfo*, molData*, const int, const double, double*);
+void	lteOnePoint(molData*, const int, const double, double*);
 void	openSocket(char*);
 void	parseInput(inputPars, configInfo*, image**, molData**);
 void	photon(int, struct grid*, molData*, int, const gsl_rng*, configInfo*, const int, struct blendInfo, gridPointData*, double*);
