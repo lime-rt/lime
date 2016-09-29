@@ -88,8 +88,15 @@ ${MODELO}:
 ${OBJS}: %.o: %.c  
 	${CC} ${CCFLAGS} ${CPPFLAGS} -o $@ -c $<
 
+doc::
+	mkdir doc/_html || true
+	sphinx-build doc doc/_html
+
+docclean::
+	rm -rf doc/_html
+
 clean:: 
 	rm -f *~ src/*.o ${TARGET} 
 
-distclean:: clean
+distclean:: clean docclean
 
