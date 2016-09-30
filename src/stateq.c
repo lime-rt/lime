@@ -70,7 +70,7 @@ stateq(int id, struct grid *g, molData *m, const int ispec, configInfo *par\
         warning(errStr);
         warning("Doing LSE for this point. NOTE that no further warnings will be issued.");
       }
-      lteOnePoint(par, m, ispec, g[id].t[0], tempNewPop);
+      lteOnePoint(m, ispec, g[id].t[0], tempNewPop);
       for(s=0;s<m[ispec].nlev;s++)
         gsl_vector_set(newpop,s,tempNewPop[s]);
     }
