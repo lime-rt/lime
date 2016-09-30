@@ -27,9 +27,6 @@ stateq(int id, struct grid *g, molData *m, const int ispec, configInfo *par\
   gsl_matrix *reduc  = gsl_matrix_alloc(m[ispec].nlev, m[ispec].nlev);
   gsl_vector *newpop = gsl_vector_alloc(m[ispec].nlev);
   gsl_vector *rhVec  = gsl_vector_alloc(m[ispec].nlev);
-  gsl_matrix *svv    = gsl_matrix_alloc(m[ispec].nlev, m[ispec].nlev);
-  gsl_vector *svs    = gsl_vector_alloc(m[ispec].nlev);
-  gsl_vector *work   = gsl_vector_alloc(m[ispec].nlev);
   gsl_permutation *p = gsl_permutation_alloc (m[ispec].nlev);
 
   opop       = malloc(sizeof(*opop)      *m[ispec].nlev);
@@ -98,11 +95,8 @@ stateq(int id, struct grid *g, molData *m, const int ispec, configInfo *par\
 
   gsl_matrix_free(matrix);
   gsl_matrix_free(reduc);
-  gsl_matrix_free(svv);
   gsl_vector_free(rhVec);
   gsl_vector_free(newpop);
-  gsl_vector_free(svs);
-  gsl_vector_free(work);
   gsl_permutation_free(p);
   free(tempNewPop);
   free(opop);
@@ -117,7 +111,7 @@ getmatrix(int id, gsl_matrix *matrix, molData *m, struct grid *g, int ispec, gri
     gsl_matrix * colli;
   } *partner;
 
-  partner= malloc(sizeof(struct getmatrix)*m[ispec].npart);
+  partner = malloc(sizeof(struct getmatrix)*m[ispec].npart);
 
   /* Initialize matrix with zeros */
   for(ipart=0;ipart<m[ispec].npart;ipart++){
