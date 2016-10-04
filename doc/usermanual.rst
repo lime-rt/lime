@@ -275,7 +275,7 @@ rather the distance from the center to the corner of the (r,z)-plane.
 
 minScale is the smallest scales sampled by the code. Structures smaller
 than minScale will not be sampled properly. If one uses spherical
-sampling (see below) this number can also be though of as the inner
+sampling (see below) this number can also be thought of as the inner
 edge of the grid. This number should not be set smaller than needed,
 because that will cause an undesirably large number of grid points to end up near the
 center of the model.
@@ -475,6 +475,8 @@ The final one of the density-linked parameters controls how the dust opacity is 
 
 If none of the three density-linked parameters is provided, LIME will attempt to guess the information, in a manner as close as possible to the way it was done in version 1.5 and earlier. This is safe enough when a single density value is returned, and only H2 provided as collision partner in the moldata file(s), but more complicated situations can very easily result in the code guessing wrongly. For this reason we encourage users to make use of these three parameters, although in order to preserve backward compatibility with old model.c files, we have not (yet) made them mandatory.
 
+.. code:: c
+
     (integer) par->traceRayAlgorithm (optional)
 
 This parameter specifies the algorithm used by LIME to solve the radiative-transfer equations during ray-tracing. The default value of zero invokes the algorithm used in LIME-1.5 and previous; a value of 1 invokes a new algorithm which is much more time-consuming but which produces much smoother images, free from step-artifacts.
@@ -517,15 +519,6 @@ seconds. The image field of view is therefore pxls x imgres.
 
 .. code:: c
 
-    (double) img[i]->theta (required)
-
-Theta is the viewing angle (the angle between the model z axis and the
-ray-tracers line of sight). This number is given in radians, not
-degrees, so that a face-on view (of models where this term is
-applicable) is 0 and edge-on view is π/2. Note that you can use the predefined PI macro: e.g. to express π/2, write PI/2.0 in your model file.
-
-.. code:: c
-
     (double) img[i]->distance (required)
 
 The source distance in meters. LIME predefines macros PC and AU which express respectively the sizes of the parsec and the Astronomical Unit in meters, so it is valid to write the distance as 100\*PC for example. If
@@ -546,16 +539,6 @@ an optical depth image cube (dimensionless).
     (string) img[i]->filename (required)
 
 This variable is the name of the output FITS file. It has no default value.
-
-.. code:: c
-
-    (double) img[i]->phi (optional)
-
-Phi is an optional geometric parameter. Like theta, it should be given
-in radians between 0 and 2π. Phi is the rotation angle of the model
-(x,y)-plane around the z-axis. If the model is view face-on (so that the
-line of sight coincides with the z-axis), phi corresponds to the
-position angle on the sky. The default value is 0.
 
 .. code:: c
 
@@ -633,17 +616,67 @@ bandwidth should be set. Any other combination will produce an error.
 For line images, at least one moldatfile should be provided and
 optionally a dust opacity table as well.
 
+Image rotation parameters
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+There are now two ways to specify the desired orientation of the model at the raytracing step: we have retained the old theta/phi angles, but have now added a new triplet: azimuth/inclination/PA. None of these five parameters is now mandatory. If none are provided, theta=phi=0 will be assumed. If you provide all three azimuth/inclination/PA values, these will be used instead of theta/phi, regardless if you also set either or both of theta/phi.
+
+Note that all of these angles should be given in radians. You can however use the predefined PI macro for this: e.g. to express π/2, write PI/2.0 in your model file.
+
+The rotation parameters in detail:
+
+.. code:: c
+
+    (double) img[i]->theta (optional)
+
+Theta is the vertical viewing angle (the vertical angle between the model z axis and the
+ray-tracer's line of sight). A face-on view (of models where this term is
+applicable) is 0 and edge-on view is π/2. The default value is 0.
+
+.. code:: c
+
+    (double) img[i]->phi (optional)
+
+Phi is the horizontal viewing angle (the horizontal angle between the model z axis and the
+ray-tracer's line of sight). A face-on view (of models where this term is
+applicable) is 0 and edge-on view is π/2. The default value is 0.
+
+If theta/phi are applied, for zero values of both the model X axis points to the left, Y points upward and Z points in the direction of gaze of the observer (i.e. away from the observer).
+
+.. code:: c
+
+    (double) img[i]->azimuth (optional)
+
+Azimuth rotates the model from Y towards X.
+
+.. code:: c
+
+    (double) img[i]->incl (optional)
+
+Inclination rotates the model from Z towards X.
+
+.. code:: c
+
+    (double) img[i]->posang (optional)
+
+Position angle rotates the model from Y towards X.
+
+If azimuth/incl/posang are applied (i.e. if all three values are supplied in your model.c), for zero values of all the model X axis points downward, Y points toward the right and Z towards the observer.
+
+
 Model functions
 ---------------
 
 The second part of the model.c file contains the actual model
-description. This is provided as seven subroutines: density, molecular
+description. This is provided as eight subroutines: density, molecular
 abundance, temperature, systematic velocities, random velocities,
-magnetic field, and gas-to-dust ratio. The user only needs to provide
+magnetic field, gas-to-dust ratio, and grid-point number density. The user only needs to provide
 the functions that are relevant to a particular model, e.g., for
 continuum images only, the user need not include the abundance function
 or any of the velocity functions. The magnetic field function needs only
 be included for continuum polarization images.
+
+Note that you should avoid singularities in these functions - i.e., places where LIME might attempt to divide by zero, or in some other way generate an overflow.
 
 
 .. figure:: images/fig_coords_big.png
@@ -858,7 +891,7 @@ Numerical input model can roughly be divided into two groups: those
 where the model properties are described as cell averages and those
 where the model properties are described at cell nodes (see figure). In
 either case, LIME will send a coordinate to the model functions and
-expect a value back. It is the up to the user to write an interface that
+expect a value back. It is then up to the user to write an interface that
 will look up the appropriate return value.
 
 In the simplest case where the numerical model is described as cell

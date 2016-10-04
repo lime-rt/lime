@@ -3,7 +3,7 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015 The LIME development team
+ *  Copyright (C) 2015-2016 The LIME development team
  *
  */
 
@@ -15,13 +15,13 @@ LTE(configInfo *par, struct grid *gp, molData *md){
 
   for(id=0;id<par->pIntensity;id++){
     for(ispec=0;ispec<par->nSpecies;ispec++){
-      lteOnePoint(par, md, ispec, gp[id].t[0], gp[id].mol[ispec].pops);
+      lteOnePoint(md, ispec, gp[id].t[0], gp[id].mol[ispec].pops);
     }
   }
   if(par->outputfile) popsout(par,gp,md);
 }
 
-void lteOnePoint(configInfo *par, molData *md, const int ispec, const double temp, double *pops){
+void lteOnePoint(molData *md, const int ispec, const double temp, double *pops){
   int ilev;
   double sum;
 

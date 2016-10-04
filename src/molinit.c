@@ -3,7 +3,7 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015 The LIME development team
+ *  Copyright (C) 2015-2016 The LIME development team
  *
 TODO:
 	- Get rid of, or regularize somehow, the printf statements (change to printMessage()?) - and clean up all the other new messages which are going to dick with the stdout when curses are selected? (Sigh.)

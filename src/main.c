@@ -3,7 +3,7 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2016 The LIME development team
+ *  Copyright (C) 2015-2016 The LIME development team
  *
  */
 #include <locale.h>
@@ -38,6 +38,7 @@ initParImg(inputPars *par, image **img)
   */
 
   int i,id,nImages;
+  const double defaultAngle=-999.0;
 
   /* Set 'impossible' default values for mandatory parameters */
   par->radius    = 0;
@@ -124,6 +125,9 @@ initParImg(inputPars *par, image **img)
     (*img)[i].molI=-1;
     (*img)[i].freq=-1.;
     (*img)[i].bandwidth=-1.;
+    (*img)[i].incl    = defaultAngle;
+    (*img)[i].azimuth = defaultAngle;
+    (*img)[i].posang  = defaultAngle;
   }
 
   /* Second-pass reading of the user-set parameters (this time just to read the par->moldatfile and img stuff). */

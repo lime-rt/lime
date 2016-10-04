@@ -3,7 +3,7 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2016 The LIME development team
+ *  Copyright (C) 2015-2016 The LIME development team
  *
 TODO:
   - The test to run photon() etc in levelPops just tests dens[0]. This is a bit sloppy.
@@ -17,11 +17,15 @@ TODO:
 
 void
 parseInput(inputPars inpar, configInfo *par, image **img, molData **m){
-  int i,id;
+  int i,j,id;
   double BB[3],normBSquared,dens[MAX_N_COLL_PART];
-  double cosPhi,sinPhi,cosTheta,sinTheta,dummyVel[DIM];
+  double dummyVel[DIM];
   FILE *fp;
   char message[80];
+  _Bool doThetaPhi;
+  double cos_pa,sin_pa,cosPhi,sinPhi,cos_incl,sin_incl,cosTheta,sinTheta,cos_az,sin_az;
+  double tempRotMat[3][3],auxRotMat[3][3];
+  int row,col;
 
   /* Copy over user-set parameters to the configInfo versions. (This seems like duplicated effort but it is a good principle to separate the two structs, for several reasons, as follows. (i) We will usually want more config parameters than user-settable ones. The separation leaves it clearer which things the user needs to (or can) set. (ii) The separation allows checking and screening out of impossible combinations of parameters. (iii) We can adopt new names (for clarity) for config parameters without bothering the user with a changed interface.) */
   par->radius       = inpar.radius;
@@ -131,6 +135,8 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
   */
   par->taylorCutoff = pow(24.*DBL_EPSILON, 0.25);
 
+  par->numDims = DIM;
+
   /* Allocate pixel space and parse image information */
   for(i=0;i<par->nImages;i++){
     if((*img)[i].nchan == 0 && (*img)[i].velres<0 ){ /* => user has set neither nchan nor velres. One of the two is required for a line image. */
@@ -230,35 +236,140 @@ The presence of one of these combinations at least is checked here, although the
       (*img)[i].pixel[id].tau = malloc(sizeof(double)*(*img)[i].nchan);
     }
 
-    /* Rotation matrix
+    /*
+The image rotation matrix is used within traceray() to transform the coordinates of a vector (actually two vectors - the ray direction and its starting point) as initially specified in the observer-anchored frame into the coordinate frame of the model. In linear algebra terms, the model-frame vector v_mod is related to the vector v_obs as expressed in observer- (or image-) frame coordinates via the image rotation matrix R by
 
-            |1          0           0   |
-     R_x(a)=|0        cos(a)      sin(a)|
-            |0       -sin(a)      cos(a)|
+    v_mod = R * v_obs,				1
 
-            |cos(b)     0       -sin(b)|
-     R_y(b)=|  0        1          0   |
-            |sin(b)     0        cos(b)|
+the multiplication being the usual matrix-vector style. Note that the ith row of R is the ith axis of the model frame with coordinate values expressed in terms of the observer frame.
 
-            |      cos(b)       0          -sin(b)|
-     Rot =  |sin(a)sin(b)     cos(a)  sin(a)cos(b)|
-            |cos(a)sin(b)    -sin(a)  cos(a)cos(b)|
+The matrix R can be broken into a sequence of several (3 at least are needed for full degrees of freedom) simpler rotations. Since these constituent rotations are usually easier to conceive in terms of rotations of the model in the observer framework, it is convenient to invert equation (1) to give
+
+    v_obs = R^T * v_mod,			2
+
+where ^T here denotes transpose. Supposing now we rotate the model in a sequence R_3^T followed by R_2^T followed by R_1^T, equation (2) can be expanded to give
+
+    v_obs = R_1^T * R_2^T * R_3^T * v_mod.	3
+
+Inverting everything to return to the format of equation (1), which is what we need, we find
+
+    v_mod = R_3 * R_2 * R_1 * v_obs.		4
+
+LIME provides two different schemes of {R_1, R_2, R_3}: {PA, phi, theta} and {PA, inclination, azimuth}. As an example, consider phi, which is a rotation of the model from the observer Z axis towards the X. The matching obs->mod rotation matrix is therefore
+
+            ( cos(ph)  0  -sin(ph) )
+            (                      )
+    R_phi = (    0     0     1     ).
+            (                      )
+            ( sin(ph)  0   cos(ph) )
 
     */
 
-    cosPhi   = cos((*img)[i].phi);
-    sinPhi   = sin((*img)[i].phi);
-    cosTheta = cos((*img)[i].theta);
-    sinTheta = sin((*img)[i].theta);
-    (*img)[i].rotMat[0][0] =           cosPhi;
-    (*img)[i].rotMat[0][1] =  0.0;
-    (*img)[i].rotMat[0][2] =          -sinPhi;
-    (*img)[i].rotMat[1][0] =  sinTheta*sinPhi;
-    (*img)[i].rotMat[1][1] =  cosTheta;
-    (*img)[i].rotMat[1][2] =  sinTheta*cosPhi;
-    (*img)[i].rotMat[2][0] =  cosTheta*sinPhi;
-    (*img)[i].rotMat[2][1] = -sinTheta;
-    (*img)[i].rotMat[2][2] =  cosTheta*cosPhi;
+    doThetaPhi = (((*img)[i].incl<-900.)||((*img)[i].azimuth<-900.)||((*img)[i].posang<-900.))?1:0;
+
+    if(doThetaPhi){
+      /* For the present PA is not implemented for the theta/phi scheme. Thus we just load the identity matrix at present.
+      */
+      (*img)[i].rotMat[0][0] = 1.0;
+      (*img)[i].rotMat[0][1] = 0.0;
+      (*img)[i].rotMat[0][2] = 0.0;
+      (*img)[i].rotMat[1][0] = 0.0;
+      (*img)[i].rotMat[1][1] = 1.0;
+      (*img)[i].rotMat[1][2] = 0.0;
+      (*img)[i].rotMat[2][0] = 0.0;
+      (*img)[i].rotMat[2][1] = 0.0;
+      (*img)[i].rotMat[2][2] = 1.0;
+    }else{
+      /* Load PA rotation matrix R_PA:
+      */
+      cos_pa   = cos((*img)[i].posang);
+      sin_pa   = sin((*img)[i].posang);
+      (*img)[i].rotMat[0][0] =  cos_pa;
+      (*img)[i].rotMat[0][1] = -sin_pa;
+      (*img)[i].rotMat[0][2] =  0.0;
+      (*img)[i].rotMat[1][0] =  sin_pa;
+      (*img)[i].rotMat[1][1] =  cos_pa;
+      (*img)[i].rotMat[1][2] =  0.0;
+      (*img)[i].rotMat[2][0] =  0.0;
+      (*img)[i].rotMat[2][1] =  0.0;
+      (*img)[i].rotMat[2][2] =  1.0;
+    }
+
+    if(doThetaPhi){
+      /* Load phi rotation matrix R_phi:
+      */
+      cosPhi   = cos((*img)[i].phi);
+      sinPhi   = sin((*img)[i].phi);
+      auxRotMat[0][0] =  cosPhi;
+      auxRotMat[0][1] =  0.0;
+      auxRotMat[0][2] = -sinPhi;
+      auxRotMat[1][0] =  0.0;
+      auxRotMat[1][1] =  1.0;
+      auxRotMat[1][2] =  0.0;
+      auxRotMat[2][0] =  sinPhi;
+      auxRotMat[2][1] =  0.0;
+      auxRotMat[2][2] =  cosPhi;
+    }else{
+      /* Load inclination rotation matrix R_inc:
+      */
+      cos_incl = cos((*img)[i].incl + PI);
+      sin_incl = sin((*img)[i].incl + PI);
+      auxRotMat[0][0] =  cos_incl;
+      auxRotMat[0][1] =  0.0;
+      auxRotMat[0][2] = -sin_incl;
+      auxRotMat[1][0] =  0.0;
+      auxRotMat[1][1] =  1.0;
+      auxRotMat[1][2] =  0.0;
+      auxRotMat[2][0] =  sin_incl;
+      auxRotMat[2][1] =  0.0;
+      auxRotMat[2][2] =  cos_incl;
+    }
+
+    for(row=0;row<3;row++){
+      for(col=0;col<3;col++){
+        tempRotMat[row][col] = 0.0;
+        for(j=0;j<3;j++)
+          tempRotMat[row][col] += auxRotMat[row][j]*(*img)[i].rotMat[j][col];
+      }
+    }
+
+    if(doThetaPhi){
+      /* Load theta rotation matrix R_theta:
+      */
+      cosTheta = cos((*img)[i].theta);
+      sinTheta = sin((*img)[i].theta);
+      auxRotMat[0][0] =  1.0;
+      auxRotMat[0][1] =  0.0;
+      auxRotMat[0][2] =  0.0;
+      auxRotMat[1][0] =  0.0;
+      auxRotMat[1][1] =  cosTheta;
+      auxRotMat[1][2] =  sinTheta;
+      auxRotMat[2][0] =  0.0;
+      auxRotMat[2][1] = -sinTheta;
+      auxRotMat[2][2] =  cosTheta;
+    }else{
+      /* Load azimuth rotation matrix R_az:
+      */
+      cos_az   = cos((*img)[i].azimuth + PI/2.0);
+      sin_az   = sin((*img)[i].azimuth + PI/2.0);
+      auxRotMat[0][0] =  cos_az;
+      auxRotMat[0][1] = -sin_az;
+      auxRotMat[0][2] =  0.0;
+      auxRotMat[1][0] =  sin_az;
+      auxRotMat[1][1] =  cos_az;
+      auxRotMat[1][2] =  0.0;
+      auxRotMat[2][0] =  0.0;
+      auxRotMat[2][1] =  0.0;
+      auxRotMat[2][2] =  1.0;
+    }
+
+    for(row=0;row<3;row++){
+      for(col=0;col<3;col++){
+        (*img)[i].rotMat[row][col] = 0.0;
+        for(j=0;j<3;j++)
+          (*img)[i].rotMat[row][col] += auxRotMat[row][j]*tempRotMat[j][col];
+      }
+    }
   }
 
   par->nLineImages = 0;
@@ -270,7 +381,8 @@ The presence of one of these combinations at least is checked here, although the
       par->nContImages++;
   }
 
-  /* Allocate moldata array */
+  /* Allocate moldata array.
+  */
   (*m)=malloc(sizeof(molData)*par->nSpecies);
   for( i=0; i<par->nSpecies; i++ ){
     (*m)[i].part = NULL;

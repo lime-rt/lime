@@ -3,7 +3,7 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2016 The LIME development team
+ *  Copyright (C) 2015-2016 The LIME development team
  *
  */
 
@@ -44,7 +44,7 @@
 #endif
 
 #define DIM 3
-#define VERSION	"1.5"
+#define VERSION	"1.6.1"
 #define DEFAULT_NTHREADS 1
 #ifndef NTHREADS /* Value passed from the LIME script */
 #define NTHREADS DEFAULT_NTHREADS
@@ -100,15 +100,6 @@
 #define CP_He			6
 #define CP_Hplus		7
 
-/* Collision partner ID numbers from LAMDA */
-#define CP_H2			1
-#define CP_p_H2			2
-#define CP_o_H2			3
-#define CP_e			4
-#define CP_H			5
-#define CP_He			6
-#define CP_Hplus		7
-
 
 typedef struct {
   double radius,minScale,tcmb,*nMolWeights,*dustWeights;
@@ -120,7 +111,7 @@ typedef struct {
   char *pregrid;
   char *restart;
   char *dust;
-  int sampling,lte_only,init_lte,antialias,polarization,nThreads;
+  int sampling,lte_only,init_lte,antialias,polarization,nThreads,numDims;
   int nLineImages, nContImages;
   char **moldatfile;
 } configInfo;
@@ -214,7 +205,7 @@ typedef struct {
   double freq,bandwidth;
   char *filename;
   double source_vel;
-  double theta,phi;
+  double theta,phi,incl,posang,azimuth;
   double distance;
   double rotMat[3][3];
 } image;
@@ -286,7 +277,7 @@ void doppler(double,double,double, double *);
 void velocity(double,double,double,double *);
 void magfield(double,double,double,double *);
 void gasIIdust(double,double,double,double *);
-void gridDensity(configInfo,double,double,double,double*);
+double gridDensity(configInfo*, double*);
 
 /* More functions */
 void	run(inputPars, image *);
@@ -352,14 +343,14 @@ void	levelPops(molData*, configInfo*, struct grid*, int*, double*, double*, cons
 void	line_plane_intersect(struct grid*, double*, int, int*, double*, double*, double);
 void	lineBlend(molData*, configInfo*, struct blendInfo*);
 void	LTE(configInfo*, struct grid*, molData*);
-void	lteOnePoint(configInfo*, molData*, const int, const double, double*);
+void	lteOnePoint(molData*, const int, const double, double*);
 void	mallocAndSetDefaultGrid(struct grid**, const unsigned int);
 void	molInit(configInfo*, molData*);
 void	openSocket(char*);
 void	parseInput(inputPars, configInfo*, image**, molData**);
 void	photon(int, struct grid*, molData*, int, const gsl_rng*, configInfo*, const int, struct blendInfo, gridPointData*, double*);
 double	planckfunc(const double, const double);
-int	pointEvaluation(configInfo*, double, double, double, double);
+int	pointEvaluation(configInfo*, const double, double*);
 void	popsin(configInfo*, struct grid**, molData**, int*);
 void	popsout(configInfo*, struct grid*, molData*);
 void	predefinedGrid(configInfo*, struct grid*);

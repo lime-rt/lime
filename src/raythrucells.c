@@ -3,7 +3,7 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015 The LIME development team
+ *  Copyright (C) 2015-2016 The LIME development team
  *
  */
 
@@ -199,8 +199,15 @@ At a successful termination, therefore, details of all the cells to the edge of 
     exitFi = marginalExitFis[i];
     (*cellExitIntcpts)[nCellsInChain] = intcpt[exitFi];
 
-    if(dc[dci].neigh[exitFi]==NULL){
+    if(dc[dci].neigh[exitFi]==NULL){ /* Signals that we have reached the edge of the model. */
+      /* Realloc the ptrs to their final sizes: */
+      nCellsInChain++;
+      *chainOfCellIds  = realloc(*chainOfCellIds,  sizeof(**chainOfCellIds) *nCellsInChain);
+      *cellExitIntcpts = realloc(*cellExitIntcpts, sizeof(**cellExitIntcpts)*nCellsInChain);
+      *lenChainPtrs = nCellsInChain;
+
       status = 0;
+
     }else{
       newEntryFaceI = getNewEntryFaceI(dci, *(dc[dci].neigh[exitFi]));
 

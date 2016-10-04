@@ -3,7 +3,7 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015 The LIME development team
+ *  Copyright (C) 2015-2016 The LIME development team
  *
  */
 
@@ -53,17 +53,21 @@ void __attribute__((weak))
       *gas2dust=100.;
     }
 
-void __attribute__((weak))
-    gridDensity(configInfo par, double x, double y, double z, double *fracDensity){
+double __attribute__((weak))
+    gridDensity(configInfo *par, double *r){
       /* The grid points within the model are chosen randomly via the rejection method with a probability distribution which the present function is intended to provide. The user may supply their own version of this within model.c; the default here implements the grid-point selection function used in LIME<=1.5.
       */
-      double val[99],totalDensity=0.0;
+      double val[99],totalDensity=0.0,rSquared=0.0,fracDensity=0.0;
       int i;
       static double maxTotalDensity=0.0;
 
+      rSquared = r[0]*r[0]+r[1]*r[1]+r[2]*r[2];
+      if(rSquared>=par->radiusSqu)
+        return 0.0;
+
       if(maxTotalDensity==0.0){
-        density(par.minScale,par.minScale,par.minScale,val);
-        for (i=0;i<par.numDensities;i++)
+        density(par->minScale,par->minScale,par->minScale,val);
+        for (i=0;i<par->numDensities;i++)
           maxTotalDensity += val[i];
 
         if (maxTotalDensity<=0.){
@@ -72,8 +76,10 @@ void __attribute__((weak))
         }
       }
 
-      density(x,y,z,val);
-      for (i=0;i<par.numDensities;i++) totalDensity += val[i];
-      *fracDensity = pow(totalDensity/maxTotalDensity,0.2);
+      density(r[0],r[1],r[2],val);
+      for (i=0;i<par->numDensities;i++) totalDensity += val[i];
+      fracDensity = pow(totalDensity/maxTotalDensity,0.2);
+
+      return fracDensity;
     }
 

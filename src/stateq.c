@@ -3,7 +3,7 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015 The LIME development team
+ *  Copyright (C) 2015-2016 The LIME development team
  *
  */
 
@@ -27,9 +27,6 @@ stateq(int id, struct grid *gp, molData *md, const int ispec\
   gsl_matrix *reduc  = gsl_matrix_alloc(md[ispec].nlev, md[ispec].nlev);
   gsl_vector *newpop = gsl_vector_alloc(md[ispec].nlev);
   gsl_vector *rhVec  = gsl_vector_alloc(md[ispec].nlev);
-  gsl_matrix *svv    = gsl_matrix_alloc(md[ispec].nlev, md[ispec].nlev);
-  gsl_vector *svs    = gsl_vector_alloc(md[ispec].nlev);
-  gsl_vector *work   = gsl_vector_alloc(md[ispec].nlev);
   gsl_permutation *p = gsl_permutation_alloc (md[ispec].nlev);
 
   opop       = malloc(sizeof(*opop)      *md[ispec].nlev);
@@ -73,7 +70,7 @@ stateq(int id, struct grid *gp, molData *md, const int ispec\
         warning(errStr);
         warning("Doing LSE for this point. NOTE that no further warnings will be issued.");
       }
-      lteOnePoint(par, md, ispec, gp[id].t[0], tempNewPop);
+      lteOnePoint(md, ispec, gp[id].t[0], tempNewPop);
       for(s=0;s<md[ispec].nlev;s++)
         gsl_vector_set(newpop,s,tempNewPop[s]);
     }
@@ -99,11 +96,8 @@ stateq(int id, struct grid *gp, molData *md, const int ispec\
 
   gsl_matrix_free(matrix);
   gsl_matrix_free(reduc);
-  gsl_matrix_free(svv);
   gsl_vector_free(rhVec);
   gsl_vector_free(newpop);
-  gsl_vector_free(svs);
-  gsl_vector_free(work);
   gsl_permutation_free(p);
   free(tempNewPop);
   free(opop);
@@ -118,7 +112,7 @@ getmatrix(int id, gsl_matrix *matrix, molData *md, struct grid *gp, int ispec, g
     gsl_matrix * colli;
   } *partner;
 
-  partner= malloc(sizeof(struct getmatrix)*md[ispec].npart);
+  partner = malloc(sizeof(struct getmatrix)*md[ispec].npart);
 
   /* Initialize matrix with zeros */
   for(ipart=0;ipart<md[ispec].npart;ipart++){
