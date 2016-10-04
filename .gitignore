@@ -14,4 +14,4 @@ example/lime_*.x
 example/vlog.txt
 
 # Ignore html doc files
-doc/_html
+doc/*.html
