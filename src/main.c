@@ -146,12 +146,15 @@ run(inputPars inpars, image *img)
      programs. In this case, inpars and img must be specified by the
      external program.
   */
-  int i,nLineImages;
+  int i,gi,si;
   int initime=time(0);
   int popsdone=0;
-  molData*     m = NULL;
+  molData*     md = NULL;
   configInfo  par;
-  struct grid* g = NULL;
+  struct grid* gp = NULL;
+  char message[80];
+  int nEntries=0;
+  double *lamtab=NULL, *kaptab=NULL; 
 
   /*Set locale to avoid trouble when reading files*/
   setlocale(LC_ALL, "C");
@@ -163,71 +166,92 @@ run(inputPars inpars, image *img)
   calcTableEntries(FAST_EXP_MAX_TAYLOR, FAST_EXP_NUM_BITS);
 #endif
 
-  parseInput(inpars, &par, &img, &m); /* Sets par.numDensities for !(par.doPregrid || par.restart) */
+  parseInput(inpars, &par, &img, &md); /* Sets par.numDensities for !(par.doPregrid || par.restart) */
+
+  if(!silent && par.nThreads>1){
+    sprintf(message, "Number of threads used: %d", par.nThreads);
+    printMessage(message);
+  }
 
   if(par.doPregrid)
     {
-      gridAlloc(&par,&g);
-      predefinedGrid(&par,g); /* Sets par.numDensities */
+      mallocAndSetDefaultGrid(&gp, (unsigned int)par.ncell);
+      predefinedGrid(&par,gp); /* Sets par.numDensities */
       checkUserDensWeights(&par); /* Needs par.numDensities */
     }
   else if(par.restart)
     {
-      popsin(&par,&g,&m,&popsdone);
+      popsin(&par,&gp,&md,&popsdone);
     }
   else
     {
       checkUserDensWeights(&par); /* Needs par.numDensities */
-      gridAlloc(&par,&g);
-      buildGrid(&par,g);
+      mallocAndSetDefaultGrid(&gp, (unsigned int)par.ncell);
+      buildGrid(&par,gp);
     }
 
-  /* Make all the continuum images, and count the non-continuum images at the same time:
+  if(par.dust != NULL)
+    readDustFile(par.dust, &lamtab, &kaptab, &nEntries);
+
+  /* Make all the continuum images:
   */
-  nLineImages = 0;
   for(i=0;i<par.nImages;i++){
-    if(img[i].doline)
-      nLineImages++;
-    else{
-      if(par.restart)
-        img[i].trans=0;
-      else
-        continuumSetup(i,img,m,&par,g);
-      raytrace(i,&par,g,m,img);
-      writeFits(i,&par,m,img);
+    if(!img[i].doline){
+      raytrace(i, &par, gp, md, img, lamtab, kaptab, nEntries);
+      writeFits(i,&par,md,img);
     }
   }
 
-  if(nLineImages>0 && !popsdone)
-    levelPops(m,&par,g,&popsdone);
+  if(par.nLineImages>0){
+    molInit(&par, md);
+
+    if(!popsdone){
+      for(gi=0;gi<par.ncell;gi++){
+        gp[gi].mol = malloc(sizeof(*(gp[gi].mol))*par.nSpecies);
+        for(si=0;si<par.nSpecies;si++){
+          gp[gi].mol[si].pops    = NULL;
+          gp[gi].mol[si].partner = NULL;
+          gp[gi].mol[si].cont    = NULL;
+        }
+      }
+    }
+
+    for(gi=0;gi<par.ncell;gi++){
+      for(si=0;si<par.nSpecies;si++)
+        gp[gi].mol[si].specNumDens = malloc(sizeof(double)*md[si].nlev);
+    }
+    calcGridMolDoppler(&par, md, gp);
+    calcGridMolDensities(&par,gp);
+
+    if(!popsdone)
+      levelPops(md, &par, gp, &popsdone, lamtab, kaptab, nEntries);
+
+    calcGridMolSpecNumDens(&par,md,gp);
+  }
+
+  freeSomeGridFields((unsigned int)par.ncell, (unsigned short)par.nSpecies, gp);
 
   /* Now make the line images.
   */
   for(i=0;i<par.nImages;i++){
     if(img[i].doline){
-      raytrace(i,&par,g,m,img);
-      writeFits(i,&par,m,img);
+      raytrace(i, &par, gp, md, img, lamtab, kaptab, nEntries);
+      writeFits(i,&par,md,img);
     }
   }
   
   if(!silent) goodnight(initime,img[0].filename);
 
-  freeGrid( &par, m, g);
-  freeMolData(par.nSpecies, m);
+  freeGrid((unsigned int)par.ncell, (unsigned short)par.nSpecies, gp);
+  freeMolData(par.nSpecies, md);
   free(par.moldatfile);
   free(par.collPartIds);
   free(par.nMolWeights);
   free(par.dustWeights);
-}
 
-void writeFits(const int i, configInfo *par, molData *m, image *img){
-  if(img[i].unit<5)
-    write3Dfits(i,par,m,img);
-  else if(img[i].unit==5)
-    write2Dfits(i,par,m,img);
-  else{
-    if(!silent) bail_out("Image unit number invalid");
-    exit(0);
+  if(par.dust != NULL){
+    free(kaptab);
+    free(lamtab);
   }
 }
 

@@ -9,36 +9,27 @@
 
 #include "lime.h"
 
-void
-freeGAux(const unsigned long numPoints, const int numSpecies, struct gAuxType *gAux) {
-  unsigned long ppi;
+void freeGrid(const unsigned int numPoints, const unsigned short numSpecies\
+  , struct grid *gp){
 
-  if(gAux !=NULL){
-    for(ppi=0;ppi<numPoints;ppi++)
-      freePop2(numSpecies, gAux[ppi].mol);
-    free(gAux);
-  }
-}
+  unsigned int i_u;
 
-void
-freeGrid(configInfo *par, molData *m , struct grid *g){
-  int i;
-  if(g != NULL){
-    for(i=0;i<(par->pIntensity+par->sinkPoints); i++){
-      free(g[i].a0);
-      free(g[i].a1);
-      free(g[i].a2);
-      free(g[i].a3);
-      free(g[i].a4);
-      free(g[i].dir);
-      free(g[i].neigh);
-      free(g[i].w);
-      free(g[i].dens);
-      free(g[i].abun);
-      free(g[i].ds);
-      freePopulation( par, m, g[i].mol );
+  if(gp != NULL){
+    for(i_u=0;i_u<numPoints;i_u++){
+      free(gp[i_u].a0);
+      free(gp[i_u].a1);
+      free(gp[i_u].a2);
+      free(gp[i_u].a3);
+      free(gp[i_u].a4);
+      free(gp[i_u].dir);
+      free(gp[i_u].neigh);
+      free(gp[i_u].w);
+      free(gp[i_u].dens);
+      free(gp[i_u].abun);
+      free(gp[i_u].ds);
+      freePopulation(numSpecies, gp[i_u].mol);
     }
-    free(g);
+    free(gp);
   }
 }
 
@@ -78,7 +69,6 @@ freeMolData(const int nSpecies, molData *mol){
       free(mol[i].eterm);
       free(mol[i].gstat);
       free(mol[i].cmb);
-      free(mol[i].local_cmb);
     }
     free(mol);
   }
@@ -120,32 +110,55 @@ freeParImg(const int nImages, inputPars *par, image *img){
   free(par->dustWeights);
 }
 
-void
-freePop2(const int numSpecies, struct pop2 *mol){
-  int i;
-
-  if(mol !=NULL){
-    for(i=0;i<numSpecies;i++){
-      free(mol[i].specNumDens);
-      free(mol[i].knu);
-      free(mol[i].dust);
-    }
-    free(mol);
-  }
-}
-
-void
-freePopulation(configInfo *par, molData *m, struct populations *pop ){
+void freePopulation(const unsigned short numSpecies, struct populations *pop){
   if(pop != NULL){
-    int j;
-    for(j=0; j<par->nSpecies; j++){
-      free( pop[j].pops );
-      free( pop[j].knu );
-      free( pop[j].dust );
-      free( pop[j].partner );
+    unsigned short i_s;
+    for(i_s=0;i_s<numSpecies;i_s++){
+      free(pop[i_s].pops);
+      free(pop[i_s].partner);
+      free(pop[i_s].specNumDens);
+      free(pop[i_s].cont);
     }
     free(pop);
   }
 }
 
+void freeSomeGridFields(const unsigned int numPoints, const unsigned short numSpecies\
+  , struct grid *gp){
+
+  unsigned int i_u;
+  unsigned short i_s;
+
+  if(gp != NULL){
+    for(i_u=0;i_u<numPoints;i_u++){
+      free(gp[i_u].a0);
+      gp[i_u].a0 = NULL;
+      free(gp[i_u].a1);
+      gp[i_u].a1 = NULL;
+      free(gp[i_u].a2);
+      gp[i_u].a2 = NULL;
+      free(gp[i_u].a3);
+      gp[i_u].a3 = NULL;
+      free(gp[i_u].a4);
+      gp[i_u].a4 = NULL;
+      free(gp[i_u].w);
+      gp[i_u].w    = NULL;
+      free(gp[i_u].abun);
+      gp[i_u].abun = NULL;
+      free(gp[i_u].ds);
+      gp[i_u].ds   = NULL;
+
+      if(gp[i_u].mol != NULL){
+        for(i_s=0;i_s<numSpecies;i_s++){
+          free(gp[i_u].mol[i_s].pops);
+          gp[i_u].mol[i_s].pops = NULL;
+          free(gp[i_u].mol[i_s].partner);
+          gp[i_u].mol[i_s].partner = NULL;
+          free(gp[i_u].mol[i_s].cont);
+          gp[i_u].mol[i_s].cont = NULL;
+        }
+      }
+    }
+  }
+}
 

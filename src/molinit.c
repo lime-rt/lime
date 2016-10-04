@@ -6,48 +6,56 @@
  *  Copyright (C) 2015-2016 The LIME development team
  *
 TODO:
-	- Get rid of, or regularize somehow, the printf statements - and clean up all the other new messages which are going to dick with the stdout when curses are selected? (Sigh.)
+	- Get rid of, or regularize somehow, the printf statements (change to printMessage()?) - and clean up all the other new messages which are going to dick with the stdout when curses are selected? (Sigh.)
  */
 
 #include "lime.h"
 
 char *collpartnames[] = {"H2","p-H2","o-H2","electrons","H","He","H+"}; /* definition from LAMDA */
 
+/*....................................................................*/
+void molInit(configInfo *par, molData *md){
+  int *allCollPartIds=NULL;
+  int numCollParts;
+
+  readMolData(par, md, &allCollPartIds, &numCollParts);
+  setUpDensityAux(par, allCollPartIds, numCollParts);
+  free(allCollPartIds);
+  if(!par->lte_only)
+    assignMolCollPartsToDensities(par, md);
+  calcMolCMBs(par, md);
+}
+
+/*....................................................................*/
 void calcMolCMBs(configInfo *par, molData *md){
   int si, iline;
 
   for(si=0;si<par->nSpecies;si++){
     md[si].cmb	     = malloc(sizeof(double)*md[si].nline);
-    md[si].local_cmb = malloc(sizeof(double)*md[si].nline);
-
-    /* fix the normalization at 230GHz */
-    md[si].norm=planckfunc(0,par->tcmb,md,0);
-    md[si].norminv=1./md[si].norm;
     for(iline=0;iline<md[si].nline;iline++){
       if(par->tcmb>0.)
-        md[si].cmb[iline] = planckfunc(iline,par->tcmb,md,si)/md[si].norm;
+        md[si].cmb[iline] = planckfunc(md[si].freq[iline],par->tcmb);
       else
         md[si].cmb[iline]=0.;
-
-      md[si].local_cmb[iline] = planckfunc(iline,2.728,md,si)/md[si].norm;
     }
   }
 }
 
-double
-planckfunc(int iline, double temp, molData *md, int s){
+/*....................................................................*/
+double planckfunc(const double freq, const double temp){
   double bb=10.,wn;
   if(temp<eps) bb = 0.0;
   else {
-    wn=md[s].freq[iline]/CLIGHT;
-    if (HPLANCK*md[s].freq[iline]>100.*KBOLTZ*temp) 
-      bb=2.*HPLANCK*wn*wn*md[s].freq[iline]*exp(-HPLANCK*md[s].freq[iline]/KBOLTZ/temp);
+    wn=freq/CLIGHT;
+    if (HPLANCK*freq>100.*KBOLTZ*temp) 
+      bb=2.*HPLANCK*wn*wn*freq*exp(-HPLANCK*freq/KBOLTZ/temp);
     else 
-      bb=2.*HPLANCK*wn*wn*md[s].freq[iline]/(exp(HPLANCK*md[s].freq[iline]/KBOLTZ/temp)-1);
+      bb=2.*HPLANCK*wn*wn*freq/(exp(HPLANCK*freq/KBOLTZ/temp)-1);
   }
   return bb;
 }
 
+/*....................................................................*/
 void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *numCollPartsFound){
   /* NOTE! allUniqueCollPartIds is malloc'd in the present function, but not freed. The calling program must free it elsewhere.
   */
@@ -55,7 +63,7 @@ void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *
   double dummy;
   _Bool cpFound,previousCpFound;
   const int sizeI=200;
-  char string[sizeI], specref[90], partstr[90];
+  char string[sizeI], partstr[90];
   FILE *fp;
 
   *allUniqueCollPartIds = malloc(sizeof(**allUniqueCollPartIds)*MAX_N_COLL_PART);
@@ -69,7 +77,7 @@ void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *
 
     /* Read the header of the data file */
     fgets(string, sizeI, fp);
-    fgets(specref, 90, fp);
+    fgets(md[i].molName, 90, fp);
     fgets(string, sizeI, fp);
     fscanf(fp, "%lf\n", &md[i].amass);
     fgets(string, sizeI, fp);
@@ -236,7 +244,7 @@ void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *
       strcat( partstr, collpartnames[md[i].part[ipart].collPartId-1]);
     }
     if(!silent) {
-      collpartmesg(specref, md[i].npart);
+      collpartmesg(md[i].molName, md[i].npart);
       collpartmesg2(partstr, ipart);
       collpartmesg3(par->numDensities, 0);
     }
@@ -250,6 +258,7 @@ void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *
   }
 }
 
+/*....................................................................*/
 void setUpDensityAux(configInfo *par, int *allUniqueCollPartIds, const int numUniqueCollParts){
   /*
 The present function, which needs to be called only if we have to calculate the energy level populations at the grid points, deals with the user-settable vectors par->collPartIds and par->nMolWeights. The former of these is used to associate density values with collision-partner species, and the latter is used in converting, for each radiating species, its abundance to a number density, stored respectively in the grid struct attributes abun and nmol. The function deals specifically with the case in which the user has either not set par->collPartIds or par->nMolWeights at all (which they may choose to do), or has set the incorrectly. In either case the respective parameter will have been freed and set to NULL in checkUserDensWeights(). The function tries its best to guess likely values for the parameters, in line with the algorithm used in the code before par->collPartIds and par->nMolWeights were introduced.
@@ -379,6 +388,7 @@ The same backward-compatible guesses are made here as for par->collPartIds in th
   }
 }
 
+/*....................................................................*/
 void assignMolCollPartsToDensities(configInfo *par, molData *md){
   /*
 If we have reached this point, par->collPartIds (and par->nMolWeights) should have been malloc'd and filled with sensible values. Here we set up indices which allow us to associate a density function with each collision partner of each radiating molecule. This information is made use of in stateq.c.
@@ -401,6 +411,7 @@ If we have reached this point, par->collPartIds (and par->nMolWeights) should ha
   }
 }
 
+/*....................................................................*/
 void readDummyCollPart(FILE *fp, const int strLen){
   char string[strLen];
   int ntrans, ntemp, itemp, itrans, idummy, dummyLcu, dummyLcl;

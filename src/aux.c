@@ -21,6 +21,7 @@ parseInput(inputPars inpar, configInfo *par, image **img, molData **m){
   double BB[3],normBSquared,dens[MAX_N_COLL_PART];
   double dummyVel[DIM];
   FILE *fp;
+  char message[80];
   _Bool doThetaPhi;
   double cos_pa,sin_pa,cosPhi,sinPhi,cos_incl,sin_incl,cosTheta,sinTheta,cos_az,sin_az;
   double tempRotMat[3][3],auxRotMat[3][3];
@@ -162,6 +163,15 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
       if(par->dust==NULL){
         if(!silent) bail_out("You must point par.dust to a dust opacity file for a continuum image.");
         exit(1);
+      }else{
+        if((fp=fopen(par->dust, "r"))==NULL){
+          if(!silent){
+            sprintf(message, "Couldn't open dust opacity data file %s", par->dust);
+            bail_out(message);
+          }
+          exit(1);
+        }
+        fclose(fp);
       }
 
       if((*img)[i].trans>-1 || (*img)[i].bandwidth>-1.)
@@ -362,6 +372,15 @@ LIME provides two different schemes of {R_1, R_2, R_3}: {PA, phi, theta} and {PA
     }
   }
 
+  par->nLineImages = 0;
+  par->nContImages = 0;
+  for(i=0;i<par->nImages;i++){
+    if((*img)[i].doline)
+      par->nLineImages++;
+    else
+      par->nContImages++;
+  }
+
   /* Allocate moldata array.
   */
   (*m)=malloc(sizeof(molData)*par->nSpecies);
@@ -376,7 +395,6 @@ LIME provides two different schemes of {R_1, R_2, R_3}: {PA, phi, theta} and {PA
     (*m)[i].eterm = NULL;
     (*m)[i].gstat = NULL;
     (*m)[i].cmb = NULL;
-    (*m)[i].local_cmb = NULL;
   }
 }
 
@@ -512,7 +530,7 @@ invSqrt(float x){
   return x;
 }
 
-void checkGridDensities(configInfo *par, struct grid *g){
+void checkGridDensities(configInfo *par, struct grid *gp){
   int i;
   static _Bool warningAlreadyIssued=0;
   char errStr[80];
@@ -520,36 +538,15 @@ void checkGridDensities(configInfo *par, struct grid *g){
   if(!silent){ /* Warn if any densities too low. */
     i = 0;
     while(i<par->pIntensity && !warningAlreadyIssued){
-      if(g[i].dens[0]<TYPICAL_ISM_DENS){
+      if(gp[i].dens[0]<TYPICAL_ISM_DENS){
         warningAlreadyIssued = 1;
-        sprintf(errStr, "g[%d].dens[0] at %.1e is below typical values for the ISM (~%.1e).", i, g[i].dens[0], TYPICAL_ISM_DENS);
+        sprintf(errStr, "gp[%d].dens[0] at %.1e is below typical values for the ISM (~%.1e).", i, gp[i].dens[0], TYPICAL_ISM_DENS);
         warning(errStr);
         warning("This could give you convergence problems. NOTE: no further warnings will be issued.");
       }
       i++;
     }
   }
-}
-
-void
-continuumSetup(int im, image *img, molData *m, configInfo *par, struct grid *g){
-  int id;
-  img[im].trans=0;
-  m[0].nline=1;
-  m[0].freq= malloc(sizeof(double));
-  m[0].freq[0]=img[im].freq;
-  for(id=0;id<par->ncell;id++) {
-    freePopulation( par, m, g[id].mol );
-    g[id].mol=malloc(sizeof(struct populations)*1);
-    g[id].mol[0].dust = malloc(sizeof(double)*m[0].nline);
-    g[id].mol[0].knu  = malloc(sizeof(double)*m[0].nline);
-    g[id].mol[0].pops = NULL;
-    g[id].mol[0].partner = NULL;
-  }
-  if(par->outputfile) popsout(par,g,m);
-
-  calcMolCMBs(par,m);
-  calcGridDustOpacity(par,m,g);
 }
 
 void lineBlend(molData *m, configInfo *par, struct blendInfo *blends){
@@ -653,9 +650,8 @@ Pointers are indicated by a * before the attribute name and an arrow to the memo
 }
 
 void
-levelPops(molData *m, configInfo *par, struct grid *g, int *popsdone){
-  int id,conv=0,iter,ilev,prog=0,ispec,c=0,n,i,threadI,nVerticesDone,nlinetot,numCollParts;
-  int *allCollPartIds=NULL;
+levelPops(molData *md, configInfo *par, struct grid *gp, int *popsdone, double *lamtab, double *kaptab, const int nEntries){
+  int id,conv=0,iter,ilev,prog=0,ispec,c=0,n,i,threadI,nVerticesDone,nlinetot;
   double percent=0.,*median,result1=0,result2=0,snr,delta_pop;
   int nextMolWithBlend;
   struct statistics { double *pop, *ave, *sigma; } *stat;
@@ -664,30 +660,15 @@ levelPops(molData *m, configInfo *par, struct grid *g, int *popsdone){
   _Bool luWarningGiven=0;
   gsl_error_handler_t *defaultErrorHandler=NULL;
 
-  for(id=0;id<par->ncell;id++) {
-    freePopulation( par, m, g[id].mol );
-    g[id].mol=malloc(sizeof(struct populations)*par->nSpecies);
-    int i;
-    for(i=0;i<par->nSpecies;i++){
-      g[id].mol[i].dust = NULL;
-      g[id].mol[i].knu  = NULL;
-      g[id].mol[i].pops = NULL;
-      g[id].mol[i].partner = NULL;
-    }
-  }
+  nlinetot = 0;
+  for(ispec=0;ispec<par->nSpecies;ispec++)
+    nlinetot += md[ispec].nline;
 
-  readMolData(par,m,&allCollPartIds,&numCollParts);
-  setUpDensityAux(par,allCollPartIds,numCollParts);
-  free(allCollPartIds);
-  assignMolCollPartsToDensities(par,m);
-  calcMolCMBs(par,m);
-  gridLineInit(par,m,g);
-  calcGridMolDensities(par,g);
-  calcGridDustOpacity(par,m,g);
+  gridPopsInit(par,md,gp);
 
   if(par->lte_only){
-    LTE(par,g,m);
-    if(par->outputfile) popsout(par,g,m);
+    LTE(par,gp,md);
+    if(par->outputfile) popsout(par,gp,md);
 
   }else{ /* Non-LTE */
     stat=malloc(sizeof(struct statistics)*par->pIntensity);
@@ -708,32 +689,28 @@ levelPops(molData *m, configInfo *par, struct grid *g, int *popsdone){
       gsl_rng_set(threadRans[i],(int)(gsl_rng_uniform(ran)*1e6));
     }
 
-    calcGridCollRates(par,m,g);
-//******** could free m[].part[].temp, .down now.
-
-    nlinetot = 0;
-    for(ispec=0;ispec<par->nSpecies;ispec++)
-      nlinetot += m[ispec].nline;
+    calcGridCollRates(par,md,gp);
+    calcGridLinesDustOpacity(par, md, lamtab, kaptab, nEntries, gp);
 
     /* Check for blended lines */
-    lineBlend(m, par, &blends);
+    lineBlend(md, par, &blends);
 
-    if(par->init_lte) LTE(par,g,m);
+    if(par->init_lte) LTE(par,gp,md);
 
     for(id=0;id<par->pIntensity;id++){
-      stat[id].pop=malloc(sizeof(double)*m[0].nlev*5);
-      stat[id].ave=malloc(sizeof(double)*m[0].nlev);
-      stat[id].sigma=malloc(sizeof(double)*m[0].nlev);
-      for(ilev=0;ilev<m[0].nlev;ilev++) {
-        for(iter=0;iter<5;iter++) stat[id].pop[ilev+m[0].nlev*iter]=g[id].mol[0].pops[ilev];
+      stat[id].pop=malloc(sizeof(double)*md[0].nlev*5);
+      stat[id].ave=malloc(sizeof(double)*md[0].nlev);
+      stat[id].sigma=malloc(sizeof(double)*md[0].nlev);
+      for(ilev=0;ilev<md[0].nlev;ilev++) {
+        for(iter=0;iter<5;iter++) stat[id].pop[ilev+md[0].nlev*iter]=gp[id].mol[0].pops[ilev];
       }
     }
 
-    if(par->outputfile) popsout(par,g,m);
+    if(par->outputfile) popsout(par,gp,md);
 
     /* Initialize convergence flag */
     for(id=0;id<par->ncell;id++){
-      g[id].conv=0;
+      gp[id].conv=0;
     }
 
     defaultErrorHandler = gsl_set_error_handler_off();
@@ -746,12 +723,14 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
     do{
       if(!silent) progressbar2(0, prog++, 0, result1, result2);
 
-      for(id=0;id<par->ncell && !g[id].sink;id++){
-        for(ilev=0;ilev<m[0].nlev;ilev++) {
-          for(iter=0;iter<4;iter++) stat[id].pop[ilev+m[0].nlev*iter]=stat[id].pop[ilev+m[0].nlev*(iter+1)];
-          stat[id].pop[ilev+m[0].nlev*4]=g[id].mol[0].pops[ilev];
+      for(id=0;id<par->pIntensity;id++){
+        for(ilev=0;ilev<md[0].nlev;ilev++) {
+          for(iter=0;iter<4;iter++) stat[id].pop[ilev+md[0].nlev*iter]=stat[id].pop[ilev+md[0].nlev*(iter+1)];
+          stat[id].pop[ilev+md[0].nlev*4]=gp[id].mol[0].pops[ilev];
         }
       }
+
+      calcGridMolSpecNumDens(par,md,gp);
 
       nVerticesDone=0;
       omp_set_dynamic(0);
@@ -764,9 +743,9 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
         double *halfFirstDs;	// and included them in private() I guess.
         mp=malloc(sizeof(gridPointData)*par->nSpecies);
         for (ispec=0;ispec<par->nSpecies;ispec++){
-          mp[ispec].phot = malloc(sizeof(double)*m[ispec].nline*max_phot);
-          mp[ispec].vfac = malloc(sizeof(double)*               max_phot);
-          mp[ispec].jbar = malloc(sizeof(double)*m[ispec].nline);
+          mp[ispec].phot = malloc(sizeof(double)*md[ispec].nline*max_phot);
+          mp[ispec].vfac = malloc(sizeof(double)*                max_phot);
+          mp[ispec].jbar = malloc(sizeof(double)*md[ispec].nline);
         }
         halfFirstDs = malloc(sizeof(*halfFirstDs)*max_phot);
 
@@ -775,14 +754,14 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
 #pragma omp atomic
           ++nVerticesDone;
 
-          if (threadI == 0){ // i.e., is master thread
-            if(!silent) progressbar((double)nVerticesDone/par->pIntensity,10);
+          if (threadI == 0){ /* i.e., is master thread. */
+            if(!silent) progressbar(nVerticesDone/(double)par->pIntensity,10);
           }
-          if(g[id].dens[0] > 0 && g[id].t[0] > 0){
-            photon(id,g,m,0,threadRans[threadI],par,nlinetot,blends,mp,halfFirstDs);
+          if(gp[id].dens[0] > 0 && gp[id].t[0] > 0){
+            photon(id,gp,md,0,threadRans[threadI],par,nlinetot,blends,mp,halfFirstDs);
             nextMolWithBlend = 0;
             for(ispec=0;ispec<par->nSpecies;ispec++){
-              stateq(id,g,m,ispec,par,blends,nextMolWithBlend,mp,halfFirstDs,&luWarningGiven);
+              stateq(id,gp,md,ispec,par,blends,nextMolWithBlend,mp,halfFirstDs,&luWarningGiven);
               if(par->blend && blends.mols!=NULL && ispec==blends.mols[nextMolWithBlend].molI)
                 nextMolWithBlend++;
             }
@@ -796,37 +775,37 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
         free(halfFirstDs);
       } /* end parallel block. */
 
-      for(id=0;id<par->ncell && !g[id].sink;id++){
+      for(id=0;id<par->pIntensity;id++){
         snr=0;
         n=0;
-        for(ilev=0;ilev<m[0].nlev;ilev++) {
+        for(ilev=0;ilev<md[0].nlev;ilev++) {
           stat[id].ave[ilev]=0;
-          for(iter=0;iter<5;iter++) stat[id].ave[ilev]+=stat[id].pop[ilev+m[0].nlev*iter];
+          for(iter=0;iter<5;iter++) stat[id].ave[ilev]+=stat[id].pop[ilev+md[0].nlev*iter];
           stat[id].ave[ilev]=stat[id].ave[ilev]/5.;
           stat[id].sigma[ilev]=0;
           for(iter=0;iter<5;iter++) {
-            delta_pop = stat[id].pop[ilev+m[0].nlev*iter]-stat[id].ave[ilev];
+            delta_pop = stat[id].pop[ilev+md[0].nlev*iter]-stat[id].ave[ilev];
             stat[id].sigma[ilev]+=delta_pop*delta_pop;
           }
           stat[id].sigma[ilev]=sqrt(stat[id].sigma[ilev])/5.;
-          if(g[id].mol[0].pops[ilev] > 1e-12) c++;
+          if(gp[id].mol[0].pops[ilev] > 1e-12) c++;
 
-          if(g[id].mol[0].pops[ilev] > 1e-12 && stat[id].sigma[ilev] > 0.){
-            snr+=g[id].mol[0].pops[ilev]/stat[id].sigma[ilev];
+          if(gp[id].mol[0].pops[ilev] > 1e-12 && stat[id].sigma[ilev] > 0.){
+            snr+=gp[id].mol[0].pops[ilev]/stat[id].sigma[ilev];
             n++;
           }
         }
         if(n>0) snr=snr/n;
         else if(n==0) snr=1e6;
-        if(snr > 3.) g[id].conv=2;
-        if(snr <= 3 && g[id].conv==2) g[id].conv=1;
+        if(snr > 3.) gp[id].conv=2;
+        if(snr <= 3 && gp[id].conv==2) gp[id].conv=1;
       }
 
       median=malloc(sizeof(*median)*gsl_max(c,1));
       c=0;
       for(id=0;id<par->pIntensity;id++){
-        for(ilev=0;ilev<m[0].nlev;ilev++){
-          if(g[id].mol[0].pops[ilev] > 1e-12) median[c++]=g[id].mol[0].pops[ilev]/stat[id].sigma[ilev];
+        for(ilev=0;ilev<md[0].nlev;ilev++){
+          if(gp[id].mol[0].pops[ilev] > 1e-12) median[c++]=gp[id].mol[0].pops[ilev]/stat[id].sigma[ilev];
         }
       }
 
@@ -838,7 +817,7 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
       free(median);
 
       if(!silent) progressbar2(1, prog, percent, result1, result2);
-      if(par->outputfile) popsout(par,g,m);
+      if(par->outputfile) popsout(par,gp,md);
     } while(conv++<NITERATIONS);
     gsl_set_error_handler(defaultErrorHandler);
 
@@ -858,7 +837,7 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
     free(stat);
   }
 
-  if(par->binoutputfile) binpopsout(par,g,m);
+  if(par->binoutputfile) binpopsout(par,gp,md);
 
   *popsdone=1;
 }
