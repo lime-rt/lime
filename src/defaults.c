@@ -54,7 +54,7 @@ void __attribute__((weak))
     }
 
 double __attribute__((weak))
-    gridDensity(configInfo *par, double *r, double *nref){
+    gridDensity(configInfo *par, double *r, double *weighting_n0, double weighting_w){
       /* The grid points within the model are chosen randomly via the rejection method with a probability distribution which the present function is intended to provide. The user may supply their own version of this within model.c; the default here implements the grid-point selection function used in LIME<=1.5.
       */
       double val[99],totalDensity=0.0,rSquared=0.0,fracDensity=0.0;
@@ -68,8 +68,8 @@ double __attribute__((weak))
       if(referenceDensity==0.0){
           density(par->minScale,par->minScale,par->minScale,val);
           for (i=0;i<par->numDensities;i++)
-              if(nref[i] != -1){
-                  referenceDensity += nref[i];
+              if(weighting_n0[i] > 0.0){
+                  referenceDensity += weighting_n0[i];
               }
               else{
                   referenceDensity += val[i];
@@ -83,7 +83,7 @@ double __attribute__((weak))
 
       density(r[0],r[1],r[2],val);
       for (i=0;i<par->numDensities;i++) totalDensity += val[i];
-      fracDensity = pow(totalDensity/referenceDensity,0.2);
+      fracDensity = pow(totalDensity/referenceDensity, weighting_w);
 
       return fracDensity;
     }

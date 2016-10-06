@@ -87,7 +87,8 @@ input(inputPars *par, image *img){
      in the model that has a density that is different to that at r=par->minScale. If undefined then the density at
      r=par->minScale is used and if defined then a value is needed for each density profile.
   */
-  par->nref[0]                  = 1.0E16;
+  par->weighting_n0[0]          = 1.0E16;
+  par->weighting_w              = 0.5;
 
   /*
      Definitions for image #0. Add blocks with successive values of i for additional images.

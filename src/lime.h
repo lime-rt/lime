@@ -112,7 +112,7 @@
 typedef struct {
   double radius,minScale,tcmb,*nMolWeights,*dustWeights;
   double radiusSqu,minScaleSqu,taylorCutoff;
-  double *nref;
+  double *weighting_n0, weighting_w;
   int sinkPoints,pIntensity,blend,*collPartIds,traceRayAlgorithm;
   int ncell,nImages,nSpecies,numDensities,doPregrid;
   char *outputfile, *binoutputfile;
@@ -289,7 +289,7 @@ void    doppler(double, double, double, double *);
 void    velocity(double, double, double, double *);
 void    magfield(double, double, double, double *);
 void    gasIIdust(double, double, double, double *);
-double  gridDensity(configInfo *, double *, double *);
+double  gridDensity(configInfo *, double *, double *, double);
 
 /* More functions */
 void	run(inputPars, image *);
@@ -358,7 +358,7 @@ void	openSocket(char*);
 void	parseInput(inputPars, configInfo*, image**, molData**);
 void	photon(int, struct grid*, molData*, int, const gsl_rng*, configInfo*, const int, struct blendInfo, gridPointData*, double*);
 double	planckfunc(int, double, molData *, int);
-int	    pointEvaluation(configInfo *, const double, double *, double *);
+int	    pointEvaluation(configInfo *, const double, double *, double *, double);
 void	popsin(configInfo *, struct grid **, molData **, int *);
 void	popsout(configInfo *, struct grid *, molData *);
 void	predefinedGrid(configInfo *, struct grid *);

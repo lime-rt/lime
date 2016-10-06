@@ -60,8 +60,9 @@ initParImg(inputPars *par, image **img)
   for(i=0;i<MAX_N_COLL_PART;i++) par->nMolWeights[i] = -1.0;
   par->dustWeights  = malloc(sizeof(double)*MAX_N_COLL_PART);
   for(i=0;i<MAX_N_COLL_PART;i++) par->dustWeights[i] = -1.0;
-  par->nref         = malloc(sizeof(double)*MAX_N_COLL_PART);
-  for(i=0;i<MAX_N_COLL_PART;i++) par->nref[i] = -1.0;
+  par->weighting_n0 = malloc(sizeof(double)*MAX_N_COLL_PART);
+  for(i=0;i<MAX_N_COLL_PART;i++) par->weighting_n0[i] = -1.0;
+  par->weighting_w = 0.5;
 
   par->tcmb = 2.728;
   par->lte_only=0;

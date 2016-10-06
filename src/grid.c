@@ -629,7 +629,7 @@ buildGrid(configInfo *par, struct grid *g){
   double logmin;	    /* Logarithm of par->minScale				*/
   double r,theta,phi,sinPhi,z,semiradius;	/* Coordinates								*/
   double uniformRandom;
-  double n0[99];
+  double n0[MAX_N_COLL_PART], w;
   int k=0,i,j;            /* counters									*/
   int pointIsAccepted;
   struct cell *dc=NULL; /* Not used at present. */
@@ -649,6 +649,15 @@ buildGrid(configInfo *par, struct grid *g){
   
   lograd=log10(par->radius);
   logmin=log10(par->minScale);
+
+    /* Assign weighting parameter values from par->weighting_n0 and par->weighting_w */
+    /* This allows easy overwriting if a custom gridding sampling is created and used */
+    if(par->sampling==0 || par->sampling==1 || par->sampling==2){
+        for(i=0; i<MAX_N_COLL_PART; i++){
+            n0[i] = par->weighting_n0[i];
+        }
+        w = par->weighting_w;
+    }
 
   /* Sample pIntensity number of points */
   for(k=0;k<par->pIntensity;k++){
@@ -693,18 +702,8 @@ buildGrid(configInfo *par, struct grid *g){
           if(!silent) bail_out("Don't know how to sample model");
           exit(1);
         }
-        /* Assign n0 values from par->nref */
-        if(par->sampling==0 || par->sampling==1 || par->sampling==2){
-          for(i=0; i<99; i++){
-            if(par->nref[i] == -1.0){
-              break;
-            }
-            else{
-              n0[i] = par->nref[i];
-            }
-          }
-        }
-        pointIsAccepted = pointEvaluation(par, uniformRandom, x, n0);
+
+        pointIsAccepted = pointEvaluation(par, uniformRandom, x, n0, w);
         j++;
       }
     } while(!pointIsAccepted);
