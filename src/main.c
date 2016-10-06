@@ -3,7 +3,7 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2016 The LIME development team
+ *  Copyright (C) 2015-2016 The LIME development team
  *
  */
 #include <locale.h>
@@ -151,13 +151,16 @@ run(inputPars inpars, image *img)
      programs. In this case, inpars and img must be specified by the
      external program.
   */
-  int i,j,nLineImages;
+  int i,j,gi,si;
   int initime=time(0);
   int popsdone=0;
-  molData*     m = NULL;
+  molData*     md = NULL;
   configInfo  par;
-  struct grid* g = NULL;
   char fits_filename[100] = "";
+  struct grid* gp = NULL;
+  char message[80];
+  int nEntries=0;
+  double *lamtab=NULL, *kaptab=NULL;
 
   /*Set locale to avoid trouble when reading files*/
   setlocale(LC_ALL, "C");
@@ -169,56 +172,83 @@ run(inputPars inpars, image *img)
   calcTableEntries(FAST_EXP_MAX_TAYLOR, FAST_EXP_NUM_BITS);
 #endif
 
-  parseInput(inpars, &par, &img, &m); /* Sets par.numDensities for !(par.doPregrid || par.restart) */
+  parseInput(inpars, &par, &img, &md); /* Sets par.numDensities for !(par.doPregrid || par.restart) */
+
+  if(!silent && par.nThreads>1){
+    sprintf(message, "Number of threads used: %d", par.nThreads);
+    printMessage(message);
+  }
 
   if(par.doPregrid)
     {
-      gridAlloc(&par,&g);
-      predefinedGrid(&par,g); /* Sets par.numDensities */
+      mallocAndSetDefaultGrid(&gp, (unsigned int)par.ncell);
+      predefinedGrid(&par,gp); /* Sets par.numDensities */
       checkUserDensWeights(&par); /* Needs par.numDensities */
     }
   else if(par.restart)
     {
-      popsin(&par,&g,&m,&popsdone);
+      popsin(&par,&gp,&md,&popsdone);
     }
   else
     {
       checkUserDensWeights(&par); /* Needs par.numDensities */
-      gridAlloc(&par,&g);
-      buildGrid(&par,g);
+      mallocAndSetDefaultGrid(&gp, (unsigned int)par.ncell);
+      buildGrid(&par,gp);
     }
 
-  /* Make all the continuum images, and count the non-continuum images at the same time:
+  if(par.dust != NULL)
+    readDustFile(par.dust, &lamtab, &kaptab, &nEntries);
+
+  /* Make all the continuum images:
   */
-  nLineImages = 0;
   for(i=0;i<par.nImages;i++){
-    if(img[i].doline)
-      nLineImages++;
-    else{
-      if(par.restart)
-        img[i].trans=0;
-      else
-        continuumSetup(i,img,m,&par,g);
-      raytrace(i,&par,g,m,img);
+    if(!img[i].doline){
+      raytrace(i, &par, gp, md, img, lamtab, kaptab, nEntries);
       for(j=0;j<img[i].numunits;j++) {
         fitsFilename(fits_filename, &par, img, i, j);
-        writeFits(fits_filename, &par, m, img, i, j);
+        writeFits(fits_filename, &par, md, img, i, j);
         if(!silent) output(fits_filename);
       }
     }
   }
 
-  if(nLineImages>0 && !popsdone)
-    levelPops(m,&par,g,&popsdone);
+  if(par.nLineImages>0){
+    molInit(&par, md);
+
+    if(!popsdone){
+      for(gi=0;gi<par.ncell;gi++){
+        gp[gi].mol = malloc(sizeof(*(gp[gi].mol))*par.nSpecies);
+        for(si=0;si<par.nSpecies;si++){
+          gp[gi].mol[si].pops    = NULL;
+          gp[gi].mol[si].partner = NULL;
+          gp[gi].mol[si].cont    = NULL;
+        }
+      }
+    }
+
+    for(gi=0;gi<par.ncell;gi++){
+      for(si=0;si<par.nSpecies;si++)
+        gp[gi].mol[si].specNumDens = malloc(sizeof(double)*md[si].nlev);
+    }
+    calcGridMolDoppler(&par, md, gp);
+    calcGridMolDensities(&par,gp);
+
+    if(!popsdone)
+      levelPops(md, &par, gp, &popsdone, lamtab, kaptab, nEntries);
+
+    calcGridMolSpecNumDens(&par,md,gp);
+  }
+
+  freeSomeGridFields((unsigned int)par.ncell, (unsigned short)par.nSpecies, gp);
 
   /* Now make the line images.
   */
   for(i=0;i<par.nImages;i++){
     if(img[i].doline){
-      raytrace(i,&par,g,m,img);
+      raytrace(i, &par, gp, md, img, lamtab, kaptab, nEntries);
       for(j=0;j<img[i].numunits;j++){
         fitsFilename(fits_filename, &par, img, i, j);
-        writeFits(fits_filename, &par, m, img, i, j);
+        writeFits(fits_filename, &par, md, img, i, j);
         if(!silent) output(fits_filename);
       }
     }
@@ -226,23 +256,16 @@ run(inputPars inpars, image *img)
   
   if(!silent) goodnight(initime);
 
-  freeGrid( &par, m, g);
-  freeMolData(par.nSpecies, m);
+  freeGrid((unsigned int)par.ncell, (unsigned short)par.nSpecies, gp);
+  freeMolData(par.nSpecies, md);
   free(par.moldatfile);
   free(par.collPartIds);
   free(par.nMolWeights);
   free(par.dustWeights);
-}
-
-void writeFits(const char *fits_filename, configInfo *par, molData *m, image *img, const int im, const int unit){
-  if((img[im].doline == 1 || (img[im].doline==0 && par->polarization)) && img[im].imgunits[unit] != 5){
-    write3Dfits(fits_filename, par, m, img, im, unit);
-  }
-  else if(img[im].doline == 0 || img[im].imgunits[unit] == 5){
-    write2Dfits(fits_filename, par, m, img, im, unit);
-  }
-  else{
-    if(!silent) bail_out("FITS output unclear");
+  
+  if(par.dust != NULL){
+    free(kaptab);
+    free(lamtab);
   }
 }
 

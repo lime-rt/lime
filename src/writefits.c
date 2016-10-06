@@ -3,11 +3,23 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2016 The LIME development team
+ *  Copyright (C) 2015-2016 The LIME development team
  *
  */
 
 #include "lime.h"
+
+void writeFits(const char *fits_filename, configInfo *par, molData *m, image *img, const int im, const int unit){
+  if((img[im].doline == 1 || (img[im].doline==0 && par->polarization)) && img[im].imgunits[unit] != 5){
+    write3Dfits(fits_filename, par, m, img, im, unit);
+  }
+  else if(img[im].doline == 0 || img[im].imgunits[unit] == 5){
+    write2Dfits(fits_filename, par, m, img, im, unit);
+  }
+  else{
+    if(!silent) bail_out("FITS output unclear");
+  }
+}
 
 void fitsFilename(char* fits_filename, configInfo *par, image *img, const int im, const int unit){
   char temp_filename[200];
@@ -111,14 +123,14 @@ write3Dfits(const char *fits_filename, configInfo *par, molData *m, image *img, 
   if(img[im].imgunits[unit]==4) fits_write_key(fptr, TSTRING, "BUNIT", &"        ", "", &status);
 
   if(     img[im].imgunits[unit]==0)
-    scale=(CLIGHT/img[im].freq)*(CLIGHT/img[im].freq)/2./KBOLTZ*m[0].norm;
+    scale=(CLIGHT/img[im].freq)*(CLIGHT/img[im].freq)/2./KBOLTZ;
   else if(img[im].imgunits[unit]==1)
-    scale=1e26*img[im].imgres*img[im].imgres*m[0].norm;
+    scale=1e26*img[im].imgres*img[im].imgres;
   else if(img[im].imgunits[unit]==2)
-    scale=m[0].norm;
+    scale=1.0;
   else if(img[im].imgunits[unit]==3) {
     ru3 = img[im].distance/1.975e13;
-    scale=4.*PI*ru3*ru3*img[im].freq*img[im].imgres*img[im].imgres*m[0].norm;
+    scale=4.*PI*ru3*ru3*img[im].freq*img[im].imgres*img[im].imgres;
   }
   else if(img[im].imgunits[unit]!=4) {
     if(!silent) bail_out("Image unit number invalid");
@@ -154,7 +166,7 @@ write3Dfits(const char *fits_filename, configInfo *par, molData *m, image *img, 
 
   free(row);
 
-  if(!silent) done(13);
+  if(!silent) printDone(13);
 }
 
 void 
@@ -230,19 +242,24 @@ write2Dfits(const char *fits_filename, configInfo *par, molData *m, image *img, 
   if(unit==5) fits_write_key(fptr, TSTRING, "BUNIT", &"N_RAYS  ", "", &status);
 
   if(     img[im].imgunits[unit]==0)
-    scale=(CLIGHT/img[im].freq)*(CLIGHT/img[im].freq)/2./KBOLTZ*m[0].norm;
+    scale=(CLIGHT/img[im].freq)*(CLIGHT/img[im].freq)/2./KBOLTZ;
   else if(img[im].imgunits[unit]==1)
-    scale=1e26*img[im].imgres*img[im].imgres*m[0].norm;
+    scale=1e26*img[im].imgres*img[im].imgres;
   else if(img[im].imgunits[unit]==2)
-    scale=m[0].norm;
+    scale=1.0;
   else if(img[im].imgunits[unit]==3) {
     ru3 = img[im].distance/1.975e13;
-    scale=4.*PI*ru3*ru3*img[im].freq*img[im].imgres*img[im].imgres*m[0].norm;
+    scale=4.*PI*ru3*ru3*img[im].freq*img[im].imgres*img[im].imgres;
   }
   else if(img[im].imgunits[unit]!=4 && img[im].imgunits[unit]!=5) {
     if(!silent) bail_out("Image unit number invalid");
     exit(0);
   }
+
+  if(img[im].imgunits[unit]<5)
+    minVal = eps;
+  else
+    minVal = 0.0;
 
   /* Write FITS data */
   for(py=0;py<img[im].pxls;py++){
@@ -259,7 +276,7 @@ write2Dfits(const char *fits_filename, configInfo *par, molData *m, image *img, 
         if(!silent) bail_out("Image unit number invalid");
         exit(0);
       }
-      if (fabs(row[px])< (float) eps) row[px]=(float)eps;
+      if (fabs(row[px])<minVal) row[px]=minVal;
 
       fpixels[0]=1;
       fpixels[1]=py+1;
@@ -272,6 +289,6 @@ write2Dfits(const char *fits_filename, configInfo *par, molData *m, image *img, 
 
   free(row);
 
-  if(!silent) done(13);
+  if(!silent) printDone(13);
 }
 

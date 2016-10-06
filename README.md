@@ -3,7 +3,7 @@ LIME (Line Modeling Engine)
 
 Copyright (C) 2006-2014 Christian Brinch.
 
-Copyright (C) 2015 the LIME development team.
+Copyright (C) 2015-2016 the LIME development team.
 
 LIME was created by Christian Brinch, but is now maintained by several people. See the LIME repository on [GitHub](https://github.com/lime-rt/lime) for further details.
   

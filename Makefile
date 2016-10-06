@@ -2,7 +2,7 @@
 # This file is part of LIME, the versatile line modeling engine
 #
 # Copyright (C) 2006-2014 Christian Brinch
-# Copyright (C) 2015 The LIME development team
+# Copyright (C) 2015-2016 The LIME development team
 
 ##
 ## Make sure to put the correct paths.
@@ -88,8 +88,15 @@ ${MODELO}:
 ${OBJS}: %.o: %.c  
 	${CC} ${CCFLAGS} ${CPPFLAGS} -o $@ -c $<
 
+doc::
+	mkdir doc/_html || true
+	sphinx-build doc doc/_html
+
+docclean::
+	rm -rf doc/_html
+
 clean:: 
 	rm -f *~ src/*.o ${TARGET} 
 
-distclean:: clean
+distclean:: clean docclean
 
