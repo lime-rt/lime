@@ -3,7 +3,7 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015 The LIME development team
+ *  Copyright (C) 2015-2016 The LIME development team
  *
  */
 
@@ -41,7 +41,7 @@ getVelocities(configInfo *par, struct grid *g){
       }
     }		
   }
-  
+
   for(i=par->pIntensity;i<par->ncell;i++){
     /* Set velocity values also for sink points (otherwise Delaunay ray-tracing has problems) */
     velocity(g[i].x[0],g[i].x[1],g[i].x[2],g[i].vel);

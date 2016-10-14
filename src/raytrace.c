@@ -3,11 +3,10 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2016 The LIME development team
+ *  Copyright (C) 2015-2016 The LIME development team
  *
 TODO:
   - In raytrace(), look at rearranging the code to do the qhull step before choosing the rays. This would allow cells with all vertices outside the image boundaries to be excluded. If the image is much smaller than the model, this could lead to significant savings in time. The only downside might be memory useage...
-  - REMOVED NORMINV!! We should not be multiplying remnantSnu by md[0].norminv, but to make it correct would be pretty fiddly.
  */
 
 #include "lime.h"
@@ -61,28 +60,29 @@ The bulk velocity of the model material can vary significantly with position, th
 
 /*....................................................................*/
 void
-line_plane_intersect(struct grid *g, double *ds, int posn, int *nposn, double *dx, double *x, double cutoff){
+line_plane_intersect(struct grid *gp, double *ds, int posn, int *nposn\
+  , double *dx, double *x, double cutoff){
   /*
 This function returns ds as the (always positive-valued) distance between the present value of x and the next Voronoi face in the direction of vector dx, and nposn as the id of the grid cell that abuts that face. 
   */
   double newdist, numerator, denominator ;
   int i;
 
-  for(i=0;i<g[posn].numNeigh;i++) {
+  for(i=0;i<gp[posn].numNeigh;i++) {
     /* Find the shortest distance between (x,y,z) and any of the posn Voronoi faces */
     /* ds=(p0-l0) dot n / l dot n */
 
-    numerator=((g[posn].x[0]+g[posn].dir[i].x[0]/2. - x[0]) * g[posn].dir[i].x[0]+
-               (g[posn].x[1]+g[posn].dir[i].x[1]/2. - x[1]) * g[posn].dir[i].x[1]+
-               (g[posn].x[2]+g[posn].dir[i].x[2]/2. - x[2]) * g[posn].dir[i].x[2]);
+    numerator=((gp[posn].x[0]+gp[posn].dir[i].x[0]/2. - x[0]) * gp[posn].dir[i].x[0]+
+               (gp[posn].x[1]+gp[posn].dir[i].x[1]/2. - x[1]) * gp[posn].dir[i].x[1]+
+               (gp[posn].x[2]+gp[posn].dir[i].x[2]/2. - x[2]) * gp[posn].dir[i].x[2]);
 
-    denominator=(dx[0]*g[posn].dir[i].x[0]+dx[1]*g[posn].dir[i].x[1]+dx[2]*g[posn].dir[i].x[2]);
+    denominator=(dx[0]*gp[posn].dir[i].x[0]+dx[1]*gp[posn].dir[i].x[1]+dx[2]*gp[posn].dir[i].x[2]);
     
     if(fabs(denominator) > 0){
       newdist=numerator/denominator;
       if(newdist<*ds && newdist > cutoff){
         *ds=newdist;
-        *nposn=g[posn].neigh[i]->id;
+        *nposn=gp[posn].neigh[i]->id;
       }
     }
   }
@@ -90,18 +90,16 @@ This function returns ds as the (always positive-valued) distance between the pr
 }
 
 /*....................................................................*/
-void
-traceray(rayData ray, const int cmbMolI, const int cmbLineI, const int im\
-  , configInfo *par, struct grid *gp, molData *md, image *img, struct gAuxType *gAux\
-  , const int nlinetot, int *allLineMolIs, int *allLineLineIs, const double cutoff\
-  , const int nSteps, const double oneOnNSteps){
+void traceray(rayData ray, const double local_cmb, const int im\
+  , configInfo *par, struct grid *gp, molData *md, image *img\
+  , const double cutoff, const int nSteps, const double oneOnNSteps){
   /*
 For a given image pixel position, this function evaluates the intensity of the total light emitted/absorbed along that line of sight through the (possibly rotated) model. The calculation is performed for several frequencies, one per channel of the output image.
 
 Note that the algorithm employed here is similar to that employed in the function photon() which calculates the average radiant flux impinging on a grid cell: namely the notional photon is started at the side of the model near the observer and 'propagated' in the receding direction until it 'reaches' the far side. This is rather non-physical in conception but it makes the calculation easier.
   */
   const int stokesIi=0;
-  int ichan,stokesId,di,i,posn,nposn,polMolI,polLineI,iline,molI,lineI;
+  int ichan,stokesId,di,i,posn,nposn,molI,lineI;
   double xp,yp,zp,x[DIM],dx[DIM],dist2,ndist2,col,ds,snu_pol[3],dtau;
   double contJnu,contAlpha,jnu,alpha,lineRedShift,vThisChan,deltav,vfac=0.;
   double remnantSnu,expDTau,brightnessIncrement;
@@ -146,10 +144,8 @@ Note that the algorithm employed here is similar to that employed in the functio
     nposn=-1;
     line_plane_intersect(gp,&ds,posn,&nposn,dx,x,cutoff); /* Returns a new ds equal to the distance to the next Voronoi face, and nposn, the ID of the grid cell that abuts that face. */
 
-    if(par->polarization){
-      polMolI = 0; /****** Always?? */
-      polLineI = 0; /****** Always?? */
-      sourceFunc_pol(gp[posn].B, gAux[posn].mol[polMolI], polLineI, img[im].rotMat, snu_pol, &alpha);
+    if(par->polarization){ /* Should also imply img[im].doline. */
+      sourceFunc_pol(gp[posn].B, gp[posn].cont, img[im].rotMat, snu_pol, &alpha);
       dtau=alpha*ds;
       calcSourceFn(dtau, par, &remnantSnu, &expDTau);
       remnantSnu *= ds;
@@ -176,7 +172,7 @@ Note that the algorithm employed here is similar to that employed in the functio
       */
       contJnu = 0.0;
       contAlpha = 0.0;
-      sourceFunc_cont_raytrace(gAux[posn].mol[cmbMolI], cmbLineI, &contJnu, &contAlpha);
+      sourceFunc_cont(gp[posn].cont, &contJnu, &contAlpha);
 
       for(ichan=0;ichan<img[im].nchan;ichan++){
         jnu = contJnu;
@@ -206,11 +202,11 @@ Note that the algorithm employed here is similar to that employed in the functio
                   vfac = gaussline(deltav-veloproject(dx,gp[posn].vel),gp[posn].mol[molI].binv);
 
                 /* Increment jnu and alpha for this Voronoi cell by the amounts appropriate to the spectral line. */
-                sourceFunc_line_raytrace(md[molI],vfac,gAux[posn].mol[molI],lineI,&jnu,&alpha);
+                sourceFunc_line(md[molI],vfac,gp[posn].mol[molI],lineI,&jnu,&alpha);
               }
             }
           }
-        }
+        } /* end if(img[im].doline) */
 
         dtau=alpha*ds;
 //???          if(dtau < -30) dtau = -30; // as in photon()?
@@ -223,8 +219,8 @@ Note that the algorithm employed here is similar to that employed in the functio
 #endif
         ray.intensity[ichan] += brightnessIncrement;
         ray.tau[ichan]+=dtau;
-      }
-    }
+      } /* end loop over channels */
+    } /* end if(par->polarization) */
 
     /* Move the working point to the edge of the next Voronoi cell. */
     for(di=0;di<DIM;di++) x[di]+=ds*dx[di];
@@ -235,30 +231,30 @@ Note that the algorithm employed here is similar to that employed in the functio
   /* Add or subtract cmb. */
   if(par->polarization){ /* just add it to Stokes I */
 #ifdef FASTEXP
-    ray.intensity[stokesIi]+=FastExp(ray.tau[stokesIi])*md[cmbMolI].local_cmb[cmbLineI];
+    ray.intensity[stokesIi]+=FastExp(ray.tau[stokesIi])*local_cmb;
 #else
-    ray.intensity[stokesIi]+=exp(   -ray.tau[stokesIi])*md[cmbMolI].local_cmb[cmbLineI];
+    ray.intensity[stokesIi]+=exp(   -ray.tau[stokesIi])*local_cmb;
 #endif
 
   }else{
 #ifdef FASTEXP
     for(ichan=0;ichan<img[im].nchan;ichan++){
-      ray.intensity[ichan]+=FastExp(ray.tau[ichan])*md[cmbMolI].local_cmb[cmbLineI];
+      ray.intensity[ichan]+=FastExp(ray.tau[ichan])*local_cmb;
     }
 #else
     for(ichan=0;ichan<img[im].nchan;ichan++){
-      ray.intensity[ichan]+=exp(-ray.tau[ichan])*md[cmbMolI].local_cmb[cmbLineI];
+      ray.intensity[ichan]+=exp(-ray.tau[ichan])*local_cmb;
     }
 #endif
   }
 }
 
 /*....................................................................*/
-void traceray_smooth(rayData ray, const int cmbMolI, const int cmbLineI, const int im\
-  , configInfo *par, struct grid *gp, molData *md, image *img, struct gAuxType *gAux\
-  , const int nlinetot, int *allLineMolIs, int *allLineLineIs, struct cell *dc\
-  , const unsigned long numCells, const double epsilon, gridInterp gips[3]\
-  , const int numSegments, const double oneOnNumSegments, const int nSteps, const double oneOnNSteps){
+void traceray_smooth(rayData ray, const double local_cmb, const int im\
+  , configInfo *par, struct grid *gp, molData *md, image *img\
+  , struct cell *dc, const unsigned long numCells, const double epsilon\
+  , gridInterp gips[3], const int numSegments, const double oneOnNumSegments\
+  , const int nSteps, const double oneOnNSteps){
   /*
 For a given image pixel position, this function evaluates the intensity of the total light emitted/absorbed along that line of sight through the (possibly rotated) model. The calculation is performed for several frequencies, one per channel of the output image.
 
@@ -269,7 +265,7 @@ This version of traceray implements a new algorithm in which the population valu
   const int stokesIi=0;
   const int numFaces = DIM+1, nVertPerFace=3;
   int ichan,stokesId,di,status,lenChainPtrs,entryI,exitI,vi,vvi,ci;
-  int si, polMolI, polLineI, iline, molI, lineI;
+  int si, molI, lineI;
   double xp,yp,zp,x[DIM],dir[DIM],projVelRay,vel[DIM];
   double xCmpntsRay[nVertPerFace], ds, snu_pol[3], dtau, contJnu, contAlpha;
   double jnu, alpha, lineRedShift, vThisChan, deltav, vfac, remnantSnu, expDTau;
@@ -302,7 +298,7 @@ This version of traceray implements a new algorithm in which the population valu
   /* Find the chain of cells the ray passes through.
   */
   status = followRayThroughDelCells(x, dir, gp, dc, numCells, epsilon\
-    , &entryIntcptFirstCell, &chainOfCellIds, &cellExitIntcpts, &lenChainPtrs);//, 0);
+    , &entryIntcptFirstCell, &chainOfCellIds, &cellExitIntcpts, &lenChainPtrs);
 
   if(status!=0){
     free(chainOfCellIds);
@@ -328,7 +324,7 @@ This version of traceray implements a new algorithm in which the population valu
   for(vi=0;vi<nVertPerFace;vi++)
     xCmpntsRay[vi] = veloproject(dir, gp[gis[entryI][vi]].x);
 
-  doBaryInterp(entryIntcptFirstCell, gp, gAux, xCmpntsRay, gis[entryI]\
+  doBaryInterp(entryIntcptFirstCell, gp, xCmpntsRay, gis[entryI]\
     , md, par->nSpecies, &gips[entryI]);
 
   for(ci=0;ci<lenChainPtrs;ci++){
@@ -350,7 +346,7 @@ This version of traceray implements a new algorithm in which the population valu
     for(vi=0;vi<nVertPerFace;vi++)
       xCmpntsRay[vi] = veloproject(dir, gp[gis[exitI][vi]].x);
 
-    doBaryInterp(cellExitIntcpts[ci], gp, gAux, xCmpntsRay, gis[exitI]\
+    doBaryInterp(cellExitIntcpts[ci], gp, xCmpntsRay, gis[exitI]\
       , md, par->nSpecies, &gips[exitI]);
 
     /* At this point we have interpolated all the values of interest to both the entry and exit points of the cell. Now we break the path between entry and exit into several segments and calculate all these values at the midpoint of each segment.
@@ -363,9 +359,7 @@ At the moment I will fix the number of segments, but it might possibly be faster
       doSegmentInterp(gips, entryI, md, par->nSpecies, oneOnNumSegments, si);
 
       if(par->polarization){
-        polMolI = 0; /****** Always?? */
-        polLineI = 0; /****** Always?? */
-        sourceFunc_pol(gips[2].B, gips[2].mol[polMolI], polLineI, img[im].rotMat, snu_pol, &alpha);
+        sourceFunc_pol(gips[2].B, gips[2].cont, img[im].rotMat, snu_pol, &alpha);
         dtau=alpha*ds;
         calcSourceFn(dtau, par, &remnantSnu, &expDTau);
         remnantSnu *= ds;
@@ -389,7 +383,7 @@ At the moment I will fix the number of segments, but it might possibly be faster
         */
         contJnu = 0.0;
         contAlpha = 0.0;
-        sourceFunc_cont_raytrace(gips[2].mol[cmbMolI], cmbLineI, &contJnu, &contAlpha);
+        sourceFunc_cont(gips[2].cont, &contJnu, &contAlpha);
 
         for(ichan=0;ichan<img[im].nchan;ichan++){
           jnu = contJnu;
@@ -416,7 +410,7 @@ At the moment I will fix the number of segments, but it might possibly be faster
 
                   /* Increment jnu and alpha for this Voronoi cell by the amounts appropriate to the spectral line.
                   */
-                  sourceFunc_line_raytrace(md[molI], vfac, gips[2].mol[molI], lineI, &jnu, &alpha);
+                  sourceFunc_line(md[molI], vfac, gips[2].mol[molI], lineI, &jnu, &alpha);
                 } /* end if within freq range. */
               } /* end loop over lines this mol. */
             } /* end loop over all mols. */
@@ -444,19 +438,19 @@ At the moment I will fix the number of segments, but it might possibly be faster
   /* Add or subtract cmb. */
   if(par->polarization){ /* just add it to Stokes I */
 #ifdef FASTEXP
-    ray.intensity[stokesIi]+=FastExp(ray.tau[stokesIi])*md[cmbMolI].local_cmb[cmbLineI];
+    ray.intensity[stokesIi]+=FastExp(ray.tau[stokesIi])*local_cmb;
 #else
-    ray.intensity[stokesIi]+=exp(   -ray.tau[stokesIi])*md[cmbMolI].local_cmb[cmbLineI];
+    ray.intensity[stokesIi]+=exp(   -ray.tau[stokesIi])*local_cmb;
 #endif
 
   }else{
 #ifdef FASTEXP
     for(ichan=0;ichan<img[im].nchan;ichan++){
-      ray.intensity[ichan]+=FastExp(ray.tau[ichan])*md[cmbMolI].local_cmb[cmbLineI];
+      ray.intensity[ichan]+=FastExp(ray.tau[ichan])*local_cmb;
     }
 #else
     for(ichan=0;ichan<img[im].nchan;ichan++){
-      ray.intensity[ichan]+=exp(-ray.tau[ichan])*md[cmbMolI].local_cmb[cmbLineI];
+      ray.intensity[ichan]+=exp(-ray.tau[ichan])*local_cmb;
     }
 #endif
   }
@@ -466,10 +460,50 @@ At the moment I will fix the number of segments, but it might possibly be faster
 }
 
 /*....................................................................*/
+void locateRayOnImage(double x[2], const double size, const double imgCentreXPixels, const double imgCentreYPixels, image *img, const int im, const int maxNumRaysPerPixel, rayData *rays, int *numActiveRays){
+  int xi,yi,ichan;
+  _Bool isOutsideImage;
+  unsigned int ppi;
+
+  /* Calculate which pixel the projected position (x[0],x[1]) falls within.
+  */
+  xi = floor(x[0]/size + imgCentreXPixels);
+  yi = floor(x[1]/size + imgCentreYPixels);
+  if(xi<0 || xi>=img[im].pxls || yi<0 || yi>=img[im].pxls){
+    isOutsideImage = 1;
+    ppi = 0; /* Under these circumstances it ought never to be accessed, but it is not good to leave it without a value at all. */
+  }else{
+    isOutsideImage = 0;
+    ppi = (unsigned int)yi*(unsigned int)img[im].pxls + (unsigned int)xi;
+  }
+
+  /* See if we want to keep the ray. For the time being we will include those outside the image bounds, but a cleverer algorithm would exclude some of them. Note that maxNumRaysPerPixel<1 is used to flag that there is no upper limit to the number of rays per pixel.
+  */
+  if(isOutsideImage || maxNumRaysPerPixel<1 || img[im].pixel[ppi].numRays<maxNumRaysPerPixel){
+    if(!isOutsideImage)
+      img[im].pixel[ppi].numRays++;
+
+    rays[*numActiveRays].ppi = ppi;
+    rays[*numActiveRays].x = x[0];
+    rays[*numActiveRays].y = x[1];
+    rays[*numActiveRays].tau       = malloc(sizeof(double)*img[im].nchan);
+    rays[*numActiveRays].intensity = malloc(sizeof(double)*img[im].nchan);
+    for(ichan=0;ichan<img[im].nchan;ichan++) {
+      rays[*numActiveRays].tau[ichan] = 0.0;
+      rays[*numActiveRays].intensity[ichan] = 0.0;
+    }
+
+    (*numActiveRays)++;
+  }
+}
+
+/*....................................................................*/
 void
-raytrace(int im, configInfo *par, struct grid *gp, molData *md, image *img){
+raytrace(int im, configInfo *par, struct grid *gp, molData *md, image *img, double *lamtab, double *kaptab, const int nEntries){
   /*
 This function constructs an image cube by following sets of rays (at least 1 per image pixel) through the model, solving the radiative transfer equations as appropriate for each ray. The ray locations within each pixel are chosen randomly within the pixel, but the number of rays per pixel is set equal to the number of projected model grid points falling within that pixel, down to a minimum equal to par->alias.
+
+Note that the argument 'md', and the grid element '.mol', are only accessed for line images.
   */
   const int maxNumRaysPerPixel=20; /**** Arbitrary - could make this a global, or an argument. Set it to zero to indicate there is no maximum. */
   const double cutoff = par->minScale*1.0e-7;
@@ -479,22 +513,23 @@ This function constructs an image cube by following sets of rays (at least 1 per
   const int nStepsThruCell=10;
   const double oneOnNSteps=1.0/(double)nStepsThruCell;
 
-  double size,oneOnNumActiveRaysMinus1,imgCentreXPixels,imgCentreYPixels,minfreq,absDeltaFreq,x[2],sum,oneOnNumRays;//,oneOnTotalNumPixelsMinus1
+  double size,oneOnNumActiveRaysMinus1,imgCentreXPixels,imgCentreYPixels,minfreq,absDeltaFreq,x,xs[2],sum,oneOnNumRays;
   unsigned int totalNumImagePixels,ppi,numPixelsForInterp;
-  int gi,molI,lineI,ei,li,nlinetot,iline,tmptrans,ichan,numActiveRays,i,di,xi,yi,ri,c,id,ids[3],vi;
-  int *allLineMolIs,*allLineLineIs,cmbMolI,cmbLineI;
+  int ichan,numCircleRays,numActiveRaysInternal,numActiveRays;
+  int gi,molI,lineI,i,di,xi,yi,ri,c,id,ids[3],vi;
+  int cmbMolI,cmbLineI;
   rayData *rays;
   struct cell *dc=NULL;
   unsigned long numCells,dci;
-  struct gAuxType *gAux=NULL; /* This will hold some precalculated values for the grid points. */
   coordT *pt_array, point[3];
   char flags[255];
   boolT ismalloc = False,isoutside;
   realT bestdist;
-  facetT *facet;//, *neighbor, **neighborp;
+  facetT *facet;
   vertexT *vertex,**vertexp;
   int curlong, totlong;
-  double triangle[3][2],barys[3];
+  double triangle[3][2],barys[3],local_cmb,cmbFreq,circleSpacing,scale,angle;
+  double *xySquared=NULL;
   _Bool isOutsideImage;
   gsl_error_handler_t *defaultErrorHandler=NULL;
 
@@ -523,9 +558,9 @@ This function constructs an image cube by following sets of rays (at least 1 per
   } /* If not doline, we already have img.freq and nchan by now anyway. */
 
   /*
-For both line and continuum images we have to access (currently in traceray() and sourceFunc_cont()) array elements m[i].local_cmb[j], g[id].mol[i].dust[j] and g[id].mol[i].knu[j]. For a continuum image, the molData object and the grid.mol object are simply convenient (if misleadingly named in this instance) repositories of appropriate cmb, dust and knu information; there is no actual molecule involved, and i and j are both simply 0.
+We need to calculate or choose a single value of 'local' CMB flux, also single values (i.e. one of each per grid point) of dust and knu, all corresponding the the nominal image frequency. The sensible thing would seem to be to calculate them afresh for each new image; and for continuum images, this is what in fact has always been done. For line images however local_cmb and the dust/knu values were calculated for the frequency of each spectral line and stored respectively in the molData struct and the struct populations element of struct grid. These multiple values (of dust/knu at least) are required during the main solution kernel of LIME, so for line images at least they were kept until the present point, just so one from their number could be chosen. :-/
 
-For a line image however, we may have a problem, because of the pair of quantities img.freq and img.trans, the user is allowed to specify freq and not trans. Since the cmb, dust and knu are assumed to be slowly-varying quantities, we can for 'trans' in this case use the line closest to the image frequency. (There must be some reasonably close line, else we would see no line emission in the image.)
+At the present point in the code, for line images, instead of calculating the 'continuum' values of local_cmb/dust/knu, the algorithm chose the nearest 'line' frequency and calculates the required numbers from that. The intent is to preserve (for the present at least) the former numerical behaviour, while changing the way the information is parcelled out among the variables and structs. I.e. a dedicated 'continuum' pair of dust/knu values is now available for each grid point in addition to the array of spectral line values. This decoupling allows better management of memory and avoids the deceptive use of spectral-line variables for continuum use.
   */
   if(img[im].doline){
     if (img[im].trans>=0){
@@ -544,10 +579,14 @@ For a line image however, we may have a problem, because of the pair of quantiti
         }
       }
     }
+    cmbFreq = md[cmbMolI].freq[cmbLineI];
+
   }else{ /* continuum image */
-    cmbMolI = 0;
-    cmbLineI = 0;
+    cmbFreq = img[im].freq;
   }
+
+  local_cmb = planckfunc(cmbFreq,2.728);
+  calcGridContDustOpacity(par, cmbFreq, lamtab, kaptab, nEntries, gp);
 
   for(ppi=0;ppi<totalNumImagePixels;ppi++){
     for(ichan=0;ichan<img[im].nchan;ichan++){
@@ -559,51 +598,41 @@ For a line image however, we may have a problem, because of the pair of quantiti
   for(ppi=0;ppi<totalNumImagePixels;ppi++)
     img[im].pixel[ppi].numRays = 0;
 
+  /*
+The set of rays which we plan to follow is taken from the set of (non-sink) grid points, projected onto a plane parallel to the observer's X and Y axes with Z coordinate on the observer's side of the model (because solution of the raytracing equations requires that iterate 'backwards' through the model). In addition to these points we will add another tranche located on a circle in this plane with its centre at (X,Y) == (0,0) and radius equal to the model radius. Addition of these circle points seems to be necessary to make qhull behave properly. We choose evenly-spaced points on this circle and choose the spacing such that it is the same as the average nearest-neighbour spacing of the grid points, assuming the grid points were evenly distributed within the circle.
+
+How to calculate this distance? Well if we have N points randomly but evenly distributed inside a circle of radius R it is not hard to show that the mean NN spacing is G(3/2)*R/sqrt(N), where G() is the gamma function. In fact G(3/2)=sqrt(pi)/2. This will add about 4*sqrt(pi*N) points.
+  */
+  circleSpacing = 0.5*par->radius*sqrt(PI/(double)par->pIntensity);
+  numCircleRays = (int)(2.0*PI*par->radius/circleSpacing);
+
   /* The following is the first of the 3 main loops in raytrace. Here we loop over the (internal or non-sink) grid points. We're doing 2 things: loading the rotated, projected coordinates into the rays list, and counting the rays per image pixel.
   */
-  rays = malloc(sizeof(rayData)*par->pIntensity); /* We may need to reallocate this later. */
-  numActiveRays = 0;
+  rays = malloc(sizeof(rayData)*(par->pIntensity+numCircleRays)); /* We may need to reallocate this later. */
+  numActiveRaysInternal = 0;
   for(gi=0;gi<par->pIntensity;gi++){
     /* Apply the inverse (i.e. transpose) rotation matrix. (We use the inverse matrix here because here we want to rotate grid coordinates to the observer frame, whereas inside traceray() we rotate observer coordinates to the grid frame.)
     */
     for(i=0;i<2;i++){
-      x[i]=0.0;
+      xs[i]=0.0;
       for(di=0;di<DIM;di++){
-        x[i] += gp[gi].x[di]*img[im].rotMat[di][i];
+        xs[i] += gp[gi].x[di]*img[im].rotMat[di][i];
       }
     }
 
-    /* Calculate which pixel the projected position (x[0],x[1]) falls within.
-    */
-    xi = floor(x[0]/size + imgCentreXPixels);
-    yi = floor(x[1]/size + imgCentreYPixels);
-    if(xi<0 || xi>=img[im].pxls || yi<0 || yi>=img[im].pxls){
-      isOutsideImage = 1;
-      ppi = 0; /* Under these circumstances it ought never to be accessed, but it is not good to leave it without a value at all. */
-    }else{
-      isOutsideImage = 0;
-      ppi = (unsigned int)yi*(unsigned int)img[im].pxls + (unsigned int)xi;
-    }
-
-    /* See if we want to keep the ray. For the time being we will include those outside the image bounds, but a cleverer algorithm would exclude some of them. Note that maxNumRaysPerPixel<1 is used to flag that there is no upper limit to the number of rays per pixel.
-    */
-    if(isOutsideImage || maxNumRaysPerPixel<1 || img[im].pixel[ppi].numRays<maxNumRaysPerPixel){
-      if(!isOutsideImage)
-        img[im].pixel[ppi].numRays++;
-
-      rays[numActiveRays].ppi = ppi;
-      rays[numActiveRays].x = x[0];
-      rays[numActiveRays].y = x[1];
-      rays[numActiveRays].tau       = malloc(sizeof(double)*img[im].nchan);
-      rays[numActiveRays].intensity = malloc(sizeof(double)*img[im].nchan);
-      for(ichan=0;ichan<img[im].nchan;ichan++) {
-        rays[numActiveRays].tau[ichan] = 0.0;
-        rays[numActiveRays].intensity[ichan] = 0.0;
-      }
-
-      numActiveRays++;
-    }
+    locateRayOnImage(xs, size, imgCentreXPixels, imgCentreYPixels, img, im, maxNumRaysPerPixel, rays, &numActiveRaysInternal);
   } /* End loop 1, over grid points. */
+
+  /* Add the circle rays:
+  */
+  numActiveRays = numActiveRaysInternal;
+  scale = 2.0*PI/(double)numCircleRays;
+  for(i=0;i<numCircleRays;i++){
+    angle = i*scale;
+    xs[0] = par->radius*cos(angle);
+    xs[1] = par->radius*sin(angle);
+    locateRayOnImage(xs, size, imgCentreXPixels, imgCentreYPixels, img, im, maxNumRaysPerPixel, rays, &numActiveRays);
+  }
 
   oneOnNumActiveRaysMinus1 = 1.0/(double)(numActiveRays-1);
 
@@ -632,29 +661,6 @@ For a line image however, we may have a problem, because of the pair of quantiti
     exit(1);
   }
 
-  /* Precalculate binv*nmol*pops for all grid points.
-  */
-  gAux = malloc(sizeof(*gAux)*par->ncell);
-  for(gi=0;gi<par->ncell;gi++){
-    gAux[gi].mol = malloc(sizeof(*(gAux[gi].mol))*par->nSpecies);
-    for(molI=0;molI<par->nSpecies;molI++){
-      gAux[gi].mol[molI].specNumDens = malloc(sizeof(*(gAux[gi].mol[molI].specNumDens))*md[molI].nlev);
-      gAux[gi].mol[molI].dust        = malloc(sizeof(*(gAux[gi].mol[molI].dust))       *md[molI].nline);
-      gAux[gi].mol[molI].knu         = malloc(sizeof(*(gAux[gi].mol[molI].knu))        *md[molI].nline);
-
-      for(ei=0;ei<md[molI].nlev;ei++)
-        gAux[gi].mol[molI].specNumDens[ei] = gp[gi].mol[molI].binv\
-          *gp[gi].mol[molI].nmol*gp[gi].mol[molI].pops[ei];
-
-      /* This next is repetition. I do it in order to be able to use the same sourcefunc.c functions for the interpolated grid values as for the 'standard' algorithm. With a sensible arrangement of memory for the grid values, this would be unnecessary.
-      */
-      for(li=0;li<md[molI].nline;li++){
-        gAux[gi].mol[molI].dust[li] = gp[gi].mol[molI].dust[li];
-        gAux[gi].mol[molI].knu[ li] = gp[gi].mol[molI].knu[ li];
-      }
-    }
-  }
-
   /* This is the start of loop 2/3, which loops over the rays. We trace each ray, then load into the image cube those for which the number of rays per pixel exceeds a minimum. The remaining image pixels we handle via an interpolation algorithm in loop 3.
   */
   defaultErrorHandler = gsl_set_error_handler_off();
@@ -676,24 +682,32 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
     if(par->traceRayAlgorithm==1){
       /* Allocate memory for the interpolation points:
       */
-      for(ii=0;ii<numInterpPoints;ii++){
-        gips[ii].mol = malloc(sizeof(*(gips[ii].mol))*par->nSpecies);
-        for(si=0;si<par->nSpecies;si++){
-          gips[ii].mol[si].specNumDens = malloc(sizeof(*(gips[ii].mol[si].specNumDens))*md[si].nlev);
-          gips[ii].mol[si].dust        = malloc(sizeof(*(gips[ii].mol[si].dust))       *md[si].nline);
-          gips[ii].mol[si].knu         = malloc(sizeof(*(gips[ii].mol[si].knu))        *md[si].nline);
+      if(img[im].doline){
+        for(ii=0;ii<numInterpPoints;ii++){
+          gips[ii].mol = malloc(sizeof(*(gips[ii].mol))*par->nSpecies);
+          for(si=0;si<par->nSpecies;si++){
+            gips[ii].mol[si].specNumDens\
+              = malloc(sizeof(*(gips[ii].mol[si].specNumDens))*md[si].nlev);
+            gips[ii].mol[si].cont    = NULL;
+            gips[ii].mol[si].pops    = NULL;
+            gips[ii].mol[si].partner = NULL;
+          }
         }
+      }else{ /* continuum image */
+        for(ii=0;ii<numInterpPoints;ii++)
+          gips[ii].mol = NULL;
       }
     }
 
     #pragma omp for schedule(dynamic)
     for(ri=0;ri<numActiveRays;ri++){
       if(par->traceRayAlgorithm==0)
-        traceray(rays[ri], cmbMolI, cmbLineI, im, par, gp, md, img, gAux\
-          , nlinetot, allLineMolIs, allLineLineIs, cutoff, nStepsThruCell, oneOnNSteps);
+        traceray(rays[ri], local_cmb, im, par, gp, md, img\
+          , cutoff, nStepsThruCell, oneOnNSteps);
+
       else if(par->traceRayAlgorithm==1)
-        traceray_smooth(rays[ri], cmbMolI, cmbLineI, im, par, gp, md, img, gAux\
-          , nlinetot, allLineMolIs, allLineLineIs, dc, numCells, epsilon, gips\
+        traceray_smooth(rays[ri], local_cmb, im, par, gp, md, img\
+          , dc, numCells, epsilon, gips\
           , numSegments, oneOnNumSegments, nStepsThruCell, oneOnNSteps);
 
       if (threadI == 0){ /* i.e., is master thread */
@@ -703,11 +717,19 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
 
     if(par->traceRayAlgorithm==1){
       for(ii=0;ii<numInterpPoints;ii++)
-        freePop2(par->nSpecies, gips[ii].mol);
+        freePopulation(par->nSpecies, gips[ii].mol);
     }
   } /* End of parallel block. */
 
   gsl_set_error_handler(defaultErrorHandler);
+
+  /* Set up for testing image pixel coords against model radius:
+  */
+  xySquared = malloc(sizeof(*xySquared)*img[im].pxls);
+  for(xi=0;xi<img[im].pxls;xi++){
+    x = size*(0.5 + xi - imgCentreXPixels); // In all this I'm assuming that the image is square and the X centre is the same as the Y centre. This may not always be the case!
+    xySquared[xi] = x*x;
+  }
 
   /* For pixels with more than a cutoff number of rays, just average those rays into the pixel:
   */
@@ -752,6 +774,9 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
       if(img[im].pixel[ppi].numRays < minNumRaysForAverage){
         xi = (int)(ppi%(unsigned int)img[im].pxls);
         yi = floor(ppi/(double)img[im].pxls);
+        if(xySquared[xi] + xySquared[yi] > par->radiusSqu)
+          continue;
+
         point[0] = size*(0.5 + xi - imgCentreXPixels);
         point[1] = size*(0.5 + yi - imgCentreYPixels);
 
@@ -787,9 +812,7 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
     free(pt_array);
   } /* end if(numPixelsForInterp>0) */
 
-  img[im].trans=tmptrans;
-
-  freeGAux((unsigned long)par->ncell, par->nSpecies, gAux);
+  free(xySquared);
   if(par->traceRayAlgorithm==1)
     free(dc);
   for(ri=0;ri<numActiveRays;ri++){
@@ -797,8 +820,6 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
     free(rays[ri].intensity);
   }
   free(rays);
-  free(allLineMolIs);
-  free(allLineLineIs);
 }
 
 /*....................................................................*/

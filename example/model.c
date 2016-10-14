@@ -3,7 +3,7 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015 The LIME development team
+ *  Copyright (C) 2015-2016 The LIME development team
  *
  */
 
@@ -90,11 +90,13 @@ input(inputPars *par, image *img){
   img[i].trans                  = 3;              // zero-indexed J quantum number
   img[i].pxls                   = 100;            // Pixels per dimension
   img[i].imgres                 = 0.1;            // Resolution in arc seconds
-  img[i].theta                  = 0.0;            // 0: face-on, pi/2: edge-on
   img[i].distance               = 140*PC;         // source distance in m
   img[i].source_vel             = 0;              // source velocity in m/s
   img[i].unit                   = 0;              // 0:Kelvin 1:Jansky/pixel 2:SI 3:Lsun/pixel 4:tau
   img[i].filename               = "image0.fits";  // Output filename
+  img[i].azimuth                = 0.0;
+  img[i].incl                   = 0.0;
+  img[i].posang                 = 0.0;
 }
 
 /******************************************************************************/

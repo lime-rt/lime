@@ -3,8 +3,12 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015 The LIME development team
+ *  Copyright (C) 2015-2016 The LIME development team
  *
+TODOs:
+	- Define a max line length in lime.h, don't just have multiple hardwired 80s.
+	- Print a blank line of this len before each curses-style warning or message?
+	- Wouldn't it be better if 'silent' was tested inside these functions rather than at every single point in the rest of the code where they are called?
  */
 
 #include "lime.h"
@@ -102,7 +106,7 @@ screenInfo(){
 }
 
 void
-done(int line){
+printDone(int line){
 #ifdef NO_NCURSES
   if (line == 4)
     printf(  "   Building grid: DONE                               \n\n"); 
@@ -251,6 +255,19 @@ quotemass(double mass){
 
 
 void
+printMessage(char message[80]){
+#ifdef NO_NCURSES
+  if(strlen(message)>0)
+    {
+      printf("%s\n", message );
+    }
+#else
+  move(22,0); printw("*** %s\n",message);
+  refresh();
+#endif
+}
+
+void
 warning(char message[80]){
 #ifdef NO_NCURSES
   if(strlen(message)>0)
@@ -277,7 +294,7 @@ bail_out(char message[80]){
 }
 
 void
-collpartmesg(char molecule[90], int partners){//, int specnumber){
+collpartmesg(char molecule[80], int partners){//, int specnumber){
 #ifdef NO_NCURSES
   printf("   Molecule: %.25s\n", molecule);
   if (partners==1)

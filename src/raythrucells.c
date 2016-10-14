@@ -3,7 +3,7 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015 The LIME development team
+ *  Copyright (C) 2015-2016 The LIME development team
  *
  */
 
@@ -199,8 +199,15 @@ At a successful termination, therefore, details of all the cells to the edge of 
     exitFi = marginalExitFis[i];
     (*cellExitIntcpts)[nCellsInChain] = intcpt[exitFi];
 
-    if(dc[dci].neigh[exitFi]==NULL){
+    if(dc[dci].neigh[exitFi]==NULL){ /* Signals that we have reached the edge of the model. */
+      /* Realloc the ptrs to their final sizes: */
+      nCellsInChain++;
+      *chainOfCellIds  = realloc(*chainOfCellIds,  sizeof(**chainOfCellIds) *nCellsInChain);
+      *cellExitIntcpts = realloc(*cellExitIntcpts, sizeof(**cellExitIntcpts)*nCellsInChain);
+      *lenChainPtrs = nCellsInChain;
+
       status = 0;
+
     }else{
       newEntryFaceI = getNewEntryFaceI(dci, *(dc[dci].neigh[exitFi]));
 
@@ -444,10 +451,10 @@ triangle2D calcTriangle2D(faceType face){
 
 /*....................................................................*/
 void doBaryInterp(const intersectType intcpt, struct grid *gp\
-  , struct gAuxType *gAux, double xCmpntsRay[3], unsigned long gis[3]\
+  , double xCmpntsRay[3], unsigned long gis[3]\
   , molData *md, const int numMols, gridInterp *gip){
 
-  int di, molI, levelI, lineI;
+  int di,molI,levelI;
 
   (*gip).xCmpntRay = intcpt.bary[0]*xCmpntsRay[0]\
                    + intcpt.bary[1]*xCmpntsRay[1]\
@@ -472,21 +479,19 @@ void doBaryInterp(const intersectType intcpt, struct grid *gp\
 
     for(levelI=0;levelI<md[molI].nlev;levelI++){
       (*gip).mol[molI].specNumDens[levelI]\
-        = intcpt.bary[0]*gAux[gis[0]].mol[molI].specNumDens[levelI]\
-        + intcpt.bary[1]*gAux[gis[1]].mol[molI].specNumDens[levelI]\
-        + intcpt.bary[2]*gAux[gis[2]].mol[molI].specNumDens[levelI];
-    }
-
-    for(lineI=0;lineI<md[molI].nline;lineI++){
-      (*gip).mol[molI].dust[lineI] = intcpt.bary[0]*gp[gis[0]].mol[molI].dust[lineI]\
-                                   + intcpt.bary[1]*gp[gis[1]].mol[molI].dust[lineI]\
-                                   + intcpt.bary[2]*gp[gis[2]].mol[molI].dust[lineI];
-
-      (*gip).mol[molI].knu[lineI]  = intcpt.bary[0]*gp[gis[0]].mol[molI].knu[lineI]\
-                                   + intcpt.bary[1]*gp[gis[1]].mol[molI].knu[lineI]\
-                                   + intcpt.bary[2]*gp[gis[2]].mol[molI].knu[lineI];
+        = intcpt.bary[0]*gp[gis[0]].mol[molI].specNumDens[levelI]\
+        + intcpt.bary[1]*gp[gis[1]].mol[molI].specNumDens[levelI]\
+        + intcpt.bary[2]*gp[gis[2]].mol[molI].specNumDens[levelI];
     }
   }
+
+  (*gip).cont.dust = intcpt.bary[0]*gp[gis[0]].cont.dust\
+                   + intcpt.bary[1]*gp[gis[1]].cont.dust\
+                   + intcpt.bary[2]*gp[gis[2]].cont.dust;
+
+  (*gip).cont.knu  = intcpt.bary[0]*gp[gis[0]].cont.knu\
+                   + intcpt.bary[1]*gp[gis[1]].cont.knu\
+                   + intcpt.bary[2]*gp[gis[2]].cont.knu;
 }
 
 /*....................................................................*/
@@ -495,7 +500,7 @@ void doSegmentInterp(gridInterp gips[3], const int iA, molData *md\
 
   const double fracA = (si + 0.5)*oneOnNumSegments, fracB = 1.0 - fracA;
   const int iB = 1 - iA;
-  int di, molI, levelI, lineI;
+  int di,molI,levelI;
 
   gips[2].xCmpntRay = fracA*gips[iB].xCmpntRay + fracB*gips[iA].xCmpntRay; /* This does not seem to be used. */
 
@@ -513,14 +518,9 @@ void doSegmentInterp(gridInterp gips[3], const int iA, molData *md\
       gips[2].mol[molI].specNumDens[levelI] = fracA*gips[iB].mol[molI].specNumDens[levelI]\
                                             + fracB*gips[iA].mol[molI].specNumDens[levelI];
     }
-
-    for(lineI=0;lineI<md[molI].nline;lineI++){
-      gips[2].mol[molI].dust[lineI] = fracA*gips[iB].mol[molI].dust[lineI]\
-                                    + fracB*gips[iA].mol[molI].dust[lineI];
-
-      gips[2].mol[molI].knu[ lineI] = fracA*gips[iB].mol[molI].knu[ lineI]\
-                                    + fracB*gips[iA].mol[molI].knu[ lineI];
-    }
   }
+
+  gips[2].cont.dust = fracA*gips[iB].cont.dust + fracB*gips[iA].cont.dust;
+  gips[2].cont.knu  = fracA*gips[iB].cont.knu  + fracB*gips[iA].cont.knu;
 }
 

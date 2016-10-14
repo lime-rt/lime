@@ -3,7 +3,7 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015 The LIME development team
+ *  Copyright (C) 2015-2016 The LIME development team
  *
  */
 
@@ -12,7 +12,7 @@
 
 /* Based on Lloyds Algorithm (Lloyd, S. IEEE, 1982) */	
 void
-smooth(configInfo *par, struct grid *g){
+smooth(configInfo *par, struct grid *gp){
   double mindist;	/* Distance to closest neighbor				*/
   int k=0,j,i;		/* counters									*/
   int sg;		/* counter for smoothing the grid			*/
@@ -23,27 +23,27 @@ smooth(configInfo *par, struct grid *g){
   unsigned long numCells;
 
   for(sg=0;sg<N_SMOOTH_ITERS;sg++){
-    for(i=0;i<par->ncell && !g[i].sink;i++){
+    for(i=0;i<par->pIntensity;i++){
       mindist=1e30;
       cn=-1;
-      for(k=0;k<g[i].numNeigh;k++){
-        if(g[i].neigh[k]->sink==0){
-          if(g[i].ds[k]<mindist){
-            mindist=g[i].ds[k];
+      for(k=0;k<gp[i].numNeigh;k++){
+        if(gp[i].neigh[k]->sink==0){
+          if(gp[i].ds[k]<mindist){
+            mindist=gp[i].ds[k];
             cn=k;
           }
         }
       }
 
-      if(par->radius-sqrt(g[i].x[0]*g[i].x[0] + g[i].x[1]*g[i].x[1] + g[i].x[2]*g[i].x[2])<mindist) cn=-1;
-      			
+      if(par->radius-sqrt(gp[i].x[0]*gp[i].x[0] + gp[i].x[1]*gp[i].x[1] + gp[i].x[2]*gp[i].x[2])<mindist) cn=-1;
+
       if(cn>-1) {
         for(k=0;k<DIM;k++){
-          move[k] = g[i].x[k] - g[i].dir[cn].x[k]*0.20;
+          move[k] = gp[i].x[k] - gp[i].dir[cn].x[k]*0.20;
         }			  
         if((move[0]*move[0]+move[1]*move[1]+move[2]*move[2])<par->radiusSqu &&
            (move[0]*move[0]+move[1]*move[1]+move[2]*move[2])>par->minScaleSqu){
-          for(k=0;k<DIM;k++) g[i].x[k]=move[k];
+          for(k=0;k<DIM;k++) gp[i].x[k]=move[k];
         }
       }
     }
@@ -51,26 +51,26 @@ smooth(configInfo *par, struct grid *g){
     for(i=par->pIntensity;i<par->ncell;i++){
       mindist=1e30;
       cn=-1;
-      for(k=0;k<g[i].numNeigh;k++){
-        if(g[i].neigh[k]->sink==1){
-          if(g[i].ds[k]<mindist){
-            mindist=g[i].ds[k];
+      for(k=0;k<gp[i].numNeigh;k++){
+        if(gp[i].neigh[k]->sink==1){
+          if(gp[i].ds[k]<mindist){
+            mindist=gp[i].ds[k];
             cn=k;
           }
         }
       }
-      j=g[i].neigh[cn]->id;
+      j=gp[i].neigh[cn]->id;
       for(k=0;k<DIM;k++){
-        g[i].x[k] = g[i].x[k] - (g[j].x[k]-g[i].x[k]) * 0.15;
+        gp[i].x[k] = gp[i].x[k] - (gp[j].x[k]-gp[i].x[k]) * 0.15;
       }			
-      dist=par->radius/sqrt(g[i].x[0]*g[i].x[0] + g[i].x[1]*g[i].x[1] + g[i].x[2]*g[i].x[2]);	
+      dist=par->radius/sqrt(gp[i].x[0]*gp[i].x[0] + gp[i].x[1]*gp[i].x[1] + gp[i].x[2]*gp[i].x[2]);	
       for(k=0;k<DIM;k++){
-        g[i].x[k] *= dist;
+        gp[i].x[k] *= dist;
       }	
     }
 		
-    delaunay(DIM, g, (unsigned long)par->ncell, 0, &dc, &numCells);
-    distCalc(par, g);	    
+    delaunay(DIM, gp, (unsigned long)par->ncell, 0, &dc, &numCells);
+    distCalc(par, gp);	    
     if(!silent) progressbar((double)(sg+1)/(double)N_SMOOTH_ITERS, 5);	
     free(dc);
   }	

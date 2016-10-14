@@ -3,7 +3,7 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015 The LIME development team
+ *  Copyright (C) 2015-2016 The LIME development team
  *
 ***TODO:
 	- Change the definition of the file format so that nmol is now written with the other mol[] scalars.
@@ -58,8 +58,9 @@ popsin(configInfo *par, struct grid **gp, molData **md, int *popsdone){
     for(j=0;j<(*md)[i].nline;j++) fread(&(*md)[i].beinstl[j],sizeof(double), 1,fp);
     (*md)[i].beinstu=malloc(sizeof(double)*(*md)[i].nline);
     for(j=0;j<(*md)[i].nline;j++) fread(&(*md)[i].beinstu[j],sizeof(double), 1,fp);
-    (*md)[i].local_cmb = malloc(sizeof(double)*(*md)[i].nline);
-    for(j=0;j<(*md)[i].nline;j++) fread(&(*md)[i].local_cmb[j],sizeof(double), 1,fp);
+    for(j=0;j<(*md)[i].nline;j++) fread(&dummy,sizeof(double), 1,fp);
+    fread(&dummy, sizeof(double),      1,fp);
+    fread(&dummy, sizeof(double),   1,fp);
   }
 
   *gp=malloc(sizeof(struct grid)*par->ncell);
@@ -85,10 +86,9 @@ popsin(configInfo *par, struct grid **gp, molData **md, int *popsdone){
     for(j=0;j<par->nSpecies;j++){
       (*gp)[i].mol[j].pops=malloc(sizeof(double)*(*md)[j].nlev);
       for(k=0;k<(*md)[j].nlev;k++) fread(&(*gp)[i].mol[j].pops[k], sizeof(double), 1, fp);
-      (*gp)[i].mol[j].knu=malloc(sizeof(double)*(*md)[j].nline);
-      for(k=0;k<(*md)[j].nline;k++) fread(&(*gp)[i].mol[j].knu[k], sizeof(double), 1, fp);
-      (*gp)[i].mol[j].dust=malloc(sizeof(double)*(*md)[j].nline);
-      for(k=0;k<(*md)[j].nline;k++) fread(&(*gp)[i].mol[j].dust[k],sizeof(double), 1, fp);
+      (*gp)[i].mol[j].cont = NULL;
+      for(k=0;k<(*md)[j].nline;k++) fread(&dummy, sizeof(double), 1, fp);
+      for(k=0;k<(*md)[j].nline;k++) fread(&dummy, sizeof(double), 1, fp);
       fread(&(*gp)[i].mol[j].dopb,sizeof(double), 1, fp);
       fread(&(*gp)[i].mol[j].binv,sizeof(double), 1, fp);
       (*gp)[i].mol[j].partner=NULL;
@@ -96,6 +96,10 @@ popsin(configInfo *par, struct grid **gp, molData **md, int *popsdone){
     fread(&dummy, sizeof(double), 1, fp);
     fread(&dummy, sizeof(double), 1, fp);
     fread(&dummy, sizeof(double), 1, fp);
+
+    (*gp)[i].B[0] = 0.0;
+    (*gp)[i].B[1] = 0.0;
+    (*gp)[i].B[2] = 0.0;
   }
   fclose(fp);
 
