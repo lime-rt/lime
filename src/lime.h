@@ -84,11 +84,12 @@
 #define MAX_NSPECIES            100
 #define MAX_NIMAGES             100
 #define N_RAN_PER_SEGMENT       3
-#define FAST_EXP_MAX_TAYLOR	3		/* don't increase this to >8 without changing the oneOver_i lookup */
+#define FAST_EXP_MAX_TAYLOR	3
 #define FAST_EXP_NUM_BITS	8
 #define MAX_N_COLL_PART		7
 #define N_SMOOTH_ITERS          20
 #define TYPICAL_ISM_DENS        1000.0
+#define ERF_TABLE_SIZE		6145
 
 /* Collision partner ID numbers from LAMDA */
 #define CP_H2			1
@@ -107,6 +108,7 @@
 #define CP_H			5
 #define CP_He			6
 #define CP_Hplus		7
+
 
 typedef struct {
   double radius,minScale,tcmb,*nMolWeights,*dustWeights;
@@ -404,12 +406,12 @@ void    collpartmesg3(int, int);
 extern double EXP_TABLE_2D[128][10];
 extern double EXP_TABLE_3D[256][2][10];
 #else
-double EXP_TABLE_2D[1][1]; // nominal definitions so the fastexp.c module will compile.
-double EXP_TABLE_3D[1][1][1];
+extern double EXP_TABLE_2D[1][1]; // nominal definitions so the fastexp.c module will compile.
+extern double EXP_TABLE_3D[1][1][1];
 #endif
 
-extern double ERF_TABLE[6145];
-extern const double oneOver_i[9];
+extern double ERF_TABLE[ERF_TABLE_SIZE];
+extern double oneOver_i[FAST_EXP_MAX_TAYLOR+1];
 
 #endif /* LIME_H */
 

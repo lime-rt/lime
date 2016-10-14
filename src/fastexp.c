@@ -11,9 +11,9 @@
 
 void fillErfTable() {
   int i;
-  for (i=0;i<6145;i++) {
-    /* for x>6 erf(x)-1<machine epsilon */
-    ERF_TABLE[i]=(SPI/2.)*erf(i*1./1024.);		// TODO: check normalization
+  for (i=0;i<ERF_TABLE_SIZE;i++) {
+    /*For x>6 erf(x)-1<double precision machine epsilon, so no need to store the values for larger x.*/
+    ERF_TABLE[i]=(SPI/2.)*erf(i*6./(ERF_TABLE_SIZE-1));
   }
 }
 
@@ -185,6 +185,10 @@ See description of the lookup algorithm in function calcFastExpRange().
       }
     }
   }
+
+  /*We also construct the table of 1/i to be used for faster calculation of the Taylor approximation.*/
+  oneOver_i[0]=0.0;
+  for (j=1;j<=FAST_EXP_MAX_TAYLOR;j++) oneOver_i[j]=1.0/(1.0*j);
 }
 
 double
