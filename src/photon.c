@@ -204,7 +204,7 @@ void photon(int id, struct grid *gp, molData *md, int iter, const gsl_rng *ran\
 
   int iphot,iline,here,there,firststep,neighI,np_per_line,ip_at_line;
   int nextMolWithBlend, nextLineWithBlend, molI, lineI, molJ, lineJ, bi;
-  double segment,vblend_in,vblend_out,dtau,expDTau,jnu,alpha,ds_in=0.0,ds_out=0.0,pt_theta,pt_z,semiradius;
+  double segment,vblend_in,vblend_out,dtau,expDTau,ds_in=0.0,ds_out=0.0,pt_theta,pt_z,semiradius;
   double deltav[par->nSpecies],vfac_in[par->nSpecies],vfac_out[par->nSpecies],vfac_inprev[par->nSpecies];
   double *tau,*expTau,inidir[3];
   double remnantSnu, velProj;
@@ -302,38 +302,20 @@ void photon(int id, struct grid *gp, molData *md, int iter, const gsl_rng *ran\
       for(molI=0;molI<par->nSpecies;molI++){
         nextLineWithBlend = 0;
         for(lineI=0;lineI<md[molI].nline;lineI++){
-          double jnu_in=0., jnu_out=0.;
-          double alpha_in=0., alpha_out=0.;
-          double dtau_all_lines, expDTau_all_lines;
-          alpha=0.;
-          jnu=0.;
+          double jnu_line_in=0., jnu_line_out=0., jnu_cont=0., jnu_blend=0.;
+          double alpha_line_in=0., alpha_line_out=0., alpha_cont=0., alpha_blend=0.;
 
-          sourceFunc_line(md[molI],vfac_inprev[molI],gp[here].mol[molI],lineI,&jnu_in,&alpha_in);
-          sourceFunc_line(md[molI],vfac_out[molI],gp[here].mol[molI],lineI,&jnu_out,&alpha_out);
-          sourceFunc_cont(gp[here].mol[molI].cont[lineI],&jnu,&alpha);
+          sourceFunc_line(md[molI],vfac_inprev[molI],gp[here].mol[molI],lineI,&jnu_line_in,&alpha_line_in);
+          sourceFunc_line(md[molI],vfac_out[molI],gp[here].mol[molI],lineI,&jnu_line_out,&alpha_line_out);
+          sourceFunc_cont(gp[here].mol[molI].cont[lineI],&jnu_cont,&alpha_cont);
 
-          dtau=alpha_in*ds_in+alpha_out*ds_out+alpha*(ds_in+ds_out);
-
-          if(dtau < -30) dtau = -30;
-          calcSourceFn(dtau, par, &remnantSnu, &expDTau);
-          remnantSnu *= jnu*(ds_in+ds_out)+jnu_in*ds_in+jnu_out*ds_out;
-          mp[molI].phot[lineI+iphot*md[molI].nline]+=expTau[iline]*remnantSnu;
-
-          dtau_all_lines=dtau;
-          expDTau_all_lines=expDTau;
-
-          if(tau[iline] < -30.){
-            if(!silent) warning("Maser warning: optical depth has dropped below -30");
-            tau[iline]= -30.;
-            expTau[iline]=exp(-tau[iline]);
-          }
+          /* cont and blend could use the same alpha and jnu counter, but maybe it's clearer this way */
 
           /* Line blending part.
           */
           if(par->blend && blends.mols!=NULL && molI==blends.mols[nextMolWithBlend].molI\
           && lineI==blends.mols[nextMolWithBlend].lines[nextLineWithBlend].lineI){
-            jnu=0.;
-            alpha=0.;
+
             for(bi=0;bi<blends.mols[nextMolWithBlend].lines[nextLineWithBlend].numBlends;bi++){
               molJ  = blends.mols[nextMolWithBlend].lines[nextLineWithBlend].blends[bi].molJ;
               lineJ = blends.mols[nextMolWithBlend].lines[nextLineWithBlend].blends[bi].lineJ;
@@ -344,23 +326,9 @@ void photon(int id, struct grid *gp, molData *md, int iter, const gsl_rng *ran\
               else
                 calcLineAmpLin(gp,here,neighI,molJ,velProj,inidir,&vblend_in,&vblend_out);
 
-	      /* we should really use the previous vblend_in, but I don't feel like writing the necessary code now... */
-              sourceFunc_line(md[molJ],vblend_out,gp[here].mol[molJ],lineJ,&jnu,&alpha);
-              dtau=alpha*(ds_in+ds_out);
-              if(dtau < -30) dtau = -30;
-              calcSourceFn(dtau, par, &remnantSnu, &expDTau);
-              remnantSnu *= jnu*(ds_in+ds_out);
-
-              mp[molI].phot[lineI+iphot*md[molI].nline]+=expTau[iline]*remnantSnu;
-
-              dtau_all_lines+=dtau;
-              expDTau_all_lines*=expDTau;
-
-              if(tau[iline] < -30.){
-                if(!silent) warning("Optical depth has dropped below -30");
-                tau[iline]= -30.;
-                expTau[iline]=exp(-tau[iline]);
-              }
+	      /* we should use also the previous vblend_in, but I don't feel like writing the necessary code now */
+              sourceFunc_line(md[molJ],vblend_out,gp[here].mol[molJ],lineJ,&jnu_blend,&alpha_blend);
+              /* note that sourceFunc* increment jnu and alpha, they don't overwrite it  */
             }
 
             nextLineWithBlend++;
@@ -370,8 +338,20 @@ void photon(int id, struct grid *gp, molData *md, int iter, const gsl_rng *ran\
             }
           }
           /* End of line blending part */
-          tau[iline]+=dtau_all_lines;
-          expTau[iline]*=expDTau_all_lines;
+
+	  /* as said above, out-in split should be done also for blended lines... */
+          dtau=alpha_line_in*ds_in+alpha_line_out*ds_out+(alpha_cont+alpha_blend)*(ds_in+ds_out); 
+          if(dtau < -30) dtau = -30;
+
+          calcSourceFn(dtau, par, &remnantSnu, &expDTau);
+          remnantSnu *= jnu_line_in*ds_in+jnu_line_out*ds_out+(jnu_cont+jnu_blend)*(ds_in+ds_out);
+          mp[molI].phot[lineI+iphot*md[molI].nline]+=expTau[iline]*remnantSnu;
+
+          if(tau[iline] < -30.){
+            if(!silent) warning("Maser warning: optical depth has dropped below -30");
+            tau[iline]= -30.;
+            expTau[iline]=exp(-tau[iline]);
+          }
 
           iline++;
         } /* Next line this molecule. */
@@ -402,7 +382,7 @@ void getjbar(int posn, molData *md, struct grid *gp, const int molI\
   , gridPointData *mp, double *halfFirstDs){
 
   int lineI,iphot,bi,molJ,lineJ,nextLineWithBlend;
-  double tau,expTau,remnantSnu,vsum=0.,jnu,alpha;
+  double dtau,expDTau,remnantSnu,vsum=0.;
   
   for(lineI=0;lineI<md[molI].nline;lineI++) mp[molI].jbar[lineI]=0.;
 
@@ -410,17 +390,11 @@ void getjbar(int posn, molData *md, struct grid *gp, const int molI\
     if(mp[molI].vfac[iphot]>0){
       nextLineWithBlend = 0;
       for(lineI=0;lineI<md[molI].nline;lineI++){
-        jnu=0.;
-        alpha=0.;
+        double jnu=0.0;
+        double alpha=0;
 
         sourceFunc_line(md[molI],mp[molI].vfac[iphot],gp[posn].mol[molI],lineI,&jnu,&alpha);
         sourceFunc_cont(gp[posn].mol[molI].cont[lineI],&jnu,&alpha);
-
-        tau=alpha*halfFirstDs[iphot];
-        calcSourceFn(tau, par, &remnantSnu, &expTau);
-        remnantSnu *= jnu*halfFirstDs[iphot];
-
-        mp[molI].jbar[lineI]+=mp[molI].vfac_loc[iphot]*(expTau*mp[molI].phot[lineI+iphot*md[molI].nline]+remnantSnu);
 
         /* Line blending part.
         */
@@ -435,11 +409,7 @@ void getjbar(int posn, molData *md, struct grid *gp, const int molI\
             The next line is not quite correct, because vfac may be different for other molecules due to different values of binv. Unfortunately we don't necessarily have vfac for molJ available yet.
             */
             sourceFunc_line(md[molJ],mp[molI].vfac[iphot],gp[posn].mol[molJ],lineJ,&jnu,&alpha);
-            tau=alpha*halfFirstDs[iphot];
-            calcSourceFn(tau, par, &remnantSnu, &expTau);
-            remnantSnu *= jnu*halfFirstDs[iphot];
-
-            mp[molI].jbar[lineI]+=mp[molI].vfac_loc[iphot]*(expTau*mp[molI].phot[lineI+iphot*md[molI].nline]+remnantSnu);
+	    /* note that sourceFunc* increment jnu and alpha, they don't overwrite it  */
           }
 
           nextLineWithBlend++;
@@ -449,6 +419,12 @@ void getjbar(int posn, molData *md, struct grid *gp, const int molI\
           }
         }
         /* End of line blending part */
+
+        dtau=alpha*halfFirstDs[iphot];
+        calcSourceFn(dtau, par, &remnantSnu, &expDTau);
+        remnantSnu *= jnu*halfFirstDs[iphot];
+        mp[molI].jbar[lineI]+=mp[molI].vfac_loc[iphot]*(expDTau*mp[molI].phot[lineI+iphot*md[molI].nline]+remnantSnu);
+
       }
       vsum+=mp[molI].vfac_loc[iphot];
     }
