@@ -12,8 +12,7 @@
 void fillErfTable() {
   int i;
   for (i=0;i<ERF_TABLE_SIZE;i++) {
-    /*For x>6 erf(x)-1<double precision machine epsilon, so no need to store the values for larger x.*/
-    ERF_TABLE[i]=(SPI/2.)*erf(i*6./(ERF_TABLE_SIZE-1));
+    ERF_TABLE[i]=(SPI/2.)*erf(i*ERF_TABLE_LIMIT/(ERF_TABLE_SIZE-1.));
   }
 }
 

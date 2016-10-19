@@ -90,7 +90,10 @@
 #define MAX_N_COLL_PART		7
 #define N_SMOOTH_ITERS          20
 #define TYPICAL_ISM_DENS        1000.0
+#define ERF_TABLE_LIMIT		6.0             /* For x>6 erf(x)-1<double precision machine epsilon, so no need to store the values for larger x. */
 #define ERF_TABLE_SIZE		6145
+#define BIN_WIDTH		(ERF_TABLE_LIMIT/(ERF_TABLE_SIZE-1.))
+#define IBIN_WIDTH 		1./BIN_WIDTH
 
 /* Collision partner ID numbers from LAMDA */
 #define CP_H2			1
@@ -364,7 +367,7 @@ void	report(int, configInfo*, struct grid*);
 void	setUpConfig(configInfo*, image**, molData**);
 void	setUpDensityAux(configInfo*, int*, const int);
 void	smooth(configInfo*, struct grid*);
-void    sourceFunc_line(const molData, const double, const struct populations, const int, double*, double*);
+void    sourceFunc_line(const molData*, const double, const struct populations*, const int, double*, double*);
 void    sourceFunc_cont(const struct continuumLine, double*, double*);
 void	sourceFunc_pol(double*, const struct continuumLine, double (*rotMat)[3], double*, double*);
 void	stateq(int, struct grid*, molData*, const int, configInfo*, struct blendInfo, int, gridPointData*, double*, _Bool*);
