@@ -9,6 +9,12 @@
 ##
 PREFIX  =  ${PATHTOLIME}
 
+# Paths:
+srcdir		= ${CURDIR}/src
+docdir		= ${CURDIR}/doc
+exampledir	= ${CURDIR}/example
+#*** better to use ${PREFIX} here rather than ${CURDIR}? (the latter is used in artist/lime.)
+
 ifneq (,$(wildcard ${PREFIX}/lib/.))
     LIBS += -L${PREFIX}/lib
 endif
@@ -24,7 +30,6 @@ endif
 ifneq (,$(wildcard /usr/local/lib/.))
     LIBS += -L/usr/local/lib
 endif
-
 
 CPPFLAGS	= -I${PREFIX}/include \
 		  -I${PREFIX}/src \
@@ -44,37 +49,29 @@ ifdef OLD_FITSIO
 	CPPFLAGS += -DOLD_FITSIO
 endif
 
+# Names of source files included:
+include Makefile.defs
+
 ##
 ## Do not change anything below unless you know what you are doing! 
 ##
 
-TARGET  = lime.x 
-#CC	= gcc -fopenmp -g
+TARGET  = lime.x # Overwritten in usual practice by the value passed in by the 'lime' script.
 CC	= gcc -fopenmp
-SRCS	= src/aux.c src/messages.c src/grid.c src/LTEsolution.c	\
-	  src/main.c src/molinit.c src/photon.c src/popsin.c	\
-	  src/popsout.c src/predefgrid.c src/ratranInput.c	\
-	  src/raytrace.c src/smooth.c src/sourcefunc.c src/frees.c	\
-	  src/stateq.c src/statistics.c src/magfieldfit.c	\
-	  src/stokesangles.c src/writefits.c src/weights.c	\
-	  src/velospline.c src/getclosest.c src/raythrucells.c	\
-	  src/tcpsocket.c src/defaults.c src/fastexp.c src/run.c
-MODELS  = model.c
-OBJS    = src/aux.o src/messages.o src/grid.o src/LTEsolution.o	\
-	  src/main.o src/molinit.o src/photon.o src/popsin.o	\
-	  src/popsout.o src/predefgrid.o src/ratranInput.o	\
-	  src/raytrace.o src/smooth.o src/sourcefunc.o src/frees.o	\
-	  src/stateq.o src/statistics.o src/magfieldfit.o	\
-	  src/stokesangles.o src/writefits.o src/weights.o	\
-	  src/velospline.o src/getclosest.o src/raythrucells.o  \
-	  src/tcpsocket.o src/defaults.o src/fastexp.o src/run.o
+MODELS  = model.c # Overwritten in usual practice by the value passed in by the 'lime' script.
 MODELO 	= src/model.o
 
-#CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing -DTEST
 CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing
 LDFLAGS = -lgsl -lgslcblas -l${QHULL} -lcfitsio -lncurses -lm 
 
-.SILENT:
+ifeq (${DOTEST},yes)
+  CCFLAGS += -DTEST
+  CC += -g
+endif
+
+SRCS = ${CORESOURCES} ${STDSOURCES}
+INCS = ${COREINCLUDES}
+OBJS = $(SRCS:.c=.o)
 
 .PHONY: all clean distclean 
 	all:: ${TARGET} 
@@ -89,14 +86,14 @@ ${OBJS}: %.o: %.c
 	${CC} ${CCFLAGS} ${CPPFLAGS} -o $@ -c $<
 
 doc::
-	mkdir doc/_html || true
-	sphinx-build doc doc/_html
+	mkdir ${docdir}/_html || true
+	sphinx-build doc ${docdir}/_html
 
 docclean::
-	rm -rf doc/_html
+	rm -rf ${docdir}/_html
 
 clean:: 
-	rm -f *~ src/*.o ${TARGET} 
+	rm -f *~ ${srcdir}/*.o ${TARGET} 
 
 distclean:: clean docclean
 

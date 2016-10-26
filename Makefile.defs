@@ -1,0 +1,45 @@
+# Makefile.defs
+# This file is part of LIME, the versatile line modeling engine
+#
+# Copyright (C) 2006-2014 Christian Brinch
+# Copyright (C) 2015-2016 The LIME development team
+#
+# Included by Makefile
+ 
+CORESOURCES = \
+	src/aux.c\
+	src/fastexp.c\
+	src/frees.c\
+	src/getclosest.c\
+	src/grid.c\
+	src/LTEsolution.c\
+	src/magfieldfit.c\
+	src/messages.c\
+	src/molinit.c\
+	src/photon.c\
+	src/popsin.c\
+	src/popsout.c\
+	src/predefgrid.c\
+	src/ratranInput.c\
+	src/raythrucells.c\
+	src/raytrace.c\
+	src/report.c\
+	src/run.c\
+	src/smooth.c\
+	src/sourcefunc.c\
+	src/stateq.c\
+	src/statistics.c\
+	src/stokesangles.c\
+	src/tcpsocket.c\
+	src/velospline.c\
+	src/weights.c\
+	src/writefits.c\
+
+STDSOURCES = \
+	src/defaults.c\
+	src/main.c\
+
+COREINCLUDES = \
+	src/lime.h\
+	src/inpars.h
+
