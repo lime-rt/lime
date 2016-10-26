@@ -35,7 +35,7 @@ openSocket(char *moldatfile){
     s = (char*)malloc(sizeof(char) * (length + 5));
     strcpy(s,moldatfile);
     strcat(s, ".dat");
-    s[length+5]='\0';
+    s[length+4]='\0';
     moldatfile=s;
   }
 

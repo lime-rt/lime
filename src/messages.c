@@ -6,7 +6,7 @@
  *  Copyright (C) 2015-2016 The LIME development team
  *
 TODOs:
-	- Define a max line length in lime.h, don't just have multiple hardwired 80s.
+	- Are all these char arguments better as pointers, or arrays of unspecified length? Do we need to specify the length?
 	- Print a blank line of this len before each curses-style warning or message?
 	- Wouldn't it be better if 'silent' was tested inside these functions rather than at every single point in the rest of the code where they are called?
  */
@@ -224,7 +224,7 @@ void casaStyleProgressBar(const int maxI, int i){
 }
 
 void
-goodnight(int initime, char filename[80]){
+goodnight(int initime, char filename[STR_LEN_0]){
   int runtime=time(0)-initime;
 #ifdef NO_NCURSES
   printf("Output written to %s\n", filename);
@@ -255,7 +255,7 @@ quotemass(double mass){
 
 
 void
-printMessage(char message[80]){
+printMessage(char message[STR_LEN_0]){
 #ifdef NO_NCURSES
   if(strlen(message)>0)
     {
@@ -268,7 +268,7 @@ printMessage(char message[80]){
 }
 
 void
-warning(char message[80]){
+warning(char message[STR_LEN_0]){
 #ifdef NO_NCURSES
   if(strlen(message)>0)
     {
@@ -280,8 +280,13 @@ warning(char message[80]){
 #endif
 }
 
+void error(char message[STR_LEN_0]){
+  if(!silent) bail_out(message);
+  exit(1);
+}
+
 void
-bail_out(char message[80]){
+bail_out(char message[STR_LEN_0]){
 #ifdef NO_NCURSES
   printf("Error : %s\n", message );
 #else
@@ -294,7 +299,7 @@ bail_out(char message[80]){
 }
 
 void
-collpartmesg(char molecule[80], int partners){//, int specnumber){
+collpartmesg(char molecule[STR_LEN_0], int partners){//, int specnumber){
 #ifdef NO_NCURSES
   printf("   Molecule: %.25s\n", molecule);
   if (partners==1)

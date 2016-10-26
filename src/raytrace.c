@@ -91,7 +91,7 @@ This function returns ds as the (always positive-valued) distance between the pr
 
 /*....................................................................*/
 void traceray(rayData ray, const double local_cmb, const int im\
-  , configInfo *par, struct grid *gp, molData *md, image *img\
+  , configInfo *par, struct grid *gp, molData *md, imageInfo *img\
   , const double cutoff, const int nSteps, const double oneOnNSteps){
   /*
 For a given image pixel position, this function evaluates the intensity of the total light emitted/absorbed along that line of sight through the (possibly rotated) model. The calculation is performed for several frequencies, one per channel of the output image.
@@ -251,7 +251,7 @@ Note that the algorithm employed here is similar to that employed in the functio
 
 /*....................................................................*/
 void traceray_smooth(rayData ray, const double local_cmb, const int im\
-  , configInfo *par, struct grid *gp, molData *md, image *img\
+  , configInfo *par, struct grid *gp, molData *md, imageInfo *img\
   , struct cell *dc, const unsigned long numCells, const double epsilon\
   , gridInterp gips[3], const int numSegments, const double oneOnNumSegments\
   , const int nSteps, const double oneOnNSteps){
@@ -460,7 +460,10 @@ At the moment I will fix the number of segments, but it might possibly be faster
 }
 
 /*....................................................................*/
-void locateRayOnImage(double x[2], const double size, const double imgCentreXPixels, const double imgCentreYPixels, image *img, const int im, const int maxNumRaysPerPixel, rayData *rays, int *numActiveRays){
+void locateRayOnImage(double x[2], const double size, const double imgCentreXPixels\
+  , const double imgCentreYPixels, imageInfo *img, const int im\
+  , const int maxNumRaysPerPixel, rayData *rays, int *numActiveRays){
+
   int xi,yi,ichan;
   _Bool isOutsideImage;
   unsigned int ppi;
@@ -499,7 +502,8 @@ void locateRayOnImage(double x[2], const double size, const double imgCentreXPix
 
 /*....................................................................*/
 void
-raytrace(int im, configInfo *par, struct grid *gp, molData *md, image *img, double *lamtab, double *kaptab, const int nEntries){
+raytrace(int im, configInfo *par, struct grid *gp, molData *md, imageInfo *img\
+  , double *lamtab, double *kaptab, const int nEntries){
   /*
 This function constructs an image cube by following sets of rays (at least 1 per image pixel) through the model, solving the radiative transfer equations as appropriate for each ray. The ray locations within each pixel are chosen randomly within the pixel, but the number of rays per pixel is set equal to the number of projected model grid points falling within that pixel, down to a minimum equal to par->alias.
 

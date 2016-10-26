@@ -9,6 +9,27 @@
 
 #include "lime.h"
 
+void
+freeConfigInfo(configInfo par){
+  int i;
+
+  free(par.nMolWeights);
+  free(par.dustWeights);
+  free(par.collPartIds);
+
+  free(par.outputfile);
+  free(par.binoutputfile);
+  free(par.gridfile);
+  free(par.pregrid);
+  free(par.restart);
+  free(par.dust);
+  if(par.moldatfile!= NULL){
+    for(i=0;i<par.nSpecies;i++)
+      free(par.moldatfile[i]);
+    free(par.moldatfile);
+  }
+}
+
 void freeGrid(const unsigned int numPoints, const unsigned short numSpecies\
   , struct grid *gp){
 
@@ -43,6 +64,59 @@ freeGridPointData(configInfo *par, gridPointData *mol){
       free(mol[i].vfac);
     }
     free(mol);
+  }
+}
+
+void
+freeImg(const int nImages, imageInfo *img){
+  int i,id;
+  for(i=0;i<nImages;i++){
+    for(id=0;id<(img[i].pxls*img[i].pxls);id++){
+      free( img[i].pixel[id].intense );
+      free( img[i].pixel[id].tau );
+    }
+    free(img[i].pixel);
+    free(img[i].filename);
+  }
+  free(img);
+}
+
+void
+freeInputImg(const int nImages, image *img){
+  /*
+In 'standard' LIME the user copies the location of a (read-only) string to img[i].filename. Trying to free img[i].filename then results in an error. However the projected python version will malloc img[i].filename and copy string characters into that memory space. It is for this purpose that we preserve the present function.
+  */
+  int i;
+
+  if(img!=NULL){
+    for(i=0;i<nImages;i++)
+      free(img[i].filename);
+    free(img);
+  }
+}
+
+void
+freeInputPars(const int nSpecies, inputPars *par){
+  /*
+In 'standard' LIME the user copies the location of a (read-only) string to each of the char* elements of inputPars. Trying to free that element then results in an error. However the projected python version will malloc these elements and copy string characters into that memory space. It is for this purpose that we preserve the present function.
+  */
+  int i;
+
+  free(par->collPartIds);
+  free(par->nMolWeights);
+  free(par->dustWeights);
+
+  free(par->outputfile);
+  free(par->binoutputfile);
+  free(par->gridfile);
+  free(par->pregrid);
+  free(par->restart);
+  free(par->dust);
+
+  if(par->moldatfile!= NULL){
+    for(i=0;i<nSpecies;i++)
+      free(par->moldatfile[i]);
+    free(par->moldatfile);
   }
 }
 
@@ -87,27 +161,6 @@ void freeMolsWithBlends(struct molWithBlends *mols, const int numMolsWithBlends)
     }
     free(mols);
   }
-}
-
-void
-freeParImg(const int nImages, inputPars *par, image *img){
-  /* Release memory allocated for the output fits images
-     and for inputPars pointers.
-  */
-  int i,id;
-  for(i=0;i<nImages;i++){
-    for(id=0;id<(img[i].pxls*img[i].pxls);id++){
-      free( img[i].pixel[id].intense );
-      free( img[i].pixel[id].tau );
-    }
-    free(img[i].pixel);
-  }
-  free(img);
-
-  free(par->moldatfile);
-  free(par->collPartIds);
-  free(par->nMolWeights);
-  free(par->dustWeights);
 }
 
 void freePopulation(const unsigned short numSpecies, struct populations *pop){
