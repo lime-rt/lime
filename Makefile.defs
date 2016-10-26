@@ -39,7 +39,15 @@ STDSOURCES = \
 	src/defaults.c\
 	src/main.c\
 
+PYSOURCES = \
+	src/pydefaults.c\
+	src/pymain.c\
+	src/pyutils.c\
+
 COREINCLUDES = \
 	src/lime.h\
 	src/inpars.h
+
+PYINCLUDES = \
+	src/pytypes.h
 

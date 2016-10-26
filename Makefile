@@ -57,12 +57,26 @@ include Makefile.defs
 ##
 
 TARGET  = lime.x # Overwritten in usual practice by the value passed in by the 'lime' script.
+PYTARGET = pylime
 CC	= gcc -fopenmp
 MODELS  = model.c # Overwritten in usual practice by the value passed in by the 'lime' script.
 MODELO 	= src/model.o
 
 CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing
 LDFLAGS = -lgsl -lgslcblas -l${QHULL} -lcfitsio -lncurses -lm 
+
+#vvvvv
+# These will be installation-dependent and should therefore be set up via autoconf. The flag values can be obtained for any given system by running
+#
+#	<python prefix>-config --cflags
+# and
+#	<python prefix>-config --ldflags
+#
+# respectively.
+PYCCFLAGS = -I/usr/include/python2.7 -I/usr/include/python2.7 -fno-strict-aliasing -O2 -g -pipe -Wall -Werror=format-security -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong --param=ssp-buffer-size=4 -grecord-gcc-switches -specs=/usr/lib/rpm/redhat/redhat-hardened-cc1 -m64 -mtune=generic -D_GNU_SOURCE -fPIC -fwrapv -DNDEBUG -O2 -g -pipe -Wall -Werror=format-security -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong --param=ssp-buffer-size=4 -grecord-gcc-switches -specs=/usr/lib/rpm/redhat/redhat-hardened-cc1 -m64 -mtune=generic -D_GNU_SOURCE -fPIC -fwrapv
+
+PYLDFLAGS = -lpython2.7 -lpthread -ldl -lutil -lm -Xlinker -export-dynamic
+#^^^^^
 
 ifeq (${DOTEST},yes)
   CCFLAGS += -DTEST
@@ -72,18 +86,34 @@ endif
 SRCS = ${CORESOURCES} ${STDSOURCES}
 INCS = ${COREINCLUDES}
 OBJS = $(SRCS:.c=.o)
+PYSRCS = ${CORESOURCES} ${PYSOURCES}
+PYINCS = ${COREINCLUDES} ${PYINCLUDES}
+PYOBJS = $(PYSRCS:.c=.o)
 
-.PHONY: all clean distclean 
+.PHONY: all clean distclean python
 	all:: ${TARGET} 
 
-${TARGET}: ${OBJS} ${MODELO} 
-	${CC} -o $@ $^ ${LIBS} ${LDFLAGS}  
+# Implicit rules:
+%.o : %.c
+	${CC} ${CCFLAGS} ${CPPFLAGS} -o $@ -c $<
 
-${MODELO}:  
+${TARGET}: ${OBJS} ${MODELO} 
+	${CC} -o $@ $^ ${LIBS} ${LDFLAGS}
+
+${OBJS} : ${SRCS} ${INCS}
+
+${MODELO}: ${MODELS} ${INCS}
 	${CC} ${CCFLAGS} ${CPPFLAGS} -o ${MODELO} -c ${MODELS}
 
-${OBJS}: %.o: %.c  
-	${CC} ${CCFLAGS} ${CPPFLAGS} -o $@ -c $<
+python: CCFLAGS += ${PYCCFLAGS}
+python: CPPFLAGS += -DNO_NCURSES
+python: LDFLAGS += ${PYLDFLAGS}
+python: ${PYTARGET}
+
+${PYTARGET}: ${PYOBJS}
+	${CC} -o $@ $^ ${LIBS} ${LDFLAGS}
+
+${PYOBJS} : ${PYSRCS} ${PYINCS}
 
 doc::
 	mkdir ${docdir}/_html || true
@@ -93,7 +123,7 @@ docclean::
 	rm -rf ${docdir}/_html
 
 clean:: 
-	rm -f *~ ${srcdir}/*.o ${TARGET} 
+	rm -f *~ ${srcdir}/*.o ${pydir}/*.pyc ${TARGET} ${PYTARGET}
 
 distclean:: clean docclean
 
