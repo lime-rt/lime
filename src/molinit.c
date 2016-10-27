@@ -220,7 +220,7 @@ void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *
             for(itemp=0;itemp<md[i].part[k].ntemp;itemp++){
               j = itrans*md[i].part[k].ntemp+itemp;
               fscanf(fp, "%lf", &md[i].part[k].down[j]);
-              md[i].part[k].down[j] /= 1.0e6;
+              md[i].part[k].down[j] *= par->collScale[k]*1.0e-6;
             }
             fscanf(fp,"\n");
           }

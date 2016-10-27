@@ -64,6 +64,8 @@ initParImg(inputPars *par, image **img)
   for(i=0;i<MAX_N_COLL_PART;i++) par->nMolWeights[i] = -1.0;
   par->dustWeights  = malloc(sizeof(double)*MAX_N_COLL_PART);
   for(i=0;i<MAX_N_COLL_PART;i++) par->dustWeights[i] = -1.0;
+  par->collScale = malloc(sizeof(double)*MAX_N_COLL_PART);
+  for(i=0;i<MAX_N_COLL_PART;i++) par->collScale[i] = 1.0;
 
   par->tcmb = 2.728;
   par->lte_only=0;
@@ -253,6 +255,7 @@ run(inputPars inpars, image *img)
   free(par.collPartIds);
   free(par.nMolWeights);
   free(par.dustWeights);
+  free(par.collScale);
 
   if(par.dust != NULL){
     free(kaptab);

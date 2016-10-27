@@ -90,6 +90,8 @@ parseInput(inputPars inpar, configInfo *par, image **img, molData **m){
   for(i=0;i<MAX_N_COLL_PART;i++) par->nMolWeights[i] = inpar.nMolWeights[i];
   par->dustWeights  = malloc(sizeof(double)*MAX_N_COLL_PART);
   for(i=0;i<MAX_N_COLL_PART;i++) par->dustWeights[i] = inpar.dustWeights[i];
+  par->collScale    =  malloc(sizeof(double)*MAX_N_COLL_PART);
+  for(i=0;i<MAX_N_COLL_PART;i++) par->collScale[i] = inpar.collScale[i];
 
   /* Calculate par->numDensities.
   */
