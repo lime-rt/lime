@@ -16,11 +16,6 @@ void freeGrid(const unsigned int numPoints, const unsigned short numSpecies\
 
   if(gp != NULL){
     for(i_u=0;i_u<numPoints;i_u++){
-      free(gp[i_u].a0);
-      free(gp[i_u].a1);
-      free(gp[i_u].a2);
-      free(gp[i_u].a3);
-      free(gp[i_u].a4);
       free(gp[i_u].dir);
       free(gp[i_u].neigh);
       free(gp[i_u].w);
@@ -41,6 +36,7 @@ freeGridPointData(configInfo *par, gridPointData *mol){
       free(mol[i].jbar);
       free(mol[i].phot);
       free(mol[i].vfac);
+      free(mol[i].vfac_loc);
     }
     free(mol);
   }
@@ -131,16 +127,12 @@ void freeSomeGridFields(const unsigned int numPoints, const unsigned short numSp
 
   if(gp != NULL){
     for(i_u=0;i_u<numPoints;i_u++){
-      free(gp[i_u].a0);
-      gp[i_u].a0 = NULL;
-      free(gp[i_u].a1);
-      gp[i_u].a1 = NULL;
-      free(gp[i_u].a2);
-      gp[i_u].a2 = NULL;
-      free(gp[i_u].a3);
-      gp[i_u].a3 = NULL;
-      free(gp[i_u].a4);
-      gp[i_u].a4 = NULL;
+      free(gp[i_u].v1);
+      gp[i_u].v1 = NULL;
+      free(gp[i_u].v2);
+      gp[i_u].v2 = NULL;
+      free(gp[i_u].v3);
+      gp[i_u].v3 = NULL;
       free(gp[i_u].w);
       gp[i_u].w    = NULL;
       free(gp[i_u].abun);

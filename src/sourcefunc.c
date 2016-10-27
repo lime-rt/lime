@@ -5,22 +5,21 @@
  *  Copyright (C) 2006-2014 Christian Brinch
  *  Copyright (C) 2015-2016 The LIME development team
  *
-TODO:
-  - Merge sourceFunc_*_raytrace() and sourceFunc_*() after changes to the way grid data is stored makes this possible.
  */
 
 #include "lime.h"
 
+
 /*....................................................................*/
-void sourceFunc_line(const molData md, const double vfac, const struct populations mol\
+void sourceFunc_line(const molData *md, const double vfac, const struct populations *mol\
   , const int lineI, double *jnu, double *alpha){
 
   /* Line part:		j_nu = v*consts*1/b*rho*n_i*A_ij */
-  *jnu   += vfac*HPIP*mol.specNumDens[md.lau[lineI]]*md.aeinst[lineI];
+  *jnu   += vfac*HPIP*mol->specNumDens[md->lau[lineI]]*md->aeinst[lineI];
 
   /* Line part: alpha_nu = v*const*1/b*rho*(n_j*B_ij-n_i*B_ji) */
-  *alpha += vfac*HPIP*(mol.specNumDens[md.lal[lineI]]*md.beinstl[lineI]
-                      -mol.specNumDens[md.lau[lineI]]*md.beinstu[lineI]);
+  *alpha += vfac*HPIP*(mol->specNumDens[md->lal[lineI]]*md->beinstl[lineI]
+                      -mol->specNumDens[md->lau[lineI]]*md->beinstu[lineI]);
 
   return;
 }
@@ -58,7 +57,7 @@ and references therein. However, as pointed out in Ade, P. A. R. et al, A&A 576,
   /* Emission */
   /* Continuum part:	j_nu = rho_dust * kappa_nu */
   jnu = cont.dust*cont.knu;
-  snu[0] = jnu*(1.0 - maxp*(trigFuncs[0] - 2.0/3.0));
+  snu[0] = jnu*(1.0 - maxp*(trigFuncs[0] - (2.0/3.0)));
   snu[1] = jnu*maxp*trigFuncs[1]*trigFuncs[0];
   snu[2] = jnu*maxp*trigFuncs[2]*trigFuncs[0];
   
@@ -66,4 +65,5 @@ and references therein. However, as pointed out in Ade, P. A. R. et al, A&A 576,
   /* Continuum part: Dust opacity */
   *alpha = cont.knu;
 }
+
 

@@ -66,11 +66,9 @@ popsin(configInfo *par, struct grid **gp, molData **md, int *popsdone){
   *gp=malloc(sizeof(struct grid)*par->ncell);
 
   for(i=0;i<par->ncell;i++){
-    (*gp)[i].a0 = NULL;
-    (*gp)[i].a1 = NULL;
-    (*gp)[i].a2 = NULL;
-    (*gp)[i].a3 = NULL;
-    (*gp)[i].a4 = NULL;
+    (*gp)[i].v1 = NULL;
+    (*gp)[i].v2 = NULL;
+    (*gp)[i].v3 = NULL;
     (*gp)[i].dens = NULL;
     (*gp)[i].abun = NULL;
     (*gp)[i].dir = NULL;
@@ -84,7 +82,7 @@ popsin(configInfo *par, struct grid **gp, molData **md, int *popsdone){
     (*gp)[i].mol=malloc(par->nSpecies*sizeof(struct populations));
     for(j=0;j<par->nSpecies;j++)
       fread(&(*gp)[i].mol[j].nmol, sizeof(double), 1, fp);
-    fread(&(*gp)[i].dopb, sizeof (*gp)[i].dopb, 1, fp);
+    fread(&(*gp)[i].dopb_turb, sizeof (*gp)[i].dopb_turb, 1, fp);
     for(j=0;j<par->nSpecies;j++){
       (*gp)[i].mol[j].pops=malloc(sizeof(double)*(*md)[j].nlev);
       for(k=0;k<(*md)[j].nlev;k++) fread(&(*gp)[i].mol[j].pops[k], sizeof(double), 1, fp);
@@ -107,8 +105,7 @@ popsin(configInfo *par, struct grid **gp, molData **md, int *popsdone){
 
   delaunay(DIM, *gp, (unsigned long)par->ncell, 0, &dc, &numCells);
   distCalc(par, *gp);
-  calcInterpCoeffs(par,*gp);
-
+  getVelocities(par,*gp);
   *popsdone=1;
 
   free(dc);

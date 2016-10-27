@@ -744,7 +744,8 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
         mp=malloc(sizeof(gridPointData)*par->nSpecies);
         for (ispec=0;ispec<par->nSpecies;ispec++){
           mp[ispec].phot = malloc(sizeof(double)*md[ispec].nline*max_phot);
-          mp[ispec].vfac = malloc(sizeof(double)*                max_phot);
+          mp[ispec].vfac = malloc(sizeof(double)*               max_phot);
+          mp[ispec].vfac_loc = malloc(sizeof(double)*           max_phot);
           mp[ispec].jbar = malloc(sizeof(double)*md[ispec].nline);
         }
         halfFirstDs = malloc(sizeof(*halfFirstDs)*max_phot);

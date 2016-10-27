@@ -103,7 +103,7 @@ write3Dfits(int im, configInfo *par, molData *m, image *img){
   if(img[im].unit==4) fits_write_key(fptr, TSTRING, "BUNIT", &"        ", "", &status);
 
   if(     img[im].unit==0)
-    scale=(CLIGHT/img[im].freq)*(CLIGHT/img[im].freq)/2./KBOLTZ;
+    scale=0.5*(CLIGHT/img[im].freq)*(CLIGHT/img[im].freq)/KBOLTZ; 
   else if(img[im].unit==1)
     scale=1e26*img[im].imgres*img[im].imgres;
   else if(img[im].unit==2)
@@ -226,7 +226,8 @@ write2Dfits(int im, configInfo *par, molData *m, image *img){
   if(img[im].unit==5) fits_write_key(fptr, TSTRING, "BUNIT", &"N_RAYS  ", "", &status);
 
   if(     img[im].unit==0)
-    scale=(CLIGHT/img[im].freq)*(CLIGHT/img[im].freq)/2./KBOLTZ;
+    scale=0.5*(CLIGHT/img[im].freq)*(CLIGHT/img[im].freq)/KBOLTZ; 
+
   else if(img[im].unit==1)
     scale=1e26*img[im].imgres*img[im].imgres;
   else if(img[im].unit==2)

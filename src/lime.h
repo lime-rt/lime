@@ -90,6 +90,10 @@
 #define MAX_N_COLL_PART		7
 #define N_SMOOTH_ITERS          20
 #define TYPICAL_ISM_DENS        1000.0
+#define ERF_TABLE_LIMIT		6.0             /* For x>6 erf(x)-1<double precision machine epsilon, so no need to store the values for larger x. */
+#define ERF_TABLE_SIZE		6145
+#define BIN_WIDTH		(ERF_TABLE_LIMIT/(ERF_TABLE_SIZE-1.))
+#define IBIN_WIDTH 		1./BIN_WIDTH
 
 /* Collision partner ID numbers from LAMDA */
 #define CP_H2			1
@@ -133,7 +137,7 @@ typedef struct {
 
 /* Data concerning a single grid vertex which is passed from photon() to stateq(). This data needs to be thread-safe. */
 typedef struct {
-  double *jbar,*phot,*vfac;
+  double *jbar,*phot,*vfac,*vfac_loc;
 } gridPointData;
 
 typedef struct {
@@ -166,7 +170,7 @@ struct populations {
 struct grid {
   int id;
   double x[DIM], vel[DIM], B[3]; /* B field only makes physical sense in 3 dimensions. */
-  double *a0,*a1,*a2,*a3,*a4;
+  double *v1,*v2,*v3;
   int numNeigh;
   point *dir;
   struct grid **neigh;
@@ -174,7 +178,7 @@ struct grid {
   int sink;
   int nphot;
   int conv;
-  double *dens,t[2],*abun, dopb;
+  double *dens,t[2],*abun, dopb_turb;
   double *ds;
   struct populations *mol;
   struct continuumLine cont;
@@ -296,9 +300,7 @@ void	calcGridMolSpecNumDens(configInfo*, molData*, struct grid*);
 void	calcInterpCoeffs(configInfo*, struct grid*);
 void	calcInterpCoeffs_lin(configInfo*, struct grid*);
 void	calcLineAmpInterp(const double, const double, const double, double*);
-void	calcLineAmpLinear(struct grid*, const int, const int, const double, const double, double*);
 void	calcLineAmpSample(const double x[3], const double dx[3], const double, const double, double*, const int, const double, const double, double*);
-void   	calcLineAmpSpline(struct grid*, const int, const int, const double, const double, double*);
 void	calcMolCMBs(configInfo*, molData*);
 void	calcSourceFn(double, const configInfo*, double*, double*);
 void	calcTableEntries(const int, const int);
@@ -313,6 +315,7 @@ void	doSegmentInterp(gridInterp*, const int, molData*, const int, const double, 
 faceType extractFace(struct grid*, struct cell*, const unsigned long, const int);
 int	factorial(const int);
 double	FastExp(const float);
+void    fillErfTable();
 void	fit_d1fi(double, double, double*);
 void	fit_fi(double, double, double*);
 void	fit_rr(double, double, double*);
@@ -324,7 +327,7 @@ void	freeMolsWithBlends(struct molWithBlends*, const int);
 void	freeParImg(const int, inputPars*, image*);
 void	freePopulation(const unsigned short, struct populations*);
 void	freeSomeGridFields(const unsigned int, const unsigned short, struct grid*);
-double	gaussline(double, double);
+double  gaussline(const double, const double);
 void	getArea(configInfo*, struct grid*, const gsl_rng*);
 void	getclosest(double, double, double, long*, long*, double*, double*, double*);
 void	getjbar(int, molData*, struct grid*, const int, configInfo*, struct blendInfo, int, gridPointData*, double*);
@@ -332,10 +335,10 @@ void	getMass(configInfo*, struct grid*, const gsl_rng*);
 void	getmatrix(int, gsl_matrix*, molData*, struct grid*, int, gridPointData*);
 int	getNewEntryFaceI(const unsigned long, const struct cell);
 int	getNextEdge(double*, int, struct grid*, const gsl_rng*);
-void	getVelosplines(configInfo *, struct grid *);
-void	getVelosplines_lin(configInfo *, struct grid *);
-void	gridPopsInit(configInfo*, molData*, struct grid*);
+void	getVelocities(configInfo *, struct grid *);
+void	getVelocities_pregrid(configInfo *, struct grid *);
 void	input(inputPars*, image*);
+void	gridPopsInit(configInfo*, molData*, struct grid*);
 double	interpolateKappa(const double, double*, double*, const int, gsl_spline*, gsl_interp_accel*);
 void	intersectLineTriangle(double*, double*, faceType, intersectType*);
 float	invSqrt(float);
@@ -364,7 +367,7 @@ void	report(int, configInfo*, struct grid*);
 void	setUpConfig(configInfo*, image**, molData**);
 void	setUpDensityAux(configInfo*, int*, const int);
 void	smooth(configInfo*, struct grid*);
-void    sourceFunc_line(const molData, const double, const struct populations, const int, double*, double*);
+void    sourceFunc_line(const molData*, const double, const struct populations*, const int, double*, double*);
 void    sourceFunc_cont(const struct continuumLine, double*, double*);
 void	sourceFunc_pol(double*, const struct continuumLine, double (*rotMat)[3], double*, double*);
 void	stateq(int, struct grid*, molData*, const int, configInfo*, struct blendInfo, int, gridPointData*, double*, _Bool*);
@@ -373,7 +376,7 @@ void	stokesangles(double*, double (*rotMat)[3], double*);
 double	taylor(const int, const float);
 void	traceray(rayData, const double, const int, configInfo*, struct grid*, molData*, image*, const double, const int, const double);
 void	traceray_smooth(rayData, const double, const int, configInfo*, struct grid*, molData*, image*, struct cell*, const unsigned long, const double, gridInterp gips[3], const int, const double, const int, const double);
-double	veloproject(double*, double*);
+double	veloproject(const double*, const double*);
 void	write2Dfits(int, configInfo*, molData*, image*);
 void	write3Dfits(int, configInfo*, molData*, image*);
 void	writeFits(const int, configInfo*, molData*, image*);
@@ -397,6 +400,17 @@ void	progressbar2(int, int, double, double, double);
 void	quotemass(double);
 void	screenInfo();
 void	warning(char*);
+
+#ifdef FASTEXP
+extern double EXP_TABLE_2D[128][10];
+extern double EXP_TABLE_3D[256][2][10];
+#else
+extern double EXP_TABLE_2D[1][1]; // nominal definitions so the fastexp.c module will compile.
+extern double EXP_TABLE_3D[1][1][1];
+#endif
+
+extern double ERF_TABLE[ERF_TABLE_SIZE];
+extern double oneOver_i[FAST_EXP_MAX_TAYLOR+1];
 
 #endif /* LIME_H */
 

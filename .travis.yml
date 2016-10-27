@@ -1,4 +1,8 @@
 language: c
-before_install: sudo apt-get update
-install: sudo apt-get install libgsl0-dev libcfitsio3-dev libatlas-base-dev libncurses5-dev libqhull-dev libqhull5
+before_install:
+  - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+  - sudo apt-get update
+install:
+  - sudo apt-get install libgsl0-dev libcfitsio3-dev libatlas-base-dev libncurses5-dev libqhull-dev libqhull5 gcc-6
+  - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-6 90
 script: sudo ln -s /usr/lib/libqhull.a /usr/lib/libqhullstatic.a && sudo ln -s /usr/include/qhull /usr/include/libqhull && export PATHTOLIME=`pwd` && sed -i -e "s|4000|400|" example/model.c && sed -i -e "s|3000|300|" example/model.c && cd example && ../lime -n model.c

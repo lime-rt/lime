@@ -202,7 +202,7 @@ Note that the algorithm employed here is similar to that employed in the functio
                   vfac = gaussline(deltav-veloproject(dx,gp[posn].vel),gp[posn].mol[molI].binv);
 
                 /* Increment jnu and alpha for this Voronoi cell by the amounts appropriate to the spectral line. */
-                sourceFunc_line(md[molI],vfac,gp[posn].mol[molI],lineI,&jnu,&alpha);
+                sourceFunc_line(&md[molI],vfac,&(gp[posn].mol[molI]),lineI,&jnu,&alpha);
               }
             }
           }
@@ -410,7 +410,7 @@ At the moment I will fix the number of segments, but it might possibly be faster
 
                   /* Increment jnu and alpha for this Voronoi cell by the amounts appropriate to the spectral line.
                   */
-                  sourceFunc_line(md[molI], vfac, gips[2].mol[molI], lineI, &jnu, &alpha);
+                  sourceFunc_line(&md[molI], vfac, &(gips[2].mol[molI]), lineI, &jnu, &alpha);
                 } /* end if within freq range. */
               } /* end loop over lines this mol. */
             } /* end loop over all mols. */

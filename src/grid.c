@@ -16,11 +16,9 @@ void mallocAndSetDefaultGrid(struct grid **gp, const unsigned int numPoints){
 
   *gp = malloc(sizeof(struct grid)*numPoints);
   for(i=0;i<numPoints; i++){
-    (*gp)[i].a0 = NULL;
-    (*gp)[i].a1 = NULL;
-    (*gp)[i].a2 = NULL;
-    (*gp)[i].a3 = NULL;
-    (*gp)[i].a4 = NULL;
+    (*gp)[i].v1 = NULL;
+    (*gp)[i].v2 = NULL;
+    (*gp)[i].v3 = NULL;
     (*gp)[i].mol = NULL;
     (*gp)[i].dir = NULL;
     (*gp)[i].neigh = NULL;
@@ -58,7 +56,7 @@ void calcGridMolDoppler(configInfo *par, molData *md, struct grid *gp){
   for(i=0;i<par->nSpecies;i++){
     /* Calculate Doppler and thermal line broadening */
     for(id=0;id<par->ncell;id++) {
-      gp[id].mol[i].dopb = sqrt(gp[id].dopb*gp[id].dopb\
+      gp[id].mol[i].dopb = sqrt(gp[id].dopb_turb*gp[id].dopb_turb\
                                 + 2.*KBOLTZ/md[i].amass*gp[id].t[0]);
       gp[id].mol[i].binv = 1./gp[id].mol[i].dopb;
     }
@@ -861,7 +859,7 @@ void buildGrid(configInfo *par, struct grid *g){
     g[k].dens[0]=1e-30;//************** what is the low but non zero value for?
     g[k].t[0]=par->tcmb;
     g[k].t[1]=par->tcmb;
-    g[k++].dopb=0.;
+    g[k++].dopb_turb=0.;
   }
   /* end grid allocation */
 
@@ -869,7 +867,7 @@ void buildGrid(configInfo *par, struct grid *g){
   */
   density(    0.0,0.0,0.0, g[0].dens);
   temperature(0.0,0.0,0.0, g[0].t);
-  doppler(    0.0,0.0,0.0,&g[0].dopb);	
+  doppler(    0.0,0.0,0.0,&g[0].dopb_turb);
   abundance(  0.0,0.0,0.0, g[0].abun);
   /* Note that velocity() is the only one of the 5 mandatory functions which is still needed (in raytrace) unless par->doPregrid. Therefore we test it already in parseInput(). */
 
@@ -880,7 +878,7 @@ void buildGrid(configInfo *par, struct grid *g){
   for(i=0;i<par->pIntensity;i++){
     density(    g[i].x[0],g[i].x[1],g[i].x[2], g[i].dens);
     temperature(g[i].x[0],g[i].x[1],g[i].x[2], g[i].t);
-    doppler(    g[i].x[0],g[i].x[1],g[i].x[2],&g[i].dopb);	
+    doppler(    g[i].x[0],g[i].x[1],g[i].x[2],&g[i].dopb_turb);
     abundance(  g[i].x[0],g[i].x[1],g[i].x[2], g[i].abun);
     velocity(   g[i].x[0],g[i].x[1],g[i].x[2], g[i].vel);
   }
@@ -902,9 +900,7 @@ void buildGrid(configInfo *par, struct grid *g){
     }
   }
 
-  //	getArea(par,g, randGen);
-  //	getMass(par,g, randGen);
-  calcInterpCoeffs(par,g);
+  getVelocities(par,g);
   dumpGrid(par,g);
   free(dc);
 

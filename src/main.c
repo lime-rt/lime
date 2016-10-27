@@ -28,6 +28,10 @@ double EXP_TABLE_2D[1][1]; // nominal definitions so the fastexp.c module will c
 double EXP_TABLE_3D[1][1][1];
 #endif
 
+double ERF_TABLE[ERF_TABLE_SIZE];
+double oneOver_i[FAST_EXP_MAX_TAYLOR+1];
+
+
 int
 initParImg(inputPars *par, image **img)
 {
@@ -165,6 +169,7 @@ run(inputPars inpars, image *img)
 #ifdef FASTEXP
   calcTableEntries(FAST_EXP_MAX_TAYLOR, FAST_EXP_NUM_BITS);
 #endif
+  fillErfTable();
 
   parseInput(inpars, &par, &img, &md); /* Sets par.numDensities for !(par.doPregrid || par.restart) */
 
