@@ -9,4 +9,9 @@ example/*.vtk
 example/*.pop
 example/*.fits*
 example/*.dat
+example/*_archive
+example/lime_*.x
+example/vlog.txt
 
+# Ignore html doc files
+doc/*.html

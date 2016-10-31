@@ -3,120 +3,225 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2016 The LIME development team
+ *  Copyright (C) 2015-2016 The LIME development team
  *
  */
 
 #include "lime.h"
 #include "tree_random.h"
 
-void
-gridAlloc(configInfo *par, struct grid **g){
-  int i;
+/*....................................................................*/
+void mallocAndSetDefaultGrid(struct grid **gp, const unsigned int numPoints){
+  unsigned int i;
 
-  *g=malloc(sizeof(struct grid)*(par->pIntensity+par->sinkPoints));
-  memset(*g, 0., sizeof(struct grid) * (par->pIntensity+par->sinkPoints));
-
-  for(i=0;i<(par->pIntensity+par->sinkPoints); i++){
-    (*g)[i].a0 = NULL;
-    (*g)[i].a1 = NULL;
-    (*g)[i].a2 = NULL;
-    (*g)[i].a3 = NULL;
-    (*g)[i].a4 = NULL;
-    (*g)[i].mol = NULL;
-    (*g)[i].dir = NULL;
-    (*g)[i].neigh = NULL;
-    (*g)[i].w = NULL;
-    (*g)[i].ds = NULL;
-    (*g)[i].dens=malloc(sizeof(double)*par->numDensities);
-    (*g)[i].abun=malloc(sizeof(double)*par->nSpecies);
-    (*g)[i].t[0]=-1;
-    (*g)[i].t[1]=-1;
+  *gp = malloc(sizeof(struct grid)*numPoints);
+  for(i=0;i<numPoints; i++){
+    (*gp)[i].v1 = NULL;
+    (*gp)[i].v2 = NULL;
+    (*gp)[i].v3 = NULL;
+    (*gp)[i].mol = NULL;
+    (*gp)[i].dir = NULL;
+    (*gp)[i].neigh = NULL;
+    (*gp)[i].w = NULL;
+    (*gp)[i].ds = NULL;
+    (*gp)[i].dens=NULL;
+    (*gp)[i].abun=NULL;
+    (*gp)[i].t[0]=-1;
+    (*gp)[i].t[1]=-1;
+    (*gp)[i].B[0]=-1;
+    (*gp)[i].B[1]=-1;
+    (*gp)[i].B[2]=-1;
+    (*gp)[i].conv=0;
   }
 }
 
-void gridLineInit(configInfo *par, molData *md, struct grid *gp){
-  int i,id, ilev;
+/*....................................................................*/
+void gridPopsInit(configInfo *par, molData *md, struct grid *gp){
+  int i,id,ilev;
+
+  for(i=0;i<par->nSpecies;i++){
+    /* Allocate space for populations etc */
+    for(id=0;id<par->ncell; id++){
+      gp[id].mol[i].pops = malloc(sizeof(double)*md[i].nlev);
+      for(ilev=0;ilev<md[i].nlev;ilev++)
+        gp[id].mol[i].pops[ilev] = 0.0;
+    }
+  }
+}
+
+/*....................................................................*/
+void calcGridMolDoppler(configInfo *par, molData *md, struct grid *gp){
+  int i,id;
 
   for(i=0;i<par->nSpecies;i++){
     /* Calculate Doppler and thermal line broadening */
     for(id=0;id<par->ncell;id++) {
-      gp[id].mol[i].dopb = sqrt(gp[id].dopb*gp[id].dopb+2.*KBOLTZ/md[i].amass*gp[id].t[0]);
+      gp[id].mol[i].dopb = sqrt(gp[id].dopb_turb*gp[id].dopb_turb\
+                                + 2.*KBOLTZ/md[i].amass*gp[id].t[0]);
       gp[id].mol[i].binv = 1./gp[id].mol[i].dopb;
     }
-
-    /* Allocate space for populations etc */
-    for(id=0;id<par->ncell; id++){
-      gp[id].mol[i].pops = malloc(sizeof(double)*md[i].nlev);
-      gp[id].mol[i].dust = malloc(sizeof(double)*md[i].nline);
-      gp[id].mol[i].knu  = malloc(sizeof(double)*md[i].nline);
-      for(ilev=0;ilev<md[i].nlev;ilev++) gp[id].mol[i].pops[ilev]=0.0;
-    }
   }
 }
 
-void calcGridMolDensities(configInfo *par, struct grid *g){
+/*....................................................................*/
+void calcGridMolDensities(configInfo *par, struct grid *gp){
   int id,ispec,i;
 
-  for(id=0;id<par->ncell; id++){
+  for(id=0;id<par->ncell;id++){
     for(ispec=0;ispec<par->nSpecies;ispec++){
-      g[id].mol[ispec].nmol = 0.0;
+      gp[id].mol[ispec].nmol = 0.0;
       for(i=0;i<par->numDensities;i++)
-        g[id].mol[ispec].nmol += g[id].abun[ispec]*g[id].dens[i]*par->nMolWeights[i];
+        gp[id].mol[ispec].nmol += gp[id].abun[ispec]*gp[id].dens[i]\
+                                  *par->nMolWeights[i];
     }
   }
 }
 
-void calcGridDustOpacity(configInfo *par, molData *md, struct grid *gp){
+/*....................................................................*/
+void calcGridMolSpecNumDens(configInfo *par, molData *md, struct grid *gp){
+  int gi,ispec,ei;
+
+  for(gi=0;gi<par->ncell;gi++){
+    for(ispec=0;ispec<par->nSpecies;ispec++){
+      for(ei=0;ei<md[ispec].nlev;ei++)
+        gp[gi].mol[ispec].specNumDens[ei] = gp[gi].mol[ispec].binv\
+          *gp[gi].mol[ispec].nmol*gp[gi].mol[ispec].pops[ei];
+    }
+  }
+}
+
+/*....................................................................*/
+void readDustFile(char *dustFileName, double **lamtab, double **kaptab\
+  , int *nEntries){
+
+  /* NOTE! The calling routine must free lamtab and kaptab after use.
+  */
   FILE *fp;
+  int i=0,k;
   char string[80];
-  int i=0,k,j,iline,id,si,di;
-  double loglam, *lamtab, *kaptab, *kappatab, gtd, densityForDust;
-  gsl_spline *spline;
+
+  /* Open the file and count the values it contains.
+  */
+  if((fp=fopen(dustFileName, "r"))==NULL){
+    if(!silent) bail_out("Error opening dust opacity data file!");
+    exit(1);
+  }
+  while(fgetc(fp) != EOF){
+    fgets(string,80,fp);
+    i++;
+  }
+  rewind(fp);
+
+  /* Now read the values.
+  */
+  if(i>0){
+    *lamtab=malloc(sizeof(**lamtab)*i);
+    *kaptab=malloc(sizeof(**kaptab)*i);
+  } else {
+    if(!silent) bail_out("No opacities read");
+    exit(1);
+  }
+  for(k=0;k<i;k++){
+    fscanf(fp,"%lf %lf\n", &(*lamtab)[k], &(*kaptab)[k]);
+    (*lamtab)[k]=log10((*lamtab)[k]/1e6);
+    (*kaptab)[k]=log10((*kaptab)[k]);
+  }
+  fclose(fp);
+
+  *nEntries = i;
+}
+
+/*....................................................................*/
+double interpolateKappa(const double freq, double *lamtab, double *kaptab\
+  , const int nEntries, gsl_spline *spline, gsl_interp_accel *acc){
+
+  double loglam, kappa;
+
+  loglam=log10(CLIGHT/freq);
+  if(loglam < lamtab[0])
+    kappa = 0.1*pow(10.,kaptab[0] + (loglam-lamtab[0])\
+          *(kaptab[1]-kaptab[0])/(lamtab[1]-lamtab[0]));
+  else if(loglam > lamtab[nEntries-1])
+    kappa = 0.1*pow(10.,kaptab[nEntries-2] + (loglam-lamtab[nEntries-2])\
+          *(kaptab[nEntries-1]-kaptab[nEntries-2])\
+          /(lamtab[nEntries-1]-lamtab[nEntries-2]));
+  else
+    kappa = 0.1*pow(10.,gsl_spline_eval(spline,loglam,acc));
+
+  return kappa;
+}
+
+/*....................................................................*/
+void calcGridContDustOpacity(configInfo *par, const double freq\
+  , double *lamtab, double *kaptab, const int nEntries, struct grid *gp){
+
+  double kappa,densityForDust,gtd;
+  int id,di;
+  gsl_spline *spline = NULL;
+  gsl_interp_accel *acc = NULL;
+
+  if(par->dust == NULL)
+    kappa = 0.;
+  else{
+    acc = gsl_interp_accel_alloc();
+    spline = gsl_spline_alloc(gsl_interp_cspline,nEntries);
+    gsl_spline_init(spline,lamtab,kaptab,nEntries);
+    kappa = interpolateKappa(freq, lamtab, kaptab, nEntries, spline, acc);
+  }
+
+  for(id=0;id<par->ncell;id++){
+    densityForDust = 0.0;
+    for(di=0;di<par->numDensities;di++)
+      densityForDust += gp[id].dens[di]*par->dustWeights[di];
+
+    gasIIdust(gp[id].x[0],gp[id].x[1],gp[id].x[2],&gtd);
+    gp[id].cont.knu = kappa*2.4*AMU*densityForDust/gtd;
+    /* Check if input model supplies a dust temperature. Otherwise use the kinetic temperature. */
+    if(gp[id].t[1]==-1) {
+      gp[id].cont.dust = planckfunc(freq,gp[id].t[0]);
+    } else {
+      gp[id].cont.dust = planckfunc(freq,gp[id].t[1]);
+    }
+  }
+
+  if(par->dust != NULL){
+    gsl_spline_free(spline);
+    gsl_interp_accel_free(acc);
+  }
+}
+
+/*....................................................................*/
+void calcGridLinesDustOpacity(configInfo *par, molData *md, double *lamtab\
+  , double *kaptab, const int nEntries, struct grid *gp){
+
+  int iline,id,si,di;
+  double *kappatab,gtd,densityForDust,dustToGas,t;
+  gsl_spline *spline = NULL;
+  gsl_interp_accel *acc = NULL;
+
+  if(par->dust != NULL){
+    acc = gsl_interp_accel_alloc();
+    spline = gsl_spline_alloc(gsl_interp_cspline,nEntries);
+    gsl_spline_init(spline,lamtab,kaptab,nEntries);
+  }
+
+  for(id=0;id<par->ncell;id++){
+    for(si=0;si<par->nSpecies;si++){
+      free(gp[id].mol[si].cont);
+      gp[id].mol[si].cont = malloc(sizeof(*(gp[id].mol[si].cont))*md[si].nline);
+    }
+  }
 
   for(si=0;si<par->nSpecies;si++){
     kappatab = malloc(sizeof(*kappatab)*md[si].nline);
 
     if(par->dust == NULL){
-      for(i=0;i<md[si].nline;i++) kappatab[i]=0.;
-    } else {
-      gsl_interp_accel *acc=gsl_interp_accel_alloc();
-      if((fp=fopen(par->dust, "r"))==NULL){
-        if(!silent) bail_out("Error opening dust opacity data file!");
-        exit(1);
-      }
-      while(fgetc(fp) != EOF){
-        fgets(string,80,fp);
-        i++;
-      }
-      rewind(fp);
-      if(i>0){
-        lamtab=malloc(sizeof(*lamtab)*i);
-        kaptab=malloc(sizeof(*kaptab)*i);
-      } else {
-        if(!silent) bail_out("No opacities read");
-        exit(1);
-      }
-      for(k=0;k<i;k++){
-        fscanf(fp,"%lf %lf\n", &lamtab[k], &kaptab[k]);
-        lamtab[k]=log10(lamtab[k]/1e6);
-        kaptab[k]=log10(kaptab[k]);
-      }
-      fclose(fp);
-      spline=gsl_spline_alloc(gsl_interp_cspline,i);
-      gsl_spline_init(spline,lamtab,kaptab,i);
-      for(j=0;j<md[si].nline;j++) {
-        loglam=log10(CLIGHT/md[si].freq[j]);
-        if(loglam < lamtab[0]){
-          kappatab[j]=0.1*pow(10.,kaptab[0] + (loglam-lamtab[0]) * (kaptab[1]-kaptab[0])/(lamtab[1]-lamtab[0]));
-        } else if(loglam > lamtab[i-1]){
-          kappatab[j]=0.1*pow(10.,kaptab[i-2] + (loglam-lamtab[i-2]) * (kaptab[i-1]-kaptab[i-2])/(lamtab[i-1]-lamtab[i-2]));
-        } else kappatab[j]=0.1*pow(10.,gsl_spline_eval(spline,loglam,acc));
-      }
-      gsl_spline_free(spline);
-      gsl_interp_accel_free(acc);
-      free(kaptab);
-      free(lamtab);
+      for(iline=0;iline<md[si].nline;iline++)
+        kappatab[iline] = 0.;
+    }else{
+      for(iline=0;iline<md[si].nline;iline++)
+        kappatab[iline] = interpolateKappa(md[si].freq[iline]\
+                        , lamtab, kaptab, nEntries, spline, acc);
     }
 
     for(id=0;id<par->ncell;id++){
@@ -125,53 +230,58 @@ void calcGridDustOpacity(configInfo *par, molData *md, struct grid *gp){
         densityForDust += gp[id].dens[di]*par->dustWeights[di];
 
       gasIIdust(gp[id].x[0],gp[id].x[1],gp[id].x[2],&gtd);
+      dustToGas = 2.4*AMU*densityForDust/gtd;
       for(iline=0;iline<md[si].nline;iline++){
-        gp[id].mol[si].knu[iline]=kappatab[iline]*2.4*AMU*densityForDust/gtd;
-        //Check if input model supplies a dust temperature. Otherwise use the kinetic temperature
-        if(gp[id].t[1]==-1) {
-          gp[id].mol[si].dust[iline]=planckfunc(iline,gp[id].t[0],md,si);
-        } else {
-          gp[id].mol[si].dust[iline]=planckfunc(iline,gp[id].t[1],md,si);
-        }
+        gp[id].mol[si].cont[iline].knu = kappatab[iline]*dustToGas;
+        /* Check if input model supplies a dust temperature. Otherwise use the kinetic temperature. */
+        if(gp[id].t[1]==-1)
+          t = gp[id].t[0];
+        else
+          t = gp[id].t[1];
+        gp[id].mol[si].cont[iline].dust = planckfunc(md[si].freq[iline],t);
       }
     }
 
     free(kappatab);
   }
 
-  return;
+  if(par->dust != NULL){
+    gsl_spline_free(spline);
+    gsl_interp_accel_free(acc);
+  }
 }
 
-void calcGridCollRates(configInfo *par, molData *md, struct grid *g){
+/*....................................................................*/
+void calcGridCollRates(configInfo *par, molData *md, struct grid *gp){
   int i,id,ipart,itrans,itemp,tnint=-1;
   struct cpData part;
   double fac;
 
   for(i=0;i<par->nSpecies;i++){
     for(id=0;id<par->ncell;id++){
-      g[id].mol[i].partner = malloc(sizeof(struct rates)*md[i].npart);
+      gp[id].mol[i].partner = malloc(sizeof(struct rates)*md[i].npart);
     }
 
     for(ipart=0;ipart<md[i].npart;ipart++){
       part = md[i].part[ipart];
       for(id=0;id<par->ncell;id++){
         for(itrans=0;itrans<part.ntrans;itrans++){
-          if((g[id].t[0]>part.temp[0])&&(g[id].t[0]<part.temp[part.ntemp-1])){
+          if((gp[id].t[0]>part.temp[0])&&(gp[id].t[0]<part.temp[part.ntemp-1])){
             for(itemp=0;itemp<part.ntemp-1;itemp++){
-              if((g[id].t[0]>part.temp[itemp])&&(g[id].t[0]<=part.temp[itemp+1])){
+              if((gp[id].t[0]>part.temp[itemp])&&(gp[id].t[0]<=part.temp[itemp+1])){
                 tnint=itemp;
               }
             }
-            fac=(g[id].t[0]-part.temp[tnint])/(part.temp[tnint+1]-part.temp[tnint]);
-            g[id].mol[i].partner[ipart].t_binlow = tnint;
-            g[id].mol[i].partner[ipart].interp_coeff = fac;
+            fac=(gp[id].t[0]-part.temp[tnint])/(part.temp[tnint+1]-part.temp[tnint]);
+            gp[id].mol[i].partner[ipart].t_binlow = tnint;
+            gp[id].mol[i].partner[ipart].interp_coeff = fac;
 
-	  } else if(g[id].t[0]<=part.temp[0]) {
-	    g[id].mol[i].partner[ipart].t_binlow = 0;
-	    g[id].mol[i].partner[ipart].interp_coeff = 0.0;
+	  } else if(gp[id].t[0]<=part.temp[0]) {
+	    gp[id].mol[i].partner[ipart].t_binlow = 0;
+	    gp[id].mol[i].partner[ipart].interp_coeff = 0.0;
 	  } else {
-	    g[id].mol[i].partner[ipart].t_binlow = part.ntemp-2;
-	    g[id].mol[i].partner[ipart].interp_coeff = 1.0;
+	    gp[id].mol[i].partner[ipart].t_binlow = part.ntemp-2;
+	    gp[id].mol[i].partner[ipart].interp_coeff = 1.0;
 	  }
         } /* End loop over transitions. */
       } /* End loop over grid points. */
@@ -235,8 +345,7 @@ Elements of structs are set as follows:
     gp[id].numNeigh=qh_setsize(vertex->neighbors);
     /* Note that vertex->neighbors refers to facets abutting the vertex, not other vertices. In general there seem to be more facets surrounding a point than vertices (in fact there seem to be exactly 2x as many). In any case, mallocing to N_facets gives extra room. */
 
-    if(gp[id].neigh!=NULL)
-      free( gp[id].neigh );
+    free(gp[id].neigh);
     gp[id].neigh=malloc(sizeof(struct grid *)*gp[id].numNeigh);
     for(k=0;k<gp[id].numNeigh;k++) {
       gp[id].neigh[k]=NULL;
@@ -336,33 +445,32 @@ Elements of structs are set as follows:
   free(pt_array);
 }
 
-void
-distCalc(configInfo *par, struct grid *g){
+/*....................................................................*/
+void distCalc(configInfo *par, struct grid *gp){
   int i,k,l;
 
   for(i=0;i<par->ncell;i++){
-    if( g[i].dir != NULL )
-      {
-        free( g[i].dir );
-      }
-    if( g[i].ds != NULL )
-      {
-        free( g[i].ds );
-      }
-    g[i].dir=malloc(sizeof(point)*g[i].numNeigh);
-    g[i].ds =malloc(sizeof(double)*g[i].numNeigh);
-    memset(g[i].dir, 0., sizeof(point) * g[i].numNeigh);
-    memset(g[i].ds, 0., sizeof(double) * g[i].numNeigh);
-    for(k=0;k<g[i].numNeigh;k++){
-      for(l=0;l<3;l++) g[i].dir[k].x[l] = g[i].neigh[k]->x[l] - g[i].x[l];
-      g[i].ds[k]=sqrt(g[i].dir[k].x[0]*g[i].dir[k].x[0]+g[i].dir[k].x[1]*g[i].dir[k].x[1]+g[i].dir[k].x[2]*g[i].dir[k].x[2]);
-      for(l=0;l<3;l++) g[i].dir[k].xn[l] = g[i].dir[k].x[l]/g[i].ds[k];
+    free(gp[i].dir);
+    free(gp[i].ds);
+    gp[i].dir=malloc(sizeof(point) *gp[i].numNeigh);
+    gp[i].ds =malloc(sizeof(double)*gp[i].numNeigh);
+    memset(gp[i].dir, 0., sizeof(point) * gp[i].numNeigh);
+    memset(gp[i].ds, 0., sizeof(double) * gp[i].numNeigh);
+    for(k=0;k<gp[i].numNeigh;k++){
+      for(l=0;l<3;l++)
+        gp[i].dir[k].x[l] = gp[i].neigh[k]->x[l] - gp[i].x[l];
+      gp[i].ds[k] = sqrt(  gp[i].dir[k].x[0]*gp[i].dir[k].x[0]\
+                         + gp[i].dir[k].x[1]*gp[i].dir[k].x[1]\
+                         + gp[i].dir[k].x[2]*gp[i].dir[k].x[2]);
+      for(l=0;l<3;l++)
+        gp[i].dir[k].xn[l] = gp[i].dir[k].x[l]/gp[i].ds[k];
     }
-    g[i].nphot=ininphot*g[i].numNeigh;
+    gp[i].nphot=ininphot*gp[i].numNeigh;
   }
 }
 
 
+/*....................................................................*/
 void
 write_VTK_unstructured_Points(configInfo *par, struct grid *g){
   FILE *fp;
@@ -450,11 +558,13 @@ write_VTK_unstructured_Points(configInfo *par, struct grid *g){
   free(pt_array);
 }
 
+/*....................................................................*/
 void
 dumpGrid(configInfo *par, struct grid *g){
   if(par->gridfile) write_VTK_unstructured_Points(par, g);
 }
 
+/*....................................................................*/
 void
 getArea(configInfo *par, struct grid *g, const gsl_rng *ran){
   int i,j,k,b;//=-1;
@@ -518,6 +628,7 @@ getArea(configInfo *par, struct grid *g, const gsl_rng *ran){
 }
 
 
+/*....................................................................*/
 void
 getMass(configInfo *par, struct grid *g, const gsl_rng *ran){
   double mass=0.,dist;
@@ -807,7 +918,12 @@ buildGrid(configInfo *par, struct grid *g){
   }
 
   /* end model grid point assignment */
-  if(!silent) done(4);
+  if(!silent) printDone(4);
+
+  for(i=0;i<par->ncell;i++){
+    g[i].dens = malloc(sizeof(double)*par->numDensities);
+    g[i].abun = malloc(sizeof(double)*par->nSpecies);
+  }
 
   /* Add surface sink particles */
   for(i=0;i<par->sinkPoints;i++){
@@ -832,7 +948,7 @@ buildGrid(configInfo *par, struct grid *g){
     g[k].dens[0]=1e-30;//************** what is the low but non zero value for?
     g[k].t[0]=par->tcmb;
     g[k].t[1]=par->tcmb;
-    g[k++].dopb=0.;
+    g[k++].dopb_turb=0.;
   }
   /* end grid allocation */
 
@@ -840,7 +956,7 @@ buildGrid(configInfo *par, struct grid *g){
   */
   density(    0.0,0.0,0.0, g[0].dens);
   temperature(0.0,0.0,0.0, g[0].t);
-  doppler(    0.0,0.0,0.0,&g[0].dopb);	
+  doppler(    0.0,0.0,0.0,&g[0].dopb_turb);
   abundance(  0.0,0.0,0.0, g[0].abun);
   /* Note that velocity() is the only one of the 5 mandatory functions which is still needed (in raytrace) unless par->doPregrid. Therefore we test it already in parseInput(). */
 
@@ -849,15 +965,20 @@ buildGrid(configInfo *par, struct grid *g){
 
   if(par->samplingAlgorithm==0){
     smooth(par,g);
-    if(!silent) done(5);
+    if(!silent) printDone(5);
   }
 
   for(i=0;i<par->pIntensity;i++){
     density(    g[i].x[0],g[i].x[1],g[i].x[2], g[i].dens);
     temperature(g[i].x[0],g[i].x[1],g[i].x[2], g[i].t);
-    doppler(    g[i].x[0],g[i].x[1],g[i].x[2],&g[i].dopb);	
+    doppler(    g[i].x[0],g[i].x[1],g[i].x[2],&g[i].dopb_turb);
     abundance(  g[i].x[0],g[i].x[1],g[i].x[2], g[i].abun);
+    velocity(   g[i].x[0],g[i].x[1],g[i].x[2], g[i].vel);
   }
+
+  /* Set velocity values also for sink points (otherwise Delaunay ray-tracing has problems) */
+  for(i=par->pIntensity;i<par->ncell;i++)
+    velocity(g[i].x[0],g[i].x[1],g[i].x[2],g[i].vel);
 
   checkGridDensities(par, g);
 
@@ -872,9 +993,7 @@ buildGrid(configInfo *par, struct grid *g){
     }
   }
 
-  //	getArea(par,g, randGen);
-  //	getMass(par,g, randGen);
-  getVelosplines(par,g);
+  getVelocities(par,g);
   dumpGrid(par,g);
   free(dc);
 
