@@ -72,7 +72,8 @@ Notes:
 
       density(r[0],r[1],r[2],val);
       for (i=0;i<par->numDensities;i++) totalDensity += val[i];
-      fracDensity = pow(totalDensity/par->gridDensGlobalMax,DENSITY_POWER);
+//      fracDensity = pow(totalDensity/par->gridDensGlobalMax,DENSITY_POWER);
+      fracDensity = pow(totalDensity,DENSITY_POWER)/par->gridDensGlobalMax;
 
       return fracDensity;
     }
