@@ -18,7 +18,7 @@ TODO:
 void
 parseInput(inputPars inpar, configInfo *par, image **img, molData **m){
   int i,j,id;
-  double BB[3],normBSquared,dens[MAX_N_COLL_PART];
+  double BB[3],normBSquared,dens[MAX_N_COLL_PART],r[DIM];
   double dummyVel[DIM];
   FILE *fp;
   char message[80];
@@ -32,6 +32,7 @@ parseInput(inputPars inpar, configInfo *par, image **img, molData **m){
   par->minScale     = inpar.minScale;
   par->pIntensity   = inpar.pIntensity;
   par->sinkPoints   = inpar.sinkPoints;
+  par->samplingAlgorithm=inpar.samplingAlgorithm;
   par->sampling     = inpar.sampling;
   par->tcmb         = inpar.tcmb;
   par->dust         = inpar.dust;
@@ -91,6 +92,18 @@ parseInput(inputPars inpar, configInfo *par, image **img, molData **m){
   par->dustWeights  = malloc(sizeof(double)*MAX_N_COLL_PART);
   for(i=0;i<MAX_N_COLL_PART;i++) par->dustWeights[i] = inpar.dustWeights[i];
 
+  /* Copy over the grid-density-maximum data and find out how many were set:
+  */
+  par->gridDensMaxValues = malloc(sizeof(*(par->gridDensMaxValues))*MAX_N_HIGH);
+  par->gridDensMaxLoc    = malloc(sizeof(*(par->gridDensMaxLoc))*MAX_N_HIGH);
+  for(i=0;i<MAX_N_HIGH;i++){
+    par->gridDensMaxValues[i] = inpar.gridDensMaxValues[i];
+    for(j=0;j<DIM;j++) par->gridDensMaxLoc[i][j] = inpar.gridDensMaxLoc[i][j];
+  }
+  i = 0;
+  while(i<MAX_N_HIGH && par->gridDensMaxValues[i]>=0) i++;
+  par->numGridDensMaxima = i;
+
   /* Calculate par->numDensities.
   */
   if(!(par->doPregrid || par->restart)){ /* These switches cause par->numDensities to be set in routines they call. */
@@ -106,6 +119,22 @@ parseInput(inputPars inpar, configInfo *par, image **img, molData **m){
       if(!silent) bail_out("No density values returned.");
       exit(1);
     }
+  }
+
+  /* See if we can deduce a global maximum for the grid point number density function. Set the starting value from the unnormalized number density at the origin of coordinates:
+  */
+  par->gridDensGlobalMax = 1.0;
+  for(i=0;i<DIM;i++) r[i] = par->minScale;//****0.0;
+  par->gridDensGlobalMax = gridDensity(par, r);
+
+  /* Test now any maxima the user has provided:
+  */
+  for(i=0;i<par->numGridDensMaxima;i++)
+    if(par->gridDensMaxValues[i]>par->gridDensGlobalMax) par->gridDensGlobalMax = par->gridDensMaxValues[i];
+
+  if (par->gridDensGlobalMax<=0.0){
+    if(!silent) bail_out("Cannot normalize the grid-point number density function.");
+    exit(1);
   }
 
   /* If the user has provided a list of image filenames, the corresponding elements of (*img).filename will be non-NULL. Thus we can deduce the number of images from the number of non-NULL elements.

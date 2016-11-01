@@ -55,30 +55,25 @@ void __attribute__((weak))
 
 double __attribute__((weak))
     gridDensity(configInfo *par, double *r){
-      /* The grid points within the model are chosen randomly via the rejection method with a probability distribution which the present function is intended to provide. The user may supply their own version of this within model.c; the default here implements the grid-point selection function used in LIME<=1.5.
+      /*
+The grid points within the model are chosen randomly via the rejection method with a probability distribution which the present function is intended to provide.
+
+Notes:
+  - The present function is interpreted by LIME as giving *relative* probabilities, the ultimate normalization being set by the desired number of grid points conveyed to the task via par->pIntensity.
+  - If par->samplingAlgorithm is chosen to be zero (the current default value), further manipulations to the probability distribution are performed according to the set value of par->sampling.
+  - The user may supply their own version of the present function within model.c; the default here implements the grid-point selection function used in LIME<=1.5.
       */
       double val[99],totalDensity=0.0,rSquared=0.0,fracDensity=0.0;
       int i;
-      static double maxTotalDensity=0.0;
 
       rSquared = r[0]*r[0]+r[1]*r[1]+r[2]*r[2];
       if(rSquared>=par->radiusSqu)
         return 0.0;
 
-      if(maxTotalDensity==0.0){
-        density(par->minScale,par->minScale,par->minScale,val);
-        for (i=0;i<par->numDensities;i++)
-          maxTotalDensity += val[i];
-
-        if (maxTotalDensity<=0.){
-          if(!silent) bail_out("Error: Sum of reference densities equals 0");
-          exit(1);
-        }
-      }
-
       density(r[0],r[1],r[2],val);
       for (i=0;i<par->numDensities;i++) totalDensity += val[i];
-      fracDensity = pow(totalDensity/maxTotalDensity,0.2);
+//      fracDensity = pow(totalDensity/par->gridDensGlobalMax,DENSITY_POWER);
+      fracDensity = pow(totalDensity,DENSITY_POWER)/par->gridDensGlobalMax;
 
       return fracDensity;
     }

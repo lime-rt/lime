@@ -41,7 +41,7 @@ initParImg(inputPars *par, image **img)
      par and image values.
   */
 
-  int i,id,nImages;
+  int i,j,id,nImages;
   const double defaultAngle=-999.0;
 
   /* Set 'impossible' default values for mandatory parameters */
@@ -59,16 +59,24 @@ initParImg(inputPars *par, image **img)
   par->restart      = NULL;
 
   par->collPartIds  = malloc(sizeof(int)*MAX_N_COLL_PART);
-  for(i=0;i<MAX_N_COLL_PART;i++) par->collPartIds[i] = 0;
+  for(i=0;i<MAX_N_COLL_PART;i++) par->collPartIds[i] = 0; /* Possible values start at 1. */
   par->nMolWeights  = malloc(sizeof(double)*MAX_N_COLL_PART);
   for(i=0;i<MAX_N_COLL_PART;i++) par->nMolWeights[i] = -1.0;
   par->dustWeights  = malloc(sizeof(double)*MAX_N_COLL_PART);
   for(i=0;i<MAX_N_COLL_PART;i++) par->dustWeights[i] = -1.0;
 
+  par->gridDensMaxValues = malloc(sizeof(*(par->gridDensMaxValues))*MAX_N_HIGH);
+  par->gridDensMaxLoc    = malloc(sizeof(*(par->gridDensMaxLoc))*MAX_N_HIGH);
+  for(i=0;i<MAX_N_HIGH;i++){
+    par->gridDensMaxValues[i] = -1.0; /* Impossible default value. */
+    for(j=0;j<DIM;j++) par->gridDensMaxLoc[i][j] = 0.0;
+  }
+
   par->tcmb = 2.728;
   par->lte_only=0;
   par->init_lte=0;
-  par->sampling=2;
+  par->samplingAlgorithm=0;
+  par->sampling=2; /* Now only accessed if par->samplingAlgorithm==0. */
   par->blend=0;
   par->antialias=1;
   par->polarization=0;
@@ -249,10 +257,7 @@ run(inputPars inpars, image *img)
 
   freeGrid((unsigned int)par.ncell, (unsigned short)par.nSpecies, gp);
   freeMolData(par.nSpecies, md);
-  free(par.moldatfile);
-  free(par.collPartIds);
-  free(par.nMolWeights);
-  free(par.dustWeights);
+  freeConfig(par);
 
   if(par.dust != NULL){
     free(kaptab);

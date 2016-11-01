@@ -9,6 +9,15 @@
 
 #include "lime.h"
 
+void freeConfig(configInfo par){
+  free(par.moldatfile);
+  free(par.collPartIds);
+  free(par.nMolWeights);
+  free(par.dustWeights);
+  free(par.gridDensMaxLoc);
+  free(par.gridDensMaxValues);
+}
+
 void freeGrid(const unsigned int numPoints, const unsigned short numSpecies\
   , struct grid *gp){
 
@@ -100,6 +109,8 @@ freeParImg(const int nImages, inputPars *par, image *img){
   }
   free(img);
 
+  free(par->gridDensMaxValues);
+  free(par->gridDensMaxLoc);
   free(par->moldatfile);
   free(par->collPartIds);
   free(par->nMolWeights);

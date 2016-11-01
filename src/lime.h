@@ -10,8 +10,6 @@
 #ifndef LIME_H
 #define LIME_H
 
-#include "inpars.h"
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -80,8 +78,7 @@
 #define MAXITER                 50
 #define goal                    50
 #define fixset                  1e-6
-#define maxBlendDeltaV		1.e4		/* m/s */
-#define NUM_VEL_COEFFS		5
+#define maxBlendDeltaV          1.e4		/* m/s */
 #define MAX_NSPECIES            100
 #define MAX_NIMAGES             100
 #define N_RAN_PER_SEGMENT       3
@@ -90,6 +87,9 @@
 #define MAX_N_COLL_PART		7
 #define N_SMOOTH_ITERS          20
 #define TYPICAL_ISM_DENS        1000.0
+#define DENSITY_POWER		0.2
+#define MAX_N_HIGH              10
+#define TREE_POWER		2.0
 #define ERF_TABLE_LIMIT		6.0             /* For x>6 erf(x)-1<double precision machine epsilon, so no need to store the values for larger x. */
 #define ERF_TABLE_SIZE		6145
 #define BIN_WIDTH		(ERF_TABLE_LIMIT/(ERF_TABLE_SIZE-1.))
@@ -104,13 +104,14 @@
 #define CP_He			6
 #define CP_Hplus		7
 
+#include "inpars.h"
 
 typedef struct {
   double radius,minScale,tcmb,*nMolWeights,*dustWeights;
-  double radiusSqu,minScaleSqu,taylorCutoff;
-  int sinkPoints,pIntensity,blend,*collPartIds,traceRayAlgorithm;
-  int ncell,nImages,nSpecies,numDensities,doPregrid;
-  char *outputfile, *binoutputfile;
+  double radiusSqu,minScaleSqu,taylorCutoff,gridDensGlobalMax;
+  int sinkPoints,pIntensity,blend,*collPartIds,traceRayAlgorithm,samplingAlgorithm;
+  int ncell,nImages,nSpecies,numDensities,doPregrid,numGridDensMaxima;
+  char *outputfile,*binoutputfile;
   char *gridfile;
   char *pregrid;
   char *restart;
@@ -118,6 +119,7 @@ typedef struct {
   int sampling,lte_only,init_lte,antialias,polarization,nThreads,numDims;
   int nLineImages, nContImages;
   char **moldatfile;
+  double (*gridDensMaxLoc)[DIM], *gridDensMaxValues;
 } configInfo;
 
 struct cpData {
@@ -139,10 +141,6 @@ typedef struct {
 typedef struct {
   double *jbar,*phot,*vfac,*vfac_loc;
 } gridPointData;
-
-typedef struct {
-  double *intensity;
-} surfRad;
 
 /* Point coordinate */
 typedef struct {
@@ -288,7 +286,7 @@ void	run(inputPars, image *);
 
 void	assignMolCollPartsToDensities(configInfo*, molData*);
 void	binpopsout(configInfo*, struct grid*, molData*);
-void	buildGrid(configInfo *, struct grid *);
+void	buildGrid(configInfo*, struct grid*);
 int	buildRayCellChain(double*, double*, struct grid*, struct cell*, _Bool**, unsigned long, int, int, int, const double, unsigned long**, intersectType**, int*);
 void	calcFastExpRange(const int, const int, int*, int*, int*);
 void	calcGridCollRates(configInfo*, molData*, struct grid*);
@@ -320,6 +318,7 @@ void	fit_d1fi(double, double, double*);
 void	fit_fi(double, double, double*);
 void	fit_rr(double, double, double*);
 int	followRayThroughDelCells(double*, double*, struct grid*, struct cell*, const unsigned long, const double, intersectType*, unsigned long**, intersectType**, int*);
+void	freeConfig(configInfo par);
 void	freeGrid(const unsigned int, const unsigned short, struct grid*);
 void	freeGridPointData(configInfo*, gridPointData*);
 void	freeMolData(const int, molData*);

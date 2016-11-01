@@ -21,7 +21,7 @@ The present function follows a ray through a connected, convex set of Delaunay c
   const int numFaces=DIM+1, maxNumEntryFaces=100;
   int numEntryFaces, fi, entryFis[maxNumEntryFaces], i, status;
   faceType face;
-  unsigned long dci, entryDcis[maxNumEntryFaces];//, trialDci;
+  unsigned long dci, entryDcis[maxNumEntryFaces];
   intersectType intcpt, entryIntcpts[maxNumEntryFaces];
   _Bool *cellVisited=NULL;
 

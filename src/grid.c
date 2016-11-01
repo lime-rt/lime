@@ -8,7 +8,7 @@
  */
 
 #include "lime.h"
-
+#include "tree_random.h"
 
 /*....................................................................*/
 void mallocAndSetDefaultGrid(struct grid **gp, const unsigned int numPoints){
@@ -322,6 +322,7 @@ Elements of structs are set as follows:
   facetT *facet, *neighbor, **neighborp;
   int curlong, totlong;
   _Bool neighbourNotFound;
+  char message[80];
 
   pt_array=malloc(sizeof(coordT)*numDims*numPoints);
   for(ppi=0;ppi<numPoints;ppi++) {
@@ -417,7 +418,10 @@ Elements of structs are set as follows:
               ffi++;
             }
             if(ffi>=(*numCells) && neighbourNotFound){
-              if(!silent) bail_out("Something weird going on.");
+              if(!silent){
+                sprintf(message, "Something weird going on. Cannot find a cell with ID %lu", (unsigned long)(neighbor->id));
+                bail_out(message);
+              }
               exit(1);
             }
           }
@@ -733,40 +737,36 @@ getMass(configInfo *par, struct grid *g, const gsl_rng *ran){
   if(!silent) quotemass(mass*2.37*1.67e-27/1.989e30);
 }
 
+int pointEvaluation(configInfo *par, const double uniformRandom, double *r){
+  double fracDensity;
 
-/*....................................................................*/
-void buildGrid(configInfo *par, struct grid *g){
-  double lograd;		/* The logarithm of the model radius		*/
-  double logmin;	    /* Logarithm of par->minScale				*/
-  double r,theta,phi,sinPhi,z,semiradius;	/* Coordinates								*/
+  fracDensity = gridDensity(par, r);
+
+  if(uniformRandom < fracDensity) return 1;
+  else return 0;
+}
+
+void randomsViaRejection(configInfo *par, const unsigned int desiredNumPoints, gsl_rng *randGen\
+  , double (*outRandLocations)[DIM]){
+
+  double lograd; /* The logarithm of the model radius. */
+  double logmin; /* Logarithm of par->minScale. */
+  double r,theta,phi,sinPhi,z,semiradius;
   double uniformRandom;
-  int k=0,i,j;            /* counters									*/
+  int i,j,di;
+  unsigned int i_u;
+//  _Bool pointIsAccepted;
   int pointIsAccepted;
-  struct cell *dc=NULL; /* Not used at present. */
-  unsigned long numCells;
   double x[DIM];
   const int maxNumAttempts=1000;
-  _Bool numRandomsThisPoint;
-  int numSecondRandoms=0;
+  int numRandomsThisPoint,numSecondRandoms=0;
   char errStr[80];
 
-  gsl_rng *randGen = gsl_rng_alloc(gsl_rng_ranlxs2);	/* Random number generator */
-#ifdef TEST
-  gsl_rng_set(randGen,342971);
-#else
-  gsl_rng_set(randGen,time(0));
-#endif  
-  
   lograd=log10(par->radius);
   logmin=log10(par->minScale);
 
-  for(i=0;i<par->ncell;i++){
-    g[i].dens = malloc(sizeof(double)*par->numDensities);
-    g[i].abun = malloc(sizeof(double)*par->nSpecies);
-  }
-
   /* Sample pIntensity number of points */
-  for(k=0;k<par->pIntensity;k++){
+  for(i_u=0;i_u<desiredNumPoints;i_u++){
     pointIsAccepted=0;
     numRandomsThisPoint=0;
     do{
@@ -814,34 +814,123 @@ void buildGrid(configInfo *par, struct grid *g){
     } while(!pointIsAccepted);
     /* Now pointEvaluation has decided that we like the point */
 
-    /* Assign values to the k'th grid point */
-    /* I don't think we actually need to do this here... */
-    g[k].id=k;
-    g[k].x[0]=x[0];
-    g[k].x[1]=x[1];
-    if(DIM==3) g[k].x[2]=x[2];
+    for(di=0;di<DIM;di++)
+      outRandLocations[i_u][di]=x[di];
 
+    if(!silent) progressbar((double)i_u/((double)desiredNumPoints-1), 4);
+  }
+
+  if(!silent && numSecondRandoms>0){
+    sprintf(errStr, ">1 random point needed for %d grid points out of %lu.", numSecondRandoms, desiredNumPoints);
+    warning(errStr);
+  }
+}
+
+void
+buildGrid(configInfo *par, struct grid *g){
+  const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
+  int i, k, di, numSubFields, levelI=0;
+  double theta,semiradius,z,fieldVolume,sumDensity,maxDensity,minNumDensity,nToP,sphereVolume;
+  double vals[MAX_N_COLL_PART];
+  double *outRandDensities=NULL;
+  double (*outRandLocations)[DIM]=NULL;
+  extern double densityNormalizer, minDensity;
+  extern int numCollisionPartners;
+  treeRandConstType rinc;
+  treeRandVarType rinv;
+  struct cell *dc=NULL; /* Not used at present. */
+  unsigned long numCells;
+  double x[DIM];
+  unsigned int startI=0;
+  treeType tree;
+
+  rinc.randGen = gsl_rng_alloc(ranNumGenType);	/* Random number generator */
+#ifdef TEST
+  gsl_rng_set(rinc.randGen,342971);
+#else
+  gsl_rng_set(rinc.randGen,time(0));
+#endif  
+
+  outRandDensities = malloc(sizeof(double   )*par->pIntensity); /* Not used at present; and in fact they are not useful outside this routine, because they are not the values of the physical density at that point, just what densityFunc3D() returns, which is not necessarily the same thing. */
+  outRandLocations = malloc(sizeof(*outRandLocations)*par->pIntensity);
+
+  if(par->samplingAlgorithm==0){
+    randomsViaRejection(par, (unsigned int)par->pIntensity, rinc.randGen, outRandLocations);
+
+  } else if(par->samplingAlgorithm==1){
+    rinc.par = *par;
+    rinc.verbosity = 0;
+    rinc.numInRandoms      = TREE_N_RANDOMS;
+    rinc.maxRecursion      = TREE_MAX_RECURSION;
+    rinc.maxNumTrials      = TREE_MAX_N_TRIALS;
+    rinc.dither            = TREE_DITHER;
+    rinc.maxNumTrialsDbl = (double)rinc.maxNumTrials;
+    rinc.doShuffle = 1;
+    rinc.doQuasiRandom = 1;
+
+    for(di=0;di<DIM;di++){
+      rinv.fieldOrigin[di] = -par->radius;
+      rinv.fieldWidth[di] = 2.0*par->radius;
+    }
+    rinv.expectedDesNumPoints = (double)par->pIntensity;
+    rinc.desiredNumPoints = (unsigned int)par->pIntensity;
+
+    rinv.numHighPoints = par->numGridDensMaxima;
+    if(par->numGridDensMaxima>0){
+      rinv.highPointLocations = malloc(sizeof(*(rinv.highPointLocations))*par->numGridDensMaxima);
+      rinv.highPointDensities = malloc(sizeof(double   )*par->numGridDensMaxima);
+      for(i=0;i<par->numGridDensMaxima;i++){
+        for(di=0;di<DIM;di++){
+          rinv.highPointLocations[i][di] = par->gridDensMaxLoc[i][di];
+        }
+        rinv.highPointDensities[i] = par->gridDensMaxValues[i];
+      }
+    }else{
+      rinv.highPointLocations = NULL;
+      rinv.highPointDensities = NULL;
+    }
+
+    initializeTree(&rinc, &rinv, gridDensity, &tree);
+    constructTheTree(&rinc, &rinv, levelI, gridDensity, &tree);
+    fillTheTree(&rinc, &tree, gridDensity, outRandLocations, outRandDensities);
+
+    free(tree.leaves);
+    freeRinv(rinv);
+    free(rinc.inRandLocations);
+
+  } else {
+    if(!silent) bail_out("Unrecognized sampling algorithm.");
+    exit(1);
+  }
+
+  for(k=0;k<par->pIntensity;k++){
+    /* Assign values to the k'th grid point */
+    g[k].id=k;
+    g[k].x[0]=outRandLocations[k][0];
+    g[k].x[1]=outRandLocations[k][1];
+    if(DIM==3) g[k].x[2]=outRandLocations[k][2];
     g[k].sink=0;
+
     /* This next step needs to be done, even though it looks stupid */
     g[k].dir=malloc(sizeof(point)*1);
     g[k].ds =malloc(sizeof(double)*1);
     g[k].neigh =malloc(sizeof(struct grid *)*1);
-    if(!silent) progressbar((double) k/((double)par->pIntensity-1), 4);
   }
+
   /* end model grid point assignment */
   if(!silent) printDone(4);
 
-  if(!silent && numSecondRandoms>0){
-    sprintf(errStr, ">1 random point needed for %d grid points out of %d.", numSecondRandoms, par->pIntensity);
-    warning(errStr);
+  for(i=0;i<par->ncell;i++){
+    g[i].dens = malloc(sizeof(double)*par->numDensities);
+    g[i].abun = malloc(sizeof(double)*par->nSpecies);
   }
 
   /* Add surface sink particles */
   for(i=0;i<par->sinkPoints;i++){
-    theta=gsl_rng_uniform(randGen)*2*PI;
+    theta=gsl_rng_uniform(rinc.randGen)*2*PI;
 
     if(DIM==3) {
-      z=2*gsl_rng_uniform(randGen)-1.;
+      z=2*gsl_rng_uniform(rinc.randGen)-1.;
       semiradius=sqrt(1.-z*z);
       x[2]=z;
     } else {
@@ -873,7 +962,11 @@ void buildGrid(configInfo *par, struct grid *g){
 
   delaunay(DIM, g, (unsigned long)par->ncell, 0, &dc, &numCells);
   distCalc(par, g);
-  smooth(par,g);
+
+  if(par->samplingAlgorithm==0){
+    smooth(par,g);
+    if(!silent) printDone(5);
+  }
 
   for(i=0;i<par->pIntensity;i++){
     density(    g[i].x[0],g[i].x[1],g[i].x[2], g[i].dens);
@@ -904,8 +997,9 @@ void buildGrid(configInfo *par, struct grid *g){
   dumpGrid(par,g);
   free(dc);
 
-  gsl_rng_free(randGen);
-  if(!silent) printDone(5);
+  free(outRandLocations);
+  free(outRandDensities);
+  gsl_rng_free(rinc.randGen);
 }
 
 
