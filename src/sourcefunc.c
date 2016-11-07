@@ -3,115 +3,44 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015 The LIME development team
+ *  Copyright (C) 2015-2016 The LIME development team
  *
-TODO:
-  - Merge sourceFunc_*_raytrace() and sourceFunc_*() after changes to the way grid data is stored makes this possible.
  */
 
 #include "lime.h"
 
-void
-sourceFunc(double *snu, double *dtau, double ds, molData *m,double vfac,struct grid *g,int pos,int ispec, int iline, int doline){
-  double jnu, alpha;
-  
-  /* Emission */
-  /* Continuum part:	j_nu = T_dust * kappa_nu */
-  jnu	 = g[pos].mol[ispec].dust[iline]*g[pos].mol[ispec].knu[iline];
-  
-  /* Line part:		j_nu = v*consts*1/b*rho*n_i*A_ij */
-  if(doline) jnu	+= vfac*HPIP*g[pos].mol[ispec].binv*g[pos].mol[ispec].nmol*g[pos].mol[ispec].pops[m[ispec].lau[iline]]*m[ispec].aeinst[iline];
-  
-  
-  
-  /* Absorption */
-  /* Continuum part: Dust opacity */
-  alpha  = g[pos].mol[ispec].knu[iline];
-  
-  
-  /* Line part: alpha_nu = v*const*1/b*rho*(n_j*B_ij-n_i*B_ji) */
-  if(doline)\
-    alpha += vfac*HPIP*g[pos].mol[ispec].binv*g[pos].mol[ispec].nmol\
-    *(g[pos].mol[ispec].pops[m[ispec].lal[iline]]*m[ispec].beinstl[iline]\
-    - g[pos].mol[ispec].pops[m[ispec].lau[iline]]*m[ispec].beinstu[iline]);
-  
-  
-  /* Calculate source function and tau */
-  *snu=0.;
-  *dtau=0.;
-  if(fabs(alpha)>0.){
-    *snu=(jnu/alpha)*m[ispec].norminv;
-    *dtau= alpha*ds;
-  }
-  return;
-}
-
 
 /*....................................................................*/
-void
-sourceFunc_line(const molData md, const double vfac, const struct populations mol\
+void sourceFunc_line(const molData *md, const double vfac, const struct populations *mol\
   , const int lineI, double *jnu, double *alpha){
 
   /* Line part:		j_nu = v*consts*1/b*rho*n_i*A_ij */
-  *jnu   += vfac*HPIP*mol.binv*mol.nmol*mol.pops[md.lau[lineI]]*md.aeinst[lineI];
+  *jnu   += vfac*HPIP*mol->specNumDens[md->lau[lineI]]*md->aeinst[lineI];
 
   /* Line part: alpha_nu = v*const*1/b*rho*(n_j*B_ij-n_i*B_ji) */
-  *alpha += vfac*HPIP*mol.binv*mol.nmol*(mol.pops[md.lal[lineI]]*md.beinstl[lineI]
-                                        -mol.pops[md.lau[lineI]]*md.beinstu[lineI]);
+  *alpha += vfac*HPIP*(mol->specNumDens[md->lal[lineI]]*md->beinstl[lineI]
+                      -mol->specNumDens[md->lau[lineI]]*md->beinstu[lineI]);
 
   return;
 }
 
 /*....................................................................*/
-void
-sourceFunc_line_raytrace(const molData md, const double vfac\
-  , const struct pop2 gm, const int lineI, double *jnu, double *alpha){
-
-  /* Line part:		j_nu = v*consts*1/b*rho*n_i*A_ij */
-  *jnu   += vfac*HPIP*gm.specNumDens[md.lau[lineI]]*md.aeinst[lineI];
-
-  /* Line part: alpha_nu = v*const*1/b*rho*(n_j*B_ij-n_i*B_ji) */
-  *alpha += vfac*HPIP*(gm.specNumDens[md.lal[lineI]]*md.beinstl[lineI]
-                      -gm.specNumDens[md.lau[lineI]]*md.beinstu[lineI]);
-
-  return;
-}
-
-/*....................................................................*/
-void
-sourceFunc_cont(const struct populations mol, const int lineI, double *jnu\
+void sourceFunc_cont(const struct continuumLine cont, double *jnu\
   , double *alpha){
 
   /* Emission */
   /* Continuum part:	j_nu = T_dust * kappa_nu */
-  *jnu   += mol.dust[lineI]*mol.knu[lineI];
+  *jnu   += cont.dust*cont.knu;
 
   /* Absorption */
   /* Continuum part: Dust opacity */
-  *alpha += mol.knu[lineI];
+  *alpha += cont.knu;
 
   return;
 }
 
 /*....................................................................*/
-void
-sourceFunc_cont_raytrace(const struct pop2 gm, const int lineI, double *jnu\
-  , double *alpha){
-
-  /* Emission */
-  /* Continuum part:	j_nu = T_dust * kappa_nu */
-  *jnu   += gm.dust[lineI]*gm.knu[lineI];
-
-  /* Absorption */
-  /* Continuum part: Dust opacity */
-  *alpha += gm.knu[lineI];
-
-  return;
-}
-
-/*....................................................................*/
-void
-sourceFunc_pol(double B[3], const struct pop2 gm, int iline\
+void sourceFunc_pol(double B[3], const struct continuumLine cont\
   , double (*rotMat)[3], double *snu, double *alpha){
   /*
 The theory behind this was originally drawn from
@@ -127,13 +56,14 @@ and references therein. However, as pointed out in Ade, P. A. R. et al, A&A 576,
 
   /* Emission */
   /* Continuum part:	j_nu = rho_dust * kappa_nu */
-  jnu = gm.dust[iline]*gm.knu[iline];
-  snu[0] = jnu*(1.0 - maxp*(trigFuncs[0] - 2.0/3.0));
+  jnu = cont.dust*cont.knu;
+  snu[0] = jnu*(1.0 - maxp*(trigFuncs[0] - (2.0/3.0)));
   snu[1] = jnu*maxp*trigFuncs[1]*trigFuncs[0];
   snu[2] = jnu*maxp*trigFuncs[2]*trigFuncs[0];
   
   /* Absorption */
   /* Continuum part: Dust opacity */
-  *alpha = gm.knu[iline];
+  *alpha = cont.knu;
 }
+
 

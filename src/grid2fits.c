@@ -13,7 +13,7 @@ TODOS (some day):
 */
 
 #include "lime.h"
-
+#include "gridio.h"
 
 /*
 The present module contains routines for transferring the LIME grid point data to or from a FITS format file. The purpose of the present comment block is to describe the FITS file format. Note that the amount and type of information stored depends on the 'data stage' of the grid struct, as described in the header remarks to module gridio.c.
@@ -26,13 +26,17 @@ Note that all extensions are binary table except where indicated. The letter in 
 
 for a key to these.
 
+Where column names contain a lower-case letter, this is a placeholder for a digit as explained in the repective comment.
+
 0	0) The primary HDU
+
+	Keywords:
+0		RADIUS		D	# The model radius in metres.
 
 0	1) GRID
 	Number of rows = number of grid points.
 
 	Keywords:
-0		RADIUS		D
 0		COLLPARn	A	# 1 for each nth collision partner.
 
 	Columns:
@@ -60,7 +64,7 @@ for a key to these.
 	Columns:
 1		GRID_I_1	V
 1		GRID_I_2	V
-7		ACOEFF_p	D	# 1 per pth order of the velocity polynomial.
+7		V_p_j		D	# 1 per pth velocity sample per jth dimension.
 
 8	4 etc) LEVEL_POPS_m (1 per mth molecular species)
 	This is an image extension of size (number of grid cells)*(number of energy levels this species).
@@ -72,7 +76,8 @@ Note that at present the data in the 'partner' element of grid.mol is *NOT* bein
 */
 
 /*....................................................................*/
-fitsfile *openFITSFileForWrite(char *outFileName){
+fitsfile *
+openFITSFileForWrite(char *outFileName){
   fitsfile *fptr=NULL;
   int status=0;
   char negfile[100]="! ";
@@ -93,7 +98,20 @@ fitsfile *openFITSFileForWrite(char *outFileName){
 }
 
 /*....................................................................*/
-void closeFITSFile(fitsfile *fptr){
+void
+initializeKeyword(struct keywordType *kwd){
+  (*kwd).datatype = 0;
+  (*kwd).keyname = NULL;
+  (*kwd).comment = NULL;
+  (*kwd).intValue = 0;
+  (*kwd).floatValue = 0.0;
+  (*kwd).doubleValue = 0.0;
+  (*kwd).charValue = NULL;
+}
+
+/*....................................................................*/
+void
+closeFITSFile(fitsfile *fptr){
   int status=0;
 
   fits_close_file(fptr, &status);
@@ -101,248 +119,38 @@ void closeFITSFile(fitsfile *fptr){
 }
 
 /*....................................................................*/
-void writeGridExtToFits(fitsfile *fptr, configInfo par, unsigned short numDims\
-  , struct grid *gp, unsigned int *firstNearNeigh, char **collPartNames\
-  , const int dataFlags){
-  /*
-This writes whatever information is in the grid struct (as specified by the dataFlags) and which also has a dimensionality which is some simple multiple of the number of grid points, to a single FITS binary table extension called GRID. The function tries to be fairly forgiving of screwy situations but it will exit if the minimum information is not present (defined as allBitsSet(dataFlags, DS_mask_x), which implies that elements .id, .x and .sink should all contain valid values).
+void
+writeKeywordsToFits(lime_fptr *fptr, struct keywordType *kwds\
+  , const int numKeywords){
 
-Note that data types in all capitals are defined in fitsio.h.
-  */
+  int i, status;
+  char message[80];
 
-  const unsigned short numKwdChars=9; /* 8 characters + \0. */
-  const unsigned short numColNameChars=21; /* 20 characters + \0. */
-  const int maxNumCollPart = 9;
-  unsigned int *ids=NULL;
-  double *xj=NULL;
-  _Bool *sink=NULL;/* Probably should be char* but this seems to work. */
-  unsigned short *numNeigh=NULL, i_us;
-  double *velj=NULL, *densn=NULL;
-  float *dopb=NULL, *t=NULL, *abunm=NULL, *bField=NULL;
-  int status=0, colI=0, i, j, m, n, di, localNumCollPart, maxNumCols;
-  LONGLONG firstRow=1, firstElem=1;
-  char genericComment[80];
-  char genericKwd[numKwdChars], message[80];
-  char colName[numColNameChars];
-  char **allColNames=NULL;
-  int *allColNumbers=NULL, *colDataTypes=NULL;
+  for(i=0;i<numKeywords;i++){
+    status = 0;
 
-  if(!allBitsSet(dataFlags, DS_mask_x)){
-    if(!silent) bail_out("Data stage indicates no grid data!");
-    exit(1);
-  }
-
-  /*
-Ok we have a bit of a tricky situation here in that the number of columns we write is going to depend on the information available in gp, as encoded in the dataFlags. We need to work out which columns we are going to write ahead of time because we need the appropriate data on ALL the columns to set up the table size before we can start to write their individual data values. I also want to avoid checking dataFlags twice in two different contexts - that is how errors arise. So I've arranged that the following routine will do all the donkey work of setting up only those columns we can write and then using that information to define the table size. The routine also returns three more vectors:
-
-	allColNames   - This is returned to remove what would otherwise be a hard-wired dependence that the column ordering was the same in the present routine as in defineAndLoadColumns(). With this vector, the present routine can search for a column name in it and then use the returned vector index to access (from the next vector) the number of the column in the (smaller) sequence of valid columns.
-
-	allColNumbers - This contains the number of a column in the sequence (beginning at 1) of those for which gp has data. If gp contains no data for a given column name, its entry in allColNumbers will be 0.
-
-	colDataTypes  - This just contains the data types for the valid columns.
-  */
-  defineAndLoadColumns(fptr, numDims, (unsigned short)par.nSpecies, (unsigned short)par.numDensities\
-    , dataFlags, numColNameChars, &allColNames, &allColNumbers, &maxNumCols, &colDataTypes);
-
-  /* Write the columns:
-  */
-  colI = allColNumbers[getColIndex(allColNames, maxNumCols, "ID")];
-  if(colI<=0){
-    if(!silent) bail_out("This should not occur, it is some sort of bug.");
-    exit(1);
-  }
-  ids = malloc(sizeof(*ids)*par.ncell);
-  for(i=0;i<par.ncell;i++) {
-    ids[i] = (unsigned int)gp[i].id;
-  }
-  fits_write_col(fptr, colDataTypes[colI-1], colI, firstRow, firstElem, (LONGLONG)par.ncell, ids, &status);
-  processFitsError(status);
-  free(ids);
-
-  xj = malloc(sizeof(*xj)*par.ncell);
-  for(i_us=0;i_us<numDims;i_us++){
-    sprintf(colName, "X%d", (int)i_us+1);
-    colI = allColNumbers[getColIndex(allColNames, maxNumCols, colName)];
-    if(colI<=0){
-      if(!silent) bail_out("This should not occur, it is some sort of bug.");
-      exit(1);
-    }
-
-    for(i=0;i<par.ncell;i++) xj[i] = gp[i].x[i_us];
-    fits_write_col(fptr, colDataTypes[colI-1], colI, firstRow, firstElem, (LONGLONG)par.ncell, xj, &status);
-    processFitsError(status);
-  }
-  free(xj);
-
-  colI = allColNumbers[getColIndex(allColNames, maxNumCols, "IS_SINK")];
-  if(colI<=0){
-    if(!silent) bail_out("This should not occur, it is some sort of bug.");
-    exit(1);
-  }
-  sink = malloc(sizeof(*sink)*par.ncell);
-  for(i=0;i<par.ncell;i++) sink[i] = (_Bool)gp[i].sink;
-  fits_write_col(fptr, colDataTypes[colI-1], colI, firstRow, firstElem, (LONGLONG)par.ncell, sink, &status);
-  processFitsError(status);
-  free(sink);
-
-  colI = allColNumbers[getColIndex(allColNames, maxNumCols, "NUMNEIGH")];
-  if(colI>0){
-    numNeigh = malloc(sizeof(*numNeigh)*par.ncell);
-    for(i=0;i<par.ncell;i++) numNeigh[i] = (unsigned short)gp[i].numNeigh;
-    fits_write_col(fptr, colDataTypes[colI-1], colI, firstRow, firstElem, (LONGLONG)par.ncell, numNeigh, &status);
-    processFitsError(status);
-    free(numNeigh);
-
-    colI = allColNumbers[getColIndex(allColNames, maxNumCols, "FIRST_NN")];
-    if(colI<=0){
-      if(!silent) bail_out("This should not occur, it is some sort of bug.");
-      exit(1);
-    }
-    fits_write_col(fptr, colDataTypes[colI-1], colI, firstRow, firstElem, (LONGLONG)par.ncell, firstNearNeigh, &status);
-    processFitsError(status);
-  }
-
-  /* Check if first VEL column has info:
-  */
-  colI = allColNumbers[getColIndex(allColNames, maxNumCols, "VEL1")];
-  if(colI>0){
-    velj = malloc(sizeof(*velj)*par.ncell);
-    for(j=0;j<numDims;j++){
-      sprintf(colName, "VEL%d", j+1);
-      colI = allColNumbers[getColIndex(allColNames, maxNumCols, colName)];
-      if(colI<=0){
-        if(!silent) bail_out("This should not occur, it is some sort of bug.");
-        exit(1);
-      }
-
-      for(i=0;i<par.ncell;i++) velj[i] = gp[i].vel[j];
-      fits_write_col(fptr, colDataTypes[colI-1], colI, firstRow, firstElem, (LONGLONG)par.ncell, velj, &status);
-      processFitsError(status);
-    }
-    free(velj);
-  }
-
-  /* Check if first DENSITY column has info:
-  */
-  colI = allColNumbers[getColIndex(allColNames, maxNumCols, "DENSITY1")];
-  if(colI>0){
-    densn = malloc(sizeof(*densn)*par.ncell);
-    for(n=0;n<par.numDensities;n++){
-      sprintf(colName, "DENSITY%d", n+1);
-      colI = allColNumbers[getColIndex(allColNames, maxNumCols, colName)];
-      if(colI<=0){
-        if(!silent) bail_out("This should not occur, it is some sort of bug.");
-        exit(1);
-      }
-
-      for(i=0;i<par.ncell;i++) densn[i] = gp[i].dens[n];
-      fits_write_col(fptr, colDataTypes[colI-1], colI, firstRow, firstElem, (LONGLONG)par.ncell, densn, &status);
-      processFitsError(status);
-    }
-    free(densn);
-  }
-
-  /* Check if first ABUNMOL column has info:
-  */
-  colI = allColNumbers[getColIndex(allColNames, maxNumCols, "ABUNMOL1")];
-  if(colI>0){
-    abunm = malloc(sizeof(*abunm)*par.ncell);
-    for(m=0;m<par.nSpecies;m++){
-      sprintf(colName, "ABUNMOL%d", m+1);
-      colI = allColNumbers[getColIndex(allColNames, maxNumCols, colName)];
-      if(colI<=0){
-        if(!silent) bail_out("This should not occur, it is some sort of bug.");
-        exit(1);
-      }
-
-      for(i=0;i<par.ncell;i++) abunm[i] = (float)gp[i].abun[m];
-      fits_write_col(fptr, colDataTypes[colI-1], colI, firstRow, firstElem, (LONGLONG)par.ncell, abunm, &status);
-      processFitsError(status);
-    }
-    free(abunm);
-  }
-
-  colI = allColNumbers[getColIndex(allColNames, maxNumCols, "TURBDPLR")];
-  if(colI>0){
-    dopb = malloc(sizeof(*dopb)*par.ncell);
-    for(i=0;i<par.ncell;i++) dopb[i] = (float)gp[i].dopb;
-    fits_write_col(fptr, colDataTypes[colI-1], colI, firstRow, firstElem, (LONGLONG)par.ncell, dopb, &status);
-    processFitsError(status);
-    free(dopb);
-  }
-
-  colI = allColNumbers[getColIndex(allColNames, maxNumCols, "TEMPKNTC")];
-  if(colI>0){
-    t = malloc(sizeof(*t)*par.ncell);
-    for(i=0;i<par.ncell;i++) t[i] = (float)gp[i].t[0];
-    fits_write_col(fptr, colDataTypes[colI-1], colI, firstRow, firstElem, (LONGLONG)par.ncell, t, &status);
-    processFitsError(status);
-
-    colI = allColNumbers[getColIndex(allColNames, maxNumCols, "TEMPDUST")];
-    if(colI<=0){
-      if(!silent) bail_out("This should not occur, it is some sort of bug.");
-      exit(1);
-    }
-
-    for(i=0;i<par.ncell;i++) t[i] = (float)gp[i].t[1];
-    fits_write_col(fptr, colDataTypes[colI-1], colI, firstRow, firstElem, (LONGLONG)par.ncell, t, &status);
-    processFitsError(status);
-    free(t);
-  }
-
-  /* Check if first B_FIELD column has info:
-  */
-  colI = allColNumbers[getColIndex(allColNames, maxNumCols, "B_FIELD1")];
-  if(colI>0){
-    bField = malloc(sizeof(*bField)*par.ncell);
-    for(di=0;di<3;di++){
-      sprintf(colName, "B_FIELD%d", di+1);
-      colI = allColNumbers[getColIndex(allColNames, maxNumCols, colName)];
-      if(colI<=0){
-        if(!silent) bail_out("This should not occur, it is some sort of bug.");
-        exit(1);
-      }
-
-      for(i=0;i<par.ncell;i++) bField[i] = (float)gp[i].B[di];
-      fits_write_col(fptr, colDataTypes[colI-1], colI, firstRow, firstElem, (LONGLONG)par.ncell, bField, &status);
-      processFitsError(status);
-    }
-    free(bField);
-  }
-
-  /* Write keywords.
-  */
-  fits_write_key(fptr, TDOUBLE, "RADIUS  ", &(par.radius), "[m] Model radius.", &status);
-  processFitsError(status);
-
-  if (collPartNames!=NULL){
-    if(par.numDensities>maxNumCollPart){
+    if(     kwds[i].datatype==TSTRING)
+      fits_write_key(fptr, TSTRING, kwds[i].keyname, kwds[i].charValue, kwds[i].comment, &status);
+    else if(kwds[i].datatype==TINT)
+      fits_write_key(fptr, TINT, kwds[i].keyname, &kwds[i].intValue, kwds[i].comment, &status);
+    else if(kwds[i].datatype==TFLOAT)
+      fits_write_key(fptr, TFLOAT, kwds[i].keyname, &kwds[i].floatValue, kwds[i].comment, &status);
+    else if(kwds[i].datatype==TDOUBLE)
+      fits_write_key(fptr, TDOUBLE, kwds[i].keyname, &kwds[i].doubleValue, kwds[i].comment, &status);
+    else{
       if(!silent){
-        sprintf(message, "There seem to be %d collision partners but keywords can only be written for %d.", par.numDensities, maxNumCollPart);
-        warning(message);
+        sprintf(message, "Keyword %d dataype %d is not currently accepted.", i, kwds[i].datatype);
+        bail_out(message);
       }
-      localNumCollPart = maxNumCollPart;
-    }else{
-      localNumCollPart = par.numDensities;
+      exit(1);
     }
-
-    for(i=0;i<localNumCollPart;i++){
-      sprintf(genericKwd, "COLLPAR%d", i+1);
-      sprintf(genericComment, "Collision partner %d", i+1);
-      fits_write_key(fptr, TSTRING, genericKwd, collPartNames[i], genericComment, &status);
-      processFitsError(status);
-    }
+    processFitsError(status);
   }
-
-  for(i=0;i<maxNumCols;i++) free(allColNames[i]);
-  free(allColNames);
-  free(allColNumbers);
-  free(colDataTypes);
 }
 
 /*....................................................................*/
-void defineAndLoadColumns(fitsfile *fptr, const unsigned short numDims\
-  , const unsigned short numSpecies, const unsigned short numDensities\
+void
+defineAndLoadColumns(fitsfile *fptr, struct gridInfoType gridInfo\
   , const int dataFlags, const unsigned short numColNameChars, char ***allColNames, int **allColNumbers\
   , int *maxNumCols, int **colDataTypes){
   /*
@@ -364,37 +172,38 @@ NOTES:
   */
 
   const unsigned short maxNumDims=9, maxNumSpecies=9, maxNumDensities=9;
+  unsigned short i_us;
   int colI,i,colToWriteI,status=0;
   char message[80];
   char **tformAllCols=NULL;
   char **tunitAllCols=NULL;
   int *dataTypeAllCols=NULL;
 
-  if(numDims>maxNumDims){
+  if(gridInfo.nDims>maxNumDims){
     if(!silent){
-      sprintf(message, "Caller asked for %d dims but colnames can only be written for %d.", (int)numDims, (int)maxNumDims);
+      sprintf(message, "Caller asked for %d dims but colnames can only be written for %d.", (int)gridInfo.nDims, (int)maxNumDims);
       bail_out(message);
     }
     exit(1);
   }
 
-  if(numSpecies>maxNumSpecies){
+  if(gridInfo.nSpecies>maxNumSpecies){
     if(!silent){
-      sprintf(message, "Caller asked for %d species but colnames can only be written for %d.", (int)numSpecies, (int)maxNumSpecies);
+      sprintf(message, "Caller asked for %d species but colnames can only be written for %d.", (int)gridInfo.nSpecies, (int)maxNumSpecies);
       bail_out(message);
     }
     exit(1);
   }
 
-  if(numDensities>maxNumDensities){
+  if(gridInfo.nDensities>maxNumDensities){
     if(!silent){
-      sprintf(message, "Caller asked for %d coll. part. but colnames can only be written for %d.", (int)numDensities, (int)maxNumDensities);
+      sprintf(message, "Caller asked for %d coll. part. but colnames can only be written for %d.", (int)gridInfo.nDensities, (int)maxNumDensities);
       bail_out(message);
     }
     exit(1);
   }
 
-  *maxNumCols = 10 + numDims*2 + numSpecies + numDensities;
+  *maxNumCols = 10 + gridInfo.nDims*2 + gridInfo.nSpecies + gridInfo.nDensities;
 
   *allColNames    = malloc(sizeof(**allColNames)   *(*maxNumCols));
   *allColNumbers  = malloc(sizeof(**allColNumbers) *(*maxNumCols));
@@ -420,9 +229,9 @@ NOTES:
   dataTypeAllCols[colI] = TUINT;
 
   /* should rather have a vector column? */
-  for(i=0;i<numDims;i++){
+  for(i_us=0;i_us<gridInfo.nDims;i_us++){
     colI++;
-    sprintf((*allColNames)[colI], "X%d", i+1);
+    sprintf((*allColNames)[colI], "X%d", (int)i_us+1);
     if(bitIsSet(dataFlags, DS_bit_x)){
       colToWriteI++;
       (*allColNumbers)[colI] = colToWriteI;
@@ -463,9 +272,9 @@ NOTES:
   dataTypeAllCols[colI] = TUINT;
 
   /* should rather have a vector column? */
-  for(i=0;i<numDims;i++){
+  for(i_us=0;i_us<gridInfo.nDims;i_us++){
     colI++;
-    sprintf((*allColNames)[colI], "VEL%d", i+1);
+    sprintf((*allColNames)[colI], "VEL%d", (int)i_us+1);
     if(bitIsSet(dataFlags, DS_bit_velocity)){
       colToWriteI++;
       (*allColNumbers)[colI] = colToWriteI;
@@ -476,9 +285,9 @@ NOTES:
   }
 
   /* should rather have a vector column? */
-  for(i=0;i<numDensities;i++){
+  for(i_us=0;i_us<gridInfo.nDensities;i_us++){
     colI++;
-    sprintf((*allColNames)[colI], "DENSITY%d", i+1);
+    sprintf((*allColNames)[colI], "DENSITY%d", (int)i_us+1);
     if(bitIsSet(dataFlags, DS_bit_density)){
       colToWriteI++;
       (*allColNumbers)[colI] = colToWriteI;
@@ -489,9 +298,9 @@ NOTES:
   }
 
   /* should rather have a vector column? */
-  for(i=0;i<numSpecies;i++){
+  for(i_us=0;i_us<gridInfo.nSpecies;i_us++){
     colI++;
-    sprintf((*allColNames)[colI], "ABUNMOL%d", i+1);
+    sprintf((*allColNames)[colI], "ABUNMOL%d", (int)i_us+1);
     if(bitIsSet(dataFlags, DS_bit_abundance)){
       colToWriteI++;
       (*allColNumbers)[colI] = colToWriteI;
@@ -532,7 +341,7 @@ NOTES:
   dataTypeAllCols[colI] = TFLOAT;
 
   /* should rather have a vector column? */
-  for(i=0;i<3;i++){
+  for(i=0;i<3;i++){/* **** should rather loop to gridInfo.nDims but only entre here if it ==3?? */
     colI++;
     sprintf((*allColNames)[colI], "B_FIELD%d", i+1);
     if(bitIsSet(dataFlags, DS_bit_magfield)){
@@ -572,7 +381,256 @@ NOTES:
 }
 
 /*....................................................................*/
-int getColIndex(char **allColNames, const int maxNumCols, char *colName){
+void
+writeGridExtToFits(fitsfile *fptr, struct gridInfoType gridInfo\
+  , struct grid *gp, unsigned int *firstNearNeigh\
+  , char **collPartNames, const int dataFlags){
+  /*
+This writes whatever information is in the grid struct (as specified by the dataFlags) and which also has a dimensionality which is some simple multiple of the number of grid points, to a single FITS binary table extension called GRID. The function tries to be fairly forgiving of screwy situations but it will exit if the minimum information is not present (defined as allBitsSet(dataFlags, DS_mask_x), which implies that elements .id, .x and .sink should all contain valid values).
+
+Note that data types in all capitals are defined in fitsio.h.
+  */
+
+  const unsigned int totalNumGridPoints = gridInfo.nInternalPoints+gridInfo.nSinkPoints;
+  const unsigned short numKwdChars=9; /* 8 characters + \0. */
+  const unsigned short numColNameChars=21; /* 20 characters + \0. */
+  const unsigned short maxNumCollPart = 9;
+  unsigned int *ids=NULL,i_ui;
+  double *xj=NULL;
+  _Bool *sink=NULL;/* Probably should be char* but this seems to work. */
+  unsigned short *numNeigh=NULL,i_us,localNumCollPart;
+  double *velj=NULL,*densn=NULL;
+  float *dopb=NULL, *t=NULL, *abunm=NULL, *bField=NULL;
+  int status=0, colI=0, i, di, maxNumCols;
+  LONGLONG firstRow=1, firstElem=1;
+  char genericComment[80];
+  char genericKwd[numKwdChars], message[80];
+  char colName[numColNameChars];
+  char **allColNames=NULL;
+  int *allColNumbers=NULL, *colDataTypes=NULL;
+
+  if(!allBitsSet(dataFlags, DS_mask_x)){
+    if(!silent) bail_out("Data stage indicates no grid data!");
+    exit(1);
+  }
+
+  /*
+Ok we have a bit of a tricky situation here in that the number of columns we write is going to depend on the information available in gp, as encoded in the dataFlags. We need to work out which columns we are going to write ahead of time because we need the appropriate data on ALL the columns to set up the table size before we can start to write their individual data values. I also want to avoid checking dataFlags twice in two different contexts - that is how errors arise. So I've arranged that the following routine will do all the donkey work of setting up only those columns we can write and then using that information to define the table size. The routine also returns three more vectors:
+
+	allColNames   - This is returned to remove what would otherwise be a hard-wired dependence that the column ordering was the same in the present routine as in defineAndLoadColumns(). With this vector, the present routine can search for a column name in it and then use the returned vector index to access (from the next vector) the number of the column in the (smaller) sequence of valid columns.
+
+	allColNumbers - This contains the number of a column in the sequence (beginning at 1) of those for which gp has data. If gp contains no data for a given column name, its entry in allColNumbers will be 0.
+
+	colDataTypes  - This just contains the data types for the valid columns.
+  */
+  defineAndLoadColumns(fptr, gridInfo\
+    , dataFlags, numColNameChars, &allColNames, &allColNumbers, &maxNumCols, &colDataTypes);
+
+  /* Write the columns:
+  */
+  colI = allColNumbers[getColIndex(allColNames, maxNumCols, "ID")];
+  if(colI<=0){
+    if(!silent) bail_out("This should not occur, it is some sort of bug.");
+    exit(1);
+  }
+  ids = malloc(sizeof(*ids)*totalNumGridPoints);
+  for(i_ui=0;i_ui<totalNumGridPoints;i_ui++)
+    ids[i_ui] = (unsigned int)gp[i_ui].id;
+  fits_write_col(fptr, colDataTypes[colI-1], colI, firstRow, firstElem, (LONGLONG)totalNumGridPoints, ids, &status);
+  processFitsError(status);
+  free(ids);
+
+  xj = malloc(sizeof(*xj)*totalNumGridPoints);
+  for(i_us=0;i_us<gridInfo.nDims;i_us++){
+    sprintf(colName, "X%d", (int)i_us+1);
+    colI = allColNumbers[getColIndex(allColNames, maxNumCols, colName)];
+    if(colI<=0){
+      if(!silent) bail_out("This should not occur, it is some sort of bug.");
+      exit(1);
+    }
+
+    for(i_ui=0;i_ui<totalNumGridPoints;i_ui++)
+      xj[i_ui] = gp[i_ui].x[i_us];
+    fits_write_col(fptr, colDataTypes[colI-1], colI, firstRow, firstElem, (LONGLONG)totalNumGridPoints, xj, &status);
+    processFitsError(status);
+  }
+  free(xj);
+
+  colI = allColNumbers[getColIndex(allColNames, maxNumCols, "IS_SINK")];
+  if(colI<=0){
+    if(!silent) bail_out("This should not occur, it is some sort of bug.");
+    exit(1);
+  }
+  sink = malloc(sizeof(*sink)*totalNumGridPoints);
+  for(i_ui=0;i_ui<totalNumGridPoints;i_ui++)
+    sink[i_ui] = (_Bool)gp[i_ui].sink;
+  fits_write_col(fptr, colDataTypes[colI-1], colI, firstRow, firstElem, (LONGLONG)totalNumGridPoints, sink, &status);
+  processFitsError(status);
+  free(sink);
+
+  colI = allColNumbers[getColIndex(allColNames, maxNumCols, "NUMNEIGH")];
+  if(colI>0){
+    numNeigh = malloc(sizeof(*numNeigh)*totalNumGridPoints);
+    for(i_ui=0;i_ui<totalNumGridPoints;i_ui++)
+      numNeigh[i_ui] = (unsigned short)gp[i_ui].numNeigh;
+    fits_write_col(fptr, colDataTypes[colI-1], colI, firstRow, firstElem, (LONGLONG)totalNumGridPoints, numNeigh, &status);
+    processFitsError(status);
+    free(numNeigh);
+
+    colI = allColNumbers[getColIndex(allColNames, maxNumCols, "FIRST_NN")];
+    if(colI<=0){
+      if(!silent) bail_out("This should not occur, it is some sort of bug.");
+      exit(1);
+    }
+    fits_write_col(fptr, colDataTypes[colI-1], colI, firstRow, firstElem, (LONGLONG)totalNumGridPoints, firstNearNeigh, &status);
+    processFitsError(status);
+  }
+
+  /* Check if first VEL column has info:
+  */
+  colI = allColNumbers[getColIndex(allColNames, maxNumCols, "VEL1")];
+  if(colI>0){
+    velj = malloc(sizeof(*velj)*totalNumGridPoints);
+    for(i_us=0;i_us<gridInfo.nDims;i_us++){
+      sprintf(colName, "VEL%d", (int)i_us+1);
+      colI = allColNumbers[getColIndex(allColNames, maxNumCols, colName)];
+      if(colI<=0){
+        if(!silent) bail_out("This should not occur, it is some sort of bug.");
+        exit(1);
+      }
+
+      for(i_ui=0;i_ui<totalNumGridPoints;i_ui++)
+        velj[i_ui] = gp[i_ui].vel[i_us];
+      fits_write_col(fptr, colDataTypes[colI-1], colI, firstRow, firstElem, (LONGLONG)totalNumGridPoints, velj, &status);
+      processFitsError(status);
+    }
+    free(velj);
+  }
+
+  /* Check if first DENSITY column has info:
+  */
+  colI = allColNumbers[getColIndex(allColNames, maxNumCols, "DENSITY1")];
+  if(colI>0){
+    densn = malloc(sizeof(*densn)*totalNumGridPoints);
+    for(i_us=0;i_us<gridInfo.nDensities;i_us++){
+      sprintf(colName, "DENSITY%d", (int)i_us+1);
+      colI = allColNumbers[getColIndex(allColNames, maxNumCols, colName)];
+      if(colI<=0){
+        if(!silent) bail_out("This should not occur, it is some sort of bug.");
+        exit(1);
+      }
+
+      for(i_ui=0;i_ui<totalNumGridPoints;i_ui++)
+        densn[i_ui] = gp[i_ui].dens[i_us];
+      fits_write_col(fptr, colDataTypes[colI-1], colI, firstRow, firstElem, (LONGLONG)totalNumGridPoints, densn, &status);
+      processFitsError(status);
+    }
+    free(densn);
+  }
+
+  /* Check if first ABUNMOL column has info:
+  */
+  colI = allColNumbers[getColIndex(allColNames, maxNumCols, "ABUNMOL1")];
+  if(colI>0){
+    abunm = malloc(sizeof(*abunm)*totalNumGridPoints);
+    for(i_us=0;i_us<gridInfo.nSpecies;i_us++){
+      sprintf(colName, "ABUNMOL%d", (int)i_us+1);
+      colI = allColNumbers[getColIndex(allColNames, maxNumCols, colName)];
+      if(colI<=0){
+        if(!silent) bail_out("This should not occur, it is some sort of bug.");
+        exit(1);
+      }
+
+      for(i_ui=0;i_ui<totalNumGridPoints;i_ui++)
+        abunm[i_ui] = (float)gp[i_ui].abun[i_us];
+      fits_write_col(fptr, colDataTypes[colI-1], colI, firstRow, firstElem, (LONGLONG)totalNumGridPoints, abunm, &status);
+      processFitsError(status);
+    }
+    free(abunm);
+  }
+
+  colI = allColNumbers[getColIndex(allColNames, maxNumCols, "TURBDPLR")];
+  if(colI>0){
+    dopb = malloc(sizeof(*dopb)*totalNumGridPoints);
+    for(i_ui=0;i_ui<totalNumGridPoints;i_ui++)
+      dopb[i_ui] = (float)gp[i_ui].dopb_turb;
+    fits_write_col(fptr, colDataTypes[colI-1], colI, firstRow, firstElem, (LONGLONG)totalNumGridPoints, dopb, &status);
+    processFitsError(status);
+    free(dopb);
+  }
+
+  colI = allColNumbers[getColIndex(allColNames, maxNumCols, "TEMPKNTC")];
+  if(colI>0){
+    t = malloc(sizeof(*t)*totalNumGridPoints);
+    for(i_ui=0;i_ui<totalNumGridPoints;i_ui++)
+      t[i_ui] = (float)gp[i_ui].t[0];
+    fits_write_col(fptr, colDataTypes[colI-1], colI, firstRow, firstElem, (LONGLONG)totalNumGridPoints, t, &status);
+    processFitsError(status);
+
+    colI = allColNumbers[getColIndex(allColNames, maxNumCols, "TEMPDUST")];
+    if(colI<=0){
+      if(!silent) bail_out("This should not occur, it is some sort of bug.");
+      exit(1);
+    }
+
+    for(i_ui=0;i_ui<totalNumGridPoints;i_ui++)
+      t[i_ui] = (float)gp[i_ui].t[1];
+    fits_write_col(fptr, colDataTypes[colI-1], colI, firstRow, firstElem, (LONGLONG)totalNumGridPoints, t, &status);
+    processFitsError(status);
+    free(t);
+  }
+
+  /* Check if first B_FIELD column has info:
+  */
+  colI = allColNumbers[getColIndex(allColNames, maxNumCols, "B_FIELD1")];
+  if(colI>0){
+    bField = malloc(sizeof(*bField)*totalNumGridPoints);
+    for(di=0;di<3;di++){//**** keep this hard-wired or rather test that gridInfo.nDims==3??
+      sprintf(colName, "B_FIELD%d", di+1);
+      colI = allColNumbers[getColIndex(allColNames, maxNumCols, colName)];
+      if(colI<=0){
+        if(!silent) bail_out("This should not occur, it is some sort of bug.");
+        exit(1);
+      }
+
+      for(i_ui=0;i_ui<totalNumGridPoints;i_ui++)
+        bField[i_ui] = (float)gp[i_ui].B[di];
+      fits_write_col(fptr, colDataTypes[colI-1], colI, firstRow, firstElem, (LONGLONG)totalNumGridPoints, bField, &status);
+      processFitsError(status);
+    }
+    free(bField);
+  }
+
+  /* Write keywords.
+  */
+  if (collPartNames!=NULL){
+    if(gridInfo.nDensities>maxNumCollPart){
+      if(!silent){
+        sprintf(message, "There seem to be %d collision partners but keywords can only be written for %d.", (int)gridInfo.nDensities, (int)maxNumCollPart);
+        warning(message);
+      }
+      localNumCollPart = maxNumCollPart;
+    }else{
+      localNumCollPart = gridInfo.nDensities;
+    }
+
+    for(i_us=0;i_us<localNumCollPart;i_us++){
+      sprintf(genericKwd, "COLLPAR%d", (int)i_us+1);
+      sprintf(genericComment, "Collision partner %d", (int)i_us+1);
+      fits_write_key(fptr, TSTRING, genericKwd, collPartNames[i_us], genericComment, &status);
+      processFitsError(status);
+    }
+  }
+
+  for(i=0;i<maxNumCols;i++) free(allColNames[i]);
+  free(allColNames);
+  free(allColNumbers);
+  free(colDataTypes);
+}
+
+/*....................................................................*/
+int
+getColIndex(char **allColNames, const int maxNumCols, char *colName){
   int i=0;
   int colFound=0; /* -> bool */
 
@@ -592,8 +650,9 @@ int getColIndex(char **allColNames, const int maxNumCols, char *colName){
 }
 
 /*....................................................................*/
-void writeNnIndicesExtToFits(fitsfile *fptr, const unsigned int totalNumNeigh\
-  , struct linkType **nnLinks, struct linkType *links){
+void
+writeNnIndicesExtToFits(fitsfile *fptr, struct gridInfoType gridInfo\
+  , struct linkType **nnLinks){
   /*
 See the comment at the beginning of module gridio.c for a description of how the NN_INDICES extension relates to the grid struct.
 
@@ -606,13 +665,13 @@ See the comment at the beginning of module gridio.c for a description of how the
 Note that data types in all capitals are defined in fitsio.h.
   */
 
-  unsigned int *linkIs=NULL;
-  int status=0, i;
+  unsigned int *linkIs=NULL,i_ui;
+  int status=0;
   LONGLONG firstRow=1, firstElem=1;
   int numCols = 1;
   char extname[] = "NN_INDICES";
 
-  if (links==NULL || nnLinks==NULL){
+  if (nnLinks==NULL){
     if(!silent) bail_out("No link or near-neighbour data!");
     exit(1);
   }
@@ -629,17 +688,18 @@ Note that data types in all capitals are defined in fitsio.h.
   fits_create_tbl( fptr, BINARY_TBL, 0, numCols, ttype, tform, tunit, extname, &status);
   processFitsError(status);
 
-  linkIs = malloc(sizeof(*linkIs)*totalNumNeigh);
-  for(i=0;i<totalNumNeigh;i++)
-    linkIs[i] = nnLinks[i]->id;
-  fits_write_col(fptr, dataType, 1, firstRow, firstElem, (LONGLONG)totalNumNeigh, linkIs, &status);
+  linkIs = malloc(sizeof(*linkIs)*gridInfo.nNNIndices);
+  for(i_ui=0;i_ui<gridInfo.nNNIndices;i_ui++)
+    linkIs[i_ui] = nnLinks[i_ui]->id;
+  fits_write_col(fptr, dataType, 1, firstRow, firstElem, (LONGLONG)gridInfo.nNNIndices, linkIs, &status);
   processFitsError(status);
   free(linkIs);
 }
 
 /*....................................................................*/
-void writeLinksExtToFits(fitsfile *fptr, const unsigned int totalNumLinks\
-  , const unsigned short numACoeffs, struct linkType *links){
+void
+writeLinksExtToFits(fitsfile *fptr, struct gridInfoType gridInfo\
+  , struct linkType *links){
   /*
 See the comment at the beginning of module gridio.c for a description of how the LINKS extension relates to the grid struct.
 
@@ -657,9 +717,10 @@ Notes:
 
   */
   const int numColNameChars=21;
-  unsigned int *ids=NULL;
-  double *aCoeffs=NULL;
-  int status=0, colI=0, i, n;
+  unsigned int *ids=NULL,i_ui;
+  unsigned short i_us,j_us;
+  double *vels=NULL;
+  int status=0, colI=0, i;
   LONGLONG firstRow=1, firstElem=1;
   int numCols;
   char extname[] = "LINKS";
@@ -670,10 +731,10 @@ Notes:
     exit(1);
   }
 
-  if(links[0].aCoeffs==NULL)
+  if(links[0].vels==NULL)
     numCols = 2;
   else
-    numCols = 2 + numACoeffs;
+    numCols = 2 + gridInfo.nDims*gridInfo.nLinkVels;
 
   /* Define the name, datatype, and physical units for the columns.
   */
@@ -697,14 +758,16 @@ Notes:
   tunit[colI] = "\0";
   dataTypes[colI] = TUINT;
 
-  if(links[0].aCoeffs!=NULL){
-    /* Should rather have a vector column? */
-    for(n=0;n<numACoeffs;n++){
-      colI++;
-      sprintf(tempColNames[colI], "ACOEFF_%d", n+1);
-      tform[colI] = "D";
-      tunit[colI] = "\0";
-      dataTypes[colI] = TDOUBLE;
+  if(links[0].vels!=NULL){
+    /* Should rather have vector columns? */
+    for(i_us=0;i_us<gridInfo.nLinkVels;i_us++){
+      for(j_us=0;j_us<gridInfo.nDims;j_us++){
+        colI++;
+        sprintf(tempColNames[colI], "V_%d_%d", (int)i_us+1, (int)j_us+1);
+        tform[colI] = "D";
+        tunit[colI] = "\0";
+        dataTypes[colI] = TDOUBLE;
+      }
     }
   }
 
@@ -723,34 +786,38 @@ Notes:
   /* Write columns.
   */
   colI = 0;
-  ids = malloc(sizeof(*ids)*totalNumLinks);
-  for(i=0;i<totalNumLinks;i++)
-    ids[i] = (unsigned int)links[i].gp[0]->id;
-  fits_write_col(fptr, dataTypes[colI], colI+1, firstRow, firstElem, (LONGLONG)totalNumLinks, ids, &status);
+  ids = malloc(sizeof(*ids)*gridInfo.nLinks);
+  for(i_ui=0;i_ui<gridInfo.nLinks;i_ui++)
+    ids[i_ui] = links[i_ui].gis[0];
+  fits_write_col(fptr, dataTypes[colI], colI+1, firstRow, firstElem, (LONGLONG)gridInfo.nLinks, ids, &status);
   processFitsError(status);
 
   colI++;
-  for(i=0;i<totalNumLinks;i++)
-    ids[i] = (unsigned int)links[i].gp[1]->id;
-  fits_write_col(fptr, dataTypes[colI], colI+1, firstRow, firstElem, (LONGLONG)totalNumLinks, ids, &status);
+  for(i_ui=0;i_ui<gridInfo.nLinks;i_ui++)
+    ids[i_ui] = links[i_ui].gis[1];
+  fits_write_col(fptr, dataTypes[colI], colI+1, firstRow, firstElem, (LONGLONG)gridInfo.nLinks, ids, &status);
   processFitsError(status);
   free(ids);
 
-  if(links[0].aCoeffs!=NULL){
-    aCoeffs = malloc(sizeof(*aCoeffs)*totalNumLinks);
-    for(n=0;n<numACoeffs;n++){
-      colI++;
-      for(i=0;i<totalNumLinks;i++) aCoeffs[i] = links[i].aCoeffs[n];
-      fits_write_col(fptr, dataTypes[colI], colI+1, firstRow, firstElem, (LONGLONG)totalNumLinks, aCoeffs, &status);
-      processFitsError(status);
+  if(links[0].vels!=NULL){
+    vels = malloc(sizeof(*vels)*gridInfo.nLinks);
+    for(i_us=0;i_us<gridInfo.nLinkVels;i_us++){
+      for(j_us=0;j_us<gridInfo.nDims;j_us++){
+        colI++;
+        for(i_ui=0;i_ui<gridInfo.nLinks;i_ui++)
+          vels[i_ui] = links[i_ui].vels[gridInfo.nDims*i_us + j_us];
+        fits_write_col(fptr, dataTypes[colI], colI+1, firstRow, firstElem, (LONGLONG)gridInfo.nLinks, vels, &status);
+        processFitsError(status);
+      }
     }
-    free(aCoeffs);
+    free(vels);
   }
 }
 
 /*....................................................................*/
-void writePopsExtToFits(fitsfile *fptr, const unsigned int numGridPoints\
-  , molData *md, const unsigned short speciesI, struct grid *gp){
+void
+writePopsExtToFits(fitsfile *fptr, struct gridInfoType gridInfo\
+  , const unsigned short speciesI, struct grid *gp){
   /*
 	Extension name: LEVEL_POPS_m (1 per molecular species)
 	This is an image extension of size (number of grid cells)*(number of energy levels this species)
@@ -761,13 +828,15 @@ void writePopsExtToFits(fitsfile *fptr, const unsigned int numGridPoints\
 Note that data types in all capitals are defined in fitsio.h.
   */
 
-  int status=0, xi, yi;
+  const unsigned int totalNumGridPoints = gridInfo.nInternalPoints+gridInfo.nSinkPoints;
+  unsigned int i_ui;
+  int status=0, xi;
   char extname[13];
   float *row=NULL;
   int bitpix = FLOAT_IMG;
   const long naxis = 2;  /* i.e. 2-dimensional image */    
-  unsigned int numEnergyLevels = md[speciesI].nlev;
-  long naxes[] = { numEnergyLevels, numGridPoints };
+  int numEnergyLevels = (int)gridInfo.mols[speciesI].nLevels;
+  long naxes[] = { (long)numEnergyLevels, (long)totalNumGridPoints };
   long fpixels[naxis],lpixels[naxis];
 
   sprintf(extname, "LEVEL_POPS_%d", (int)speciesI+1);
@@ -779,14 +848,14 @@ Note that data types in all capitals are defined in fitsio.h.
 
   /* Write FITS data.
   */
-  for(yi=0;yi<numGridPoints;yi++){
+  for(i_ui=0;i_ui<totalNumGridPoints;i_ui++){
     for(xi=0;xi<numEnergyLevels;xi++)
-      row[xi] = (float)gp[yi].mol[speciesI].pops[xi]; 
+      row[xi] = (float)gp[i_ui].mol[speciesI].pops[xi]; 
 
     fpixels[0]=1;
-    fpixels[1]=yi+1;
+    fpixels[1]=i_ui+1;
     lpixels[0]=numEnergyLevels;
-    lpixels[1]=yi+1;
+    lpixels[1]=i_ui+1;
 
     fits_write_subset(fptr, TFLOAT, fpixels, lpixels, row, &status);
     processFitsError(status);
@@ -796,7 +865,7 @@ Note that data types in all capitals are defined in fitsio.h.
 
   /* write keywords:
   */
-  fits_write_key(fptr, TSTRING, "MOL_NAME ", md[speciesI].molName, "\0", &status);
+  fits_write_key(fptr, TSTRING, "MOL_NAME ", gridInfo.mols[speciesI].molName, "\0", &status);
   processFitsError(status);
 
   fits_write_key(fptr, TSTRING, "EXTNAME ", extname, "\0", &status);
@@ -804,7 +873,8 @@ Note that data types in all capitals are defined in fitsio.h.
 }
 
 /*....................................................................*/
-fitsfile *openFITSFileForRead(char *inFileName){
+fitsfile *
+openFITSFileForRead(char *inFileName){
   fitsfile *fptr=NULL;
   int status=0;
 
@@ -815,7 +885,8 @@ fitsfile *openFITSFileForRead(char *inFileName){
 }
 
 /*....................................................................*/
-int countColumns(fitsfile *fptr, char *baseName){
+int
+countColsBasePlusInt(fitsfile *fptr, char *baseName){
   char colName[20];
   int i, status, colNum;
 
@@ -833,7 +904,8 @@ int countColumns(fitsfile *fptr, char *baseName){
 }
 
 /*....................................................................*/
-int countKeywords(fitsfile *fptr, char *baseName){
+int
+countKeywords(fitsfile *fptr, char *baseName){
   char kwdName[9];
   int i, status;
   char kwdValue[80];
@@ -852,7 +924,38 @@ int countKeywords(fitsfile *fptr, char *baseName){
 }
 
 /*....................................................................*/
-void readGridExtFromFits(fitsfile *fptr, struct gridInfoType *gridInfoRead\
+void
+readKeywordsFromFits(lime_fptr *fptr, struct keywordType *kwds\
+  , const int numKeywords){
+
+  int i, status;
+  char message[80];
+
+  for(i=0;i<numKeywords;i++){
+    status = 0;
+
+    if(     kwds[i].datatype==TSTRING)
+      fits_read_key(fptr, TSTRING, kwds[i].keyname, kwds[i].charValue, kwds[i].comment, &status);
+    else if(kwds[i].datatype==TINT)
+      fits_read_key(fptr, TINT, kwds[i].keyname, &kwds[i].intValue, kwds[i].comment, &status);
+    else if(kwds[i].datatype==TFLOAT)
+      fits_read_key(fptr, TFLOAT, kwds[i].keyname, &kwds[i].floatValue, kwds[i].comment, &status);
+    else if(kwds[i].datatype==TDOUBLE)
+      fits_read_key(fptr, TDOUBLE, kwds[i].keyname, &kwds[i].doubleValue, kwds[i].comment, &status);
+    else{
+      if(!silent){
+        sprintf(message, "Keyword %d dataype %d is not currently accepted.", i, kwds[i].datatype);
+        bail_out(message);
+      }
+      exit(1);
+    }
+    processFitsError(status);
+  }
+}
+
+/*....................................................................*/
+void
+readGridExtFromFits(fitsfile *fptr, struct gridInfoType *gridInfoRead\
   , struct grid **gp, unsigned int **firstNearNeigh, char ***collPartNames\
   , int *numCollPartRead, int *dataFlags){
   /*
@@ -864,7 +967,6 @@ If a COLLPARn keywords are found in the GRID extension header then collPartNames
   LONGLONG numGridCells, firstRow=1, firstElem=1, i_LL;
   int status=0, colNum, anynul=0, i;
   char colName[20];
-  double modelRadius;
   char genericKwd[9];
   char message[80];
   unsigned int *ids=NULL;
@@ -908,7 +1010,7 @@ If a COLLPARn keywords are found in the GRID extension header then collPartNames
   }
   free(ids);
 
-  gridInfoRead->nDims = (unsigned short)countColumns(fptr, "X");
+  gridInfoRead->nDims = (unsigned short)countColsBasePlusInt(fptr, "X");
   if(gridInfoRead->nDims<=0){
     if(!silent) warning("No X columns found in grid dataset.");
     return; /* I.e. with dataFlags left unchanged. */
@@ -1021,7 +1123,7 @@ If a COLLPARn keywords are found in the GRID extension header then collPartNames
 
   /* Count the numbers of DENSITYn columns:
   */
-  gridInfoRead->nDensities = (unsigned short)countColumns(fptr, "DENSITY");
+  gridInfoRead->nDensities = (unsigned short)countColsBasePlusInt(fptr, "DENSITY");
   if(gridInfoRead->nDensities > 0){
     for(i_LL=0;i_LL<numGridCells;i_LL++)
       (*gp)[i_LL].dens = malloc(sizeof(double)*gridInfoRead->nDensities);
@@ -1048,7 +1150,7 @@ If a COLLPARn keywords are found in the GRID extension header then collPartNames
 
   /* Count the numbers of ABUNMOLm columns:
   */
-  gridInfoRead->nSpecies = (unsigned short)countColumns(fptr, "ABUNMOL");
+  gridInfoRead->nSpecies = (unsigned short)countColsBasePlusInt(fptr, "ABUNMOL");
   if(gridInfoRead->nSpecies > 0){
     for(i_LL=0;i_LL<numGridCells;i_LL++) {
       (*gp)[i_LL].abun = malloc(sizeof(double)*gridInfoRead->nSpecies);
@@ -1085,7 +1187,7 @@ If a COLLPARn keywords are found in the GRID extension header then collPartNames
     processFitsError(status);
 
     for(i_LL=0;i_LL<numGridCells;i_LL++) {
-      (*gp)[i_LL].dopb = (double)dopb[i_LL];
+      (*gp)[i_LL].dopb_turb = (double)dopb[i_LL];
     }
     free(dopb);
 
@@ -1141,7 +1243,7 @@ If a COLLPARn keywords are found in the GRID extension header then collPartNames
     /* Read the B_FIELD columns:
     */
     bField = malloc(sizeof(*bField)*numGridCells);
-    for(i=0;i<3;i++){
+    for(i=0;i<3;i++){//**** keep this hard-wired or rather test that gridInfo.nDims==3??
       sprintf(colName, "B_FIELD%d", i+1);
       fits_get_colnum(fptr, CASEINSEN, colName, &colNum, &status);
       processFitsError(status);
@@ -1157,12 +1259,6 @@ If a COLLPARn keywords are found in the GRID extension header then collPartNames
 
     (*dataFlags) |= (1 << DS_bit_magfield);
   }
-
-  /* Read kwds:
-  */
-  status = 0;
-  fits_read_key(fptr, TDOUBLE, "RADIUS  ", &modelRadius, NULL, &status);
-  processFitsError(status);
 
   /* Check if there are any COLLPAR keywords.
   */
@@ -1181,7 +1277,8 @@ If a COLLPARn keywords are found in the GRID extension header then collPartNames
 }
 
 /*....................................................................*/
-void readLinksExtFromFits(fitsfile *fptr, struct gridInfoType *gridInfoRead\
+void
+readLinksExtFromFits(fitsfile *fptr, struct gridInfoType *gridInfoRead\
   , struct grid *gp, struct linkType **links, int *dataFlags){
   /*
 See the comment at the beginning of gridio.c for a description of how the LINKS extension relates to the grid struct.
@@ -1190,12 +1287,12 @@ The present function mallocs the pointer *links.
   */
 
   LONGLONG totalNumLinks, firstRow=1, firstElem=1, i_LL;
-  int status=0, colNum, anynul=0;
+  int status=0,colNum,anynul=0,i;
   char colName[21];
-  unsigned int *ids=NULL, totalNumGridPoints, ppi;
-  double *aCoeffs=NULL;
+  unsigned int *ids=NULL, totalNumGridPoints, i_ui;
+  double *vels=NULL;
   char message[80];
-  unsigned short i_s;
+  unsigned short i_us,j_us;
   int colGrid1Found, colGrid2Found; //->bool
 
   if(!bitIsSet(*dataFlags, DS_bit_neighbours))
@@ -1248,15 +1345,15 @@ The present function mallocs the pointer *links.
     processFitsError(status);
 
     for(i_LL=0;i_LL<totalNumLinks;i_LL++) {
-      ppi = ids[i_LL];
-      if(ppi<0 || ppi>=totalNumGridPoints){
+      i_ui = ids[i_LL];
+      if(i_ui<0 || i_ui>=totalNumGridPoints){
         if(!silent){
-          sprintf(message, "GRID_I_1 %dth-row value %ud is outside range [0,%ud]", (int)i_LL, ppi, totalNumGridPoints);
+          sprintf(message, "GRID_I_1 %dth-row value %ud is outside range [0,%ud]", (int)i_LL, i_ui, totalNumGridPoints);
           bail_out(message);
         }
         exit(1);
       }
-      (*links)[i_LL].gp[0] = &gp[ppi];
+      (*links)[i_LL].gis[0] = gp[i_ui].id;
     }
 
     /* Read GRID_I_2 column.
@@ -1270,15 +1367,15 @@ The present function mallocs the pointer *links.
       processFitsError(status);
 
       for(i_LL=0;i_LL<totalNumLinks;i_LL++) {
-        ppi = ids[i_LL];
-        if(ppi<0 || ppi>=totalNumGridPoints){
+        i_ui = ids[i_LL];
+        if(i_ui<0 || i_ui>=totalNumGridPoints){
           if(!silent){
-            sprintf(message, "GRID_I_2 %dth-row value %ud is outside range [0,%ud]", (int)i_LL, ppi, totalNumGridPoints);
+            sprintf(message, "GRID_I_2 %dth-row value %ud is outside range [0,%ud]", (int)i_LL, i_ui, totalNumGridPoints);
             bail_out(message);
           }
           exit(1);
         }
-        (*links)[i_LL].gp[1] = &gp[ppi];
+        (*links)[i_LL].gis[1] = gp[i_ui].id;
       }
     }
     free(ids);
@@ -1293,40 +1390,54 @@ The present function mallocs the pointer *links.
     return;
   }
 
-  /* Find out how many ACOEFF_* columns there are.
+  /* Find out how many V_* columns there are.
   */
-  gridInfoRead->nACoeffs = (unsigned short)countColumns(fptr, "ACOEFF_");
-  if(gridInfoRead->nACoeffs<=0){
+  i = 0;
+  status = 0;
+  while(!status){
+    sprintf(colName, "V_%d_", i+1);
+    if(countColsBasePlusInt(fptr, colName)!=gridInfoRead->nDims)
+      status = 1;
+
+    i++;
+  }
+  gridInfoRead->nLinkVels = i - 1;
+  status = 0;
+
+  if(gridInfoRead->nLinkVels<=0){
     for(i_LL=0;i_LL<totalNumLinks;i_LL++)
-      (*links)[i_LL].aCoeffs = NULL;
+      (*links)[i_LL].vels = NULL;
     return;
   }
 
   for(i_LL=0;i_LL<totalNumLinks;i_LL++)
-    (*links)[i_LL].aCoeffs = malloc(sizeof(double)*gridInfoRead->nACoeffs);
+    (*links)[i_LL].vels = malloc(sizeof(double)*gridInfoRead->nLinkVels*gridInfoRead->nDims);
 
-  aCoeffs = malloc(sizeof(*aCoeffs)*totalNumLinks);
-  for(i_s=0;i_s<gridInfoRead->nACoeffs;i_s++){
-    /* Read the ACOEFF_n columns.
-    */
-    sprintf(colName, "ACOEFF_%d", (int)i_s+1);
-    fits_get_colnum(fptr, CASEINSEN, colName, &colNum, &status);
-    processFitsError(status);
+  vels = malloc(sizeof(*vels)*totalNumLinks);
+  for(i_us=0;i_us<gridInfoRead->nLinkVels;i_us++){
+    for(j_us=0;j_us<gridInfoRead->nDims;j_us++){
+      /* Read the V_n_d columns.
+      */
+      sprintf(colName, "V_%d_%d", (int)i_us+1, (int)j_us+1);
+      fits_get_colnum(fptr, CASEINSEN, colName, &colNum, &status);
+      processFitsError(status);
 
-    fits_read_col(fptr, TDOUBLE, colNum, firstRow, firstElem, totalNumLinks, 0, aCoeffs, &anynul, &status);
-    processFitsError(status);
+      fits_read_col(fptr, TDOUBLE, colNum, firstRow, firstElem, totalNumLinks, 0, vels, &anynul, &status);
+      processFitsError(status);
 
-    for(i_LL=0;i_LL<totalNumLinks;i_LL++)
-      (*links)[i_LL].aCoeffs[i_s] = aCoeffs[i_LL];
+      for(i_LL=0;i_LL<totalNumLinks;i_LL++)
+        (*links)[i_LL].vels[gridInfoRead->nDims*j_us + i_us] = vels[i_LL];
+    }
   }
-  free(aCoeffs);
+  free(vels);
 
   (*dataFlags) |= (1 << DS_bit_ACOEFF);
 
 }
 
 /*....................................................................*/
-void readNnIndicesExtFromFits(fitsfile *fptr, struct linkType *links\
+void
+readNnIndicesExtFromFits(fitsfile *fptr, struct linkType *links\
   , struct linkType ***nnLinks, struct gridInfoType *gridInfoRead, int *dataFlags){
   /*
 See the comment at the beginning of gridio.c for a description of how the NN_INDICES extension relates to the grid struct.
@@ -1391,7 +1502,8 @@ The function mallocs the pointer *nnLinks.
 }
 
 /*....................................................................*/
-_Bool checkPopsFitsExtExists(fitsfile *fptr, const unsigned short speciesI){
+_Bool
+checkPopsFitsExtExists(fitsfile *fptr, const unsigned short speciesI){
   const unsigned short maxNumSpecies = 9;
   char message[80];
   char extname[13];
@@ -1421,7 +1533,8 @@ _Bool checkPopsFitsExtExists(fitsfile *fptr, const unsigned short speciesI){
 }
 
 /*....................................................................*/
-void readPopsExtFromFits(fitsfile *fptr, const unsigned short speciesI\
+void
+readPopsExtFromFits(fitsfile *fptr, const unsigned short speciesI\
   , struct grid *gp, struct gridInfoType *gridInfoRead){
   /*
 See the comment at the beginning of the present module for a description of how the LEVEL_POPS_m extensions relate to the grid struct.
@@ -1441,7 +1554,7 @@ long naxes[2];
   char molNameRead[maxLenMolName+1];
   char message[80];
   char extname[13];
-  unsigned int numGridPoints, i_u;
+  unsigned int numGridPoints, i_ui;
 
   if(speciesI+1>maxNumSpecies){
     if(!silent){
@@ -1477,18 +1590,18 @@ long naxes[2];
 
   /* Read FITS data.
   */
-  for(i_u=0;i_u<numGridPoints;i_u++){
+  for(i_ui=0;i_ui<numGridPoints;i_ui++){
     fpixels[0]=1;
-    fpixels[1]=(int)i_u+1;
+    fpixels[1]=(int)i_ui+1;
     lpixels[0]=gridInfoRead->mols[speciesI].nLevels;
-    lpixels[1]=(int)i_u+1;
+    lpixels[1]=(int)i_ui+1;
 
     fits_read_subset(fptr, TFLOAT, fpixels, lpixels, inc, 0, row, &anynul, &status);
     processFitsError(status);
 
-    gp[i_u].mol[speciesI].pops = malloc(sizeof(double)*gridInfoRead->mols[speciesI].nLevels);
+    gp[i_ui].mol[speciesI].pops = malloc(sizeof(double)*gridInfoRead->mols[speciesI].nLevels);
     for(xi=0;xi<gridInfoRead->mols[speciesI].nLevels;xi++)
-      gp[i_u].mol[speciesI].pops[xi] = (double)row[xi];
+      gp[i_ui].mol[speciesI].pops[xi] = (double)row[xi];
 
   }
 

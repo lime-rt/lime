@@ -3,7 +3,7 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2016 The LIME development team
+ *  Copyright (C) 2015-2016 The LIME development team
  *
 TODO:
   - The test to run photon() etc in levelPops just tests dens[0]. This is a bit sloppy.
@@ -17,17 +17,22 @@ TODO:
 
 void
 parseInput(inputPars inpar, configInfo *par, image **img, molData **m){
-  int i,id;
-  double BB[3],normBSquared,dens[MAX_N_COLL_PART];
-  double cosPhi,sinPhi,cosTheta,sinTheta,dummyVel[DIM];
+  int i,j,id;
+  double BB[3],normBSquared,dens[MAX_N_COLL_PART],r[DIM];
+  double dummyVel[DIM];
   FILE *fp;
   char message[80];
+  _Bool doThetaPhi;
+  double cos_pa,sin_pa,cosPhi,sinPhi,cos_incl,sin_incl,cosTheta,sinTheta,cos_az,sin_az;
+  double tempRotMat[3][3],auxRotMat[3][3];
+  int row,col;
 
   /* Copy over user-set parameters to the configInfo versions. (This seems like duplicated effort but it is a good principle to separate the two structs, for several reasons, as follows. (i) We will usually want more config parameters than user-settable ones. The separation leaves it clearer which things the user needs to (or can) set. (ii) The separation allows checking and screening out of impossible combinations of parameters. (iii) We can adopt new names (for clarity) for config parameters without bothering the user with a changed interface.) */
   par->radius       = inpar.radius;
   par->minScale     = inpar.minScale;
   par->pIntensity   = inpar.pIntensity;
   par->sinkPoints   = inpar.sinkPoints;
+  par->samplingAlgorithm=inpar.samplingAlgorithm;
   par->sampling     = inpar.sampling;
   par->tcmb         = inpar.tcmb;
   par->dust         = inpar.dust;
@@ -97,6 +102,23 @@ parseInput(inputPars inpar, configInfo *par, image **img, molData **m){
   par->dustWeights  = malloc(sizeof(double)*MAX_N_COLL_PART);
   for(i=0;i<MAX_N_COLL_PART;i++) par->dustWeights[i] = inpar.dustWeights[i];
 
+  /* Copy over the grid-density-maximum data and find out how many were set:
+  */
+  par->gridDensMaxValues = malloc(sizeof(*(par->gridDensMaxValues))*MAX_N_HIGH);
+  par->gridDensMaxLoc    = malloc(sizeof(*(par->gridDensMaxLoc))*MAX_N_HIGH);
+  for(i=0;i<MAX_N_HIGH;i++){
+    par->gridDensMaxValues[i] = inpar.gridDensMaxValues[i];
+    for(j=0;j<DIM;j++) par->gridDensMaxLoc[i][j] = inpar.gridDensMaxLoc[i][j];
+  }
+  i = 0;
+  while(i<MAX_N_HIGH && par->gridDensMaxValues[i]>=0) i++;
+  par->numGridDensMaxima = i;
+
+  /* Check that the user has supplied the velocity function (needed in raytracing unless par->doPregrid). Note that the other previously mandatory functions (density, abundance, doppler and temperature) may not be necessary if the user reads in the appropriate values from a file. This is tested at the appropriate place in readOrBuildGrid().
+  */
+  if(!par->doPregrid || par->traceRayAlgorithm==1)
+    velocity(0.0,0.0,0.0, dummyVel);
+
   /* Calculate par->numDensities.
   */
   if(!(par->doPregrid || par->restart)){ /* These switches cause par->numDensities to be set in routines they call. */
@@ -114,16 +136,27 @@ parseInput(inputPars inpar, configInfo *par, image **img, molData **m){
     }
   }
 
+  /* See if we can deduce a global maximum for the grid point number density function. Set the starting value from the unnormalized number density at the origin of coordinates:
+  */
+  par->gridDensGlobalMax = 1.0;
+  for(i=0;i<DIM;i++) r[i] = par->minScale;//****0.0;
+  par->gridDensGlobalMax = gridDensity(par, r);
+
+  /* Test now any maxima the user has provided:
+  */
+  for(i=0;i<par->numGridDensMaxima;i++)
+    if(par->gridDensMaxValues[i]>par->gridDensGlobalMax) par->gridDensGlobalMax = par->gridDensMaxValues[i];
+
+  if (par->gridDensGlobalMax<=0.0){
+    if(!silent) bail_out("Cannot normalize the grid-point number density function.");
+    exit(1);
+  }
+
   /* If the user has provided a list of image filenames, the corresponding elements of (*img).filename will be non-NULL. Thus we can deduce the number of images from the number of non-NULL elements.
   */
   par->nImages=0;
   while((*img)[par->nImages].filename!=NULL && par->nImages<MAX_NIMAGES)
     par->nImages++;
-
-  /* Check that the user has supplied this function (needed unless par->doPregrid):
-  */
-  if(!par->doPregrid || par->traceRayAlgorithm==1)
-    velocity(0.0,0.0,0.0, dummyVel);
 
   for(i=0;i<NUM_GRID_STAGES;i++){
     if(par->gridOutFiles[i] != NULL)
@@ -145,6 +178,8 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
 
   */
   par->taylorCutoff = pow(24.*DBL_EPSILON, 0.25);
+
+  par->numDims = DIM;
 
   /* Allocate pixel space and parse image information */
   for(i=0;i<par->nImages;i++){
@@ -245,38 +280,153 @@ The presence of one of these combinations at least is checked here, although the
       (*img)[i].pixel[id].tau = malloc(sizeof(double)*(*img)[i].nchan);
     }
 
-    /* Rotation matrix
+    /*
+The image rotation matrix is used within traceray() to transform the coordinates of a vector (actually two vectors - the ray direction and its starting point) as initially specified in the observer-anchored frame into the coordinate frame of the model. In linear algebra terms, the model-frame vector v_mod is related to the vector v_obs as expressed in observer- (or image-) frame coordinates via the image rotation matrix R by
 
-            |1          0           0   |
-     R_x(a)=|0        cos(a)      sin(a)|
-            |0       -sin(a)      cos(a)|
+    v_mod = R * v_obs,				1
 
-            |cos(b)     0       -sin(b)|
-     R_y(b)=|  0        1          0   |
-            |sin(b)     0        cos(b)|
+the multiplication being the usual matrix-vector style. Note that the ith row of R is the ith axis of the model frame with coordinate values expressed in terms of the observer frame.
 
-            |      cos(b)       0          -sin(b)|
-     Rot =  |sin(a)sin(b)     cos(a)  sin(a)cos(b)|
-            |cos(a)sin(b)    -sin(a)  cos(a)cos(b)|
+The matrix R can be broken into a sequence of several (3 at least are needed for full degrees of freedom) simpler rotations. Since these constituent rotations are usually easier to conceive in terms of rotations of the model in the observer framework, it is convenient to invert equation (1) to give
+
+    v_obs = R^T * v_mod,			2
+
+where ^T here denotes transpose. Supposing now we rotate the model in a sequence R_3^T followed by R_2^T followed by R_1^T, equation (2) can be expanded to give
+
+    v_obs = R_1^T * R_2^T * R_3^T * v_mod.	3
+
+Inverting everything to return to the format of equation (1), which is what we need, we find
+
+    v_mod = R_3 * R_2 * R_1 * v_obs.		4
+
+LIME provides two different schemes of {R_1, R_2, R_3}: {PA, phi, theta} and {PA, inclination, azimuth}. As an example, consider phi, which is a rotation of the model from the observer Z axis towards the X. The matching obs->mod rotation matrix is therefore
+
+            ( cos(ph)  0  -sin(ph) )
+            (                      )
+    R_phi = (    0     0     1     ).
+            (                      )
+            ( sin(ph)  0   cos(ph) )
 
     */
 
-    cosPhi   = cos((*img)[i].phi);
-    sinPhi   = sin((*img)[i].phi);
-    cosTheta = cos((*img)[i].theta);
-    sinTheta = sin((*img)[i].theta);
-    (*img)[i].rotMat[0][0] =           cosPhi;
-    (*img)[i].rotMat[0][1] =  0.0;
-    (*img)[i].rotMat[0][2] =          -sinPhi;
-    (*img)[i].rotMat[1][0] =  sinTheta*sinPhi;
-    (*img)[i].rotMat[1][1] =  cosTheta;
-    (*img)[i].rotMat[1][2] =  sinTheta*cosPhi;
-    (*img)[i].rotMat[2][0] =  cosTheta*sinPhi;
-    (*img)[i].rotMat[2][1] = -sinTheta;
-    (*img)[i].rotMat[2][2] =  cosTheta*cosPhi;
+    doThetaPhi = (((*img)[i].incl<-900.)||((*img)[i].azimuth<-900.)||((*img)[i].posang<-900.))?1:0;
+
+    if(doThetaPhi){
+      /* For the present PA is not implemented for the theta/phi scheme. Thus we just load the identity matrix at present.
+      */
+      (*img)[i].rotMat[0][0] = 1.0;
+      (*img)[i].rotMat[0][1] = 0.0;
+      (*img)[i].rotMat[0][2] = 0.0;
+      (*img)[i].rotMat[1][0] = 0.0;
+      (*img)[i].rotMat[1][1] = 1.0;
+      (*img)[i].rotMat[1][2] = 0.0;
+      (*img)[i].rotMat[2][0] = 0.0;
+      (*img)[i].rotMat[2][1] = 0.0;
+      (*img)[i].rotMat[2][2] = 1.0;
+    }else{
+      /* Load PA rotation matrix R_PA:
+      */
+      cos_pa   = cos((*img)[i].posang);
+      sin_pa   = sin((*img)[i].posang);
+      (*img)[i].rotMat[0][0] =  cos_pa;
+      (*img)[i].rotMat[0][1] = -sin_pa;
+      (*img)[i].rotMat[0][2] =  0.0;
+      (*img)[i].rotMat[1][0] =  sin_pa;
+      (*img)[i].rotMat[1][1] =  cos_pa;
+      (*img)[i].rotMat[1][2] =  0.0;
+      (*img)[i].rotMat[2][0] =  0.0;
+      (*img)[i].rotMat[2][1] =  0.0;
+      (*img)[i].rotMat[2][2] =  1.0;
+    }
+
+    if(doThetaPhi){
+      /* Load phi rotation matrix R_phi:
+      */
+      cosPhi   = cos((*img)[i].phi);
+      sinPhi   = sin((*img)[i].phi);
+      auxRotMat[0][0] =  cosPhi;
+      auxRotMat[0][1] =  0.0;
+      auxRotMat[0][2] = -sinPhi;
+      auxRotMat[1][0] =  0.0;
+      auxRotMat[1][1] =  1.0;
+      auxRotMat[1][2] =  0.0;
+      auxRotMat[2][0] =  sinPhi;
+      auxRotMat[2][1] =  0.0;
+      auxRotMat[2][2] =  cosPhi;
+    }else{
+      /* Load inclination rotation matrix R_inc:
+      */
+      cos_incl = cos((*img)[i].incl + PI);
+      sin_incl = sin((*img)[i].incl + PI);
+      auxRotMat[0][0] =  cos_incl;
+      auxRotMat[0][1] =  0.0;
+      auxRotMat[0][2] = -sin_incl;
+      auxRotMat[1][0] =  0.0;
+      auxRotMat[1][1] =  1.0;
+      auxRotMat[1][2] =  0.0;
+      auxRotMat[2][0] =  sin_incl;
+      auxRotMat[2][1] =  0.0;
+      auxRotMat[2][2] =  cos_incl;
+    }
+
+    for(row=0;row<3;row++){
+      for(col=0;col<3;col++){
+        tempRotMat[row][col] = 0.0;
+        for(j=0;j<3;j++)
+          tempRotMat[row][col] += auxRotMat[row][j]*(*img)[i].rotMat[j][col];
+      }
+    }
+
+    if(doThetaPhi){
+      /* Load theta rotation matrix R_theta:
+      */
+      cosTheta = cos((*img)[i].theta);
+      sinTheta = sin((*img)[i].theta);
+      auxRotMat[0][0] =  1.0;
+      auxRotMat[0][1] =  0.0;
+      auxRotMat[0][2] =  0.0;
+      auxRotMat[1][0] =  0.0;
+      auxRotMat[1][1] =  cosTheta;
+      auxRotMat[1][2] =  sinTheta;
+      auxRotMat[2][0] =  0.0;
+      auxRotMat[2][1] = -sinTheta;
+      auxRotMat[2][2] =  cosTheta;
+    }else{
+      /* Load azimuth rotation matrix R_az:
+      */
+      cos_az   = cos((*img)[i].azimuth + PI/2.0);
+      sin_az   = sin((*img)[i].azimuth + PI/2.0);
+      auxRotMat[0][0] =  cos_az;
+      auxRotMat[0][1] = -sin_az;
+      auxRotMat[0][2] =  0.0;
+      auxRotMat[1][0] =  sin_az;
+      auxRotMat[1][1] =  cos_az;
+      auxRotMat[1][2] =  0.0;
+      auxRotMat[2][0] =  0.0;
+      auxRotMat[2][1] =  0.0;
+      auxRotMat[2][2] =  1.0;
+    }
+
+    for(row=0;row<3;row++){
+      for(col=0;col<3;col++){
+        (*img)[i].rotMat[row][col] = 0.0;
+        for(j=0;j<3;j++)
+          (*img)[i].rotMat[row][col] += auxRotMat[row][j]*tempRotMat[j][col];
+      }
+    }
   }
 
-  /* Allocate moldata array */
+  par->nLineImages = 0;
+  par->nContImages = 0;
+  for(i=0;i<par->nImages;i++){
+    if((*img)[i].doline)
+      par->nLineImages++;
+    else
+      par->nContImages++;
+  }
+
+  /* Allocate moldata array.
+  */
   (*m)=malloc(sizeof(molData)*par->nSpecies);
   for( i=0; i<par->nSpecies; i++ ){
     (*m)[i].part = NULL;
@@ -289,7 +439,6 @@ The presence of one of these combinations at least is checked here, although the
     (*m)[i].eterm = NULL;
     (*m)[i].gstat = NULL;
     (*m)[i].cmb = NULL;
-    (*m)[i].local_cmb = NULL;
   }
 }
 
@@ -435,34 +584,13 @@ void checkGridDensities(configInfo *par, struct grid *gp){
     while(i<par->pIntensity && !warningAlreadyIssued){
       if(gp[i].dens[0]<TYPICAL_ISM_DENS){
         warningAlreadyIssued = 1;
-        sprintf(errStr, "The density %.1e at grid point %d is below typical values for the ISM (~%.1e).", gp[i].dens[0], i, TYPICAL_ISM_DENS);
+        sprintf(errStr, "gp[%d].dens[0] at %.1e is below typical values for the ISM (~%.1e).", i, gp[i].dens[0], TYPICAL_ISM_DENS);
         warning(errStr);
         warning("This could give you convergence problems. NOTE: no further warnings will be issued.");
       }
       i++;
     }
   }
-}
-
-void
-continuumSetup(int im, image *img, molData *md, configInfo *par, struct grid *gp){
-  int id;
-  img[im].trans=0;
-  md[0].nline=1;
-  md[0].freq= malloc(sizeof(double));
-  md[0].freq[0]=img[im].freq;
-  for(id=0;id<par->ncell;id++) {
-    freePopulation((unsigned short)par->nSpecies, gp[id].mol);
-    gp[id].mol=malloc(sizeof(struct populations)*1);
-    gp[id].mol[0].dust = NULL;
-    gp[id].mol[0].knu  = NULL;
-    gp[id].mol[0].pops = NULL;
-    gp[id].mol[0].partner = NULL;
-  }
-  if(par->outputfile) popsout(par,gp,md);
-
-  calcMolCMBs(par,md);
-  calcGridDustOpacity(par,md,gp);
 }
 
 void lineBlend(molData *m, configInfo *par, struct blendInfo *blends){
@@ -565,39 +693,22 @@ Pointers are indicated by a * before the attribute name and an arrow to the memo
   }
 }
 
-void lineSetup(configInfo *par, molData *md, struct grid *gp, int *nlinetot, struct blendInfo *blends){
-  int numCollParts,ispec;
-  int *allCollPartIds=NULL;
-
-  readMolData(par,md,&allCollPartIds,&numCollParts);
-  setUpDensityAux(par,allCollPartIds,numCollParts);
-  free(allCollPartIds);
-  assignMolCollPartsToDensities(par,md);
-  calcMolCMBs(par,md);
-  gridLineInit(par,md,gp);
-  calcGridMolDensities(par,gp);
-  calcGridDustOpacity(par,md,gp);
-
-  if(!par->lte_only){
-    calcGridCollRates(par,md,gp);
-
-    *nlinetot = 0;
-    for(ispec=0;ispec<par->nSpecies;ispec++)
-      *nlinetot += md[ispec].nline;
-
-    /* Check for blended lines */
-    lineBlend(md, par, blends);
-  }
-}
-
-void levelPops(molData *md, configInfo *par, struct grid *gp, const int nlinetot, struct blendInfo blends, int *popsdone){
-  int id,conv=0,iter,ilev,ispec,c=0,n,i,threadI,nVerticesDone,nItersDone;
+void
+levelPops(molData *md, configInfo *par, struct grid *gp, int *popsdone, double *lamtab, double *kaptab, const int nEntries){
+  int id,iter,ilev,ispec,c=0,n,i,threadI,nVerticesDone,nItersDone,nlinetot;//,conv=0
   double percent=0.,*median,result1=0,result2=0,snr,delta_pop;
   int nextMolWithBlend;
   struct statistics { double *pop, *ave, *sigma; } *stat;
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
+  struct blendInfo blends;
   _Bool luWarningGiven=0;
   gsl_error_handler_t *defaultErrorHandler=NULL;
+
+  nlinetot = 0;
+  for(ispec=0;ispec<par->nSpecies;ispec++)
+    nlinetot += md[ispec].nline;
+
+  gridPopsInit(par,md,gp);
 
   if(par->lte_only){
     LTE(par,gp,md);
@@ -622,9 +733,13 @@ void levelPops(molData *md, configInfo *par, struct grid *gp, const int nlinetot
       gsl_rng_set(threadRans[i],(int)(gsl_rng_uniform(ran)*1e6));
     }
 
-    if(par->init_lte) LTE(par,gp,md);
+    calcGridCollRates(par,md,gp);
+    calcGridLinesDustOpacity(par, md, lamtab, kaptab, nEntries, gp);
 
-    if(par->outputfile) popsout(par,gp,md);
+    /* Check for blended lines */
+    lineBlend(md, par, &blends);
+
+    if(par->init_lte) LTE(par,gp,md);
 
     for(id=0;id<par->pIntensity;id++){
       stat[id].pop=malloc(sizeof(double)*md[0].nlev*5);
@@ -634,6 +749,8 @@ void levelPops(molData *md, configInfo *par, struct grid *gp, const int nlinetot
         for(iter=0;iter<5;iter++) stat[id].pop[ilev+md[0].nlev*iter]=gp[id].mol[0].pops[ilev];
       }
     }
+
+    if(par->outputfile) popsout(par,gp,md);
 
     /* Initialize convergence flag */
     for(id=0;id<par->ncell;id++){
@@ -658,6 +775,8 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
         }
       }
 
+      calcGridMolSpecNumDens(par,md,gp);
+
       nVerticesDone=0;
       omp_set_dynamic(0);
 #pragma omp parallel private(id,ispec,threadI,nextMolWithBlend) num_threads(par->nThreads)
@@ -670,7 +789,8 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
         mp=malloc(sizeof(gridPointData)*par->nSpecies);
         for (ispec=0;ispec<par->nSpecies;ispec++){
           mp[ispec].phot = malloc(sizeof(double)*md[ispec].nline*max_phot);
-          mp[ispec].vfac = malloc(sizeof(double)*                max_phot);
+          mp[ispec].vfac = malloc(sizeof(double)*               max_phot);
+          mp[ispec].vfac_loc = malloc(sizeof(double)*           max_phot);
           mp[ispec].jbar = malloc(sizeof(double)*md[ispec].nline);
         }
         halfFirstDs = malloc(sizeof(*halfFirstDs)*max_phot);
@@ -736,7 +856,7 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
       }
 
       gsl_sort(median, 1, c);
-      if(conv>1){
+      if(nItersDone>1){
         result1=median[0];
         result2 =gsl_stats_median_from_sorted_data(median, 1, c);
       }
@@ -746,7 +866,6 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
       if(par->outputfile != NULL) popsout(par,gp,md);
       nItersDone++;
     }
-
     gsl_set_error_handler(defaultErrorHandler);
 
     freeMolsWithBlends(blends.mols, blends.numMolsWithBlends);
@@ -765,7 +884,7 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
     free(stat);
   }
 
-  par->dataFlags |= DS_mask_4;
+  par->dataFlags |= (1 << DS_bit_populations);
 
   if(par->binoutputfile != NULL) binpopsout(par,gp,md);
 

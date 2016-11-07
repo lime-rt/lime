@@ -3,7 +3,7 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2016 The LIME development team
+ *  Copyright (C) 2015-2016 The LIME development team
  *
 ***TODO:
 	- Change the definition of the file format so that nmol is now written with the other mol[] scalars.
@@ -58,20 +58,17 @@ popsin(configInfo *par, struct grid **gp, molData **md, int *popsdone){
     for(j=0;j<(*md)[i].nline;j++) fread(&(*md)[i].beinstl[j],sizeof(double), 1,fp);
     (*md)[i].beinstu=malloc(sizeof(double)*(*md)[i].nline);
     for(j=0;j<(*md)[i].nline;j++) fread(&(*md)[i].beinstu[j],sizeof(double), 1,fp);
-    (*md)[i].local_cmb = malloc(sizeof(double)*(*md)[i].nline);
-    for(j=0;j<(*md)[i].nline;j++) fread(&(*md)[i].local_cmb[j],sizeof(double), 1,fp);
-    fread(&(*md)[i].norm, sizeof(double),      1,fp);
-    fread(&(*md)[i].norminv, sizeof(double),   1,fp);
+    for(j=0;j<(*md)[i].nline;j++) fread(&dummy,sizeof(double), 1,fp);
+    fread(&dummy, sizeof(double),      1,fp);
+    fread(&dummy, sizeof(double),   1,fp);
   }
 
   *gp=malloc(sizeof(struct grid)*par->ncell);
 
   for(i=0;i<par->ncell;i++){
-    (*gp)[i].a0 = NULL;
-    (*gp)[i].a1 = NULL;
-    (*gp)[i].a2 = NULL;
-    (*gp)[i].a3 = NULL;
-    (*gp)[i].a4 = NULL;
+    (*gp)[i].v1 = NULL;
+    (*gp)[i].v2 = NULL;
+    (*gp)[i].v3 = NULL;
     (*gp)[i].dens = NULL;
     (*gp)[i].abun = NULL;
     (*gp)[i].dir = NULL;
@@ -85,14 +82,13 @@ popsin(configInfo *par, struct grid **gp, molData **md, int *popsdone){
     (*gp)[i].mol=malloc(par->nSpecies*sizeof(struct populations));
     for(j=0;j<par->nSpecies;j++)
       fread(&(*gp)[i].mol[j].nmol, sizeof(double), 1, fp);
-    fread(&(*gp)[i].dopb, sizeof (*gp)[i].dopb, 1, fp);
+    fread(&(*gp)[i].dopb_turb, sizeof (*gp)[i].dopb_turb, 1, fp);
     for(j=0;j<par->nSpecies;j++){
       (*gp)[i].mol[j].pops=malloc(sizeof(double)*(*md)[j].nlev);
       for(k=0;k<(*md)[j].nlev;k++) fread(&(*gp)[i].mol[j].pops[k], sizeof(double), 1, fp);
-      (*gp)[i].mol[j].knu=malloc(sizeof(double)*(*md)[j].nline);
-      for(k=0;k<(*md)[j].nline;k++) fread(&(*gp)[i].mol[j].knu[k], sizeof(double), 1, fp);
-      (*gp)[i].mol[j].dust=malloc(sizeof(double)*(*md)[j].nline);
-      for(k=0;k<(*md)[j].nline;k++) fread(&(*gp)[i].mol[j].dust[k],sizeof(double), 1, fp);
+      (*gp)[i].mol[j].cont = NULL;
+      for(k=0;k<(*md)[j].nline;k++) fread(&dummy, sizeof(double), 1, fp);
+      for(k=0;k<(*md)[j].nline;k++) fread(&dummy, sizeof(double), 1, fp);
       fread(&(*gp)[i].mol[j].dopb,sizeof(double), 1, fp);
       fread(&(*gp)[i].mol[j].binv,sizeof(double), 1, fp);
       (*gp)[i].mol[j].partner=NULL;
@@ -109,7 +105,7 @@ popsin(configInfo *par, struct grid **gp, molData **md, int *popsdone){
 
   delaunay(DIM, *gp, (unsigned long)par->ncell, 0, &dc, &numCells);
   distCalc(par, *gp);
-  calcInterpCoeffs(par,*gp);
+  getVelocities(par,*gp);
 
   par->dataFlags |= (1 << DS_bit_x);
   par->dataFlags |= (1 << DS_bit_neighbours);

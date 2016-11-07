@@ -3,7 +3,7 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2016 The LIME development team
+ *  Copyright (C) 2015-2016 The LIME development team
  *
 ***TODO:
 	- Change the definition of the file format so that nmol is now read with the other mol[] scalars.
@@ -36,11 +36,29 @@ popsout(configInfo *par, struct grid *g, molData *m){
 }
 
 void
-binpopsout(configInfo *par, struct grid *g, molData *m){
+binpopsout(configInfo *par, struct grid *gp, molData *md){
   FILE *fp;
-  int i,j,*nTrans=NULL;
+  int i,j,k,*nTrans=NULL;
+  double dummy=-1.0;
+  struct oldPop {
+    double *dust, *knu;
+  } *dummyMol=NULL;
+  double **dummy2=NULL;
 
   nTrans = malloc(sizeof(int)*1);
+
+  dummyMol = malloc(sizeof(*dummyMol)*par->nSpecies);
+  dummy2 = malloc(sizeof(*dummy2)*par->nSpecies);
+  for(j=0;j<par->nSpecies;j++){
+    dummyMol[j].dust = malloc(sizeof(double)*md[j].nline);
+    dummyMol[j].knu  = malloc(sizeof(double)*md[j].nline);
+    dummy2[  j]      = malloc(sizeof(double)*md[i].nline);
+    for(k=0;k<md[j].nline;k++){
+      dummyMol[j].dust[k] = 0.0;
+      dummyMol[j].knu[ k] = 0.0;
+      dummy2[  j][     k] = 0.0;
+    } 
+  }
 
   if((fp=fopen(par->binoutputfile, "wb"))==NULL){
     if(!silent) bail_out("Error writing binary output populations file!");
@@ -52,47 +70,55 @@ binpopsout(configInfo *par, struct grid *g, molData *m){
   fwrite(&par->nSpecies, sizeof(int), 1, fp);
 
   for(i=0;i<par->nSpecies;i++){
-    if(m[i].part==NULL)
+    if(md[i].part==NULL)
       nTrans[0] = 1;
     else
-      nTrans[0] = m[i].part[0].ntrans;
+      nTrans[0] = md[i].part[0].ntrans;
 
-    fwrite(&m[i].nlev,  sizeof(int),               1,fp);
-    fwrite(&m[i].nline, sizeof(int),               1,fp);
-    fwrite(&m[i].npart, sizeof(int),               1,fp);
-    fwrite(nTrans,      sizeof(int)*m[i].npart,    1,fp);
-    fwrite(m[i].lal,    sizeof(int)*m[i].nline,    1,fp);
-    fwrite(m[i].lau,    sizeof(int)*m[i].nline,    1,fp);
-    fwrite(m[i].aeinst, sizeof(double)*m[i].nline, 1,fp);
-    fwrite(m[i].freq,   sizeof(double)*m[i].nline, 1,fp);
-    fwrite(m[i].beinstl,sizeof(double)*m[i].nline, 1,fp);
-    fwrite(m[i].beinstu,sizeof(double)*m[i].nline, 1,fp);
-    fwrite(m[i].local_cmb, sizeof(double)*m[i].nline,1,fp);
-    fwrite(&m[i].norm,  sizeof(double),1,fp);
-    fwrite(&m[i].norminv,sizeof(double),1,fp);
+    fwrite(&md[i].nlev,  sizeof(int),                1,fp);
+    fwrite(&md[i].nline, sizeof(int),                1,fp);
+    fwrite(&md[i].npart, sizeof(int),                1,fp);
+    fwrite(nTrans,       sizeof(int),                1,fp);
+    fwrite(md[i].lal,    sizeof(int)*md[i].nline,    1,fp);
+    fwrite(md[i].lau,    sizeof(int)*md[i].nline,    1,fp);
+    fwrite(md[i].aeinst, sizeof(double)*md[i].nline, 1,fp);
+    fwrite(md[i].freq,   sizeof(double)*md[i].nline, 1,fp);
+    fwrite(md[i].beinstl,sizeof(double)*md[i].nline, 1,fp);
+    fwrite(md[i].beinstu,sizeof(double)*md[i].nline, 1,fp);
+    fwrite(dummy2[i], sizeof(double)*md[i].nline,1,fp);
+    fwrite(&dummy, sizeof(double),1,fp);
+    fwrite(&dummy, sizeof(double),1,fp);
   }
 
   for(i=0;i<par->ncell;i++){
-    fwrite(&g[i].id,   sizeof(int),      1, fp);
-    fwrite(&g[i].x,  3*sizeof(double),   1, fp);
-    fwrite(&g[i].vel,3*sizeof(double),   1, fp);
-    fwrite(&g[i].sink, sizeof(int),      1, fp);
+    fwrite(&gp[i].id,   sizeof(int),      1, fp);
+    fwrite(&gp[i].x,  DIM*sizeof(double),   1, fp);
+    fwrite(&gp[i].vel,DIM*sizeof(double),   1, fp);
+    fwrite(&gp[i].sink, sizeof(int),      1, fp);
     for(j=0;j<par->nSpecies;j++)
-      fwrite(&g[i].mol[j].nmol,  sizeof(double),          1, fp);
-    fwrite(&g[i].dopb, sizeof g[i].dopb, 1, fp);
+      fwrite(&gp[i].mol[j].nmol,  sizeof(double),           1, fp);
+    fwrite(&gp[i].dopb_turb, sizeof gp[i].dopb_turb, 1, fp);
     for(j=0;j<par->nSpecies;j++){
-      fwrite(g[i].mol[j].pops,  sizeof(double)*m[j].nlev, 1, fp);
-      fwrite(g[i].mol[j].knu,   sizeof(double)*m[j].nline,1, fp);
-      fwrite(g[i].mol[j].dust,  sizeof(double)*m[j].nline,1, fp);
-      fwrite(&g[i].mol[j].dopb, sizeof(double),           1, fp);
-      fwrite(&g[i].mol[j].binv, sizeof(double),           1, fp);
+      fwrite(gp[i].mol[j].pops,  sizeof(double)*md[j].nlev, 1, fp);
+      fwrite(dummyMol[j].knu,   sizeof(double)*md[j].nline,1, fp);
+      fwrite(dummyMol[j].dust,  sizeof(double)*md[j].nline,1, fp);
+      fwrite(&gp[i].mol[j].dopb, sizeof(double),           1, fp);
+      fwrite(&gp[i].mol[j].binv, sizeof(double),           1, fp);
     }
-    fwrite(&g[i].dens[0], sizeof(double), 1, fp);
-    fwrite(&g[i].t[0],    sizeof(double), 1, fp);
-    fwrite(&g[i].abun[0], sizeof(double), 1, fp);
+    fwrite(&gp[i].dens[0], sizeof(double), 1, fp);
+    fwrite(&gp[i].t[0],    sizeof(double), 1, fp);
+    fwrite(&gp[i].abun[0], sizeof(double), 1, fp);
   }
 
   fclose(fp);
+
+  for(j=0;j<par->nSpecies;j++){
+    free(dummyMol[j].dust);
+    free(dummyMol[j].knu);
+    free(dummy2[j]);
+  }
+  free(dummyMol);
+  free(dummy2);
 
   free(nTrans);
 }

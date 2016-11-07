@@ -3,21 +3,19 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015 The LIME development team
+ *  Copyright (C) 2015-2016 The LIME development team
  *
  */
 
 #include "lime.h"
 
-void
-freeGAux(const unsigned long numPoints, const int numSpecies, struct gAuxType *gAux) {
-  unsigned long ppi;
-
-  if(gAux !=NULL){
-    for(ppi=0;ppi<numPoints;ppi++)
-      freePop2(numSpecies, gAux[ppi].mol);
-    free(gAux);
-  }
+void freeConfig(configInfo par){
+  free(par.moldatfile);
+  free(par.collPartIds);
+  free(par.nMolWeights);
+  free(par.dustWeights);
+  free(par.gridDensMaxLoc);
+  free(par.gridDensMaxValues);
 }
 
 void freeGrid(const unsigned int numPoints, const unsigned short numSpecies\
@@ -27,11 +25,9 @@ void freeGrid(const unsigned int numPoints, const unsigned short numSpecies\
 
   if(gp != NULL){
     for(i_u=0;i_u<numPoints;i_u++){
-      free(gp[i_u].a0);
-      free(gp[i_u].a1);
-      free(gp[i_u].a2);
-      free(gp[i_u].a3);
-      free(gp[i_u].a4);
+      free(gp[i_u].v1);
+      free(gp[i_u].v2);
+      free(gp[i_u].v3);
       free(gp[i_u].dir);
       free(gp[i_u].neigh);
       free(gp[i_u].w);
@@ -52,6 +48,7 @@ freeGridPointData(configInfo *par, gridPointData *mol){
       free(mol[i].jbar);
       free(mol[i].phot);
       free(mol[i].vfac);
+      free(mol[i].vfac_loc);
     }
     free(mol);
   }
@@ -80,7 +77,6 @@ freeMolData(const int nSpecies, molData *mol){
       free(mol[i].eterm);
       free(mol[i].gstat);
       free(mol[i].cmb);
-      free(mol[i].local_cmb);
     }
     free(mol);
   }
@@ -116,6 +112,8 @@ freeParImg(const int nImages, inputPars *par, image *img){
   }
   free(img);
 
+  free(par->gridDensMaxValues);
+  free(par->gridDensMaxLoc);
   free(par->moldatfile);
   free(par->collPartIds);
   free(par->nMolWeights);
@@ -123,57 +121,50 @@ freeParImg(const int nImages, inputPars *par, image *img){
   free(par->gridOutFiles);
 }
 
-void
-freePop2(const int numSpecies, struct pop2 *mol){
-  int i;
-
-  if(mol !=NULL){
-    for(i=0;i<numSpecies;i++){
-      free(mol[i].specNumDens);
-      free(mol[i].knu);
-      free(mol[i].dust);
-    }
-    free(mol);
-  }
-}
-
 void freePopulation(const unsigned short numSpecies, struct populations *pop){
   if(pop != NULL){
-    unsigned short j;
-    for(j=0;j<numSpecies;j++){
-      free(pop[j].pops);
-      free(pop[j].knu);
-      free(pop[j].dust);
-      free(pop[j].partner);
+    unsigned short i_s;
+    for(i_s=0;i_s<numSpecies;i_s++){
+      free(pop[i_s].pops);
+      free(pop[i_s].partner);
+      free(pop[i_s].specNumDens);
+      free(pop[i_s].cont);
     }
     free(pop);
   }
 }
 
-void freeSomeGridFields(const unsigned int numPoints, struct grid *gp){
+void freeSomeGridFields(const unsigned int numPoints, const unsigned short numSpecies\
+  , struct grid *gp){
+
   unsigned int i_u;
+  unsigned short i_s;
 
   if(gp != NULL){
     for(i_u=0;i_u<numPoints;i_u++){
-      free(gp[i_u].a0);
-      gp[i_u].a0 = NULL;
-      free(gp[i_u].a1);
-      gp[i_u].a1 = NULL;
-      free(gp[i_u].a2);
-      gp[i_u].a2 = NULL;
-      free(gp[i_u].a3);
-      gp[i_u].a3 = NULL;
-      free(gp[i_u].a4);
-      gp[i_u].a4 = NULL;
-//      free(gp[i_u].dir); // this too after changing raytrace to remove the call to line_plane_intersect.
+      free(gp[i_u].v1);
+      gp[i_u].v1 = NULL;
+      free(gp[i_u].v2);
+      gp[i_u].v2 = NULL;
+      free(gp[i_u].v3);
+      gp[i_u].v3 = NULL;
       free(gp[i_u].w);
       gp[i_u].w    = NULL;
-      free(gp[i_u].dens);
-      gp[i_u].dens = NULL;
       free(gp[i_u].abun);
       gp[i_u].abun = NULL;
       free(gp[i_u].ds);
       gp[i_u].ds   = NULL;
+
+      if(gp[i_u].mol != NULL){
+        for(i_s=0;i_s<numSpecies;i_s++){
+          free(gp[i_u].mol[i_s].pops);
+          gp[i_u].mol[i_s].pops = NULL;
+          free(gp[i_u].mol[i_s].partner);
+          gp[i_u].mol[i_s].partner = NULL;
+          free(gp[i_u].mol[i_s].cont);
+          gp[i_u].mol[i_s].cont = NULL;
+        }
+      }
     }
   }
 }

@@ -2,7 +2,7 @@
 # This file is part of LIME, the versatile line modeling engine
 #
 # Copyright (C) 2006-2014 Christian Brinch
-# Copyright (C) 2015 The LIME development team
+# Copyright (C) 2015-2016 The LIME development team
 
 ##
 ## Make sure to put the correct paths.
@@ -56,7 +56,7 @@ SRCS    = src/aux.c src/messages.c src/grid.c src/LTEsolution.c		\
 	  src/popsout.c src/predefgrid.c src/ratranInput.c		\
           src/raytrace.c src/smooth.c src/sourcefunc.c src/frees.c	\
 	  src/stateq.c src/statistics.c src/magfieldfit.c		\
-	  src/stokesangles.c src/writefits.c src/weights.c		\
+	  src/stokesangles.c src/writefits.c src/tree_random.c		\
 	  src/velospline.c src/getclosest.c src/grid2fits.c		\
 	  src/tcpsocket.c src/defaults.c src/fastexp.c src/gridio.c	\
 	  src/raythrucells.c
@@ -66,7 +66,7 @@ OBJS    = src/aux.o src/messages.o src/grid.o src/LTEsolution.o		\
 	  src/popsout.o src/predefgrid.o src/raytrace.o			\
 	  src/ratranInput.o src/smooth.o src/sourcefunc.o src/frees.o	\
 	  src/stateq.o src/statistics.o src/magfieldfit.o		\
-	  src/stokesangles.o src/writefits.o src/weights.o		\
+	  src/stokesangles.o src/writefits.o src/tree_random.o		\
 	  src/velospline.o src/getclosest.o src/grid2fits.o		\
 	  src/tcpsocket.o src/defaults.o src/fastexp.o src/gridio.o	\
 	  src/raythrucells.o
@@ -90,8 +90,15 @@ ${MODELO}:
 ${OBJS}: %.o: %.c  
 	${CC} ${CCFLAGS} ${CPPFLAGS} -o $@ -c $<
 
+doc::
+	mkdir doc/_html || true
+	sphinx-build doc doc/_html
+
+docclean::
+	rm -rf doc/_html
+
 clean:: 
 	rm -f *~ src/*.o ${TARGET} 
 
-distclean:: clean
+distclean:: clean docclean
 

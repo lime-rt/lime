@@ -8,9 +8,10 @@
 example/*.vtk
 example/*.pop
 example/*.fits*
-<<<<<<< HEAD
 example/lime_*.x
-=======
 example/*.dat
->>>>>>> 9eaa28365db1403277606d20aaf7c97bdd053092
+example/*_archive
+example/vlog.txt
 
+# Ignore html doc files
+doc/*.html
