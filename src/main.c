@@ -212,7 +212,7 @@ run(inputPars inpars, image *img){
     for(i=0;i<par.nImages;i++){
       if(!img[i].doline){
         raytrace(i, &par, gp, md, img, lamtab, kaptab, nEntries);
-        writeFits(i,&par,md,img);
+        writeFits(i,&par,img);
       }
     }
   }
@@ -253,7 +253,7 @@ run(inputPars inpars, image *img){
     for(i=0;i<par.nImages;i++){
       if(img[i].doline){
         raytrace(i, &par, gp, md, img, lamtab, kaptab, nEntries);
-        writeFits(i,&par,md,img);
+        writeFits(i,&par,img);
       }
     }
   }
