@@ -84,6 +84,7 @@
 #define N_RAN_PER_SEGMENT       3
 #define FAST_EXP_MAX_TAYLOR	3
 #define FAST_EXP_NUM_BITS	8
+#define NUM_GRID_STAGES		4
 #define MAX_N_COLL_PART		7
 #define N_SMOOTH_ITERS          20
 #define TYPICAL_ISM_DENS        1000.0
@@ -94,6 +95,8 @@
 #define ERF_TABLE_SIZE		6145
 #define BIN_WIDTH		(ERF_TABLE_LIMIT/(ERF_TABLE_SIZE-1.))
 #define IBIN_WIDTH 		1./BIN_WIDTH
+#define N_VEL_SEG_PER_HALF	1
+#define NUM_VEL_COEFFS		1+2*N_VEL_SEG_PER_HALF /* This is the number of velocity samples per edge (not including the grid vertices at each end of the edge). Currently this is elsewhere hard-wired at 3, the macro just being used in the file I/O modules. Note that we want an odd number of velocity samples per edge if we want to have the ability to do 2nd-order interpolation of velocity within Delaunay tetrahedra. */
 
 /* Collision partner ID numbers from LAMDA */
 #define CP_H2			1
@@ -103,6 +106,36 @@
 #define CP_H			5
 #define CP_He			6
 #define CP_Hplus		7
+
+/* Bit locations for the grid data-stage mask, that records the information which is present in the grid struct: */
+#define DS_bit_x             0	/* id, x, sink */
+#define DS_bit_neighbours    1	/* neigh, dir, ds, numNeigh */
+#define DS_bit_velocity      2	/* vel */
+#define DS_bit_density       3	/* dens */
+#define DS_bit_abundance     4	/* abun, nmol */
+#define DS_bit_turb_doppler  5	/* dopb */
+#define DS_bit_temperatures  6	/* t */
+#define DS_bit_magfield      7	/* B */
+#define DS_bit_ACOEFF        8	/* a0, a1, a2, a3, a4 */
+#define DS_bit_populations   9	/* mol */
+
+#define DS_mask_x             1<<DS_bit_x
+#define DS_mask_neighbours   (1<<DS_bit_neighbours   | DS_mask_x)
+#define DS_mask_velocity     (1<<DS_bit_velocity     | DS_mask_x)
+#define DS_mask_density      (1<<DS_bit_density      | DS_mask_x)
+#define DS_mask_abundance    (1<<DS_bit_abundance    | DS_mask_x)
+#define DS_mask_turb_doppler (1<<DS_bit_turb_doppler | DS_mask_x)
+#define DS_mask_temperatures (1<<DS_bit_temperatures | DS_mask_x)
+#define DS_mask_magfield     (1<<DS_bit_magfield     | DS_mask_x)
+#define DS_mask_ACOEFF       (1<<DS_bit_ACOEFF       | DS_mask_neighbours | DS_mask_velocity)
+
+#define DS_mask_1            DS_mask_x
+#define DS_mask_2            DS_mask_neighbours
+#define DS_mask_3            (DS_mask_2|DS_mask_density|DS_mask_abundance|DS_mask_turb_doppler|DS_mask_temperatures|DS_mask_ACOEFF)
+#define DS_mask_populations  (1<<DS_bit_populations | DS_mask_3)
+#define DS_mask_4            DS_mask_populations
+#define DS_mask_all          (DS_mask_populations | DS_mask_magfield)
+#define DS_mask_all_but_mag  DS_mask_all & ~(1<<DS_bit_magfield)
 
 #include "inpars.h"
 
@@ -119,6 +152,9 @@ typedef struct {
   int sampling,lte_only,init_lte,antialias,polarization,nThreads,numDims;
   int nLineImages, nContImages;
   char **moldatfile;
+  _Bool writeGridAtStage[NUM_GRID_STAGES];
+  char *gridInFile,**gridOutFiles;
+  int dataFlags,nSolveIters;
   double (*gridDensMaxLoc)[DIM], *gridDensMaxValues;
 } configInfo;
 
@@ -284,10 +320,16 @@ double gridDensity(configInfo*, double*);
 /* More functions */
 void	run(inputPars, image *);
 
+_Bool	allBitsSet(const int flags, const int mask);
+_Bool	anyBitSet(const int flags, const int mask);
+_Bool	bitIsSet(const int flags, const int bitI);
+_Bool	onlyBitsSet(const int flags, const int mask);
+
 void	assignMolCollPartsToDensities(configInfo*, molData*);
 void	binpopsout(configInfo*, struct grid*, molData*);
-void	buildGrid(configInfo*, struct grid*);
 int	buildRayCellChain(double*, double*, struct grid*, struct cell*, _Bool**, unsigned long, int, int, int, const double, unsigned long**, intersectType**, int*);
+void	calcAvRelLineAmp(struct grid*, int, int, double, double, double*);
+void	calcAvRelLineAmp_lin(struct grid*, int, int, double, double, double*);
 void	calcFastExpRange(const int, const int, int*, int*, int*);
 void	calcGridCollRates(configInfo*, molData*, struct grid*);
 void	calcGridContDustOpacity(configInfo*, const double, double*, double*, const int, struct grid*);
@@ -306,6 +348,7 @@ void	calcTriangleBaryCoords(double vertices[3][2], double, double, double barys[
 triangle2D calcTriangle2D(faceType);
 void	checkGridDensities(configInfo*, struct grid*);
 void	checkUserDensWeights(configInfo*);
+void	continuumSetup(int, image*, molData*, configInfo*, struct grid*);
 void	delaunay(const int, struct grid*, const unsigned long, const _Bool, struct cell**, unsigned long*);
 void	distCalc(configInfo*, struct grid*);
 void	doBaryInterp(const intersectType, struct grid*, double*, unsigned long*, molData*, const int, gridInterp*);
@@ -329,6 +372,7 @@ void	freeSomeGridFields(const unsigned int, const unsigned short, struct grid*);
 double  gaussline(const double, const double);
 void	getArea(configInfo*, struct grid*, const gsl_rng*);
 void	getclosest(double, double, double, long*, long*, double*, double*, double*);
+int	getColIndex(char**, const int, char*);
 void	getjbar(int, molData*, struct grid*, const int, configInfo*, struct blendInfo, int, gridPointData*, double*);
 void	getMass(configInfo*, struct grid*, const gsl_rng*);
 void	getmatrix(int, gsl_matrix*, molData*, struct grid*, int, gridPointData*);
@@ -336,8 +380,8 @@ int	getNewEntryFaceI(const unsigned long, const struct cell);
 int	getNextEdge(double*, int, struct grid*, const gsl_rng*);
 void	getVelocities(configInfo *, struct grid *);
 void	getVelocities_pregrid(configInfo *, struct grid *);
-void	input(inputPars*, image*);
 void	gridPopsInit(configInfo*, molData*, struct grid*);
+void	input(inputPars*, image*);
 double	interpolateKappa(const double, double*, double*, const int, gsl_spline*, gsl_interp_accel*);
 void	intersectLineTriangle(double*, double*, faceType, intersectType*);
 float	invSqrt(float);
@@ -356,11 +400,13 @@ int	pointEvaluation(configInfo*, const double, double*);
 void	popsin(configInfo*, struct grid**, molData**, int*);
 void	popsout(configInfo*, struct grid*, molData*);
 void	predefinedGrid(configInfo*, struct grid*);
+void	processFitsError(int);
 double	ratranInput(char*, char*, double, double, double);
 void	raytrace(int, configInfo*, struct grid*, molData*, image*, double*, double*, const int);
 void	readDummyCollPart(FILE*, const int);
 void	readDustFile(char*, double**, double**, int*);
 void	readMolData(configInfo*, molData*, int**, int*);
+void	readOrBuildGrid(configInfo*, struct grid**);
 void	readUserInput(inputPars*, image**, int*, int*);
 void	report(int, configInfo*, struct grid*);
 void	setUpConfig(configInfo*, image**, molData**);
@@ -379,6 +425,7 @@ double	veloproject(const double*, const double*);
 void	write2Dfits(int, configInfo*, molData*, image*);
 void	write3Dfits(int, configInfo*, molData*, image*);
 void	writeFits(const int, configInfo*, molData*, image*);
+void	writeGridIfRequired(configInfo*, struct grid*, molData*, const int);
 void	write_VTK_unstructured_Points(configInfo*, struct grid*);
 
 
@@ -395,7 +442,7 @@ void	greetings_parallel(int);
 void	printDone(int);
 void	printMessage(char *);
 void	progressbar(double, int);
-void	progressbar2(int, int, double, double, double);
+void	progressbar2(configInfo*, int, int, double, double, double);
 void	quotemass(double);
 void	screenInfo();
 void	warning(char*);
@@ -404,7 +451,7 @@ void	warning(char*);
 extern double EXP_TABLE_2D[128][10];
 extern double EXP_TABLE_3D[256][2][10];
 #else
-extern double EXP_TABLE_2D[1][1]; // nominal definitions so the fastexp.c module will compile.
+extern double EXP_TABLE_2D[1][1]; /* nominal definitions so the fastexp.c module will compile. */
 extern double EXP_TABLE_3D[1][1][1];
 #endif
 

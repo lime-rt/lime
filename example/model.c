@@ -26,6 +26,7 @@ input(inputPars *par, image *img){
   par->moldatfile[0]            = "hco+@xpol.dat";
   par->antialias                = 4;
   par->sampling                 = 2; // log distr. for radius, directions distr. uniformly on a sphere.
+  par->nSolveIters              = 14;
 
   par->outputfile               = "populations.pop";
   par->binoutputfile            = "restart.pop";
@@ -80,6 +81,17 @@ input(inputPars *par, image *img){
   par->collPartIds[0]           = CP_H2;
   par->nMolWeights[0]           = 1.0;
   par->dustWeights[0]           = 1.0;
+
+  /* Set one or more of the following parameters for full output of the grid-specific data at any of 4 stages during the processing. (See the header of gridio.c for information about the stages.)
+  par->gridOutFiles[0] = "grid_1.ds";
+  par->gridOutFiles[1] = "grid_2.ds";
+  par->gridOutFiles[2] = "grid_3.ds";
+  par->gridOutFiles[3] = "grid_4.ds";
+  */
+
+  /* You can also optionally read in a FITS file stored via the previous parameters, or prepared externally. See the header of grid2fits.c for information about the correct file format. LIME can cope with almost any sensible subset of the recognized columns; it will use the file values if they are present, then calculate the missing ones.
+  par->gridInFile = "grid_4.ds";
+  */
 
   /*
    * Definitions for image #0. Add blocks with successive values of i for additional images.

@@ -83,7 +83,22 @@ predefinedGrid(configInfo *par, struct grid *g){
 
   delaunay(DIM, g, (unsigned long)par->ncell, 0, &dc, &numCells);
   distCalc(par,g);
+  //  getArea(par,g, ran);
+  //  getMass(par,g, ran);
   getVelocities_pregrid(par,g);
+
+  par->dataFlags |= (1 << DS_bit_x);
+  par->dataFlags |= (1 << DS_bit_neighbours);
+  par->dataFlags |= (1 << DS_bit_velocity);
+  par->dataFlags |= (1 << DS_bit_density);
+  par->dataFlags |= (1 << DS_bit_abundance);
+  par->dataFlags |= (1 << DS_bit_turb_doppler);
+  par->dataFlags |= (1 << DS_bit_temperatures);
+  par->dataFlags |= (1 << DS_bit_magfield);
+  par->dataFlags |= (1 << DS_bit_ACOEFF);
+
+//**** should fill in any missing info via the appropriate function calls.
+
   if(par->gridfile) write_VTK_unstructured_Points(par, g);
   gsl_rng_free(ran);
   free(dc);

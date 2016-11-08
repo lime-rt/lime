@@ -23,6 +23,9 @@ smooth(configInfo *par, struct grid *gp){
   unsigned long numCells;
 
   for(sg=0;sg<N_SMOOTH_ITERS;sg++){
+    delaunay(DIM, gp, (unsigned long)par->ncell, 0, &dc, &numCells);
+    distCalc(par, gp);
+
     for(i=0;i<par->pIntensity;i++){
       mindist=1e30;
       cn=-1;
@@ -69,8 +72,6 @@ smooth(configInfo *par, struct grid *gp){
       }	
     }
 		
-    delaunay(DIM, gp, (unsigned long)par->ncell, 0, &dc, &numCells);
-    distCalc(par, gp);	    
     if(!silent) progressbar((double)(sg+1)/(double)N_SMOOTH_ITERS, 5);	
     free(dc);
   }	

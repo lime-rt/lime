@@ -25,6 +25,9 @@ void freeGrid(const unsigned int numPoints, const unsigned short numSpecies\
 
   if(gp != NULL){
     for(i_u=0;i_u<numPoints;i_u++){
+      free(gp[i_u].v1);
+      free(gp[i_u].v2);
+      free(gp[i_u].v3);
       free(gp[i_u].dir);
       free(gp[i_u].neigh);
       free(gp[i_u].w);
@@ -115,6 +118,7 @@ freeParImg(const int nImages, inputPars *par, image *img){
   free(par->collPartIds);
   free(par->nMolWeights);
   free(par->dustWeights);
+  free(par->gridOutFiles);
 }
 
 void freePopulation(const unsigned short numSpecies, struct populations *pop){

@@ -9,6 +9,7 @@
 
 #include "lime.h"
 #include "tree_random.h"
+#include "gridio.h"
 
 /*....................................................................*/
 void mallocAndSetDefaultGrid(struct grid **gp, const unsigned int numPoints){
@@ -83,9 +84,10 @@ void calcGridMolSpecNumDens(configInfo *par, molData *md, struct grid *gp){
 
   for(gi=0;gi<par->ncell;gi++){
     for(ispec=0;ispec<par->nSpecies;ispec++){
-      for(ei=0;ei<md[ispec].nlev;ei++)
+      for(ei=0;ei<md[ispec].nlev;ei++){
         gp[gi].mol[ispec].specNumDens[ei] = gp[gi].mol[ispec].binv\
           *gp[gi].mol[ispec].nmol*gp[gi].mol[ispec].pops[ei];
+      }
     }
   }
 }
@@ -737,6 +739,7 @@ getMass(configInfo *par, struct grid *g, const gsl_rng *ran){
   if(!silent) quotemass(mass*2.37*1.67e-27/1.989e30);
 }
 
+/*....................................................................*/
 int pointEvaluation(configInfo *par, const double uniformRandom, double *r){
   double fracDensity;
 
@@ -746,6 +749,7 @@ int pointEvaluation(configInfo *par, const double uniformRandom, double *r){
   else return 0;
 }
 
+/*....................................................................*/
 void randomsViaRejection(configInfo *par, const unsigned int desiredNumPoints, gsl_rng *randGen\
   , double (*outRandLocations)[DIM]){
 
@@ -753,7 +757,7 @@ void randomsViaRejection(configInfo *par, const unsigned int desiredNumPoints, g
   double logmin; /* Logarithm of par->minScale. */
   double r,theta,phi,sinPhi,z,semiradius;
   double uniformRandom;
-  int i,j,di;
+  int j,di;
   unsigned int i_u;
 //  _Bool pointIsAccepted;
   int pointIsAccepted;
@@ -826,180 +830,394 @@ void randomsViaRejection(configInfo *par, const unsigned int desiredNumPoints, g
   }
 }
 
+/*....................................................................*/
+void writeGridIfRequired(configInfo *par, struct grid *gp, molData *md, const int fileFormatI){
+  int status = 0;
+  char **collPartNames=NULL; /*** this is a placeholder until we start reading these. */
+  char message[80];
+  int dataStageI=0;
+
+  /* Work out the data stage:
+  */
+  if(!allBitsSet(par->dataFlags, DS_mask_1)){
+    if(!silent) warning("Trying to write at data stage 0.");
+    return;
+  }
+
+  if(      allBitsSet(par->dataFlags, DS_mask_4)){
+    dataStageI = 4;
+  }else if(allBitsSet(par->dataFlags, DS_mask_3)){
+    dataStageI = 3;
+  }else if(allBitsSet(par->dataFlags, DS_mask_2)){
+    dataStageI = 2;
+  }else{
+    dataStageI = 1;
+  }
+
+  if(par->writeGridAtStage[dataStageI-1]){
+    struct gridInfoType gridInfo;
+    unsigned short i_us;
+    struct keywordType *primaryKwds=malloc(sizeof(struct keywordType)*1);
+
+    gridInfo.nInternalPoints = par->pIntensity;
+    gridInfo.nSinkPoints     = par->sinkPoints;
+    gridInfo.nLinks          = 0; /* This quantity is calculated when writing to file. */
+    gridInfo.nNNIndices      = 0; /* This quantity is calculated when writing to file. */
+    gridInfo.nDims           = DIM;
+    gridInfo.nSpecies        = par->nSpecies;
+    gridInfo.nDensities      = par->numDensities;
+    gridInfo.nLinkVels       = NUM_VEL_COEFFS;
+    if(md==NULL)
+      gridInfo.mols = NULL;
+    else{
+      gridInfo.mols = malloc(sizeof(*(gridInfo.mols))*gridInfo.nSpecies);
+      for(i_us=0;i_us<gridInfo.nSpecies;i_us++){
+        gridInfo.mols[i_us].molName = md[i_us].molName; /* NOTE*** this just copies the pointer. Should be safe enough if we just want to read this value. */
+        gridInfo.mols[i_us].nLevels = md[i_us].nlev;
+        gridInfo.mols[i_us].nLines  = md[i_us].nline;
+      }
+    }
+
+    initializeKeyword(&primaryKwds[0]);
+    primaryKwds[0].datatype = TDOUBLE;
+    primaryKwds[0].keyname = "RADIUS  ";
+    primaryKwds[0].doubleValue = par->radius;
+    primaryKwds[0].comment = "[m] Model radius.";
+
+    status = writeGrid(par->gridOutFiles[dataStageI-1], fileFormatI\
+      , gridInfo, primaryKwds, 1, gp, collPartNames, par->dataFlags);
+
+    free(primaryKwds);
+    free(gridInfo.mols);
+
+    if(status){
+      sprintf(message, "writeGrid at data stage %d returned with status %d", dataStageI, status);
+      if(!silent) bail_out(message);
+      exit(1);
+    }
+  }
+
+  free(collPartNames);
+}
+
+/*....................................................................*/
 void
-buildGrid(configInfo *par, struct grid *g){
+readOrBuildGrid(configInfo *par, struct grid **gp){
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
-  int i, k, di, numSubFields, levelI=0;
-  double theta,semiradius,z,fieldVolume,sumDensity,maxDensity,minNumDensity,nToP,sphereVolume;
-  double vals[MAX_N_COLL_PART];
+  int i,j,k,di,si,levelI=0,status=0,numCollPartRead;
+  double theta,semiradius,z;
   double *outRandDensities=NULL;
   double (*outRandLocations)[DIM]=NULL;
-  extern double densityNormalizer, minDensity;
-  extern int numCollisionPartners;
   treeRandConstType rinc;
   treeRandVarType rinv;
   struct cell *dc=NULL; /* Not used at present. */
   unsigned long numCells;
+  struct gridInfoType gridInfoRead;
+  char **collPartNames;
+  char message[80];
   double x[DIM];
-  unsigned int startI=0;
   treeType tree;
 
-  rinc.randGen = gsl_rng_alloc(ranNumGenType);	/* Random number generator */
+  par->dataFlags = 0;
+  if(par->gridInFile!=NULL){
+    const int numDesiredKwds=1;
+    struct keywordType *desiredKwds=malloc(sizeof(struct keywordType)*numDesiredKwds);
+
+    initializeKeyword(&desiredKwds[0]);
+    desiredKwds[0].datatype = TDOUBLE;
+    desiredKwds[0].keyname = "RADIUS  ";
+    /* Currently not doing anything with the read keyword. */
+
+    status = readGrid(par->gridInFile, lime_FITS, &gridInfoRead, desiredKwds\
+      , numDesiredKwds, gp, &collPartNames, &numCollPartRead, &(par->dataFlags));
+
+    if(status){
+      if(!silent){
+        sprintf(message, "Read of grid file failed with status return %d", status);
+        bail_out(message);
+      }
+      exit(1);
+    }
+
+    /* Test that dataFlags obeys the rules. */
+    /* No other bit may be set if DS_bit_x is not: */
+    if(anyBitSet(par->dataFlags, (DS_mask_all & ~(1 << DS_bit_x))) && !bitIsSet(par->dataFlags, DS_bit_x)){
+      if(!silent) bail_out("You may not read a grid file without X, ID or IS_SINK data.");
+      exit(1);
+    }
+
+    /* DS_bit_ACOEFF may not be set if either DS_bit_neighbours or DS_bit_velocity is not: */
+    if(bitIsSet(par->dataFlags, DS_bit_ACOEFF)\
+    && !(bitIsSet(par->dataFlags, DS_bit_neighbours) && bitIsSet(par->dataFlags, DS_bit_velocity))){
+      if(!silent) bail_out("You may not read a grid file with ACOEFF but no VEL or neighbour data.");
+      exit(1);
+    }
+
+    /* DS_bit_populations may not be set unless all the others (except DS_bit_magfield) are set as well: */
+    if(bitIsSet(par->dataFlags, DS_bit_populations)\
+    && !allBitsSet(par->dataFlags & DS_mask_all_but_mag, DS_mask_populations)){
+      if(!silent) bail_out("You may not read a grid file with pop data unless all other data is present.");
+      exit(1);
+    }
+
+    /* Test gridInfoRead values against par values and overwrite the latter, with a warning, if necessary.
+    */
+    if(gridInfoRead.nSinkPoints>0 && par->sinkPoints>0){
+      if((int)gridInfoRead.nSinkPoints!=par->sinkPoints){
+        if(!silent) warning("par->sinkPoints will be overwritten");
+        par->sinkPoints = (int)gridInfoRead.nSinkPoints;
+      }
+      if((int)gridInfoRead.nInternalPoints!=par->pIntensity){
+        if(!silent) warning("par->pIntensity will be overwritten");
+        par->pIntensity = (int)gridInfoRead.nInternalPoints;
+      }
+      par->ncell = par->sinkPoints + par->pIntensity;
+    }
+    if(gridInfoRead.nDims!=DIM){ /* At present this situation is already detected and handled inside readGridExtFromFits(), but it may not be in future. The test here has no present functionality but saves trouble later if we change grid.x from an array to a pointer. */
+      if(!silent){
+        sprintf(message, "Grid file had %d dimensions but there should be %d.", (int)gridInfoRead.nDims, DIM);
+        bail_out(message);
+      }
+      exit(1);
+    }
+    if(gridInfoRead.nSpecies>0 && par->nSpecies>0 && (int)gridInfoRead.nSpecies!=par->nSpecies){
+      if(!silent){
+        sprintf(message, "Grid file had %d species but you have provided moldata files for %d."\
+          , (int)gridInfoRead.nSpecies, par->nSpecies);
+        bail_out(message);
+      }
+      exit(1);
+/**** should compare name to name - at some later time after we have read these from the moldata files? */
+    }
+    if(gridInfoRead.nDensities>0 && par->numDensities>0 && (int)gridInfoRead.nDensities!=par->numDensities){
+      if(!silent){
+        sprintf(message, "Grid file had %d densities but you have provided %d."\
+          , (int)gridInfoRead.nDensities, par->numDensities);
+        bail_out(message);
+      }
+      exit(1);
+    }
+
+/*
+**** Ideally we should also have a test on nACoeffs.
+
+**** Ideally we should also have a test on the mols entries - at some later time after we have read the corresponding values from the moldata files?
+*/
+  } /* End of read grid file. Whether and what we subsequently calculate will depend on the value of par->dataStageI returned. */
+
+  if(!anyBitSet(par->dataFlags, DS_mask_x)){ /* This should only happen if we did not read a file. Generate the grid point locations. */
+    mallocAndSetDefaultGrid(gp, (unsigned int)par->ncell);
+
+    rinc.randGen = gsl_rng_alloc(ranNumGenType);	/* Random number generator */
 #ifdef TEST
-  gsl_rng_set(rinc.randGen,342971);
+    gsl_rng_set(rinc.randGen,342971);
 #else
-  gsl_rng_set(rinc.randGen,time(0));
+    gsl_rng_set(rinc.randGen,time(0));
 #endif  
 
-  outRandDensities = malloc(sizeof(double   )*par->pIntensity); /* Not used at present; and in fact they are not useful outside this routine, because they are not the values of the physical density at that point, just what densityFunc3D() returns, which is not necessarily the same thing. */
-  outRandLocations = malloc(sizeof(*outRandLocations)*par->pIntensity);
+    outRandDensities = malloc(sizeof(double   )*par->pIntensity); /* Not used at present; and in fact they are not useful outside this routine, because they are not the values of the physical density at that point, just what densityFunc3D() returns, which is not necessarily the same thing. */
+    outRandLocations = malloc(sizeof(*outRandLocations)*par->pIntensity);
 
-  if(par->samplingAlgorithm==0){
-    randomsViaRejection(par, (unsigned int)par->pIntensity, rinc.randGen, outRandLocations);
+    if(par->samplingAlgorithm==0){
+      randomsViaRejection(par, (unsigned int)par->pIntensity, rinc.randGen, outRandLocations);
 
-  } else if(par->samplingAlgorithm==1){
-    rinc.par = *par;
-    rinc.verbosity = 0;
-    rinc.numInRandoms      = TREE_N_RANDOMS;
-    rinc.maxRecursion      = TREE_MAX_RECURSION;
-    rinc.maxNumTrials      = TREE_MAX_N_TRIALS;
-    rinc.dither            = TREE_DITHER;
-    rinc.maxNumTrialsDbl = (double)rinc.maxNumTrials;
-    rinc.doShuffle = 1;
-    rinc.doQuasiRandom = 1;
+    } else if(par->samplingAlgorithm==1){
+      rinc.par = *par;
+      rinc.verbosity = 0;
+      rinc.numInRandoms      = TREE_N_RANDOMS;
+      rinc.maxRecursion      = TREE_MAX_RECURSION;
+      rinc.maxNumTrials      = TREE_MAX_N_TRIALS;
+      rinc.dither            = TREE_DITHER;
+      rinc.maxNumTrialsDbl = (double)rinc.maxNumTrials;
+      rinc.doShuffle = 1;
+      rinc.doQuasiRandom = 1;
 
-    for(di=0;di<DIM;di++){
-      rinv.fieldOrigin[di] = -par->radius;
-      rinv.fieldWidth[di] = 2.0*par->radius;
-    }
-    rinv.expectedDesNumPoints = (double)par->pIntensity;
-    rinc.desiredNumPoints = (unsigned int)par->pIntensity;
-
-    rinv.numHighPoints = par->numGridDensMaxima;
-    if(par->numGridDensMaxima>0){
-      rinv.highPointLocations = malloc(sizeof(*(rinv.highPointLocations))*par->numGridDensMaxima);
-      rinv.highPointDensities = malloc(sizeof(double   )*par->numGridDensMaxima);
-      for(i=0;i<par->numGridDensMaxima;i++){
-        for(di=0;di<DIM;di++){
-          rinv.highPointLocations[i][di] = par->gridDensMaxLoc[i][di];
-        }
-        rinv.highPointDensities[i] = par->gridDensMaxValues[i];
+      for(di=0;di<DIM;di++){
+        rinv.fieldOrigin[di] = -par->radius;
+        rinv.fieldWidth[di] = 2.0*par->radius;
       }
-    }else{
-      rinv.highPointLocations = NULL;
-      rinv.highPointDensities = NULL;
-    }
+      rinv.expectedDesNumPoints = (double)par->pIntensity;
+      rinc.desiredNumPoints = (unsigned int)par->pIntensity;
 
-    initializeTree(&rinc, &rinv, gridDensity, &tree);
-    constructTheTree(&rinc, &rinv, levelI, gridDensity, &tree);
-    fillTheTree(&rinc, &tree, gridDensity, outRandLocations, outRandDensities);
+      rinv.numHighPoints = par->numGridDensMaxima;
+      if(par->numGridDensMaxima>0){
+        rinv.highPointLocations = malloc(sizeof(*(rinv.highPointLocations))*par->numGridDensMaxima);
+        rinv.highPointDensities = malloc(sizeof(double   )*par->numGridDensMaxima);
+        for(i=0;i<par->numGridDensMaxima;i++){
+          for(di=0;di<DIM;di++){
+            rinv.highPointLocations[i][di] = par->gridDensMaxLoc[i][di];
+          }
+          rinv.highPointDensities[i] = par->gridDensMaxValues[i];
+        }
+      }else{
+        rinv.highPointLocations = NULL;
+        rinv.highPointDensities = NULL;
+      }
 
-    free(tree.leaves);
-    freeRinv(rinv);
-    free(rinc.inRandLocations);
+      initializeTree(&rinc, &rinv, gridDensity, &tree);
+      constructTheTree(&rinc, &rinv, levelI, gridDensity, &tree);
+      fillTheTree(&rinc, &tree, gridDensity, outRandLocations, outRandDensities);
 
-  } else {
-    if(!silent) bail_out("Unrecognized sampling algorithm.");
-    exit(1);
-  }
+      free(tree.leaves);
+      freeRinv(rinv);
+      free(rinc.inRandLocations);
 
-  for(k=0;k<par->pIntensity;k++){
-    /* Assign values to the k'th grid point */
-    g[k].id=k;
-    g[k].x[0]=outRandLocations[k][0];
-    g[k].x[1]=outRandLocations[k][1];
-    if(DIM==3) g[k].x[2]=outRandLocations[k][2];
-    g[k].sink=0;
-
-    /* This next step needs to be done, even though it looks stupid */
-    g[k].dir=malloc(sizeof(point)*1);
-    g[k].ds =malloc(sizeof(double)*1);
-    g[k].neigh =malloc(sizeof(struct grid *)*1);
-  }
-
-  /* end model grid point assignment */
-  if(!silent) printDone(4);
-
-  for(i=0;i<par->ncell;i++){
-    g[i].dens = malloc(sizeof(double)*par->numDensities);
-    g[i].abun = malloc(sizeof(double)*par->nSpecies);
-  }
-
-  /* Add surface sink particles */
-  for(i=0;i<par->sinkPoints;i++){
-    theta=gsl_rng_uniform(rinc.randGen)*2*PI;
-
-    if(DIM==3) {
-      z=2*gsl_rng_uniform(rinc.randGen)-1.;
-      semiradius=sqrt(1.-z*z);
-      x[2]=z;
     } else {
-      semiradius=1.0;
+      if(!silent) bail_out("Unrecognized sampling algorithm.");
+      exit(1);
     }
 
-    x[0]=semiradius*cos(theta);
-    x[1]=semiradius*sin(theta);;
-    g[k].id=k;
-    g[k].x[0]=par->radius*x[0];
-    g[k].x[1]=par->radius*x[1];
-    if(DIM==3) g[k].x[2]=par->radius*x[2];
-    g[k].sink=1;
-    g[k].abun[0]=0;
-    g[k].dens[0]=1e-30;//************** what is the low but non zero value for?
-    g[k].t[0]=par->tcmb;
-    g[k].t[1]=par->tcmb;
-    g[k++].dopb_turb=0.;
+    for(k=0;k<par->pIntensity;k++){
+      /* Assign values to the k'th grid point */
+      (*gp)[k].id=k;
+      (*gp)[k].x[0]=outRandLocations[k][0];
+      (*gp)[k].x[1]=outRandLocations[k][1];
+      if(DIM==3) (*gp)[k].x[2]=outRandLocations[k][2];
+      (*gp)[k].sink=0;
+    }
+
+    /* end model grid point assignment */
+    if(!silent) printDone(4);
+
+    /* Add surface sink particles */
+    for(k=par->pIntensity;k<par->ncell;k++){
+      theta=gsl_rng_uniform(rinc.randGen)*2*PI;
+
+      if(DIM==3) {
+        z=2*gsl_rng_uniform(rinc.randGen)-1.;
+        semiradius=sqrt(1.-z*z);
+        x[2]=z;
+      } else {
+        semiradius=1.0;
+      }
+
+      x[0]=semiradius*cos(theta);
+      x[1]=semiradius*sin(theta);;
+      (*gp)[k].id=k;
+      (*gp)[k].x[0]=par->radius*x[0];
+      (*gp)[k].x[1]=par->radius*x[1];
+      if(DIM==3) (*gp)[k].x[2]=par->radius*x[2];
+      (*gp)[k].sink=1;
+    }
+    /* end grid allocation */
+
+    free(outRandLocations);
+    free(outRandDensities);
+    gsl_rng_free(rinc.randGen);
+
+    if(par->samplingAlgorithm==0){
+      smooth(par,*gp);
+      if(!silent) printDone(5);
+    }
+
+    par->dataFlags |= DS_mask_1;
   }
-  /* end grid allocation */
 
-  /* Check that the user has supplied all necessary functions:
-  */
-  density(    0.0,0.0,0.0, g[0].dens);
-  temperature(0.0,0.0,0.0, g[0].t);
-  doppler(    0.0,0.0,0.0,&g[0].dopb_turb);
-  abundance(  0.0,0.0,0.0, g[0].abun);
-  /* Note that velocity() is the only one of the 5 mandatory functions which is still needed (in raytrace) unless par->doPregrid. Therefore we test it already in parseInput(). */
+  if(onlyBitsSet(par->dataFlags, DS_mask_1)) /* Only happens if (i) we read no file and have constructed this data within LIME, or (ii) we read a file at dataStageI==1. */
+    writeGridIfRequired(par, *gp, NULL, lime_FITS);
 
-  delaunay(DIM, g, (unsigned long)par->ncell, 0, &dc, &numCells);
-  distCalc(par, g);
+  if(!allBitsSet(par->dataFlags, DS_mask_neighbours)){
+    delaunay(DIM, *gp, (unsigned long)par->ncell, 0, &dc, &numCells);
 
-  if(par->samplingAlgorithm==0){
-    smooth(par,g);
-    if(!silent) printDone(5);
+    par->dataFlags |= DS_mask_neighbours;
   }
+  distCalc(par, *gp); /* Mallocs and sets .dir & .ds, sets .nphot. We don't store these values so we have to calculate them whether we read a file or not. */
 
-  for(i=0;i<par->pIntensity;i++){
-    density(    g[i].x[0],g[i].x[1],g[i].x[2], g[i].dens);
-    temperature(g[i].x[0],g[i].x[1],g[i].x[2], g[i].t);
-    doppler(    g[i].x[0],g[i].x[1],g[i].x[2],&g[i].dopb_turb);
-    abundance(  g[i].x[0],g[i].x[1],g[i].x[2], g[i].abun);
-    velocity(   g[i].x[0],g[i].x[1],g[i].x[2], g[i].vel);
-  }
+  if(onlyBitsSet(par->dataFlags, DS_mask_2)) /* Only happens if (i) we read no file and have constructed this data within LIME, or (ii) we read a file at dataStageI==2. */
+    writeGridIfRequired(par, *gp, NULL, lime_FITS);
 
-  /* Set velocity values also for sink points (otherwise Delaunay ray-tracing has problems) */
-  for(i=par->pIntensity;i<par->ncell;i++)
-    velocity(g[i].x[0],g[i].x[1],g[i].x[2],g[i].vel);
-
-  checkGridDensities(par, g);
-
-  if(par->polarization){
+  if(!allBitsSet(par->dataFlags, DS_mask_velocity)){
     for(i=0;i<par->pIntensity;i++)
-      magfield(g[i].x[0],g[i].x[1],g[i].x[2], g[i].B);
-  }else{
-    for(i=0;i<par->pIntensity;i++){
-      g[i].B[0]=0.0;
-      g[i].B[1]=0.0;
-      g[i].B[2]=0.0;
+      velocity((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],(*gp)[i].vel);
+
+    /* Set velocity values also for sink points (otherwise Delaunay ray-tracing has problems) */
+    for(i=par->pIntensity;i<par->ncell;i++)
+      velocity((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],(*gp)[i].vel);
+
+    par->dataFlags |= DS_mask_velocity;
+  }
+
+  if(!allBitsSet(par->dataFlags, DS_mask_density)){
+    for(i=0;i<par->ncell; i++)
+      (*gp)[i].dens = malloc(sizeof(double)*par->numDensities);
+    for(i=0;i<par->pIntensity;i++)
+      density((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],(*gp)[i].dens);
+    for(i=par->pIntensity;i<par->ncell;i++){
+      for(j=0;j<par->numDensities;j++)
+        (*gp)[i].dens[j]=1e-30;//************** what is the low but non zero value for?
+    }
+
+    par->dataFlags |= DS_mask_density;
+  }
+
+  checkGridDensities(par, *gp);
+
+  if(!allBitsSet(par->dataFlags, DS_mask_abundance)){
+    for(i=0;i<par->ncell; i++)
+      (*gp)[i].abun = malloc(sizeof(double)*par->nSpecies);
+    for(i=0;i<par->pIntensity;i++)
+      abundance((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],(*gp)[i].abun);
+    for(i=par->pIntensity;i<par->ncell;i++){
+      for(si=0;si<par->nSpecies;si++)
+        (*gp)[i].abun[si]=0;
+    }
+
+    par->dataFlags |= DS_mask_abundance;
+  }
+
+  if(!allBitsSet(par->dataFlags, DS_mask_turb_doppler)){
+    for(i=0;i<par->pIntensity;i++)
+      doppler((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],&(*gp)[i].dopb_turb);	
+    for(i=par->pIntensity;i<par->ncell;i++)
+      (*gp)[i].dopb_turb=0.;
+
+    par->dataFlags |= DS_mask_turb_doppler;
+  }
+
+  if(!allBitsSet(par->dataFlags, DS_mask_temperatures)){
+    for(i=0;i<par->pIntensity;i++)
+      temperature((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],(*gp)[i].t);
+    for(i=par->pIntensity;i<par->ncell;i++){
+      (*gp)[i].t[0]=par->tcmb;
+      (*gp)[i].t[1]=par->tcmb;
+    }
+
+    par->dataFlags |= DS_mask_temperatures;
+  }
+
+  if(!allBitsSet(par->dataFlags, DS_mask_magfield)){
+    if(par->polarization){
+      for(i=0;i<par->pIntensity;i++)
+        magfield((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],(*gp)[i].B);
+
+      par->dataFlags |= DS_mask_magfield;
+
+    }else{
+      for(i=0;i<par->pIntensity;i++){
+        (*gp)[i].B[0]=0.0;
+        (*gp)[i].B[1]=0.0;
+        (*gp)[i].B[2]=0.0;
+      }
+    }
+
+    for(i=par->pIntensity;i<par->ncell;i++){
+      (*gp)[i].B[0]=0.0;
+      (*gp)[i].B[1]=0.0;
+      (*gp)[i].B[2]=0.0;
     }
   }
 
-  getVelocities(par,g);
-  dumpGrid(par,g);
-  free(dc);
+  if(!allBitsSet(par->dataFlags, DS_mask_ACOEFF)){
+    getVelocities(par,*gp); /* Mallocs and sets .v1, .v2, .v3 */
 
-  free(outRandLocations);
-  free(outRandDensities);
-  gsl_rng_free(rinc.randGen);
+    par->dataFlags |= DS_mask_ACOEFF;
+  }
+
+  if(onlyBitsSet(par->dataFlags & DS_mask_all_but_mag, DS_mask_3)) /* Only happens if (i) we read no file and have constructed this data within LIME, or (ii) we read a file at dataStageI==3. */
+    writeGridIfRequired(par, *gp, NULL, lime_FITS);
+
+  dumpGrid(par,*gp);
+  free(dc);
 }
 
 

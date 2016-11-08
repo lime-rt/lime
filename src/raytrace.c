@@ -265,7 +265,7 @@ This version of traceray implements a new algorithm in which the population valu
   const int stokesIi=0;
   const int numFaces = DIM+1, nVertPerFace=3;
   int ichan,stokesId,di,status,lenChainPtrs,entryI,exitI,vi,vvi,ci;
-  int si, molI, lineI;
+  int si,molI,lineI;
   double xp,yp,zp,x[DIM],dir[DIM],projVelRay,vel[DIM];
   double xCmpntsRay[nVertPerFace], ds, snu_pol[3], dtau, contJnu, contAlpha;
   double jnu, alpha, lineRedShift, vThisChan, deltav, vfac, remnantSnu, expDTau;
@@ -530,7 +530,6 @@ Note that the argument 'md', and the grid element '.mol', are only accessed for 
   int curlong, totlong;
   double triangle[3][2],barys[3],local_cmb,cmbFreq,circleSpacing,scale,angle;
   double *xySquared=NULL;
-  _Bool isOutsideImage;
   gsl_error_handler_t *defaultErrorHandler=NULL;
 
   size = img[im].distance*img[im].imgres;

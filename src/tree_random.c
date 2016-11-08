@@ -71,8 +71,6 @@ Notes:
   */
 
   int di, ppi;
-  double x;
-  double r[DIM];
 
   rinc->numSubFields = 1;
   for(di=0;di<DIM;di++)
@@ -329,9 +327,9 @@ Notes:
   */
   double totalIntegral,probabilities[tree->lastLeafI],axesMid[DIM],scales[DIM],sign,point[DIM];
   int i,di,maxInRandI,lastInRandI,piIn,indices[DIM];
-  double (*inRandLocations)[DIM]=NULL,r[DIM],density,acceptanceChance,desNumPtsDbl,stdDev,shrinkFrac;
+  double (*inRandLocations)[DIM]=NULL,r[DIM],density,acceptanceChance,shrinkFrac;
   unsigned int desiredNumsPoints[tree->lastLeafI];
-  unsigned int remainingDesNum,piOutStart,piOut,lastPiOut;
+  unsigned int piOutStart,piOut,lastPiOut;
   gsl_qrng *qrSeqGen = NULL;
 
   if(rinc->doQuasiRandom)

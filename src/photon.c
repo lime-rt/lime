@@ -48,7 +48,6 @@ double gaussline(const double v, const double oneOnSigma){
 #endif
 }
 
-
 int getNextEdge(double *inidir, int id, struct grid *gp, const gsl_rng *ran){
   int i,iOfLargest,iOfNextLargest,numPositive;
   double cosAngle,largest,nextLargest,mytest;
@@ -102,7 +101,6 @@ int getNextEdge(double *inidir, int id, struct grid *gp, const gsl_rng *ran){
   else
     return iOfLargest;
 }
-
 
 void calcLineAmpPWLin(struct grid *g, const int id, const int k\
   , const int molI, const double deltav, double *inidir, double *vfac_in, double *vfac_out){
@@ -198,7 +196,8 @@ void calcSourceFn(double dTau, const configInfo *par, double *remnantSnu, double
 }
 
 /*....................................................................*/
-void photon(int id, struct grid *gp, molData *md, int iter, const gsl_rng *ran\
+void
+photon(int id, struct grid *gp, molData *md, int iter, const gsl_rng *ran\
   , configInfo *par, const int nlinetot, struct blendInfo blends\
   , gridPointData *mp, double *halfFirstDs){
 
@@ -273,7 +272,6 @@ void photon(int id, struct grid *gp, molData *md, int iter, const gsl_rng *ran\
             calcLineAmpLin(gp,here,neighI,molI,deltav[molI],inidir,&vfac_in[molI],&vfac_out[molI]);
 
           mp[molI].vfac[iphot]=vfac_out[molI];
-
         }
         /*
         Contribution of the local cell to emission and absorption is done in getjbar.
@@ -359,6 +357,7 @@ void photon(int id, struct grid *gp, molData *md, int iter, const gsl_rng *ran\
 
       here=there;
     } while(!gp[here].sink);
+
     /* Add cmb contribution.
     */
     iline = 0;
@@ -372,7 +371,8 @@ void photon(int id, struct grid *gp, molData *md, int iter, const gsl_rng *ran\
 }
 
 /*....................................................................*/
-void getjbar(int posn, molData *md, struct grid *gp, const int molI\
+void
+getjbar(int posn, molData *md, struct grid *gp, const int molI\
   , configInfo *par, struct blendInfo blends, int nextMolWithBlend\
   , gridPointData *mp, double *halfFirstDs){
 

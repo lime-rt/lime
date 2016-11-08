@@ -9,6 +9,7 @@
 #include <locale.h>
 
 #include "lime.h"
+#include "gridio.h"
 
 
 /* Forward declaration of functions only used in this file */
@@ -24,7 +25,7 @@ double EXP_TABLE_3D[256][2][10];
   calcFastExpRange(FAST_EXP_MAX_TAYLOR, FAST_EXP_NUM_BITS, &numMantissaFields, &lowestExponent, &numExponentsUsed)
 */
 #else
-double EXP_TABLE_2D[1][1]; // nominal definitions so the fastexp.c module will compile.
+double EXP_TABLE_2D[1][1]; /* nominal definitions so the fastexp.c module will compile. */
 double EXP_TABLE_3D[1][1][1];
 #endif
 
@@ -57,6 +58,7 @@ initParImg(inputPars *par, image **img)
   par->gridfile     = NULL;
   par->pregrid      = NULL;
   par->restart      = NULL;
+  par->gridInFile   = NULL;
 
   par->collPartIds  = malloc(sizeof(int)*MAX_N_COLL_PART);
   for(i=0;i<MAX_N_COLL_PART;i++) par->collPartIds[i] = 0; /* Possible values start at 1. */
@@ -81,7 +83,12 @@ initParImg(inputPars *par, image **img)
   par->antialias=1;
   par->polarization=0;
   par->nThreads = NTHREADS;
+  par->nSolveIters=17;
   par->traceRayAlgorithm=0;
+
+  par->gridOutFiles = malloc(sizeof(char *)*NUM_GRID_STAGES);
+  for(i=0;i<NUM_GRID_STAGES;i++)
+    par->gridOutFiles[i] = NULL;
 
   /* Allocate initial space for molecular data file names */
   par->moldatfile=malloc(sizeof(char *)*MAX_NSPECIES);
@@ -150,8 +157,7 @@ initParImg(inputPars *par, image **img)
 
 
 void
-run(inputPars inpars, image *img)
-{
+run(inputPars inpars, image *img){
   /* Run LIME with inpars and the output fits files specified.
 
      This routine may be used as an interface to LIME from external
@@ -186,39 +192,35 @@ run(inputPars inpars, image *img)
     printMessage(message);
   }
 
-  if(par.doPregrid)
-    {
-      mallocAndSetDefaultGrid(&gp, (unsigned int)par.ncell);
-      predefinedGrid(&par,gp); /* Sets par.numDensities */
-      checkUserDensWeights(&par); /* Needs par.numDensities */
-    }
-  else if(par.restart)
-    {
-      popsin(&par,&gp,&md,&popsdone);
-    }
-  else
-    {
-      checkUserDensWeights(&par); /* Needs par.numDensities */
-      mallocAndSetDefaultGrid(&gp, (unsigned int)par.ncell);
-      buildGrid(&par,gp);
-    }
+  if(par.doPregrid){
+    mallocAndSetDefaultGrid(&gp, (unsigned int)par.ncell);
+    predefinedGrid(&par,gp); /* Sets par.numDensities */
+    checkUserDensWeights(&par); /* Needs par.numDensities */
+  }else if(par.restart){
+    popsin(&par,&gp,&md,&popsdone);
+  }else{
+    checkUserDensWeights(&par); /* Needs par.numDensities */
+    readOrBuildGrid(&par,&gp);
+  }
 
   if(par.dust != NULL)
     readDustFile(par.dust, &lamtab, &kaptab, &nEntries);
 
   /* Make all the continuum images:
   */
-  for(i=0;i<par.nImages;i++){
-    if(!img[i].doline){
-      raytrace(i, &par, gp, md, img, lamtab, kaptab, nEntries);
-      writeFits(i,&par,md,img);
+  if(par.nContImages>0){
+    for(i=0;i<par.nImages;i++){
+      if(!img[i].doline){
+        raytrace(i, &par, gp, md, img, lamtab, kaptab, nEntries);
+        writeFits(i,&par,md,img);
+      }
     }
   }
 
   if(par.nLineImages>0){
     molInit(&par, md);
 
-    if(!popsdone){
+    if(!popsdone && !allBitsSet(par.dataFlags, DS_mask_populations)){
       for(gi=0;gi<par.ncell;gi++){
         gp[gi].mol = malloc(sizeof(*(gp[gi].mol))*par.nSpecies);
         for(si=0;si<par.nSpecies;si++){
@@ -236,20 +238,23 @@ run(inputPars inpars, image *img)
     calcGridMolDoppler(&par, md, gp);
     calcGridMolDensities(&par,gp);
 
-    if(!popsdone)
+    if(!popsdone && !allBitsSet(par.dataFlags, DS_mask_populations))
       levelPops(md, &par, gp, &popsdone, lamtab, kaptab, nEntries);
 
     calcGridMolSpecNumDens(&par,md,gp);
   }
 
+  writeGridIfRequired(&par, gp, md, lime_FITS);
   freeSomeGridFields((unsigned int)par.ncell, (unsigned short)par.nSpecies, gp);
 
   /* Now make the line images.
   */
-  for(i=0;i<par.nImages;i++){
-    if(img[i].doline){
-      raytrace(i, &par, gp, md, img, lamtab, kaptab, nEntries);
-      writeFits(i,&par,md,img);
+  if(par.nLineImages>0){
+    for(i=0;i<par.nImages;i++){
+      if(img[i].doline){
+        raytrace(i, &par, gp, md, img, lamtab, kaptab, nEntries);
+        writeFits(i,&par,md,img);
+      }
     }
   }
   

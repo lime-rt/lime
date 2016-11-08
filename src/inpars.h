@@ -22,6 +22,8 @@ typedef struct {
   char *dust;
   int sampling,lte_only,init_lte,antialias,polarization,nThreads;
   char **moldatfile;
+  char *gridInFile,**gridOutFiles;
+  int nSolveIters;
   double (*gridDensMaxLoc)[DIM], *gridDensMaxValues;
 } inputPars;
 

@@ -152,10 +152,10 @@ progressbar(double percent, int line){
 }
 
 void
-progressbar2(int flag, int prog, double percent, double minsnr, double median){
+progressbar2(configInfo *par, int flag, int prog, double percent, double minsnr, double median){
 #ifdef NO_NCURSES
   if (flag == 0) {
-    printf("  Iteration %i / max %i: Starting\n", prog + 1, NITERATIONS + 1);
+    printf("  Iteration %i / max %i: Starting\n", prog + 1, par->nSolveIters);
   } else if (flag == 1){
     if (minsnr < 1000)
       printf("      Statistics: Min(SNR)    %3.3f                     \n", minsnr); 
@@ -167,7 +167,7 @@ progressbar2(int flag, int prog, double percent, double minsnr, double median){
     else 
       printf("      Statistics: Median(SNR) %.3e                      \n", median);
 
-    printf("  Iteration %i / max %i: DONE\n\n", prog, NITERATIONS + 1);
+    printf("  Iteration %i / max %i: DONE\n\n", prog+1, par->nSolveIters);
   }
 
 #else
@@ -348,3 +348,25 @@ collpartmesg3(int number, int flag){
   refresh();
 #endif
 }
+
+void
+processFitsError(int status){
+  /*****************************************************/
+  /* Print out cfitsio error messages and exit program */
+  /*****************************************************/
+
+  if(status){
+    if(!silent){
+#ifdef NO_NCURSES
+      fits_report_error(stderr, status); /* print error report */
+#else
+      char message[80];
+      sprintf(message, "Error in cfitsio: status=%d", status);
+      bail_out(message);
+#endif
+    }
+    exit( status );    /* terminate the program, returning error status */
+  }
+  return;
+}
+

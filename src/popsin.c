@@ -106,6 +106,20 @@ popsin(configInfo *par, struct grid **gp, molData **md, int *popsdone){
   delaunay(DIM, *gp, (unsigned long)par->ncell, 0, &dc, &numCells);
   distCalc(par, *gp);
   getVelocities(par,*gp);
+
+  par->dataFlags |= (1 << DS_bit_x);
+  par->dataFlags |= (1 << DS_bit_neighbours);
+  par->dataFlags |= (1 << DS_bit_velocity);
+  par->dataFlags |= (1 << DS_bit_density);
+  par->dataFlags |= (1 << DS_bit_abundance);
+  par->dataFlags |= (1 << DS_bit_turb_doppler);
+  par->dataFlags |= (1 << DS_bit_temperatures);
+/*  par->dataFlags |= (1 << DS_bit_magfield); commented out because we are not yet reading it in popsin (and may never do so) */
+  par->dataFlags |= (1 << DS_bit_ACOEFF);
+  par->dataFlags |= (1 << DS_bit_populations);
+
+//**** should fill in any missing info via the appropriate function calls.
+
   *popsdone=1;
 
   free(dc);

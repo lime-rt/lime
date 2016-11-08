@@ -8,9 +8,9 @@
 example/*.vtk
 example/*.pop
 example/*.fits*
+example/lime_*.x
 example/*.dat
 example/*_archive
-example/lime_*.x
 example/vlog.txt
 
 # Ignore html doc files

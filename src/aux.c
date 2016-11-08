@@ -47,13 +47,23 @@ parseInput(inputPars inpar, configInfo *par, image **img, molData **m){
   par->antialias    = inpar.antialias;
   par->polarization = inpar.polarization;
   par->nThreads     = inpar.nThreads;
+  par->gridInFile   = inpar.gridInFile;
+  par->nSolveIters  = inpar.nSolveIters;
   par->traceRayAlgorithm = inpar.traceRayAlgorithm;
+
+  par->gridOutFiles = malloc(sizeof(char *)*NUM_GRID_STAGES);
+  for(i=0;i<NUM_GRID_STAGES;i++)
+    par->gridOutFiles[i] = inpar.gridOutFiles[i];
 
   /* Now set the additional values in par. */
   par->ncell = inpar.pIntensity + inpar.sinkPoints;
   par->radiusSqu = inpar.radius*inpar.radius;
   par->minScaleSqu=inpar.minScale*inpar.minScale;
   par->doPregrid = (inpar.pregrid==NULL)?0:1;
+
+  for(i=0;i<NUM_GRID_STAGES;i++)
+    par->writeGridAtStage[i] = 0;
+  par->dataFlags = 0;
 
   /* If the user has provided a list of moldatfile names, the corresponding elements of par->moldatfile will be non-NULL. Thus we can deduce the number of files (species) from the number of non-NULL elements.
   */
@@ -104,6 +114,11 @@ parseInput(inputPars inpar, configInfo *par, image **img, molData **m){
   while(i<MAX_N_HIGH && par->gridDensMaxValues[i]>=0) i++;
   par->numGridDensMaxima = i;
 
+  /* Check that the user has supplied the velocity function (needed in raytracing unless par->doPregrid). Note that the other previously mandatory functions (density, abundance, doppler and temperature) may not be necessary if the user reads in the appropriate values from a file. This is tested at the appropriate place in readOrBuildGrid().
+  */
+  if(!par->doPregrid || par->traceRayAlgorithm==1)
+    velocity(0.0,0.0,0.0, dummyVel);
+
   /* Calculate par->numDensities.
   */
   if(!(par->doPregrid || par->restart)){ /* These switches cause par->numDensities to be set in routines they call. */
@@ -143,10 +158,10 @@ parseInput(inputPars inpar, configInfo *par, image **img, molData **m){
   while((*img)[par->nImages].filename!=NULL && par->nImages<MAX_NIMAGES)
     par->nImages++;
 
-  /* Check that the user has supplied this function (needed unless par->doPregrid):
-  */
-  if(!par->doPregrid || par->traceRayAlgorithm==1)
-    velocity(0.0,0.0,0.0, dummyVel);
+  for(i=0;i<NUM_GRID_STAGES;i++){
+    if(par->gridOutFiles[i] != NULL)
+      par->writeGridAtStage[i] = 1;
+  };
 
   /*
 Now we need to calculate the cutoff value used in calcSourceFn(). The issue is to decide between
@@ -680,7 +695,7 @@ Pointers are indicated by a * before the attribute name and an arrow to the memo
 
 void
 levelPops(molData *md, configInfo *par, struct grid *gp, int *popsdone, double *lamtab, double *kaptab, const int nEntries){
-  int id,conv=0,iter,ilev,prog=0,ispec,c=0,n,i,threadI,nVerticesDone,nlinetot;
+  int id,iter,ilev,ispec,c=0,n,i,threadI,nVerticesDone,nItersDone,nlinetot;//,conv=0
   double percent=0.,*median,result1=0,result2=0,snr,delta_pop;
   int nextMolWithBlend;
   struct statistics { double *pop, *ave, *sigma; } *stat;
@@ -749,8 +764,9 @@ This is done to allow proper handling of errors which may arise in the LU solver
 While this is off however, other gsl_* etc calls will not exit if they encounter a problem. We may need to pay some attention to trapping their errors.
     */
 
-    do{
-      if(!silent) progressbar2(0, prog++, 0, result1, result2);
+    nItersDone=0;
+    while(nItersDone < par->nSolveIters){ /* Not a 'for' loop because we will probably later want to add a convergence criterion. */
+      if(!silent) progressbar2(par, 0, nItersDone, 0, result1, result2);
 
       for(id=0;id<par->pIntensity;id++){
         for(ilev=0;ilev<md[0].nlev;ilev++) {
@@ -840,15 +856,16 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
       }
 
       gsl_sort(median, 1, c);
-      if(conv>1){
+      if(nItersDone>1){
         result1=median[0];
         result2 =gsl_stats_median_from_sorted_data(median, 1, c);
       }
       free(median);
 
-      if(!silent) progressbar2(1, prog, percent, result1, result2);
-      if(par->outputfile) popsout(par,gp,md);
-    } while(conv++<NITERATIONS);
+      if(!silent) progressbar2(par, 1, nItersDone, percent, result1, result2);
+      if(par->outputfile != NULL) popsout(par,gp,md);
+      nItersDone++;
+    }
     gsl_set_error_handler(defaultErrorHandler);
 
     freeMolsWithBlends(blends.mols, blends.numMolsWithBlends);
@@ -867,8 +884,46 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
     free(stat);
   }
 
-  if(par->binoutputfile) binpopsout(par,gp,md);
+  par->dataFlags |= (1 << DS_bit_populations);
+
+  if(par->binoutputfile != NULL) binpopsout(par,gp,md);
 
   *popsdone=1;
+}
+
+_Bool allBitsSet(const int flags, const int mask){
+  /* Returns true only if all the masked bits of flags are set. */
+
+  if(~flags & mask)
+    return 0;
+  else
+    return 1;
+}
+
+_Bool anyBitSet(const int flags, const int mask){
+  /* Returns true if any of the masked bits of flags are set. */
+
+  if(flags & mask)
+    return 1;
+  else
+    return 0;
+}
+
+_Bool bitIsSet(const int flags, const int bitI){
+  /* Returns true if the designated bit of flags is set. */
+
+  if(flags & (1 << bitI))
+    return 1;
+  else
+    return 0;
+}
+
+_Bool onlyBitsSet(const int flags, const int mask){
+  /* Returns true if flags has no bits set apart from those which are true in mask. */
+
+  if(flags & ~mask)
+    return 0;
+  else
+    return 1;
 }
 
