@@ -179,7 +179,7 @@ void calcGridContDustOpacity(configInfo *par, const double freq\
     gasIIdust(gp[id].x[0],gp[id].x[1],gp[id].x[2],&gtd);
     gp[id].cont.knu = kappa*2.4*AMU*densityForDust/gtd;
     /* Check if input model supplies a dust temperature. Otherwise use the kinetic temperature. */
-    if(gp[id].t[1]==-1) {
+    if(gp[id].t[1]<=0.0) { /* Flags that the user has not set it. */
       gp[id].cont.dust = planckfunc(freq,gp[id].t[0]);
     } else {
       gp[id].cont.dust = planckfunc(freq,gp[id].t[1]);
@@ -236,9 +236,9 @@ void calcGridLinesDustOpacity(configInfo *par, molData *md, double *lamtab\
       for(iline=0;iline<md[si].nline;iline++){
         gp[id].mol[si].cont[iline].knu = kappatab[iline]*dustToGas;
         /* Check if input model supplies a dust temperature. Otherwise use the kinetic temperature. */
-        if(gp[id].t[1]==-1)
+        if(gp[id].t[1]<=0.0){ /* Flags that the user has not set it. */
           t = gp[id].t[0];
-        else
+        }else
           t = gp[id].t[1];
         gp[id].mol[si].cont[iline].dust = planckfunc(md[si].freq[iline],t);
       }

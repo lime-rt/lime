@@ -88,6 +88,7 @@
 #define MAX_N_COLL_PART		7
 #define N_SMOOTH_ITERS          20
 #define TYPICAL_ISM_DENS        1000.0
+#define STR_LEN_0               80
 #define DENSITY_POWER		0.2
 #define MAX_N_HIGH              10
 #define TREE_POWER		2.0
@@ -246,7 +247,7 @@ typedef struct {
   double theta,phi,incl,posang,azimuth;
   double distance;
   double rotMat[3][3];
-} image;
+} imageInfo;
 
 typedef struct {
   double x,y, *intensity, *tau;
@@ -318,7 +319,7 @@ void gasIIdust(double,double,double,double *);
 double gridDensity(configInfo*, double*);
 
 /* More functions */
-void	run(inputPars, image *);
+void	run(inputPars, image*, const int);
 
 _Bool	allBitsSet(const int flags, const int mask);
 _Bool	anyBitSet(const int flags, const int mask);
@@ -348,7 +349,6 @@ void	calcTriangleBaryCoords(double vertices[3][2], double, double, double barys[
 triangle2D calcTriangle2D(faceType);
 void	checkGridDensities(configInfo*, struct grid*);
 void	checkUserDensWeights(configInfo*);
-void	continuumSetup(int, image*, molData*, configInfo*, struct grid*);
 void	delaunay(const int, struct grid*, const unsigned long, const _Bool, struct cell**, unsigned long*);
 void	distCalc(configInfo*, struct grid*);
 void	doBaryInterp(const intersectType, struct grid*, double*, unsigned long*, molData*, const int, gridInterp*);
@@ -361,12 +361,12 @@ void	fit_d1fi(double, double, double*);
 void	fit_fi(double, double, double*);
 void	fit_rr(double, double, double*);
 int	followRayThroughDelCells(double*, double*, struct grid*, struct cell*, const unsigned long, const double, intersectType*, unsigned long**, intersectType**, int*);
-void	freeConfig(configInfo par);
+void	freeConfigInfo(configInfo par);
 void	freeGrid(const unsigned int, const unsigned short, struct grid*);
 void	freeGridPointData(configInfo*, gridPointData*);
+void	freeImgInfo(const int, imageInfo*);
 void	freeMolData(const int, molData*);
 void	freeMolsWithBlends(struct molWithBlends*, const int);
-void	freeParImg(const int, inputPars*, image*);
 void	freePopulation(const unsigned short, struct populations*);
 void	freeSomeGridFields(const unsigned int, const unsigned short, struct grid*);
 double  gaussline(const double, const double);
@@ -391,9 +391,10 @@ void	lineBlend(molData*, configInfo*, struct blendInfo*);
 void	LTE(configInfo*, struct grid*, molData*);
 void	lteOnePoint(molData*, const int, const double, double*);
 void	mallocAndSetDefaultGrid(struct grid**, const unsigned int);
+void	mallocInputPars(inputPars*);
 void	molInit(configInfo*, molData*);
 void	openSocket(char*);
-void	parseInput(inputPars, configInfo*, image**, molData**);
+void	parseInput(inputPars, image*, const int, configInfo*, imageInfo**, molData**);
 void	photon(int, struct grid*, molData*, int, const gsl_rng*, configInfo*, const int, struct blendInfo, gridPointData*, double*);
 double	planckfunc(const double, const double);
 int	pointEvaluation(configInfo*, const double, double*);
@@ -402,14 +403,14 @@ void	popsout(configInfo*, struct grid*, molData*);
 void	predefinedGrid(configInfo*, struct grid*);
 void	processFitsError(int);
 double	ratranInput(char*, char*, double, double, double);
-void	raytrace(int, configInfo*, struct grid*, molData*, image*, double*, double*, const int);
+void	raytrace(int, configInfo*, struct grid*, molData*, imageInfo*, double*, double*, const int);
 void	readDummyCollPart(FILE*, const int);
 void	readDustFile(char*, double**, double**, int*);
 void	readMolData(configInfo*, molData*, int**, int*);
 void	readOrBuildGrid(configInfo*, struct grid**);
-void	readUserInput(inputPars*, image**, int*, int*);
+void	readUserInput(inputPars*, imageInfo**, int*, int*);
 void	report(int, configInfo*, struct grid*);
-void	setUpConfig(configInfo*, image**, molData**);
+void	setUpConfig(configInfo*, imageInfo**, molData**);
 void	setUpDensityAux(configInfo*, int*, const int);
 void	smooth(configInfo*, struct grid*);
 void    sourceFunc_line(const molData*, const double, const struct populations*, const int, double*, double*);
@@ -419,12 +420,12 @@ void	stateq(int, struct grid*, molData*, const int, configInfo*, struct blendInf
 void	statistics(int, molData*, struct grid*, int*, double*, double*, int*);
 void	stokesangles(double*, double (*rotMat)[3], double*);
 double	taylor(const int, const float);
-void	traceray(rayData, const double, const int, configInfo*, struct grid*, molData*, image*, const double, const int, const double);
-void	traceray_smooth(rayData, const double, const int, configInfo*, struct grid*, molData*, image*, struct cell*, const unsigned long, const double, gridInterp gips[3], const int, const double, const int, const double);
+void	traceray(rayData, const double, const int, configInfo*, struct grid*, molData*, imageInfo*, const double, const int, const double);
+void	traceray_smooth(rayData, const double, const int, configInfo*, struct grid*, molData*, imageInfo*, struct cell*, const unsigned long, const double, gridInterp gips[3], const int, const double, const int, const double);
 double	veloproject(const double*, const double*);
-void	write2Dfits(int, configInfo*, image*);
-void	write3Dfits(int, configInfo*, image*);
-void	writeFits(const int, configInfo*, image*);
+void	write2Dfits(int, configInfo*, imageInfo*);
+void	write3Dfits(int, configInfo*, imageInfo*);
+void	writeFits(const int, configInfo*, imageInfo*);
 void	writeGridIfRequired(configInfo*, struct grid*, molData*, const int);
 void	write_VTK_unstructured_Points(configInfo*, struct grid*);
 

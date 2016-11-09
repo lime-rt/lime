@@ -97,32 +97,13 @@ initParImg(inputPars *par, image **img)
   }
 
   /* Allocate initial space for output fits images */
-  (*img)=malloc(sizeof(image)*MAX_NIMAGES);
-  for(i=0;i<MAX_NIMAGES;i++){
+  (*img)=malloc(sizeof(**img)*MAX_NIMAGES);
+  for(i=0;i<MAX_NIMAGES;i++)
     (*img)[i].filename=NULL;
-  }
 
   /* First call to the user function which sets par, img values. Note that, as far as img is concerned, here we just want to find out how many images the user wants, so we can malloc the array properly. We call input() a second time then to get the actual per-image parameter values.
   */
   input(par, *img);
-
-  /* Check that the mandatory parameters now have 'sensible' settings (i.e., that they have been set at all). Raise an exception if not. */
-  if (par->radius<=0){
-    if(!silent) bail_out("You must define the radius parameter.");
-    exit(1);
-  }
-  if (par->minScale<=0){
-    if(!silent) bail_out("You must define the minScale parameter.");
-    exit(1);
-  }
-  if (par->pIntensity<=0){
-    if(!silent) bail_out("You must define the pIntensity parameter.");
-    exit(1);
-  }
-  if (par->sinkPoints<=0){
-    if(!silent) bail_out("You must define the sinkPoints parameter.");
-    exit(1);
-  }
 
   /* If the user has provided a list of image filenames, the corresponding elements of (*img).filename will be non-NULL. Thus we can deduce the number of images from the number of non-NULL elements. */
   nImages=0;
@@ -157,7 +138,7 @@ initParImg(inputPars *par, image **img)
 
 
 void
-run(inputPars inpars, image *img){
+run(inputPars inpars, image *inimg, const int nImages){
   /* Run LIME with inpars and the output fits files specified.
 
      This routine may be used as an interface to LIME from external
@@ -167,9 +148,10 @@ run(inputPars inpars, image *img){
   int i,gi,si;
   int initime=time(0);
   int popsdone=0;
-  molData*     md = NULL;
-  configInfo  par;
-  struct grid* gp = NULL;
+  molData *md=NULL;
+  configInfo par;
+  imageInfo *img=NULL;
+  struct grid *gp=NULL;
   char message[80];
   int nEntries=0;
   double *lamtab=NULL, *kaptab=NULL; 
@@ -185,7 +167,8 @@ run(inputPars inpars, image *img){
 #endif
   fillErfTable();
 
-  parseInput(inpars, &par, &img, &md); /* Sets par.numDensities for !(par.doPregrid || par.restart) */
+//  par.nImages = nImages;
+  parseInput(inpars, inimg, nImages, &par, &img, &md); /* Sets par.numDensities for !(par.doPregrid || par.restart) */
 
   if(!silent && par.nThreads>1){
     sprintf(message, "Number of threads used: %d", par.nThreads);
@@ -262,7 +245,8 @@ run(inputPars inpars, image *img){
 
   freeGrid((unsigned int)par.ncell, (unsigned short)par.nSpecies, gp);
   freeMolData(par.nSpecies, md);
-  freeConfig(par);
+  freeImgInfo(par.nImages, img);
+  freeConfigInfo(par);
 
   if(par.dust != NULL){
     free(kaptab);
@@ -279,11 +263,16 @@ int main () {
 
   silent = 0;
 
+  mallocInputPars(&par);
   nImages = initParImg(&par, &img);
 
-  run(par, img);
+  run(par, img, nImages);
 
-  freeParImg(nImages, &par, img);
+  free(img);
+  free(par.collPartIds);
+  free(par.nMolWeights);
+  free(par.dustWeights);
+  free(par.moldatfile);
 
   return 0;
 }

@@ -15,8 +15,39 @@ TODO:
 #include <float.h>
 
 
+/*....................................................................*/
 void
-parseInput(inputPars inpar, configInfo *par, image **img, molData **m){
+mallocInputPars(inputPars *par){
+  int i;
+
+  par->moldatfile = malloc(sizeof(char *)*MAX_NSPECIES);
+
+  par->collPartIds  = malloc(sizeof(int)*MAX_N_COLL_PART);
+  for(i=0;i<MAX_N_COLL_PART;i++) par->collPartIds[i] = 0;
+  par->nMolWeights  = malloc(sizeof(double)*MAX_N_COLL_PART);
+  for(i=0;i<MAX_N_COLL_PART;i++) par->nMolWeights[i] = -1.0;
+  par->dustWeights  = malloc(sizeof(double)*MAX_N_COLL_PART);
+  for(i=0;i<MAX_N_COLL_PART;i++) par->dustWeights[i] = -1.0;
+}
+
+/*....................................................................*/
+void
+copyInparStr(const char *inStr, char **outStr){
+  if(inStr==NULL || strlen(inStr)<=0 || strlen(inStr)>STR_LEN_0){
+    *outStr = NULL;
+  }else{
+    *outStr = malloc(sizeof(**outStr)*(STR_LEN_0+1));
+    strcpy(*outStr, inStr);
+  }
+}
+
+/*....................................................................*/
+void
+parseInput(const inputPars inpar, image *inimg, const int nImages, configInfo *par, imageInfo **img, molData **md){
+  /*
+The parameters visible to the user have now been strictly confined to members of the structs 'inputPars' and 'image', both of which are defined in inpars.h. There are however further internally-set values which is is convenient to bundle together with the user-set ones. At present we have a fairly clunky arrangement in which the user-set values are copied member-by-member from the user-dedicated structs to the generic internal structs 'configInfo' and 'imageInfo'. This is done in the present function, along with some checks and other initialization.
+  */
+
   int i,j,id;
   double BB[3],normBSquared,dens[MAX_N_COLL_PART],r[DIM];
   double dummyVel[DIM];
@@ -27,7 +58,26 @@ parseInput(inputPars inpar, configInfo *par, image **img, molData **m){
   double tempRotMat[3][3],auxRotMat[3][3];
   int row,col;
 
-  /* Copy over user-set parameters to the configInfo versions. (This seems like duplicated effort but it is a good principle to separate the two structs, for several reasons, as follows. (i) We will usually want more config parameters than user-settable ones. The separation leaves it clearer which things the user needs to (or can) set. (ii) The separation allows checking and screening out of impossible combinations of parameters. (iii) We can adopt new names (for clarity) for config parameters without bothering the user with a changed interface.) */
+  /* Check that the mandatory parameters now have 'sensible' settings (i.e., that they have been set at all). Raise an exception if not. */
+  if (inpar.radius<=0){
+    if(!silent) bail_out("You must define the radius parameter.");
+    exit(1);
+  }
+  if (inpar.minScale<=0){
+    if(!silent) bail_out("You must define the minScale parameter.");
+    exit(1);
+  }
+  if (inpar.pIntensity<=0){
+    if(!silent) bail_out("You must define the pIntensity parameter.");
+    exit(1);
+  }
+  if (inpar.sinkPoints<=0){
+    if(!silent) bail_out("You must define the sinkPoints parameter.");
+    exit(1);
+  }
+
+  /* Copy over user-set parameters to the configInfo versions. (This seems like duplicated effort but it is a good principle to separate the two structs, for several reasons, as follows. (i) We will usually want more config parameters than user-settable ones. The separation leaves it clearer which things the user needs to (or can) set. (ii) The separation allows checking and screening out of impossible combinations of parameters. (iii) We can adopt new names (for clarity) for config parameters without bothering the user with a changed interface.)
+  */
   par->radius       = inpar.radius;
   par->minScale     = inpar.minScale;
   par->pIntensity   = inpar.pIntensity;
@@ -35,25 +85,28 @@ parseInput(inputPars inpar, configInfo *par, image **img, molData **m){
   par->samplingAlgorithm=inpar.samplingAlgorithm;
   par->sampling     = inpar.sampling;
   par->tcmb         = inpar.tcmb;
-  par->dust         = inpar.dust;
-  par->outputfile   = inpar.outputfile;
-  par->binoutputfile= inpar.binoutputfile;
-  par->restart      = inpar.restart;
-  par->gridfile     = inpar.gridfile;
-  par->pregrid      = inpar.pregrid;
   par->lte_only     = inpar.lte_only;
   par->init_lte     = inpar.init_lte;
   par->blend        = inpar.blend;
   par->antialias    = inpar.antialias;
   par->polarization = inpar.polarization;
   par->nThreads     = inpar.nThreads;
-  par->gridInFile   = inpar.gridInFile;
   par->nSolveIters  = inpar.nSolveIters;
   par->traceRayAlgorithm = inpar.traceRayAlgorithm;
 
+  /* Somewhat more carefully copy over the strings:
+  */
+  copyInparStr(inpar.dust,          &(par->dust));
+  copyInparStr(inpar.outputfile,    &(par->outputfile));
+  copyInparStr(inpar.binoutputfile, &(par->binoutputfile));
+  copyInparStr(inpar.restart,       &(par->restart));
+  copyInparStr(inpar.gridfile,      &(par->gridfile));
+  copyInparStr(inpar.pregrid,       &(par->pregrid));
+  copyInparStr(inpar.gridInFile,    &(par->gridInFile));
+
   par->gridOutFiles = malloc(sizeof(char *)*NUM_GRID_STAGES);
   for(i=0;i<NUM_GRID_STAGES;i++)
-    par->gridOutFiles[i] = inpar.gridOutFiles[i];
+    copyInparStr(inpar.gridOutFiles[i], &(par->gridOutFiles[i]));
 
   /* Now set the additional values in par. */
   par->ncell = inpar.pIntensity + inpar.sinkPoints;
@@ -68,20 +121,19 @@ parseInput(inputPars inpar, configInfo *par, image **img, molData **m){
   /* If the user has provided a list of moldatfile names, the corresponding elements of par->moldatfile will be non-NULL. Thus we can deduce the number of files (species) from the number of non-NULL elements.
   */
   par->nSpecies=0;
-  while(inpar.moldatfile[par->nSpecies]!=NULL && par->nSpecies<MAX_NSPECIES)
+  while(par->nSpecies<MAX_NSPECIES && inpar.moldatfile[par->nSpecies]!=NULL && strlen(inpar.moldatfile[par->nSpecies])>0)
     par->nSpecies++;
 
   /* Copy over the moldatfiles.
   */
   if(par->nSpecies == 0){
-    par->nSpecies = 1;
+    par->nSpecies = 1;/* ******************* should not confuse continuum and line in this way. */
     par->moldatfile = NULL;
 
   } else {
     par->moldatfile=malloc(sizeof(char *)*par->nSpecies);
-    for(id=0;id<par->nSpecies;id++){
-      par->moldatfile[id] = inpar.moldatfile[id];
-    }
+    for(id=0;id<par->nSpecies;id++)
+      copyInparStr(inpar.moldatfile[id], &(par->moldatfile[id]));
 
     /* Check if files exist. */
     for(id=0;id<par->nSpecies;id++){
@@ -152,12 +204,6 @@ parseInput(inputPars inpar, configInfo *par, image **img, molData **m){
     exit(1);
   }
 
-  /* If the user has provided a list of image filenames, the corresponding elements of (*img).filename will be non-NULL. Thus we can deduce the number of images from the number of non-NULL elements.
-  */
-  par->nImages=0;
-  while((*img)[par->nImages].filename!=NULL && par->nImages<MAX_NIMAGES)
-    par->nImages++;
-
   for(i=0;i<NUM_GRID_STAGES;i++){
     if(par->gridOutFiles[i] != NULL)
       par->writeGridAtStage[i] = 1;
@@ -178,11 +224,35 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
 
   */
   par->taylorCutoff = pow(24.*DBL_EPSILON, 0.25);
-
+  par->nImages = nImages;
   par->numDims = DIM;
 
-  /* Allocate pixel space and parse image information */
-  for(i=0;i<par->nImages;i++){
+  /* Copy over user-set image values to the generic struct:
+  */
+  *img = malloc(sizeof(**img)*nImages);
+  for(i=0;i<nImages;i++){
+    (*img)[i].nchan      = inimg[i].nchan;
+    (*img)[i].trans      = inimg[i].trans;
+    (*img)[i].molI       = inimg[i].molI;
+    (*img)[i].velres     = inimg[i].velres;
+    (*img)[i].imgres     = inimg[i].imgres;
+    (*img)[i].pxls       = inimg[i].pxls;
+    (*img)[i].unit       = inimg[i].unit;
+    (*img)[i].freq       = inimg[i].freq;
+    (*img)[i].bandwidth  = inimg[i].bandwidth;
+    copyInparStr(inimg[i].filename, &((*img)[i].filename));
+    (*img)[i].source_vel = inimg[i].source_vel;
+    (*img)[i].theta      = inimg[i].theta;
+    (*img)[i].phi        = inimg[i].phi;
+    (*img)[i].incl       = inimg[i].incl;
+    (*img)[i].posang     = inimg[i].posang;
+    (*img)[i].azimuth    = inimg[i].azimuth;
+    (*img)[i].distance   = inimg[i].distance;
+  }
+
+  /* Allocate pixel space and parse image information.
+  */
+  for(i=0;i<nImages;i++){
     if((*img)[i].nchan == 0 && (*img)[i].velres<0 ){ /* => user has set neither nchan nor velres. One of the two is required for a line image. */
       /* Assume continuum image */
 
@@ -418,7 +488,7 @@ LIME provides two different schemes of {R_1, R_2, R_3}: {PA, phi, theta} and {PA
 
   par->nLineImages = 0;
   par->nContImages = 0;
-  for(i=0;i<par->nImages;i++){
+  for(i=0;i<nImages;i++){
     if((*img)[i].doline)
       par->nLineImages++;
     else
@@ -427,18 +497,18 @@ LIME provides two different schemes of {R_1, R_2, R_3}: {PA, phi, theta} and {PA
 
   /* Allocate moldata array.
   */
-  (*m)=malloc(sizeof(molData)*par->nSpecies);
+  (*md)=malloc(sizeof(molData)*par->nSpecies);
   for( i=0; i<par->nSpecies; i++ ){
-    (*m)[i].part = NULL;
-    (*m)[i].lal = NULL;
-    (*m)[i].lau = NULL;
-    (*m)[i].aeinst = NULL;
-    (*m)[i].freq = NULL;
-    (*m)[i].beinstu = NULL;
-    (*m)[i].beinstl = NULL;
-    (*m)[i].eterm = NULL;
-    (*m)[i].gstat = NULL;
-    (*m)[i].cmb = NULL;
+    (*md)[i].part = NULL;
+    (*md)[i].lal = NULL;
+    (*md)[i].lau = NULL;
+    (*md)[i].aeinst = NULL;
+    (*md)[i].freq = NULL;
+    (*md)[i].beinstu = NULL;
+    (*md)[i].beinstl = NULL;
+    (*md)[i].eterm = NULL;
+    (*md)[i].gstat = NULL;
+    (*md)[i].cmb = NULL;
   }
 }
 
