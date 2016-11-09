@@ -376,7 +376,7 @@ This version of traceray implements a new algorithm in which the population valu
 
   /* Find the chain of cells the ray passes through.
   */
-  status = followRayThroughCells(x, dir, vertexCoords, dc, numCells, epsilon\
+  status = followRayThroughCells(DIM, x, dir, vertexCoords, dc, numCells, epsilon\
     , &entryIntcptFirstCell, &chainOfCellIds, &cellExitIntcpts, &lenChainPtrs);
 
   if(status!=0){

@@ -15,7 +15,7 @@
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_linalg.h>
 
-#include "dims.h" /* Should define the macro N_DIMS which specifies the number of spatial dimensions. */
+#include "dims.h" /* Should define the macro N_DIMS which specifies the number of spatial dimensions. Note that this is a _maximum_ value, the actual value 'numDims' which is passed via the function interfaces may be <= N_DIMS. */
 
 /* Error codes:
 */
@@ -63,7 +63,7 @@ typedef struct {
   /* 'r' expresses the location of the N vertices of a simplicial polytope face in N-space, in terms of components along the N-1 orthogonal axes in the sub-plane of the face. Thus you should malloc r as r[N][N-1]. */
 } facePlusBasisType;
 
-int	followRayThroughCells(double *x, double *dir\
+int	followRayThroughCells(const int numDims, double *x, double *dir\
   , double *vertexCoords, struct simplex *dc, const unsigned long numCells\
   , const double epsilon, intersectType *entryIntcpt, unsigned long **chainOfCellIds\
   , intersectType **cellExitIntcpts, int *lenChainPtrs);
