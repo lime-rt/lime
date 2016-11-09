@@ -384,9 +384,9 @@ void	statistics(int, molData*, struct grid*, int*, double*, double*, int*);
 void	stokesangles(double*, double (*rotMat)[3], double*);
 double	taylor(const int, const float);
 double	veloproject(const double*, const double*);
-void	write2Dfits(int, configInfo*, molData*, image*);
-void	write3Dfits(int, configInfo*, molData*, image*);
-void	writeFits(const int, configInfo*, molData*, image*);
+void	write2Dfits(int, configInfo*, image*);
+void	write3Dfits(int, configInfo*, image*);
+void	writeFits(const int, configInfo*, image*);
 void	writeGridIfRequired(configInfo*, struct grid*, molData*, const int);
 void	write_VTK_unstructured_Points(configInfo*, struct grid*);
 
