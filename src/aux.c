@@ -798,7 +798,7 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
         }
         halfFirstDs = malloc(sizeof(*halfFirstDs)*max_phot);
 
-#pragma omp for
+#pragma omp for schedule(dynamic)
         for(id=0;id<par->pIntensity;id++){
 #pragma omp atomic
           ++nVerticesDone;
