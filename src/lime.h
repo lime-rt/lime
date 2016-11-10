@@ -68,6 +68,7 @@
 #define PI                      3.14159265358979323846	/* pi	*/
 #define SPI                     1.77245385091		/* sqrt(pi)	*/
 #define maxp                    0.15
+#define NITERATIONS 		16
 #define max_phot                10000		/* don't set this value higher unless you have enough memory. */
 #define ininphot                9
 #define minpop                  1.e-6
@@ -123,7 +124,7 @@
 #define DS_mask_density      (1<<DS_bit_density      | DS_mask_x)
 #define DS_mask_abundance    (1<<DS_bit_abundance    | DS_mask_x)
 #define DS_mask_turb_doppler (1<<DS_bit_turb_doppler | DS_mask_x)
-#define DS_mask_temperatures (1<<	DS_bit_temperatures | DS_mask_x)
+#define DS_mask_temperatures (1<<DS_bit_temperatures | DS_mask_x)
 #define DS_mask_magfield     (1<<DS_bit_magfield     | DS_mask_x)
 #define DS_mask_ACOEFF       (1<<DS_bit_ACOEFF       | DS_mask_neighbours | DS_mask_velocity)
 
@@ -150,7 +151,7 @@ typedef struct {
   int sampling,lte_only,init_lte,antialias,polarization,nThreads,numDims;
   int nLineImages, nContImages;
   char **moldatfile;
-  _Bool writeGridAtStage[NUM_GRID_STAGES];
+  _Bool writeGridAtStage[NUM_GRID_STAGES], resetRNG;
   char *gridInFile,**gridOutFiles;
   int dataFlags,nSolveIters;
   double (*gridDensMaxLoc)[DIM], *gridDensMaxValues;

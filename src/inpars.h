@@ -25,6 +25,7 @@ typedef struct {
   char *gridInFile,**gridOutFiles;
   int nSolveIters;
   double (*gridDensMaxLoc)[DIM], *gridDensMaxValues;
+  _Bool resetRNG;
 } inputPars;
 
 #endif /* INPARS_H */
