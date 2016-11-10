@@ -381,6 +381,27 @@ NOTES:
 }
 
 /*....................................................................*/
+int
+getColIndex(char **allColNames, const int maxNumCols, char *colName){
+  int i=0;
+  int colFound=0; /* -> bool */
+
+  while(i<maxNumCols && !colFound){
+    if(!strcmp(allColNames[i],colName))
+      colFound = 1;
+
+    i++;
+  }
+
+  if(!colFound){
+    if(!silent) bail_out("Column name not found - this should not happen.");
+    exit(1);
+  }
+
+  return i-1;
+}
+
+/*....................................................................*/
 void
 writeGridExtToFits(fitsfile *fptr, struct gridInfoType gridInfo\
   , struct grid *gp, unsigned int *firstNearNeigh\
@@ -626,27 +647,6 @@ Ok we have a bit of a tricky situation here in that the number of columns we wri
   free(allColNames);
   free(allColNumbers);
   free(colDataTypes);
-}
-
-/*....................................................................*/
-int
-getColIndex(char **allColNames, const int maxNumCols, char *colName){
-  int i=0;
-  int colFound=0; /* -> bool */
-
-  while(i<maxNumCols && !colFound){
-    if(!strcmp(allColNames[i],colName))
-      colFound = 1;
-
-    i++;
-  }
-
-  if(!colFound){
-    if(!silent) bail_out("Column name not found - this should not happen.");
-    exit(1);
-  }
-
-  return i-1;
 }
 
 /*....................................................................*/
