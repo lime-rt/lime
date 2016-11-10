@@ -420,9 +420,9 @@ double	taylor(const int, const float);
 void	traceray(rayData, const double, const int, configInfo*, struct grid*, molData*, image*, const double, const int, const double);
 void	traceray_smooth(rayData, const double, const int, configInfo*, struct grid*, molData*, image*, struct cell*, const unsigned long, const double, gridInterp gips[3], const int, const double, const int, const double);
 double	veloproject(const double*, const double*);
-void	write2Dfits(int, configInfo*, molData*, image*);
-void	write3Dfits(int, configInfo*, molData*, image*);
-void	writeFits(const int, configInfo*, molData*, image*);
+void	write2Dfits(int, configInfo*, image*);
+void	write3Dfits(int, configInfo*, image*);
+void	writeFits(const int, configInfo*, image*);
 void	writeGridIfRequired(configInfo*, struct grid*, molData*, const int);
 void	write_VTK_unstructured_Points(configInfo*, struct grid*);
 
