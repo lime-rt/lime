@@ -17,7 +17,7 @@ error(int errCode, char *message){
 }
 
 /*....................................................................*/
-faceType
+faceType *
 extractFace(const int numDims, double *vertexCoords, struct simplex *dc\
   , const unsigned long dci, const int fi){
   /* Given a simplex dc[dci] and the face index (in the range {0...numDims}) fi, this returns the desired information about that face. Note that the ordering of the elements of face.r[] is the same as the ordering of the vertices of the simplex, dc[dci].vertx[]; just the vertex fi is omitted.
@@ -27,7 +27,7 @@ Note that the element 'centre' of the faceType struct is mean to contain the spa
 
   const int numFaces=numDims+1;
   int vi, vvi, di;
-  faceType face;
+  static faceType face;
   unsigned long gi;
 
   vvi = 0;
@@ -44,7 +44,7 @@ Note that the element 'centre' of the faceType struct is mean to contain the spa
   for(di=0;di<numDims;di++)
     face.simplexCentre[di] = dc[dci].centre[di];
 
-  return face;
+  return &face;
 }
 
 /*....................................................................*/
@@ -417,7 +417,7 @@ int
 buildRayCellChain(const int numDims, double *x, double *dir, double *vertexCoords\
   , struct simplex *dc, _Bool **cellVisited, unsigned long dci, int entryFaceI\
   , int levelI, int nCellsInChain, const double epsilon\
-  , unsigned long **chainOfCellIds, intersectType **cellExitIntcpts\
+  , faceType **facePtrs[N_DIMS+1], unsigned long **chainOfCellIds, intersectType **cellExitIntcpts\
   , int *lenChainPtrs){
   /*
 This function is designed to follow a ray (defined by a starting locus 'x' and a direction vector 'dir') through a convex connected set of cells (assumed simplicial). The function returns an integer status value directly, and two lists (plus their common length) via the argument interface: chainOfCellIds and cellExitIntcpts. Taken together, these lists define a chain of cells traversed by the ray.
@@ -450,7 +450,7 @@ At a successful termination, therefore, details of all the cells to the edge of 
   _Bool followingSingleChain;
   const int bufferSize=1024;
   int numGoodExits, numMarginalExits, fi, goodExitFis[numFaces], marginalExitFis[numFaces], exitFi, i, status, newEntryFaceI;
-  faceType face;
+  faceType *pFace;
   intersectType intcpt[numFaces];
 
   followingSingleChain = 1; /* default */
@@ -471,10 +471,14 @@ At a successful termination, therefore, details of all the cells to the edge of 
     for(fi=0;fi<numFaces;fi++){
       if(fi!=entryFaceI && (dc[dci].neigh[fi]==NULL || !(*cellVisited)[dc[dci].neigh[fi]->id])){
         /* Store points for this face: */
-        face = extractFace(numDims, vertexCoords, dc, dci, fi);
+        if(facePtrs==NULL){
+          pFace = extractFace(numDims, vertexCoords, dc, dci, fi);
+        }else{
+          pFace = &(*facePtrs)[dci][fi];
+        }
 
         /* Now calculate the intercept: */
-        intcpt[fi] = intersectLineWithFace(numDims, x, dir, &face, epsilon);
+        intcpt[fi] = intersectLineWithFace(numDims, x, dir, pFace, epsilon);
         intcpt[fi].fi = fi; /* Ultimately we need this so we can relate the bary coords for the face back to the Delaunay cell. */
 
         if(intcpt[fi].orientation>0){ /* it is an exit face. */
@@ -547,7 +551,7 @@ At a successful termination, therefore, details of all the cells to the edge of 
       /* Now we dive into the branch: */
       status = buildRayCellChain(numDims, x, dir, vertexCoords, dc, cellVisited\
         , dc[dci].neigh[exitFi]->id, newEntryFaceI, levelI+1, nCellsInChain+1\
-        , epsilon, chainOfCellIds, cellExitIntcpts, lenChainPtrs);
+        , epsilon, facePtrs, chainOfCellIds, cellExitIntcpts, lenChainPtrs);
     }
     i++;
   }
@@ -559,19 +563,29 @@ At a successful termination, therefore, details of all the cells to the edge of 
 int
 followRayThroughCells(const int numDims, double *x, double *dir, double *vertexCoords\
   , struct simplex *dc, const unsigned long numCells, const double epsilon\
-  , intersectType *entryIntcpt, unsigned long **chainOfCellIds\
+  , faceType **facePtrs[N_DIMS+1], intersectType *entryIntcpt, unsigned long **chainOfCellIds\
   , intersectType **cellExitIntcpts, int *lenChainPtrs){
   /*
 The present function follows a ray through a connected, convex set of cells (assumed to be simplices) and returns information about the chain of cells it passes through. If the ray is found to pass through 1 or more cells, the function returns 0, indicating success; if not, it returns a non-zero value. The chain description consists of three pieces of information: (i) intercept information for the entry face of the first cell encountered; (ii) the IDs of the cells in the chain; (iii) intercept information for the exit face of the ith cell.
 
 The calling routine should free chainOfCellIds, cellExitIntcpts & cellVisited after use.
 
-Note that 'face' should be both allocated and freed by the calling routine. Only the values stored in it are altered by the present function.
+The argument facePtrs may be set to NULL, in which case the function will construct each face from the list of cells etc as it needs it. This saves on memory but takes more time. If the calling routine supplies these values it needs to do something like as follows:
+
+	faceType *pFace,*facePtrs[N_DIMS+1]=malloc(sizeof(*(*facePtrs[N_DIMS+1]))*numFaces); // numFaces must of course be calculated beforehand.
+	for(i=0;i<numFaces;i++){
+	  for(j=0;j<numDims+1;j++){
+	    pFace = extractFace(numDims, vertexCoords, dc, i, j);
+	    facePtrs[i][j] = *pFace;
+	  }
+	}
+	status = followRayThroughCells(... &facePtrs, ...);
+
   */
 
   const int numFaces=numDims+1, maxNumEntryFaces=100;
   int numEntryFaces, fi, entryFis[maxNumEntryFaces], i, status;
-  faceType face;
+  faceType *pFace;
   unsigned long dci, entryDcis[maxNumEntryFaces];//, trialDci;
   intersectType intcpt, entryIntcpts[maxNumEntryFaces];
   _Bool *cellVisited=NULL;
@@ -582,10 +596,14 @@ Note that 'face' should be both allocated and freed by the calling routine. Only
     for(fi=0;fi<numFaces;fi++){
       if(dc[dci].neigh[fi]==NULL){ /* means that this face lies on the outside of the model. */
         /* Store points for this face: */
-        face = extractFace(numDims, vertexCoords, dc, dci, fi);
+        if(facePtrs==NULL){
+          pFace = extractFace(numDims, vertexCoords, dc, dci, fi);
+        }else{
+          pFace = &(*facePtrs)[dci][fi];
+        }
 
         /* Now calculate the intercept: */
-        intcpt = intersectLineWithFace(numDims, x, dir, &face, epsilon);
+        intcpt = intersectLineWithFace(numDims, x, dir, pFace, epsilon);
         intcpt.fi = fi; /* Ultimately we need this so we can relate the bary coords for the face back to the Delaunay cell. */
 
         if(intcpt.orientation<0){ /* it is an entry face. */
@@ -618,7 +636,7 @@ Note that 'face' should be both allocated and freed by the calling routine. Only
   status = 1; /* default */
   while(i<numEntryFaces && status>0){
     status = buildRayCellChain(numDims, x, dir, vertexCoords, dc, &cellVisited\
-      , entryDcis[i], entryFis[i], 0, 0, epsilon, chainOfCellIds, cellExitIntcpts, lenChainPtrs);
+      , entryDcis[i], entryFis[i], 0, 0, epsilon, facePtrs, chainOfCellIds, cellExitIntcpts, lenChainPtrs);
     i++;
   }
 

@@ -63,9 +63,15 @@ typedef struct {
   /* 'r' expresses the location of the N vertices of a simplicial polytope face in N-space, in terms of components along the N-1 orthogonal axes in the sub-plane of the face. Thus you should malloc r as r[N][N-1]. */
 } facePlusBasisType;
 
+typedef struct{
+  faceType *faces,*(*facePtrs[N_DIMS+1]);
+} faceListType;
+
+faceType *extractFace(const int numDims, double *vertexCoords, struct simplex *dc\
+  , const unsigned long dci, const int fi);
 int	followRayThroughCells(const int numDims, double *x, double *dir\
   , double *vertexCoords, struct simplex *dc, const unsigned long numCells\
-  , const double epsilon, intersectType *entryIntcpt, unsigned long **chainOfCellIds\
+  , const double epsilon, faceType **facePtrs[N_DIMS+1], intersectType *entryIntcpt, unsigned long **chainOfCellIds\
   , intersectType **cellExitIntcpts, int *lenChainPtrs);
 
 #endif /* RAYTHRUCELLS_H */
