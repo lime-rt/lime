@@ -85,6 +85,7 @@ initParImg(inputPars *par, image **img)
   par->nThreads = NTHREADS;
   par->nSolveIters=17;
   par->traceRayAlgorithm=0;
+  par->resetRNG=0;
 
   par->gridOutFiles = malloc(sizeof(char *)*NUM_GRID_STAGES);
   for(i=0;i<NUM_GRID_STAGES;i++)

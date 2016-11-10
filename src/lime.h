@@ -69,8 +69,7 @@
 #define PI                      3.14159265358979323846	/* pi	*/
 #define SPI                     1.77245385091		/* sqrt(pi)	*/
 #define maxp                    0.15
-#define OtoP                    3.
-#define NITERATIONS             16
+#define NITERATIONS 		16
 #define max_phot                10000		/* don't set this value higher unless you have enough memory. */
 #define ininphot                9
 #define minpop                  1.e-6
@@ -95,9 +94,9 @@
 #define ERF_TABLE_LIMIT		6.0             /* For x>6 erf(x)-1<double precision machine epsilon, so no need to store the values for larger x. */
 #define ERF_TABLE_SIZE		6145
 #define BIN_WIDTH		(ERF_TABLE_LIMIT/(ERF_TABLE_SIZE-1.))
-#define IBIN_WIDTH 		1./BIN_WIDTH
+#define IBIN_WIDTH 		(1./BIN_WIDTH)
 #define N_VEL_SEG_PER_HALF	1
-#define NUM_VEL_COEFFS		1+2*N_VEL_SEG_PER_HALF /* This is the number of velocity samples per edge (not including the grid vertices at each end of the edge). Currently this is elsewhere hard-wired at 3, the macro just being used in the file I/O modules. Note that we want an odd number of velocity samples per edge if we want to have the ability to do 2nd-order interpolation of velocity within Delaunay tetrahedra. */
+#define NUM_VEL_COEFFS		(1+2*N_VEL_SEG_PER_HALF) /* This is the number of velocity samples per edge (not including the grid vertices at each end of the edge). Currently this is elsewhere hard-wired at 3, the macro just being used in the file I/O modules. Note that we want an odd number of velocity samples per edge if we want to have the ability to do 2nd-order interpolation of velocity within Delaunay tetrahedra. */
 
 /* Collision partner ID numbers from LAMDA */
 #define CP_H2			1
@@ -153,7 +152,7 @@ typedef struct {
   int sampling,lte_only,init_lte,antialias,polarization,nThreads,numDims;
   int nLineImages, nContImages;
   char **moldatfile;
-  _Bool writeGridAtStage[NUM_GRID_STAGES];
+  _Bool writeGridAtStage[NUM_GRID_STAGES], resetRNG;
   char *gridInFile,**gridOutFiles;
   int dataFlags,nSolveIters;
   double (*gridDensMaxLoc)[DIM], *gridDensMaxValues;

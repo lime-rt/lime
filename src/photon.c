@@ -335,18 +335,25 @@ photon(int id, struct grid *gp, molData *md, int iter, const gsl_rng *ran\
           /* End of line blending part */
 
 	  /* as said above, out-in split should be done also for blended lines... */
-          dtau=alpha_line_in*ds_in+alpha_line_out*ds_out+(alpha_cont+alpha_blend)*(ds_in+ds_out); 
-          if(dtau < -30) dtau = -30;
 
+	  dtau=(alpha_line_out+alpha_cont+alpha_blend)*ds_out;
+          if(dtau < -30.) dtau = -30.;
           calcSourceFn(dtau, par, &remnantSnu, &expDTau);
-          remnantSnu *= jnu_line_in*ds_in+jnu_line_out*ds_out+(jnu_cont+jnu_blend)*(ds_in+ds_out);
+          remnantSnu *= (jnu_line_out+jnu_cont+jnu_blend)*ds_out;
+          mp[molI].phot[lineI+iphot*md[molI].nline]+=expTau[iline]*remnantSnu;
 	  expTau[iline]*=expDTau;
 
-          if(expTau[iline] > exp(30)){
-            if(!silent) warning("Maser warning: optical depth has dropped below -30");
-            expTau[iline]=exp(30);
-          }
+	  dtau=(alpha_line_in+alpha_cont+alpha_blend)*ds_in;
+          if(dtau < -30.) dtau = -30.;
+          calcSourceFn(dtau, par, &remnantSnu, &expDTau);
+          remnantSnu *= (jnu_line_in+jnu_cont+jnu_blend)*ds_in;
           mp[molI].phot[lineI+iphot*md[molI].nline]+=expTau[iline]*remnantSnu;
+	  expTau[iline]*=expDTau;
+
+          if(expTau[iline] > exp(30.)){
+            if(!silent) warning("Maser warning: optical depth has dropped below -30");
+            expTau[iline]=exp(30.);
+          }
 
           iline++;
         } /* Next line this molecule. */

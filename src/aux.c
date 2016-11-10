@@ -50,6 +50,7 @@ parseInput(inputPars inpar, configInfo *par, image **img, molData **m){
   par->gridInFile   = inpar.gridInFile;
   par->nSolveIters  = inpar.nSolveIters;
   par->traceRayAlgorithm = inpar.traceRayAlgorithm;
+  par->resetRNG     = inpar.resetRNG;
 
   par->gridOutFiles = malloc(sizeof(char *)*NUM_GRID_STAGES);
   for(i=0;i<NUM_GRID_STAGES;i++)
@@ -703,6 +704,7 @@ levelPops(molData *md, configInfo *par, struct grid *gp, int *popsdone, double *
   struct blendInfo blends;
   _Bool luWarningGiven=0;
   gsl_error_handler_t *defaultErrorHandler=NULL;
+  int RNG_seeds[par->nThreads];
 
   nlinetot = 0;
   for(ispec=0;ispec<par->nSpecies;ispec++)
@@ -730,7 +732,8 @@ levelPops(molData *md, configInfo *par, struct grid *gp, int *popsdone, double *
 
     for (i=0;i<par->nThreads;i++){
       threadRans[i] = gsl_rng_alloc(ranNumGenType);
-      gsl_rng_set(threadRans[i],(int)(gsl_rng_uniform(ran)*1e6));
+      if (par->resetRNG==1) RNG_seeds[i] = (int)(gsl_rng_uniform(ran)*1e6);
+      else gsl_rng_set(threadRans[i],(int)(gsl_rng_uniform(ran)*1e6));
     }
 
     calcGridCollRates(par,md,gp);
@@ -777,12 +780,14 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
 
       calcGridMolSpecNumDens(par,md,gp);
 
+
       nVerticesDone=0;
       omp_set_dynamic(0);
 #pragma omp parallel private(id,ispec,threadI,nextMolWithBlend) num_threads(par->nThreads)
       {
         threadI = omp_get_thread_num();
 
+        if (par->resetRNG==1) gsl_rng_set(threadRans[threadI],RNG_seeds[threadI]);
         /* Declare and allocate thread-private variables */
         gridPointData *mp;	// Could have declared them earlier
         double *halfFirstDs;	// and included them in private() I guess.
@@ -795,7 +800,7 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
         }
         halfFirstDs = malloc(sizeof(*halfFirstDs)*max_phot);
 
-#pragma omp for
+#pragma omp for schedule(dynamic)
         for(id=0;id<par->pIntensity;id++){
 #pragma omp atomic
           ++nVerticesDone;
