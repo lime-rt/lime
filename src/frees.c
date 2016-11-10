@@ -9,7 +9,8 @@
 
 #include "lime.h"
 
-void freeConfig(configInfo par){
+void
+freeConfig(configInfo par){
   free(par.moldatfile);
   free(par.collPartIds);
   free(par.nMolWeights);
@@ -18,7 +19,8 @@ void freeConfig(configInfo par){
   free(par.gridDensMaxValues);
 }
 
-void freeGrid(const unsigned int numPoints, const unsigned short numSpecies\
+void
+freeGrid(const unsigned int numPoints, const unsigned short numSpecies\
   , struct grid *gp){
 
   unsigned int i_u;
@@ -82,7 +84,8 @@ freeMolData(const int nSpecies, molData *mol){
   }
 }
 
-void freeMolsWithBlends(struct molWithBlends *mols, const int numMolsWithBlends){
+void
+freeMolsWithBlends(struct molWithBlends *mols, const int numMolsWithBlends){
   int mi, li;
 
   if(mols != NULL){
@@ -121,7 +124,8 @@ freeParImg(const int nImages, inputPars *par, image *img){
   free(par->gridOutFiles);
 }
 
-void freePopulation(const unsigned short numSpecies, struct populations *pop){
+void
+freePopulation(const unsigned short numSpecies, struct populations *pop){
   if(pop != NULL){
     unsigned short i_s;
     for(i_s=0;i_s<numSpecies;i_s++){
@@ -134,7 +138,8 @@ void freePopulation(const unsigned short numSpecies, struct populations *pop){
   }
 }
 
-void freeSomeGridFields(const unsigned int numPoints, const unsigned short numSpecies\
+void
+freeSomeGridFields(const unsigned int numPoints, const unsigned short numSpecies\
   , struct grid *gp){
 
   unsigned int i_u;

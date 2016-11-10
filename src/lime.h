@@ -41,7 +41,8 @@
 #define omp_set_dynamic(int) 0
 #endif
 
-#define DIM 3
+#include "dims.h"
+
 #define VERSION	"1.6.1"
 #define DEFAULT_NTHREADS 1
 #ifndef NTHREADS /* Value passed from the LIME script */
@@ -282,28 +283,6 @@ struct cell {
   double centre[DIM];
 };
 
-/* This struct is meant to record all relevant information about the intersection between a ray (defined by a direction unit vector 'dir' and a starting position 'r') and a face of a Delaunay cell.
-*/
-typedef struct {
-  int fi;
-  /* The index (in the range {0...DIM}) of the face (and thus of the opposite vertex, i.e. the one 'missing' from the bary[] list of this face).
-  */
-  int orientation;
-  /* >0 means the ray exits, <0 means it enters, ==0 means the face is parallel to ray.
-  */
-  double bary[DIM], dist, collPar;
-  /* 'dist' is defined via r_int = r + dist*dir. 'collPar' is a measure of how close to any edge of the face r_int lies.
-  */
-} intersectType;
-
-typedef struct {
-  double r[DIM][DIM], centre[DIM];/*, norm[3], mat[1][1], det; */
-} faceType;
-
-typedef struct {
-  double xAxis[DIM], yAxis[DIM], r[3][2];
-} triangle2D;
-
 /* Some global variables */
 int silent;
 
@@ -327,9 +306,7 @@ _Bool	onlyBitsSet(const int flags, const int mask);
 
 void	assignMolCollPartsToDensities(configInfo*, molData*);
 void	binpopsout(configInfo*, struct grid*, molData*);
-int	buildRayCellChain(double*, double*, struct grid*, struct cell*, _Bool**, unsigned long, int, int, int, const double, unsigned long**, intersectType**, int*);
-void	calcAvRelLineAmp(struct grid*, int, int, double, double, double*);
-void	calcAvRelLineAmp_lin(struct grid*, int, int, double, double, double*);
+//void	buildGrid(configInfo*, struct grid*);
 void	calcFastExpRange(const int, const int, int*, int*, int*);
 void	calcGridCollRates(configInfo*, molData*, struct grid*);
 void	calcGridContDustOpacity(configInfo*, const double, double*, double*, const int, struct grid*);
@@ -339,28 +316,19 @@ void	calcGridMolDoppler(configInfo*, molData*, struct grid*);
 void	calcGridMolSpecNumDens(configInfo*, molData*, struct grid*);
 void	calcInterpCoeffs(configInfo*, struct grid*);
 void	calcInterpCoeffs_lin(configInfo*, struct grid*);
-void	calcLineAmpInterp(const double, const double, const double, double*);
-void	calcLineAmpSample(const double x[3], const double dx[3], const double, const double, double*, const int, const double, const double, double*);
 void	calcMolCMBs(configInfo*, molData*);
 void	calcSourceFn(double, const configInfo*, double*, double*);
 void	calcTableEntries(const int, const int);
-void	calcTriangleBaryCoords(double vertices[3][2], double, double, double barys[3]);
-triangle2D calcTriangle2D(faceType);
 void	checkGridDensities(configInfo*, struct grid*);
 void	checkUserDensWeights(configInfo*);
-void	continuumSetup(int, image*, molData*, configInfo*, struct grid*);
 void	delaunay(const int, struct grid*, const unsigned long, const _Bool, struct cell**, unsigned long*);
 void	distCalc(configInfo*, struct grid*);
-void	doBaryInterp(const intersectType, struct grid*, double*, unsigned long*, molData*, const int, gridInterp*);
-void	doSegmentInterp(gridInterp*, const int, molData*, const int, const double, const int);
-faceType extractFace(struct grid*, struct cell*, const unsigned long, const int);
 int	factorial(const int);
 double	FastExp(const float);
 void    fillErfTable();
 void	fit_d1fi(double, double, double*);
 void	fit_fi(double, double, double*);
 void	fit_rr(double, double, double*);
-int	followRayThroughDelCells(double*, double*, struct grid*, struct cell*, const unsigned long, const double, intersectType*, unsigned long**, intersectType**, int*);
 void	freeConfig(configInfo par);
 void	freeGrid(const unsigned int, const unsigned short, struct grid*);
 void	freeGridPointData(configInfo*, gridPointData*);
@@ -372,21 +340,17 @@ void	freeSomeGridFields(const unsigned int, const unsigned short, struct grid*);
 double  gaussline(const double, const double);
 void	getArea(configInfo*, struct grid*, const gsl_rng*);
 void	getclosest(double, double, double, long*, long*, double*, double*, double*);
-int	getColIndex(char**, const int, char*);
 void	getjbar(int, molData*, struct grid*, const int, configInfo*, struct blendInfo, int, gridPointData*, double*);
 void	getMass(configInfo*, struct grid*, const gsl_rng*);
 void	getmatrix(int, gsl_matrix*, molData*, struct grid*, int, gridPointData*);
-int	getNewEntryFaceI(const unsigned long, const struct cell);
 int	getNextEdge(double*, int, struct grid*, const gsl_rng*);
 void	getVelocities(configInfo *, struct grid *);
 void	getVelocities_pregrid(configInfo *, struct grid *);
 void	gridPopsInit(configInfo*, molData*, struct grid*);
 void	input(inputPars*, image*);
 double	interpolateKappa(const double, double*, double*, const int, gsl_spline*, gsl_interp_accel*);
-void	intersectLineTriangle(double*, double*, faceType, intersectType*);
 float	invSqrt(float);
 void	levelPops(molData*, configInfo*, struct grid*, int*, double*, double*, const int);
-void	line_plane_intersect(struct grid*, double*, int, int*, double*, double*, double);
 void	lineBlend(molData*, configInfo*, struct blendInfo*);
 void	LTE(configInfo*, struct grid*, molData*);
 void	lteOnePoint(molData*, const int, const double, double*);
@@ -419,8 +383,6 @@ void	stateq(int, struct grid*, molData*, const int, configInfo*, struct blendInf
 void	statistics(int, molData*, struct grid*, int*, double*, double*, int*);
 void	stokesangles(double*, double (*rotMat)[3], double*);
 double	taylor(const int, const float);
-void	traceray(rayData, const double, const int, configInfo*, struct grid*, molData*, image*, const double, const int, const double);
-void	traceray_smooth(rayData, const double, const int, configInfo*, struct grid*, molData*, image*, struct cell*, const unsigned long, const double, gridInterp gips[3], const int, const double, const int, const double);
 double	veloproject(const double*, const double*);
 void	write2Dfits(int, configInfo*, image*);
 void	write3Dfits(int, configInfo*, image*);

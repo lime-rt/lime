@@ -7,13 +7,15 @@
  *
 TODO:
   - In raytrace(), look at rearranging the code to do the qhull step before choosing the rays. This would allow cells with all vertices outside the image boundaries to be excluded. If the image is much smaller than the model, this could lead to significant savings in time. The only downside might be memory useage...
+  - In raytrace(), for par->traceRayAlgorithm==1, in theory we could deduce the cell geometry via the grid-point neighbour linkage, without needing to call delaunay() again.
  */
 
 #include "lime.h"
-
+#include "raythrucells.h"
 
 /*....................................................................*/
-void calcLineAmpSample(const double x[3], const double dx[3], const double ds\
+void
+calcLineAmpSample(const double x[3], const double dx[3], const double ds\
   , const double binv, double *projVels, const int nSteps\
   , const double oneOnNSteps, const double deltav, double *vfac){
   /*
@@ -39,7 +41,8 @@ The bulk velocity of the model material can vary significantly with position, th
 }
 
 /*....................................................................*/
-void calcLineAmpInterp(const double projVelRay, const double binv\
+void
+calcLineAmpInterp(const double projVelRay, const double binv\
   , const double deltav, double *vfac){
   /*
 The bulk velocity of the model material can vary significantly with position, thus so can the value of the line-shape function at a given frequency and direction. The present function calculates 'vfac', an approximate average of the line-shape function along a path of length ds in the direction of the line of sight.
@@ -90,7 +93,8 @@ This function returns ds as the (always positive-valued) distance between the pr
 }
 
 /*....................................................................*/
-void traceray(rayData ray, const double local_cmb, const int im\
+void
+traceray(rayData ray, const double local_cmb, const int im\
   , configInfo *par, struct grid *gp, molData *md, image *img\
   , const double cutoff, const int nSteps, const double oneOnNSteps){
   /*
@@ -250,9 +254,84 @@ Note that the algorithm employed here is similar to that employed in the functio
 }
 
 /*....................................................................*/
+void doBaryInterp(const intersectType intcpt, struct grid *gp\
+  , double xCmpntsRay[3], unsigned long gis[3]\
+  , molData *md, const int numMols, gridInterp *gip){
+
+  int di,molI,levelI;
+
+  (*gip).xCmpntRay = intcpt.bary[0]*xCmpntsRay[0]\
+                   + intcpt.bary[1]*xCmpntsRay[1]\
+                   + intcpt.bary[2]*xCmpntsRay[2];
+  for(di=0;di<DIM;di++){
+    (*gip).x[di] = intcpt.bary[0]*gp[gis[0]].x[di]\
+                 + intcpt.bary[1]*gp[gis[1]].x[di]\
+                 + intcpt.bary[2]*gp[gis[2]].x[di];
+  }
+
+  for(di=0;di<3;di++){ /* 3 not DIM, because a B field only makes sense in 3 dimensions. */
+/* ****** Maybe some test of DIM==3?? Would need to be systematic across the entire code..? */
+    (*gip).B[di] = intcpt.bary[0]*gp[gis[0]].B[di]\
+                 + intcpt.bary[1]*gp[gis[1]].B[di]\
+                 + intcpt.bary[2]*gp[gis[2]].B[di];
+  }
+
+  for(molI=0;molI<numMols;molI++){
+    (*gip).mol[molI].binv = intcpt.bary[0]*gp[gis[0]].mol[molI].binv\
+                          + intcpt.bary[1]*gp[gis[1]].mol[molI].binv\
+                          + intcpt.bary[2]*gp[gis[2]].mol[molI].binv;
+
+    for(levelI=0;levelI<md[molI].nlev;levelI++){
+      (*gip).mol[molI].specNumDens[levelI]\
+        = intcpt.bary[0]*gp[gis[0]].mol[molI].specNumDens[levelI]\
+        + intcpt.bary[1]*gp[gis[1]].mol[molI].specNumDens[levelI]\
+        + intcpt.bary[2]*gp[gis[2]].mol[molI].specNumDens[levelI];
+    }
+  }
+
+  (*gip).cont.dust = intcpt.bary[0]*gp[gis[0]].cont.dust\
+                   + intcpt.bary[1]*gp[gis[1]].cont.dust\
+                   + intcpt.bary[2]*gp[gis[2]].cont.dust;
+
+  (*gip).cont.knu  = intcpt.bary[0]*gp[gis[0]].cont.knu\
+                   + intcpt.bary[1]*gp[gis[1]].cont.knu\
+                   + intcpt.bary[2]*gp[gis[2]].cont.knu;
+}
+
+/*....................................................................*/
+void doSegmentInterp(gridInterp gips[3], const int iA, molData *md\
+  , const int numMols, const double oneOnNumSegments, const int si){
+
+  const double fracA = (si + 0.5)*oneOnNumSegments, fracB = 1.0 - fracA;
+  const int iB = 1 - iA;
+  int di,molI,levelI;
+
+  gips[2].xCmpntRay = fracA*gips[iB].xCmpntRay + fracB*gips[iA].xCmpntRay; /* This does not seem to be used. */
+
+  for(di=0;di<DIM;di++){
+    gips[2].x[di] = fracA*gips[iB].x[di] + fracB*gips[iA].x[di];
+  }
+  for(di=0;di<3;di++){ /* 3 not DIM, because a B field only makes sense in 3 dimensions. */
+    gips[2].B[di] = fracA*gips[iB].B[di] + fracB*gips[iA].B[di];
+  }
+
+  for(molI=0;molI<numMols;molI++){
+    gips[2].mol[molI].binv = fracA*gips[iB].mol[molI].binv + fracB*gips[iA].mol[molI].binv;
+
+    for(levelI=0;levelI<md[molI].nlev;levelI++){
+      gips[2].mol[molI].specNumDens[levelI] = fracA*gips[iB].mol[molI].specNumDens[levelI]\
+                                            + fracB*gips[iA].mol[molI].specNumDens[levelI];
+    }
+  }
+
+  gips[2].cont.dust = fracA*gips[iB].cont.dust + fracB*gips[iA].cont.dust;
+  gips[2].cont.knu  = fracA*gips[iB].cont.knu  + fracB*gips[iA].cont.knu;
+}
+
+/*....................................................................*/
 void traceray_smooth(rayData ray, const double local_cmb, const int im\
-  , configInfo *par, struct grid *gp, molData *md, image *img\
-  , struct cell *dc, const unsigned long numCells, const double epsilon\
+  , configInfo *par, struct grid *gp, double *vertexCoords, molData *md, image *img\
+  , struct simplex *dc, const unsigned long numCells, const double epsilon\
   , gridInterp gips[3], const int numSegments, const double oneOnNumSegments\
   , const int nSteps, const double oneOnNSteps){
   /*
@@ -297,8 +376,8 @@ This version of traceray implements a new algorithm in which the population valu
 
   /* Find the chain of cells the ray passes through.
   */
-  status = followRayThroughDelCells(x, dir, gp, dc, numCells, epsilon\
-    , &entryIntcptFirstCell, &chainOfCellIds, &cellExitIntcpts, &lenChainPtrs);
+  status = followRayThroughCells(DIM, x, dir, vertexCoords, dc, numCells, epsilon\
+    , NULL, &entryIntcptFirstCell, &chainOfCellIds, &cellExitIntcpts, &lenChainPtrs);
 
   if(status!=0){
     free(chainOfCellIds);
@@ -315,7 +394,7 @@ This version of traceray implements a new algorithm in which the population valu
   vvi = 0;
   for(vi=0;vi<numFaces;vi++){
     if(vi!=entryIntcptFirstCell.fi){
-      gis[entryI][vvi++] = dc[dci].vertx[vi]->id;
+      gis[entryI][vvi++] = dc[dci].vertx[vi];
     }
   }
 
@@ -337,7 +416,7 @@ This version of traceray implements a new algorithm in which the population valu
     vvi = 0;
     for(vi=0;vi<numFaces;vi++){
       if(vi!=cellExitIntcpts[ci].fi){
-        gis[exitI][vvi++] = dc[dci].vertx[vi]->id;
+        gis[exitI][vvi++] = dc[dci].vertx[vi];
       }
     }
 
@@ -460,7 +539,10 @@ At the moment I will fix the number of segments, but it might possibly be faster
 }
 
 /*....................................................................*/
-void locateRayOnImage(double x[2], const double size, const double imgCentreXPixels, const double imgCentreYPixels, image *img, const int im, const int maxNumRaysPerPixel, rayData *rays, int *numActiveRays){
+void locateRayOnImage(double x[2], const double size\
+  , const double imgCentreXPixels, const double imgCentreYPixels, image *img\
+  , const int im, const int maxNumRaysPerPixel, rayData *rays, int *numActiveRays){
+
   int xi,yi,ichan;
   _Bool isOutsideImage;
   unsigned int ppi;
@@ -498,6 +580,87 @@ void locateRayOnImage(double x[2], const double size, const double imgCentreXPix
 }
 
 /*....................................................................*/
+void calcTriangleBaryCoords(double vertices[3][2], double x, double y, double barys[3]){
+  double mat[2][2], vec[2], det;
+  /*
+The barycentric coordinates (L0,L1,L2) of a point r[] in a triangle v[] are given by
+
+	(v[0][0]-v[2][0]  v[1][0]-v[2][0]) (L0)   (r[0]-v[2][0])
+	(                                )*(  ) = (            ),
+	(v[0][1]-v[2][1]  v[1][1]-v[2][1]) (L1)   (r[1]-v[2][1])
+
+with L2 = 1 - L0 - L1.
+  */
+  mat[0][0] = vertices[0][0] - vertices[2][0];
+  mat[0][1] = vertices[1][0] - vertices[2][0];
+  mat[1][0] = vertices[0][1] - vertices[2][1];
+  mat[1][1] = vertices[1][1] - vertices[2][1];
+  vec[0] = x - vertices[2][0];
+  vec[1] = y - vertices[2][1];
+  det = mat[0][0]*mat[1][1] - mat[0][1]*mat[1][0];
+  /*** We're assuming that the triangle is not pathological, i.e that det!=0. */
+  barys[0] = ( mat[1][1]*vec[0] - mat[0][1]*vec[1])/det;
+  barys[1] = (-mat[1][0]*vec[0] + mat[0][0]*vec[1])/det;
+  barys[2] = 1.0 - barys[0] - barys[1];
+}
+
+/*....................................................................*/
+double *
+extractGridXs(const unsigned short numDims, const unsigned long numPoints\
+  , struct grid *gp){
+
+  double *xValues=NULL;
+  unsigned long i_ul;
+  unsigned short i_us;
+
+  xValues = malloc(sizeof(*xValues)*numDims*numPoints);
+  for(i_ul=0;i_ul<numPoints;i_ul++){
+    for(i_us=0;i_us<numDims;i_us++)
+      xValues[numDims*i_ul+i_us] = gp[i_ul].x[i_us];
+  }
+
+  return xValues;
+}
+
+/*....................................................................*/
+struct simplex *
+convertCellType(const unsigned short numDims, const unsigned long numCells\
+  , struct cell *dc, struct grid *gp){
+
+  struct simplex *cells=NULL;
+  unsigned long dci,gi;
+  unsigned short vi,di;
+
+  cells = malloc(sizeof(*cells)*numCells);
+  for(dci=0;dci<numCells;dci++){
+    cells[dci].id = dci;
+
+    for(vi=0;vi<numDims+1;vi++)
+      cells[dci].vertx[vi] = dc[dci].vertx[vi]->id;
+
+    for(di=0;di<numDims;di++)
+      cells[dci].centre[di] = 0.0;
+    for(vi=0;vi<numDims+1;vi++){
+      gi = cells[dci].vertx[vi];
+      for(di=0;di<numDims;di++)
+        cells[dci].centre[di] += gp[gi].x[di];
+    }
+    for(di=0;di<numDims;di++)
+      cells[dci].centre[di] *= (1.0/(double)(numDims+1));
+  }
+  for(dci=0;dci<numCells;dci++){
+    for(vi=0;vi<numDims+1;vi++){
+      if(dc[dci].neigh[vi]==NULL)
+        cells[dci].neigh[vi] = NULL;
+      else
+        cells[dci].neigh[vi] = &cells[dc[dci].neigh[vi]->id];
+    }
+  }
+
+  return cells;
+}
+
+/*....................................................................*/
 void
 raytrace(int im, configInfo *par, struct grid *gp, molData *md, image *img, double *lamtab, double *kaptab, const int nEntries){
   /*
@@ -520,6 +683,7 @@ Note that the argument 'md', and the grid element '.mol', are only accessed for 
   int cmbMolI,cmbLineI;
   rayData *rays;
   struct cell *dc=NULL;
+  struct simplex *cells=NULL;
   unsigned long numCells,dci;
   coordT *pt_array, point[3];
   char flags[255];
@@ -529,7 +693,7 @@ Note that the argument 'md', and the grid element '.mol', are only accessed for 
   vertexT *vertex,**vertexp;
   int curlong, totlong;
   double triangle[3][2],barys[3],local_cmb,cmbFreq,circleSpacing,scale,angle;
-  double *xySquared=NULL;
+  double *xySquared=NULL,*vertexCoords=NULL;
   gsl_error_handler_t *defaultErrorHandler=NULL;
 
   size = img[im].distance*img[im].imgres;
@@ -640,6 +804,7 @@ How to calculate this distance? Well if we have N points randomly but evenly dis
 
   if(par->traceRayAlgorithm==1){
     delaunay(DIM, gp, (unsigned long)par->ncell, 1, &dc, &numCells); /* mallocs dc if getCells==T */
+//**** Actually we can figure out the cell geometry from the grid neighbours.
 
     /* We need to process the list of cells a bit further - calculate their centres, and reset the id values to be the same as the index of the cell in the list. (This last because we are going to construct other lists to indicate which cells have been visited etc.)
     */
@@ -654,6 +819,10 @@ How to calculate this distance? Well if we have N points randomly but evenly dis
 
       dc[dci].id = dci;
     }
+
+    vertexCoords = extractGridXs(DIM, (unsigned long)par->ncell, gp);
+    cells = convertCellType(DIM, numCells, dc, gp);
+    free(dc);
 
   }else if(par->traceRayAlgorithm!=0){
     if(!silent) bail_out("Unrecognized value of par.traceRayAlgorithm");
@@ -705,8 +874,8 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
           , cutoff, nStepsThruCell, oneOnNSteps);
 
       else if(par->traceRayAlgorithm==1)
-        traceray_smooth(rays[ri], local_cmb, im, par, gp, md, img\
-          , dc, numCells, epsilon, gips\
+        traceray_smooth(rays[ri], local_cmb, im, par, gp, vertexCoords, md, img\
+          , cells, numCells, epsilon, gips\
           , numSegments, oneOnNumSegments, nStepsThruCell, oneOnNSteps);
 
       if (threadI == 0){ /* i.e., is master thread */
@@ -812,37 +981,14 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
   } /* end if(numPixelsForInterp>0) */
 
   free(xySquared);
-  if(par->traceRayAlgorithm==1)
-    free(dc);
+  if(par->traceRayAlgorithm==1){
+    free(cells);
+    free(vertexCoords);
+  }
   for(ri=0;ri<numActiveRays;ri++){
     free(rays[ri].tau);
     free(rays[ri].intensity);
   }
   free(rays);
-}
-
-/*....................................................................*/
-void calcTriangleBaryCoords(double vertices[3][2], double x, double y, double barys[3]){
-  double mat[2][2], vec[2], det;
-  /*
-The barycentric coordinates (L0,L1,L2) of a point r[] in a triangle v[] are given by
-
-	(v[0][0]-v[2][0]  v[1][0]-v[2][0]) (L0)   (r[0]-v[2][0])
-	(                                )*(  ) = (            ),
-	(v[0][1]-v[2][1]  v[1][1]-v[2][1]) (L1)   (r[1]-v[2][1])
-
-with L2 = 1 - L0 - L1.
-  */
-  mat[0][0] = vertices[0][0] - vertices[2][0];
-  mat[0][1] = vertices[1][0] - vertices[2][0];
-  mat[1][0] = vertices[0][1] - vertices[2][1];
-  mat[1][1] = vertices[1][1] - vertices[2][1];
-  vec[0] = x - vertices[2][0];
-  vec[1] = y - vertices[2][1];
-  det = mat[0][0]*mat[1][1] - mat[0][1]*mat[1][0];
-  /*** We're assuming that the triangle is not pathological, i.e that det!=0. */
-  barys[0] = ( mat[1][1]*vec[0] - mat[0][1]*vec[1])/det;
-  barys[1] = (-mat[1][0]*vec[0] + mat[0][0]*vec[1])/det;
-  barys[2] = 1.0 - barys[0] - barys[1];
 }
 
