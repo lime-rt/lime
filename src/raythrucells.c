@@ -581,12 +581,23 @@ The argument facePtrs may be set to NULL, in which case the function will constr
 	}
 	status = followRayThroughCells(... &facePtrs, ...);
 
+Note finally that if facePtrs is supplied non-NULL, vertexCoords may be left at NULL. If  is filled, it should be malloc'd as
+
+	vertexCoords = malloc(sizeof(double)*numDims*numPoints);
+
+and filled as
+
+	for(i=0;i<numPoints;i++)
+	  for(j=0;j<numDims;j++)
+	    vertexCoords[numDims*i+j] = // grid point i, coordinate j
+
+
   */
 
   const int numFaces=numDims+1, maxNumEntryFaces=100;
   int numEntryFaces, fi, entryFis[maxNumEntryFaces], i, status;
   faceType *pFace;
-  unsigned long dci, entryDcis[maxNumEntryFaces];//, trialDci;
+  unsigned long dci, entryDcis[maxNumEntryFaces];
   intersectType intcpt, entryIntcpts[maxNumEntryFaces];
   _Bool *cellVisited=NULL;
 
