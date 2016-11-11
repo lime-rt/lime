@@ -18,7 +18,7 @@ popsin(configInfo *par, struct grid **gp, molData **md, int *popsdone){
   int i,j,k,dummyNPart,dummyNTrans;
   double dummy;
   struct cell *dc=NULL; /* Not used at present. */
-  unsigned long numCells;
+  unsigned long numCells,nExtraSinks;
 
   if((fp=fopen(par->restart, "rb"))==NULL){
     if(!silent) bail_out("Error reading binary output populations file!");
@@ -103,7 +103,14 @@ popsin(configInfo *par, struct grid **gp, molData **md, int *popsdone){
   }
   fclose(fp);
 
-  delaunay(DIM, *gp, (unsigned long)par->ncell, 0, &dc, &numCells);
+  delaunay(DIM, *gp, (unsigned long)par->ncell, 0, 1, &dc, &numCells);
+
+  /* We just asked delaunay() to flag any grid points with IDs lower than par->pIntensity (which means their distances from model centre are less than the model radius) but which are nevertheless found to be sink points by virtue of the geometry of the mesh of Delaunay cells. Now we need to reshuffle the list of grid points, then reset par->pIntensity, such that all the non-sink points still have IDs lower than par->pIntensity.
+  */ 
+  nExtraSinks = reorderGrid((unsigned long)par->ncell, *gp);
+  par->pIntensity -= nExtraSinks;
+  par->sinkPoints += nExtraSinks;
+
   distCalc(par, *gp);
   getVelocities(par,*gp);
 
