@@ -764,6 +764,7 @@ Pointers are indicated by a * before the attribute name and an arrow to the memo
   }
 }
 
+/*....................................................................*/
 void
 levelPops(molData *md, configInfo *par, struct grid *gp, int *popsdone, double *lamtab, double *kaptab, const int nEntries){
   int id,iter,ilev,ispec,c=0,n,i,threadI,nVerticesDone,nItersDone,nlinetot;//,conv=0

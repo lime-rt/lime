@@ -168,7 +168,6 @@ run(inputPars inpars, image *inimg, const int nImages){
 #endif
   fillErfTable();
 
-//  par.nImages = nImages;
   parseInput(inpars, inimg, nImages, &par, &img, &md); /* Sets par.numDensities for !(par.doPregrid || par.restart) */
 
   if(!silent && par.nThreads>1){

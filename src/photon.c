@@ -10,11 +10,15 @@
 
 #include "lime.h"
 
-double veloproject(const double dx[3], const double *vel){
+/*....................................................................*/
+double
+veloproject(const double dx[3], const double *vel){
   return dx[0]*vel[0]+dx[1]*vel[1]+dx[2]*vel[2];
 }
 
-double geterf(const double x0, const double x1) {
+/*....................................................................*/
+double
+geterf(const double x0, const double x1) {
   /* table lookup erf thingy */
 
   double val0=0.,val1=0.;
@@ -38,7 +42,9 @@ double geterf(const double x0, const double x1) {
   return fabs((val1-val0)/(x1-x0));
 }
 
-double gaussline(const double v, const double oneOnSigma){
+/*....................................................................*/
+double
+gaussline(const double v, const double oneOnSigma){
   double val;
   val = v*v*oneOnSigma*oneOnSigma;
 #ifdef FASTEXP
@@ -48,60 +54,149 @@ double gaussline(const double v, const double oneOnSigma){
 #endif
 }
 
-int getNextEdge(double *inidir, int id, struct grid *gp, const gsl_rng *ran){
-  int i,iOfLargest,iOfNextLargest,numPositive;
-  double cosAngle,largest,nextLargest,mytest;
-
-  /* Calculate dot products between inidir and all the edges. Store the largest of these and the next largest.
+/*....................................................................*/
+int
+getNextEdge_A(double *inidir, const int startGi, const int presentGi, struct grid *gp, const gsl_rng *ran){
+  int i,ni,di,niOfLargest,niOfNextLargest;
+  double trackCos,dirCos,largest,nextLargest,mytest,dirsFromStart[DIM],lenSquared,norm;
+  /*
+The idea here is to select for the next grid point, that one which lies closest (with a little randomizing jitter) to the photon track, while requiring the direction of the edge to be in the 'forward' hemisphere of the photon direction.
   */
-  numPositive = 0;
-  for(i=0;i<gp[id].numNeigh;i++){
-    cosAngle=( inidir[0]*gp[id].dir[i].xn[0]
-              +inidir[1]*gp[id].dir[i].xn[1]
-              +inidir[2]*gp[id].dir[i].xn[2]);
 
-    if(cosAngle>0.0)
-      numPositive++;
+  /* Calculate dot products between inidir and delta Rs to all the possible next points. Store the largest of these and the next largest.
+  */
+  i = 0;
+  for(ni=0;ni<gp[presentGi].numNeigh;ni++){
+    dirCos=( inidir[0]*gp[presentGi].dir[ni].xn[0]
+            +inidir[1]*gp[presentGi].dir[ni].xn[1]
+            +inidir[2]*gp[presentGi].dir[ni].xn[2]);
+
+    if(dirCos<=0.0)
+  continue; /* because the edge points in the backward direction. */
+
+    lenSquared = 0.0;
+    for(di=0;di<DIM;di++){
+      dirsFromStart[di] = gp[presentGi].neigh[ni]->x[di] - gp[startGi].x[di];
+      lenSquared += dirsFromStart[di]*dirsFromStart[di];
+    }
+
+    if(lenSquared<=0.0)
+  continue;
+
+    norm = 1.0/sqrt(lenSquared);
+
+    trackCos = 0.0;
+    for(di=0;di<DIM;di++)
+      trackCos += inidir[di]*dirsFromStart[di]*norm;
 
     if(i==0){
-      largest = cosAngle;
-      iOfLargest = i;
-    }else if(i==1){
-      if(cosAngle>largest){
-        nextLargest = largest;
-        iOfNextLargest = iOfLargest;
-        largest = cosAngle;
-        iOfLargest = i;
-      }else{
-        nextLargest = cosAngle;
-        iOfNextLargest = i;
-      }
+      largest = trackCos;
+      niOfLargest = ni;
     }else{
-      if(cosAngle>largest){
+      if(trackCos>largest){
         nextLargest = largest;
-        iOfNextLargest = iOfLargest;
-        largest = cosAngle;
-        iOfLargest = i;
-      }else if(cosAngle>nextLargest){
-        nextLargest = cosAngle;
-        iOfNextLargest = i;
+        niOfNextLargest = niOfLargest;
+        largest = trackCos;
+        niOfLargest = ni;
+      }else if(i==1 || trackCos>nextLargest){
+        nextLargest = trackCos;
+        niOfNextLargest = ni;
       }
     }
-  }
 
-  if(!silent && numPositive<=0)
-    warning("Photon propagation error - there are no forward-going edges.");
+    i++;
+  }
 
   /* Choose the edge to follow.
   */
-  mytest = (1.0 + nextLargest)/(2.0 + nextLargest + largest);
-  /* The addition of the scalars here is I think essentially arbitrary - they just serve to make the choices a bit more even, which tends to scatter the photon a bit more. */
-  if(gsl_rng_uniform(ran)<mytest)
-    return iOfNextLargest;
-  else
-    return iOfLargest;
+  if(i>1){ /* then nextLargest, niOfNextLargest should exist. */
+    mytest = (1.0 + nextLargest)/(2.0 + nextLargest + largest);
+    /* The addition of the scalars here is I think essentially arbitrary - they just serve to make the choices a bit more even, which tends to scatter the photon a bit more. */
+    if(gsl_rng_uniform(ran)<mytest)
+      return niOfNextLargest;
+    else
+      return niOfLargest;
+  }else if(i>0){
+    return niOfLargest;
+  }else{
+    if(!silent)
+      bail_out("Photon propagation error - no valid edges.");
+    exit(1);
+  }
 }
 
+/*....................................................................*/
+int
+getNextEdge_B(double *inidir, const int presentGi, struct grid *gp\
+  , const gsl_rng *ran, double (*deltaRHats)[DIM], double *deltaRInvMags\
+  , const double lastDeltaRInvMag){
+  /*
+The idea here is to select for the next grid point, that one which lies closest (with a little randomizing jitter) to the photon track, while requiring it to be further from the start point than the 'presentGi'.
+  */
+
+  int i,ni,di,niOfLargest,niOfNextLargest,testGi;
+  double trackCos,dirCos,largest,nextLargest,mytest;
+
+  /* Calculate dot products between inidir and delta Rs to all the possible next points. Store the largest of these and the next largest.
+  */
+  i = 0;
+  for(ni=0;ni<gp[presentGi].numNeigh;ni++){
+    testGi = gp[presentGi].neigh[ni]->id;
+
+    if(lastDeltaRInvMag>0.0){
+      if(deltaRInvMags[testGi]>lastDeltaRInvMag)
+  continue;
+
+    }else{ /* still at start */
+      dirCos=( inidir[0]*gp[presentGi].dir[ni].xn[0]
+              +inidir[1]*gp[presentGi].dir[ni].xn[1]
+              +inidir[2]*gp[presentGi].dir[ni].xn[2]);
+
+      if(dirCos<=0.0)
+  continue; /* because this edge points in the backward direction. */
+    }
+
+    trackCos = 0.0;
+    for(di=0;di<DIM;di++)
+      trackCos += inidir[di]*deltaRHats[testGi][di];
+
+    if(i==0){
+      largest = trackCos;
+      niOfLargest = ni;
+    }else{
+      if(trackCos>largest){
+        nextLargest = largest;
+        niOfNextLargest = niOfLargest;
+        largest = trackCos;
+        niOfLargest = ni;
+      }else if(i==1 || trackCos>nextLargest){
+        nextLargest = trackCos;
+        niOfNextLargest = ni;
+      }
+    }
+
+    i++;
+  }
+
+  /* Choose the edge to follow.
+  */
+  if(i>1){ /* then nextLargest, niOfNextLargest should exist. */
+    mytest = (1.0 + nextLargest)/(2.0 + nextLargest + largest);
+    /* The addition of the scalars here is I think essentially arbitrary - they just serve to make the choices a bit more even, which tends to scatter the photon a bit more. */
+    if(gsl_rng_uniform(ran)<mytest)
+      return niOfNextLargest;
+    else
+      return niOfLargest;
+  }else if(i>0){
+    return niOfLargest;
+  }else{
+    if(!silent)
+      bail_out("Photon propagation error - no valid edges.");
+    exit(1);
+  }
+}
+
+/*....................................................................*/
 void calcLineAmpPWLin(struct grid *g, const int id, const int k\
   , const int molI, const double deltav, double *inidir, double *vfac_in, double *vfac_out){
 
@@ -201,14 +296,39 @@ photon(int id, struct grid *gp, molData *md, int iter, const gsl_rng *ran\
   , configInfo *par, const int nlinetot, struct blendInfo blends\
   , gridPointData *mp, double *halfFirstDs){
 
-  int iphot,iline,here,there,firststep,neighI,np_per_line,ip_at_line;
+  int iphot,iline,here,there,firststep,neighI,np_per_line,ip_at_line,j,di;
   int nextMolWithBlend, nextLineWithBlend, molI, lineI, molJ, lineJ, bi;
   double segment,vblend_in,vblend_out,dtau,expDTau,ds_in=0.0,ds_out=0.0,pt_theta,pt_z,semiradius;
   double deltav[par->nSpecies],vfac_in[par->nSpecies],vfac_out[par->nSpecies],vfac_inprev[par->nSpecies];
   double expTau[nlinetot],inidir[3];
-  double remnantSnu, velProj;
+  double remnantSnu,velProj;
+  double (*deltaRHats)[DIM],*deltaRInvMags,lenSquared,lastDeltaRInvMag;
+
+_Bool doPreCalc=0;
 
   np_per_line=(int) gp[id].nphot/gp[id].numNeigh; // Works out to be equal to ininphot. :-/
+
+  if(doPreCalc){
+    deltaRHats    = malloc(sizeof(*deltaRHats)   *par->ncell);
+    deltaRInvMags = malloc(sizeof(*deltaRInvMags)*par->ncell);
+
+    /* Pre-calculate displacement vectors (also 1/length) for all the grid points:
+    */
+    for(j=0;j<par->ncell;j++){
+      lenSquared = 0.0;
+      for(di=0;di<DIM;di++){
+        deltaRHats[j][di] = gp[j].x[di] - gp[id].x[di];
+        lenSquared += deltaRHats[j][di]*deltaRHats[j][di];
+      }
+      if(lenSquared>0.0)
+        deltaRInvMags[j] = 1.0/sqrt(lenSquared);
+      else
+        deltaRInvMags[j] = 0.0;
+
+      for(di=0;di<DIM;di++)
+        deltaRHats[j][di] *= deltaRInvMags[j];
+    }
+  }
 
   for(iphot=0;iphot<gp[id].nphot;iphot++){
     firststep=1;
@@ -253,12 +373,21 @@ photon(int id, struct grid *gp, molData *md, int iter, const gsl_rng *ran\
       mp[molI].vfac_loc[iphot]=gaussline(deltav[molI]-veloproject(inidir,gp[id].vel),gp[id].mol[molI].binv);
     }
 
-    here=gp[id].id;
+    here = gp[id].id;
+    if(doPreCalc)
+      lastDeltaRInvMag = 0.0;
 
     /* Photon propagation loop */
-    do{
-      neighI=getNextEdge(inidir,here,gp,ran);
+    while(!gp[here].sink){ /* Testing for sink at loop start is redundant for the first step, since we only start photons from non-sink points, but it makes for simpler code. */
+      if(doPreCalc){
+        neighI=getNextEdge_B(inidir,here,gp,ran,deltaRHats,deltaRInvMags,lastDeltaRInvMag);
+      }else{
+        neighI=getNextEdge_A(inidir,id,here,gp,ran);
+      }
+
       there=gp[here].neigh[neighI]->id;
+      if(doPreCalc)
+        lastDeltaRInvMag = deltaRInvMags[there];
 
       if(firststep){
         firststep=0;
@@ -277,19 +406,21 @@ photon(int id, struct grid *gp, molData *md, int iter, const gsl_rng *ran\
         Contribution of the local cell to emission and absorption is done in getjbar.
         We only store the vfac for the local cell for use in ALI loops.
         */
-        continue;
-      } else {
-        /* length of the new "in" edge is the length of the previous "out"*/
-        ds_in=ds_out;
-        ds_out=0.5*gp[here].ds[neighI]*veloproject(inidir,gp[here].dir[neighI].xn);
+        here=there;
+    continue;
+      }
 
-        for(molI=0;molI<par->nSpecies;molI++){
-          vfac_inprev[molI]=vfac_in[molI];
-          if(!par->doPregrid)
-            calcLineAmpPWLin(gp,here,neighI,molI,deltav[molI],inidir,&vfac_in[molI],&vfac_out[molI]);
-          else
-            calcLineAmpLin(gp,here,neighI,molI,deltav[molI],inidir,&vfac_in[molI],&vfac_out[molI]);
-        }
+      /* If we've got to here, we have progressed beyond the first edge. Length of the new "in" edge is the length of the previous "out".
+      */
+      ds_in=ds_out;
+      ds_out=0.5*gp[here].ds[neighI]*veloproject(inidir,gp[here].dir[neighI].xn);
+
+      for(molI=0;molI<par->nSpecies;molI++){
+        vfac_inprev[molI]=vfac_in[molI];
+        if(!par->doPregrid)
+          calcLineAmpPWLin(gp,here,neighI,molI,deltav[molI],inidir,&vfac_in[molI],&vfac_out[molI]);
+        else
+          calcLineAmpLin(gp,here,neighI,molI,deltav[molI],inidir,&vfac_in[molI],&vfac_out[molI]);
       }
 
       nextMolWithBlend = 0;
@@ -363,7 +494,7 @@ photon(int id, struct grid *gp, molData *md, int iter, const gsl_rng *ran\
       }
 
       here=there;
-    } while(!gp[here].sink);
+    };
 
     /* Add cmb contribution.
     */
@@ -374,6 +505,11 @@ photon(int id, struct grid *gp, molData *md, int iter, const gsl_rng *ran\
         iline++;
       }
     }
+  }
+
+  if(doPreCalc){
+    free(deltaRInvMags);
+    free(deltaRHats);
   }
 }
 
