@@ -28,14 +28,16 @@ openSocket(char *moldatfile){
   char *page = "~moldata/datafiles/";
   char *tpl= "GET /%s HTTP/1.0\r\nHost: %s\r\nUser-Agent: %s\r\n\r\n";
   FILE *fp;
+  char *suffix = ".dat";
+  const int lenSuffix = strlen(suffix);
 
   /* Check if moldatfile contains .dat */
-  if(strstr(moldatfile, ".dat") == NULL){
+  if(strstr(moldatfile, suffix) == NULL){
     size_t length = strlen(moldatfile);
-    s = (char*)malloc(sizeof(char) * (length + 5));
+    s = (char*)malloc(sizeof(char)*(length + lenSuffix + 1));
     strcpy(s,moldatfile);
-    strcat(s, ".dat");
-    s[length+5]='\0';
+    strcat(s, suffix);
+    s[length+lenSuffix]='\0';
     moldatfile=s;
   }
 
