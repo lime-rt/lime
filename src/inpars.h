@@ -28,4 +28,18 @@ typedef struct {
   _Bool resetRNG;
 } inputPars;
 
+/* Image information */
+typedef struct {
+  int nchan,trans,molI;
+  double velres;
+  double imgres;
+  int pxls;
+  int unit;
+  double freq,bandwidth;
+  char *filename;
+  double source_vel;
+  double theta,phi,incl,posang,azimuth;
+  double distance;
+} image;
+
 #endif /* INPARS_H */

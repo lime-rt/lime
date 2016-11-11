@@ -10,13 +10,24 @@
 #include "lime.h"
 
 void
-freeConfig(configInfo par){
-  free(par.moldatfile);
-  free(par.collPartIds);
+freeConfigInfo(configInfo par){
+  int i;
+
   free(par.nMolWeights);
   free(par.dustWeights);
-  free(par.gridDensMaxLoc);
-  free(par.gridDensMaxValues);
+  free(par.collPartIds);
+
+  free(par.outputfile);
+  free(par.binoutputfile);
+  free(par.gridfile);
+  free(par.pregrid);
+  free(par.restart);
+  free(par.dust);
+  if(par.moldatfile!= NULL){
+    for(i=0;i<par.nSpecies;i++)
+      free(par.moldatfile[i]);
+    free(par.moldatfile);
+  }
 }
 
 void
@@ -54,6 +65,20 @@ freeGridPointData(configInfo *par, gridPointData *mol){
     }
     free(mol);
   }
+}
+
+void
+freeImgInfo(const int nImages, imageInfo *img){
+  int i,id;
+  for(i=0;i<nImages;i++){
+    for(id=0;id<(img[i].pxls*img[i].pxls);id++){
+      free( img[i].pixel[id].intense );
+      free( img[i].pixel[id].tau );
+    }
+    free(img[i].pixel);
+    free(img[i].filename);
+  }
+  free(img);
 }
 
 void
@@ -98,30 +123,6 @@ freeMolsWithBlends(struct molWithBlends *mols, const int numMolsWithBlends){
     }
     free(mols);
   }
-}
-
-void
-freeParImg(const int nImages, inputPars *par, image *img){
-  /* Release memory allocated for the output fits images
-     and for inputPars pointers.
-  */
-  int i,id;
-  for(i=0;i<nImages;i++){
-    for(id=0;id<(img[i].pxls*img[i].pxls);id++){
-      free( img[i].pixel[id].intense );
-      free( img[i].pixel[id].tau );
-    }
-    free(img[i].pixel);
-  }
-  free(img);
-
-  free(par->gridDensMaxValues);
-  free(par->gridDensMaxLoc);
-  free(par->moldatfile);
-  free(par->collPartIds);
-  free(par->nMolWeights);
-  free(par->dustWeights);
-  free(par->gridOutFiles);
 }
 
 void
