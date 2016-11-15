@@ -457,7 +457,17 @@ Because there are 2 independent sources of information about these so-called col
 
     (integer) par->collPartIds (optional)
 
-The integer values are the codes given in `<http://home.strw.leidenuniv.nl/~moldata/molformat.html>`_. Currently recognized values range from 1 to 7 inclusive. E.g if the only colliding species of interest in your model is H2, your density function should return a single value, namely the density of molecular hydrogen, and (if you supply a collPartIds value at all) you should set collPartIds[0] = 1 (the LAMDA code for H2).
+The integer values are the codes given in
+`<http://home.strw.leidenuniv.nl/~moldata/molformat.html>`_. Currently
+recognized values range from 1 to 7 inclusive. E.g if the only colliding
+species of interest in your model is H2, your density function should return a
+single value, namely the density of molecular hydrogen, and (if you supply a
+collPartIds value at all) you should set collPartIds[0] = 1 (the LAMDA code for
+H2). However, if you use collisional partners that are not one of LAMDA 
+partners, it is fine to use any of the values between 1 and 7 to match
+the density function with collisional information in the datafiles.  Some of
+the messages in LIME will refer to the default LAMDA partner molecules, but
+this does not affect the calculations.
 
 LIME calculates the number density of each of its radiating species, at each grid point, by multiplying the abundance of the species (returned via the function of that name) by a weighted sum of the density values. The next parameter allows the user to specify the weights in that sum.
 
