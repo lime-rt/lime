@@ -70,8 +70,8 @@
 #define SPI                     1.77245385091		/* sqrt(pi)	*/
 #define maxp                    0.15
 #define NITERATIONS 		16
-#define max_phot                10000		/* don't set this value higher unless you have enough memory. */
-#define ininphot                9
+#define MAX_RAYS_PER_POINT      10000
+#define RAYS_PER_POINT		200
 #define minpop                  1.e-6
 #define eps                     1.0e-30
 #define TOL                     1e-6
@@ -320,7 +320,7 @@ void	calcSourceFn(double, const configInfo*, double*, double*);
 void	calcTableEntries(const int, const int);
 void	checkGridDensities(configInfo*, struct grid*);
 void	checkUserDensWeights(configInfo*);
-void	delaunay(const int, struct grid*, const unsigned long, const _Bool, struct cell**, unsigned long*);
+void	delaunay(const int, struct grid*, const unsigned long, const _Bool, const _Bool, struct cell**, unsigned long*);
 void	distCalc(configInfo*, struct grid*);
 double	dotProduct3D(const double*, const double*);
 int	factorial(const int);
@@ -331,7 +331,7 @@ void	fit_fi(double, double, double*);
 void	fit_rr(double, double, double*);
 void	freeConfigInfo(configInfo par);
 void	freeGrid(const unsigned int, const unsigned short, struct grid*);
-void	freeGridPointData(configInfo*, gridPointData*);
+void	freeGridPointData(const int, gridPointData*);
 void	freeImgInfo(const int, imageInfo*);
 void	freeMolData(const int, molData*);
 void	freeMolsWithBlends(struct molWithBlends*, const int);
@@ -358,7 +358,7 @@ void	mallocInputPars(inputPars*);
 void	molInit(configInfo*, molData*);
 void	openSocket(char*);
 void	parseInput(inputPars, image*, const int, configInfo*, imageInfo**, molData**);
-void	photon(int, struct grid*, molData*, int, const gsl_rng*, configInfo*, const int, struct blendInfo, gridPointData*, double*);
+void	photon(int, struct grid*, molData*, const gsl_rng*, configInfo*, const int, struct blendInfo, gridPointData*, double*);
 double	planckfunc(const double, const double);
 int	pointEvaluation(configInfo*, const double, double*);
 void	popsin(configInfo*, struct grid**, molData**, int*);
@@ -372,6 +372,7 @@ void	readDustFile(char*, double**, double**, int*);
 void	readMolData(configInfo*, molData*, int**, int*);
 void	readOrBuildGrid(configInfo*, struct grid**);
 void	readUserInput(inputPars*, imageInfo**, int*, int*);
+unsigned long reorderGrid(const unsigned long, struct grid*);
 void	report(int, configInfo*, struct grid*);
 void	setUpConfig(configInfo*, imageInfo**, molData**);
 void	setUpDensityAux(configInfo*, int*, const int);

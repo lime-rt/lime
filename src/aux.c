@@ -854,9 +854,7 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
           stat[id].pop[ilev+md[0].nlev*4]=gp[id].mol[0].pops[ilev];
         }
       }
-
       calcGridMolSpecNumDens(par,md,gp);
-
 
       nVerticesDone=0;
       omp_set_dynamic(0);
@@ -869,24 +867,25 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
         gridPointData *mp;	// Could have declared them earlier
         double *halfFirstDs;	// and included them in private() I guess.
         mp=malloc(sizeof(gridPointData)*par->nSpecies);
-        for (ispec=0;ispec<par->nSpecies;ispec++){
-          mp[ispec].phot = malloc(sizeof(double)*md[ispec].nline*max_phot);
-          mp[ispec].vfac = malloc(sizeof(double)*               max_phot);
-          mp[ispec].vfac_loc = malloc(sizeof(double)*           max_phot);
-          mp[ispec].jbar = malloc(sizeof(double)*md[ispec].nline);
-        }
-        halfFirstDs = malloc(sizeof(*halfFirstDs)*max_phot);
 
 #pragma omp for schedule(dynamic)
         for(id=0;id<par->pIntensity;id++){
 #pragma omp atomic
           ++nVerticesDone;
 
+          for (ispec=0;ispec<par->nSpecies;ispec++){
+            mp[ispec].jbar = malloc(sizeof(double)*md[ispec].nline);
+            mp[ispec].phot = malloc(sizeof(double)*md[ispec].nline*gp[id].nphot);
+            mp[ispec].vfac = malloc(sizeof(double)*                gp[id].nphot);
+            mp[ispec].vfac_loc = malloc(sizeof(double)*            gp[id].nphot);
+          }
+          halfFirstDs = malloc(sizeof(*halfFirstDs)*gp[id].nphot);
+
           if (threadI == 0){ /* i.e., is master thread. */
             if(!silent) progressbar(nVerticesDone/(double)par->pIntensity,10);
           }
           if(gp[id].dens[0] > 0 && gp[id].t[0] > 0){
-            photon(id,gp,md,0,threadRans[threadI],par,nlinetot,blends,mp,halfFirstDs);
+            photon(id,gp,md,threadRans[threadI],par,nlinetot,blends,mp,halfFirstDs);
             nextMolWithBlend = 0;
             for(ispec=0;ispec<par->nSpecies;ispec++){
               stateq(id,gp,md,ispec,par,blends,nextMolWithBlend,mp,halfFirstDs,&luWarningGiven);
@@ -897,10 +896,10 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
           if (threadI == 0){ /* i.e., is master thread */
             if(!silent) warning("");
           }
+          freeGridPointData(par->nSpecies, mp);
+          free(halfFirstDs);
         }
-
-        freeGridPointData(par, mp);
-        free(halfFirstDs);
+        free(mp);
       } /* end parallel block. */
 
       for(id=0;id<par->pIntensity;id++){

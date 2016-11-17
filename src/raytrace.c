@@ -806,7 +806,7 @@ How to calculate this distance? Well if we have N points randomly but evenly dis
     rays = realloc(rays, sizeof(rayData)*numActiveRays);
 
   if(par->traceRayAlgorithm==1){
-    delaunay(DIM, gp, (unsigned long)par->ncell, 1, &dc, &numCells); /* mallocs dc if getCells==T */
+    delaunay(DIM, gp, (unsigned long)par->ncell, 1, 0, &dc, &numCells); /* mallocs dc if getCells==T */
 //**** Actually we can figure out the cell geometry from the grid neighbours.
 
     /* We need to process the list of cells a bit further - calculate their centres, and reset the id values to be the same as the index of the cell in the list. (This last because we are going to construct other lists to indicate which cells have been visited etc.)

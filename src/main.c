@@ -226,12 +226,14 @@ run(inputPars inpars, image *inimg, const int nImages){
 
     calcGridMolSpecNumDens(&par,md,gp);
   }
-
+  /*
+  report(1,&par,gp);
+  */
   writeGridIfRequired(&par, gp, md, lime_FITS);
   freeSomeGridFields((unsigned int)par.ncell, (unsigned short)par.nSpecies, gp);
 
-  /* Now make the line images.
-  */
+  /* Now make the line images.   */
+
   if(par.nLineImages>0){
     for(i=0;i<par.nImages;i++){
       if(img[i].doline){

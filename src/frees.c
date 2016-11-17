@@ -54,16 +54,15 @@ freeGrid(const unsigned int numPoints, const unsigned short numSpecies\
 }
 
 void
-freeGridPointData(configInfo *par, gridPointData *mol){
+freeGridPointData(const int nSpecies, gridPointData *mol){
   int i;
   if(mol!= NULL){
-    for(i=0;i<par->nSpecies;i++){
+    for(i=0;i<nSpecies;i++){
       free(mol[i].jbar);
       free(mol[i].phot);
       free(mol[i].vfac);
       free(mol[i].vfac_loc);
     }
-    free(mol);
   }
 }
 
