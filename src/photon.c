@@ -197,18 +197,16 @@ void calcSourceFn(double dTau, const configInfo *par, double *remnantSnu, double
 
 /*....................................................................*/
 void
-photon(int id, struct grid *gp, molData *md, int iter, const gsl_rng *ran\
+photon(int id, struct grid *gp, molData *md, const gsl_rng *ran\
   , configInfo *par, const int nlinetot, struct blendInfo blends\
   , gridPointData *mp, double *halfFirstDs){
 
-  int iphot,iline,here,there,firststep,neighI,np_per_line,ip_at_line;
+  int iphot,iline,here,there,firststep,neighI;
   int nextMolWithBlend, nextLineWithBlend, molI, lineI, molJ, lineJ, bi;
   double segment,vblend_in,vblend_out,dtau,expDTau,ds_in=0.0,ds_out=0.0,pt_theta,pt_z,semiradius;
   double deltav[par->nSpecies],vfac_in[par->nSpecies],vfac_out[par->nSpecies],vfac_inprev[par->nSpecies];
   double expTau[nlinetot],inidir[3];
   double remnantSnu, velProj;
-
-  np_per_line=(int) gp[id].nphot/gp[id].numNeigh; // Works out to be equal to ininphot. :-/
 
   for(iphot=0;iphot<gp[id].nphot;iphot++){
     firststep=1;
@@ -232,15 +230,10 @@ photon(int id, struct grid *gp, molData *md, int iter, const gsl_rng *ran\
 
     /* Choose the photon frequency/velocity offset.
     */
-    iter=(int) (gsl_rng_uniform(ran)*(double)N_RAN_PER_SEGMENT); /* can have values in [0,1,..,N_RAN_PER_SEGMENT-1]*/
-    ip_at_line=(int) iphot/gp[id].numNeigh;
-    segment=(N_RAN_PER_SEGMENT*(ip_at_line-np_per_line*0.5)+iter)/(double)(np_per_line*N_RAN_PER_SEGMENT);
+    segment=gsl_rng_uniform(ran)-0.5;
     /*
     Values of segment should be evenly distributed (considering the
-    entire ensemble of photons) between -0.5 and +0.5, and are chosen
-    from a sequence of possible values separated by
-    1/(N_RAN_PER_SEGMENT*ininphot).
-
+    entire ensemble of photons) between -0.5 and +0.5.
     */
 
     for (molI=0;molI<par->nSpecies;molI++){
