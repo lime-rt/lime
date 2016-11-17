@@ -10,11 +10,6 @@
 
 #include "lime.h"
 
-/*....................................................................*/
-double
-veloproject(const double dx[3], const double *vel){
-  return dx[0]*vel[0]+dx[1]*vel[1]+dx[2]*vel[2];
-}
 
 /*....................................................................*/
 double
@@ -56,51 +51,57 @@ gaussline(const double v, const double oneOnSigma){
 
 /*....................................................................*/
 int
-getNextEdge_A(double *inidir, const int startGi, const int presentGi, struct grid *gp, const gsl_rng *ran){
-  int i,ni,di,niOfLargest,niOfNextLargest;
-  double trackCos,dirCos,largest,nextLargest,mytest,dirsFromStart[DIM],lenSquared,norm;
+getNextEdge(double *inidir, const int startGi, const int presentGi\
+  , struct grid *gp, const gsl_rng *ran){
   /*
 The idea here is to select for the next grid point, that one which lies closest (with a little randomizing jitter) to the photon track, while requiring the direction of the edge to be in the 'forward' hemisphere of the photon direction.
   */
+  int i,ni,niOfSmallest,niOfNextSmallest;
+  double dirCos,distAlongTrack,dirFromStart[3],coord,distToTrackSquared,smallest,nextSmallest;
+  const static double scatterReduction = 0.4;
+  /*
+This affects the ratio of N_2/N_1, where N_2 is the number of times the edge giving the 2nd-smallest distance from the photon track is chosen and N_1 ditto the smallest. Some ratio values obtained from various values of scatterReduction:
 
-  /* Calculate dot products between inidir and delta Rs to all the possible next points. Store the largest of these and the next largest.
+	scatterReduction	<N_2/N_1>
+		1.0		  0.42
+		0.5		  0.75
+		0.4		  0.90
+		0.2		  1.52
+
+Note that the equivalent ratio value produced by the 1.6 code was 0.91.
   */
+
   i = 0;
   for(ni=0;ni<gp[presentGi].numNeigh;ni++){
-    dirCos=( inidir[0]*gp[presentGi].dir[ni].xn[0]
-            +inidir[1]*gp[presentGi].dir[ni].xn[1]
-            +inidir[2]*gp[presentGi].dir[ni].xn[2]);
+    dirCos = dotProduct3D(inidir, gp[presentGi].dir[ni].xn);
 
     if(dirCos<=0.0)
   continue; /* because the edge points in the backward direction. */
 
-    lenSquared = 0.0;
-    for(di=0;di<DIM;di++){
-      dirsFromStart[di] = gp[presentGi].neigh[ni]->x[di] - gp[startGi].x[di];
-      lenSquared += dirsFromStart[di]*dirsFromStart[di];
-    }
+    dirFromStart[0] = gp[presentGi].neigh[ni]->x[0] - gp[startGi].x[0];
+    dirFromStart[1] = gp[presentGi].neigh[ni]->x[1] - gp[startGi].x[1];
+    dirFromStart[2] = gp[presentGi].neigh[ni]->x[2] - gp[startGi].x[2];
+    distAlongTrack = dotProduct3D(inidir, dirFromStart);
 
-    if(lenSquared<=0.0)
-  continue;
-
-    norm = 1.0/sqrt(lenSquared);
-
-    trackCos = 0.0;
-    for(di=0;di<DIM;di++)
-      trackCos += inidir[di]*dirsFromStart[di]*norm;
+    coord = dirFromStart[0] - distAlongTrack*inidir[0];
+    distToTrackSquared  = coord*coord;
+    coord = dirFromStart[1] - distAlongTrack*inidir[1];
+    distToTrackSquared += coord*coord;
+    coord = dirFromStart[2] - distAlongTrack*inidir[2];
+    distToTrackSquared += coord*coord;
 
     if(i==0){
-      largest = trackCos;
-      niOfLargest = ni;
+      smallest = distToTrackSquared;
+      niOfSmallest = ni;
     }else{
-      if(trackCos>largest){
-        nextLargest = largest;
-        niOfNextLargest = niOfLargest;
-        largest = trackCos;
-        niOfLargest = ni;
-      }else if(i==1 || trackCos>nextLargest){
-        nextLargest = trackCos;
-        niOfNextLargest = ni;
+      if(distToTrackSquared<smallest){
+        nextSmallest = smallest;
+        niOfNextSmallest = niOfSmallest;
+        smallest = distToTrackSquared;
+        niOfSmallest = ni;
+      }else if(i==1 || distToTrackSquared<nextSmallest){
+        nextSmallest = distToTrackSquared;
+        niOfNextSmallest = ni;
       }
     }
 
@@ -109,86 +110,14 @@ The idea here is to select for the next grid point, that one which lies closest 
 
   /* Choose the edge to follow.
   */
-  if(i>1){ /* then nextLargest, niOfNextLargest should exist. */
-    mytest = (1.0 + nextLargest)/(2.0 + nextLargest + largest);
-    /* The addition of the scalars here is I think essentially arbitrary - they just serve to make the choices a bit more even, which tends to scatter the photon a bit more. */
-    if(gsl_rng_uniform(ran)<mytest)
-      return niOfNextLargest;
-    else
-      return niOfLargest;
-  }else if(i>0){
-    return niOfLargest;
-  }else{
-    if(!silent)
-      bail_out("Photon propagation error - no valid edges.");
-    exit(1);
-  }
-}
-
-/*....................................................................*/
-int
-getNextEdge_B(double *inidir, const int presentGi, struct grid *gp\
-  , const gsl_rng *ran, double (*deltaRHats)[DIM], double *deltaRInvMags\
-  , const double lastDeltaRInvMag){
-  /*
-The idea here is to select for the next grid point, that one which lies closest (with a little randomizing jitter) to the photon track, while requiring it to be further from the start point than the 'presentGi'.
-  */
-
-  int i,ni,di,niOfLargest,niOfNextLargest,testGi;
-  double trackCos,dirCos,largest,nextLargest,mytest;
-
-  /* Calculate dot products between inidir and delta Rs to all the possible next points. Store the largest of these and the next largest.
-  */
-  i = 0;
-  for(ni=0;ni<gp[presentGi].numNeigh;ni++){
-    testGi = gp[presentGi].neigh[ni]->id;
-
-    if(lastDeltaRInvMag>0.0){
-      if(deltaRInvMags[testGi]>lastDeltaRInvMag)
-  continue;
-
-    }else{ /* still at start */
-      dirCos=( inidir[0]*gp[presentGi].dir[ni].xn[0]
-              +inidir[1]*gp[presentGi].dir[ni].xn[1]
-              +inidir[2]*gp[presentGi].dir[ni].xn[2]);
-
-      if(dirCos<=0.0)
-  continue; /* because this edge points in the backward direction. */
-    }
-
-    trackCos = 0.0;
-    for(di=0;di<DIM;di++)
-      trackCos += inidir[di]*deltaRHats[testGi][di];
-
-    if(i==0){
-      largest = trackCos;
-      niOfLargest = ni;
+  if(i>1){ /* then nextSmallest, niOfNextSmallest should exist. */
+    if((smallest + scatterReduction*nextSmallest)*gsl_rng_uniform(ran)<smallest){
+      return niOfNextSmallest;
     }else{
-      if(trackCos>largest){
-        nextLargest = largest;
-        niOfNextLargest = niOfLargest;
-        largest = trackCos;
-        niOfLargest = ni;
-      }else if(i==1 || trackCos>nextLargest){
-        nextLargest = trackCos;
-        niOfNextLargest = ni;
-      }
+      return niOfSmallest;
     }
-
-    i++;
-  }
-
-  /* Choose the edge to follow.
-  */
-  if(i>1){ /* then nextLargest, niOfNextLargest should exist. */
-    mytest = (1.0 + nextLargest)/(2.0 + nextLargest + largest);
-    /* The addition of the scalars here is I think essentially arbitrary - they just serve to make the choices a bit more even, which tends to scatter the photon a bit more. */
-    if(gsl_rng_uniform(ran)<mytest)
-      return niOfNextLargest;
-    else
-      return niOfLargest;
   }else if(i>0){
-    return niOfLargest;
+    return niOfSmallest;
   }else{
     if(!silent)
       bail_out("Photon propagation error - no valid edges.");
@@ -205,11 +134,11 @@ void calcLineAmpPWLin(struct grid *g, const int id, const int k\
 
   binv_this=g[id].mol[molI].binv;
   binv_next=(g[id].neigh[k])->mol[molI].binv;
-  v[0]=deltav-veloproject(inidir,g[id].vel);
-  v[1]=deltav-veloproject(inidir,&(g[id].v1[3*k]));
-  v[2]=deltav-veloproject(inidir,&(g[id].v2[3*k]));
-  v[3]=deltav-veloproject(inidir,&(g[id].v3[3*k]));
-  v[4]=deltav-veloproject(inidir,g[id].neigh[k]->vel);
+  v[0]=deltav-dotProduct3D(inidir,g[id].vel);
+  v[1]=deltav-dotProduct3D(inidir,&(g[id].v1[3*k]));
+  v[2]=deltav-dotProduct3D(inidir,&(g[id].v2[3*k]));
+  v[3]=deltav-dotProduct3D(inidir,&(g[id].v3[3*k]));
+  v[4]=deltav-dotProduct3D(inidir,g[id].neigh[k]->vel);
 
   /* multiplying by the appropriate binv changes from velocity to doppler widths(?) */
   /* if the values were be no more than 2 erf table bins apart, we just take a single Gaussian */
@@ -244,8 +173,8 @@ void calcLineAmpLin(struct grid *g, const int id, const int k\
 
   binv_this=g[id].mol[molI].binv;
   binv_next=(g[id].neigh[k])->mol[molI].binv;
-  v[0]=deltav-veloproject(inidir,g[id].vel);
-  v[2]=deltav-veloproject(inidir,g[id].neigh[k]->vel);
+  v[0]=deltav-dotProduct3D(inidir,g[id].vel);
+  v[2]=deltav-dotProduct3D(inidir,g[id].neigh[k]->vel);
   v[1]=0.5*(v[0]+v[2]);
 
   if (fabs(v[1]-v[0])*binv_this>(2.0*BIN_WIDTH)) {
@@ -296,39 +225,14 @@ photon(int id, struct grid *gp, molData *md, int iter, const gsl_rng *ran\
   , configInfo *par, const int nlinetot, struct blendInfo blends\
   , gridPointData *mp, double *halfFirstDs){
 
-  int iphot,iline,here,there,firststep,neighI,np_per_line,ip_at_line,j,di;
+  int iphot,iline,here,there,firststep,neighI,np_per_line,ip_at_line;
   int nextMolWithBlend, nextLineWithBlend, molI, lineI, molJ, lineJ, bi;
   double segment,vblend_in,vblend_out,dtau,expDTau,ds_in=0.0,ds_out=0.0,pt_theta,pt_z,semiradius;
   double deltav[par->nSpecies],vfac_in[par->nSpecies],vfac_out[par->nSpecies],vfac_inprev[par->nSpecies];
   double expTau[nlinetot],inidir[3];
   double remnantSnu,velProj;
-  double (*deltaRHats)[DIM],*deltaRInvMags,lenSquared,lastDeltaRInvMag;
-
-_Bool doPreCalc=0;
 
   np_per_line=(int) gp[id].nphot/gp[id].numNeigh; // Works out to be equal to ininphot. :-/
-
-  if(doPreCalc){
-    deltaRHats    = malloc(sizeof(*deltaRHats)   *par->ncell);
-    deltaRInvMags = malloc(sizeof(*deltaRInvMags)*par->ncell);
-
-    /* Pre-calculate displacement vectors (also 1/length) for all the grid points:
-    */
-    for(j=0;j<par->ncell;j++){
-      lenSquared = 0.0;
-      for(di=0;di<DIM;di++){
-        deltaRHats[j][di] = gp[j].x[di] - gp[id].x[di];
-        lenSquared += deltaRHats[j][di]*deltaRHats[j][di];
-      }
-      if(lenSquared>0.0)
-        deltaRInvMags[j] = 1.0/sqrt(lenSquared);
-      else
-        deltaRInvMags[j] = 0.0;
-
-      for(di=0;di<DIM;di++)
-        deltaRHats[j][di] *= deltaRInvMags[j];
-    }
-  }
 
   for(iphot=0;iphot<gp[id].nphot;iphot++){
     firststep=1;
@@ -365,33 +269,25 @@ _Bool doPreCalc=0;
 
     for (molI=0;molI<par->nSpecies;molI++){
       /* Is factor 4.3=[-2.15,2.15] enough?? */
-      deltav[molI]=4.3*segment*gp[id].mol[molI].dopb+veloproject(inidir,gp[id].vel);
+      deltav[molI]=4.3*segment*gp[id].mol[molI].dopb+dotProduct3D(inidir,gp[id].vel);
       /*
       This is the local (=evaluated at a grid point, not averaged over the local cell) lineshape.
       We store this for later use in ALI loops.
       */
-      mp[molI].vfac_loc[iphot]=gaussline(deltav[molI]-veloproject(inidir,gp[id].vel),gp[id].mol[molI].binv);
+      mp[molI].vfac_loc[iphot]=gaussline(deltav[molI]-dotProduct3D(inidir,gp[id].vel),gp[id].mol[molI].binv);
     }
 
     here = gp[id].id;
-    if(doPreCalc)
-      lastDeltaRInvMag = 0.0;
 
     /* Photon propagation loop */
     while(!gp[here].sink){ /* Testing for sink at loop start is redundant for the first step, since we only start photons from non-sink points, but it makes for simpler code. */
-      if(doPreCalc){
-        neighI=getNextEdge_B(inidir,here,gp,ran,deltaRHats,deltaRInvMags,lastDeltaRInvMag);
-      }else{
-        neighI=getNextEdge_A(inidir,id,here,gp,ran);
-      }
+      neighI = getNextEdge(inidir,id,here,gp,ran);
 
       there=gp[here].neigh[neighI]->id;
-      if(doPreCalc)
-        lastDeltaRInvMag = deltaRInvMags[there];
 
       if(firststep){
         firststep=0;
-        ds_out=0.5*gp[here].ds[neighI]*veloproject(inidir,gp[here].dir[neighI].xn);
+        ds_out=0.5*gp[here].ds[neighI]*dotProduct3D(inidir,gp[here].dir[neighI].xn);
         halfFirstDs[iphot]=ds_out;
 
         for(molI=0;molI<par->nSpecies;molI++){
@@ -413,7 +309,7 @@ _Bool doPreCalc=0;
       /* If we've got to here, we have progressed beyond the first edge. Length of the new "in" edge is the length of the previous "out".
       */
       ds_in=ds_out;
-      ds_out=0.5*gp[here].ds[neighI]*veloproject(inidir,gp[here].dir[neighI].xn);
+      ds_out=0.5*gp[here].ds[neighI]*dotProduct3D(inidir,gp[here].dir[neighI].xn);
 
       for(molI=0;molI<par->nSpecies;molI++){
         vfac_inprev[molI]=vfac_in[molI];
@@ -505,11 +401,6 @@ _Bool doPreCalc=0;
         iline++;
       }
     }
-  }
-
-  if(doPreCalc){
-    free(deltaRInvMags);
-    free(deltaRHats);
   }
 }
 

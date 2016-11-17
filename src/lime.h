@@ -322,6 +322,7 @@ void	checkGridDensities(configInfo*, struct grid*);
 void	checkUserDensWeights(configInfo*);
 void	delaunay(const int, struct grid*, const unsigned long, const _Bool, struct cell**, unsigned long*);
 void	distCalc(configInfo*, struct grid*);
+double	dotProduct3D(const double*, const double*);
 int	factorial(const int);
 double	FastExp(const float);
 void    fillErfTable();
@@ -382,7 +383,6 @@ void	stateq(int, struct grid*, molData*, const int, configInfo*, struct blendInf
 void	statistics(int, molData*, struct grid*, int*, double*, double*, int*);
 void	stokesangles(double*, double (*rotMat)[3], double*);
 double	taylor(const int, const float);
-double	veloproject(const double*, const double*);
 void	write2Dfits(int, configInfo*, imageInfo*);
 void	write3Dfits(int, configInfo*, imageInfo*);
 void	writeFits(const int, configInfo*, imageInfo*);

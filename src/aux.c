@@ -16,6 +16,12 @@ TODO:
 
 
 /*....................................................................*/
+double
+dotProduct3D(const double *vA, const double *vB){
+  return vA[0]*vB[0] + vA[1]*vB[1] + vA[2]*vB[2];
+}
+
+/*....................................................................*/
 void
 mallocInputPars(inputPars *par){
   int i;
@@ -767,7 +773,7 @@ Pointers are indicated by a * before the attribute name and an arrow to the memo
 /*....................................................................*/
 void
 levelPops(molData *md, configInfo *par, struct grid *gp, int *popsdone, double *lamtab, double *kaptab, const int nEntries){
-  int id,iter,ilev,ispec,c=0,n,i,threadI,nVerticesDone,nItersDone,nlinetot;//,conv=0
+  int id,iter,ilev,ispec,c=0,n,i,threadI,nVerticesDone,nItersDone,nlinetot;
   double percent=0.,*median,result1=0,result2=0,snr,delta_pop;
   int nextMolWithBlend;
   struct statistics { double *pop, *ave, *sigma; } *stat;
