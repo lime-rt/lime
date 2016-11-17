@@ -15,7 +15,7 @@ predefinedGrid(configInfo *par, struct grid *g){
   int i,j;
   double x,y,z,scale;
   struct cell *dc=NULL; /* Not used at present. */
-  unsigned long numCells;
+  unsigned long numCells,nExtraSinks;
 
   gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);
 #ifdef TEST
@@ -81,7 +81,14 @@ predefinedGrid(configInfo *par, struct grid *g){
   }
   fclose(fp);
 
-  delaunay(DIM, g, (unsigned long)par->ncell, 0, &dc, &numCells);
+  delaunay(DIM, g, (unsigned long)par->ncell, 0, 1, &dc, &numCells);
+
+  /* We just asked delaunay() to flag any grid points with IDs lower than par->pIntensity (which means their distances from model centre are less than the model radius) but which are nevertheless found to be sink points by virtue of the geometry of the mesh of Delaunay cells. Now we need to reshuffle the list of grid points, then reset par->pIntensity, such that all the non-sink points still have IDs lower than par->pIntensity.
+  */ 
+  nExtraSinks = reorderGrid((unsigned long)par->ncell, g);
+  par->pIntensity -= nExtraSinks;
+  par->sinkPoints += nExtraSinks;
+
   distCalc(par,g);
   //  getArea(par,g, ran);
   //  getMass(par,g, ran);

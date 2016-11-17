@@ -292,12 +292,13 @@ void calcGridCollRates(configInfo *par, molData *md, struct grid *gp){
 }
 
 /*....................................................................*/
-void delaunay(const int numDims, struct grid *gp, const unsigned long numPoints\
-  , const _Bool getCells, struct cell **dc, unsigned long *numCells){
+void
+delaunay(const int numDims, struct grid *gp, const unsigned long numPoints\
+  , const _Bool getCells, _Bool checkSink, struct cell **dc, unsigned long *numCells){
   /*
 The principal purpose of this function is to perform a Delaunay triangulation for the set of points defined by the input argument 'g'. This is achieved via routines in the 3rd-party package qhull.
 
-A note about qhull nomenclature: a vertex is what you think it is - i.e., a point; but a facet means in this context a Delaunay triangle (in 2D) or tetrahedron (in 3D).
+A note about qhull nomenclature: a vertex is what you think it is - i.e., a point; but a facet means in this context a Delaunay triangle (in 2D) or tetrahedron (in 3D). This nomenclature arises because the Delaunay cells are indeed facets (or rather projections of facets) of the convex hull constructed in 1 higher dimension.
 
 Required elements of structs:
 	struct grid *gp:
@@ -326,6 +327,8 @@ Elements of structs are set as follows:
   _Bool neighbourNotFound;
   char message[80];
 
+  /* pt_array contains the grid point locations in the format required by qhull.
+  */
   pt_array=malloc(sizeof(coordT)*numDims*numPoints);
   for(ppi=0;ppi<numPoints;ppi++) {
     for(j=0;j<numDims;j++) {
@@ -333,13 +336,32 @@ Elements of structs are set as follows:
     }
   }
 
-  sprintf(flags,"qhull d Qbb");
+  /* Run qhull to generate the Delaunay mesh. (After this, all the information of importance is stored in variables defined in the qhull header.)
+  */
+  sprintf(flags,"qhull d Qbb Qt");
   if (qh_new_qhull(numDims, (int)numPoints, pt_array, ismalloc, flags, NULL, NULL)) {
     if(!silent) bail_out("Qhull failed to triangulate");
     exit(1);
   }
 
-  /* Identify points */
+  if(checkSink){
+    FORALLfacets {
+      if(!facet->upperdelaunay){
+        FOREACHneighbor_(facet) {
+          if(neighbor->upperdelaunay){ /* This should indicate that facet lies on the edge of the model. */
+            FOREACHvertex_(neighbor->vertices){
+              ppi = (unsigned long)qh_pointid(vertex->point);
+              if(ppi<numPoints)
+                gp[ppi].sink = 1;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /* Malloc .neigh for each grid point. At present it is not known how many neighbours a point will have, so all the mallocs are larger than needed.
+  */
   FORALLvertices {
     id=(unsigned long)qh_pointid(vertex->point);
     /* Note this is NOT the same value as vertex->id. Only the id gained via the call to qh_pointid() is the same as the index of the point in the input list. */
@@ -382,6 +404,8 @@ Elements of structs are set as follows:
     }
   }
 
+  /* Count the actual number of neighbours per point.
+  */
   for(ppi=0;ppi<numPoints;ppi++){
     j=0;
     for(k=0;k<gp[ppi].numNeigh;k++){
@@ -445,6 +469,64 @@ Elements of structs are set as follows:
   qh_freeqhull(!qh_ALL);
   qh_memfreeshort (&curlong, &totlong);
   free(pt_array);
+}
+
+/*....................................................................*/
+unsigned long
+reorderGrid(const unsigned long numPoints, struct grid *gp){
+  /*
+The algorithm works its way up the list of points with one index and down with another. The 'up' travel stops at the 1st sink point it finds, the 'down' at the 1st non-sink point. If at that point the 'up' index is lower in value than the 'down', the points are swapped. This is just a tiny bit tricky because we also need to make sure all the neigh pointers are swapped. That's why we make an ordered list of indices and perform the swaps on that as well.
+  */
+
+  unsigned long indices[numPoints],upI,dnI,nExtraSinks=0,i,ngi;
+  int j;
+  struct grid tempGp;
+
+  for(upI=0;upI<numPoints;upI++) indices[upI] = upI;
+
+  upI = 0;
+  dnI = numPoints-1;
+  while(1){
+    while(upI<numPoints && !gp[upI].sink) upI++;
+    while(dnI>=0        &&  gp[dnI].sink) dnI--;
+
+  if(upI>=dnI) break;
+
+    nExtraSinks++;
+
+    i = indices[dnI];
+    indices[dnI] = indices[upI];
+    indices[upI] = i;
+
+    tempGp = gp[dnI];
+    gp[dnI] = gp[upI];
+    gp[upI] = tempGp;
+
+    /* However we want to retain the .id values as sequential.
+    */
+    gp[dnI].id = dnI;
+    gp[upI].id = upI;
+  }
+
+  /*
+Now we sort out the .neigh values. An example of how this should work is as follows. Suppose we swapped points 30 and 41. We have fixed up the .id values, but the swap is still shown in the 'indices' array. Thus we will have
+
+	gp[30].id == 30 (but all the other data is from 41)
+	gp[41].id == 41 (but all the other data is from 30)
+	indices[30] == 41
+	indices[41] == 30
+
+Suppose further that the old value of gp[i].neigh[j] is &gp[30]. We detect that we need to fix it (change it to &gp[41]) because ngi=&gp[30].id=30 != indices[ngi=30]=41. gp[i].neigh[j] is then reset to &gp[indices[30]] = &gp[41], i.e. to point to the same data as used to be in location 30.
+  */
+  for(i=0;i<numPoints;i++){
+    for(j=0;j<gp[i].numNeigh;j++){
+      ngi = (unsigned long)gp[i].neigh[j]->id;
+      if(ngi != indices[ngi])
+        gp[i].neigh[j] = &gp[indices[ngi]];
+    }
+  }
+
+  return nExtraSinks;
 }
 
 /*....................................................................*/
@@ -1117,7 +1199,15 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
     writeGridIfRequired(par, *gp, NULL, lime_FITS);
 
   if(!allBitsSet(par->dataFlags, DS_mask_neighbours)){
-    delaunay(DIM, *gp, (unsigned long)par->ncell, 0, &dc, &numCells);
+    unsigned long nExtraSinks;
+
+    delaunay(DIM, *gp, (unsigned long)par->ncell, 0, 1, &dc, &numCells);
+
+    /* We just asked delaunay() to flag any grid points with IDs lower than par->pIntensity (which means their distances from model centre are less than the model radius) but which are nevertheless found to be sink points by virtue of the geometry of the mesh of Delaunay cells. Now we need to reshuffle the list of grid points, then reset par->pIntensity, such that all the non-sink points still have IDs lower than par->pIntensity.
+    */ 
+    nExtraSinks = reorderGrid((unsigned long)par->ncell, *gp);
+    par->pIntensity -= nExtraSinks;
+    par->sinkPoints += nExtraSinks;
 
     par->dataFlags |= DS_mask_neighbours;
   }

@@ -23,7 +23,7 @@ smooth(configInfo *par, struct grid *gp){
   unsigned long numCells;
 
   for(sg=0;sg<N_SMOOTH_ITERS;sg++){
-    delaunay(DIM, gp, (unsigned long)par->ncell, 0, &dc, &numCells);
+    delaunay(DIM, gp, (unsigned long)par->ncell, 0, 0, &dc, &numCells);
     distCalc(par, gp);
 
     for(i=0;i<par->pIntensity;i++){
