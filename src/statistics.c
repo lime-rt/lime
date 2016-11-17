@@ -36,8 +36,8 @@ void statistics(int id, molData *m, struct grid *g, int *exceed, double *opops, 
     *conv+=1;
   }else {
     g[id].nphot=g[id].nphot+10;
-    if(g[id].nphot>(max_phot*200)){
-      g[id].nphot=max_phot*200;
+    if(g[id].nphot>(MAX_RAYS_PER_POINT)){
+      g[id].nphot=MAX_RAYS_PER_POINT;
       *exceed+=1;
       if(!silent) warning("Warning: limiting nphot reached in a grid point");
     }
