@@ -26,7 +26,7 @@ The bulk velocity of the model material can vary significantly with position, th
 
   *vfac=0.;
   for(i=0;i<nSteps;i++){
-    v = deltav - projVels[i]; /* projVels contains the component of the local bulk velocity in the direction of dx, whereas deltav is the recession velocity of the channel we are interested in (corrected for bulk source velocity and line displacement from the nominal frequency). Remember also that, since dx points away from the observer, positive values of the projected velocity also represent recessions. Line centre occurs when v==0, i.e. when deltav==veloproject(dx,vel). That is the reason for the subtraction here. */
+    v = deltav - projVels[i]; /* projVels contains the component of the local bulk velocity in the direction of dx, whereas deltav is the recession velocity of the channel we are interested in (corrected for bulk source velocity and line displacement from the nominal frequency). Remember also that, since dx points away from the observer, positive values of the projected velocity also represent recessions. Line centre occurs when v==0, i.e. when deltav==dotProduct3D(dx,vel). That is the reason for the subtraction here. */
     val=fabs(v)*binv;
     if(val <=  2500.){
 #ifdef FASTEXP
@@ -168,7 +168,7 @@ Note that the algorithm employed here is similar to that employed in the functio
         for(i=0;i<nSteps;i++){
           d = i*ds*oneOnNSteps;
           velocity(x[0]+(dx[0]*d),x[1]+(dx[1]*d),x[2]+(dx[2]*d),vel);
-          projVels[i] = veloproject(dx,vel);
+          projVels[i] = dotProduct3D(dx,vel);
         }
       }
 
@@ -203,7 +203,7 @@ Note that the algorithm employed here is similar to that employed in the functio
                 if(!par->doPregrid)
                   calcLineAmpSample(x,dx,ds,gp[posn].mol[molI].binv,projVels,nSteps,oneOnNSteps,deltav,&vfac);
                 else
-                  vfac = gaussline(deltav-veloproject(dx,gp[posn].vel),gp[posn].mol[molI].binv);
+                  vfac = gaussline(deltav-dotProduct3D(dx,gp[posn].vel),gp[posn].mol[molI].binv);
 
                 /* Increment jnu and alpha for this Voronoi cell by the amounts appropriate to the spectral line. */
                 sourceFunc_line(&md[molI],vfac,&(gp[posn].mol[molI]),lineI,&jnu,&alpha);
@@ -402,7 +402,7 @@ This version of traceray implements a new algorithm in which the population valu
   /* Calculate, for each of the 3 vertices of the entry face, the displacement components in the direction of 'dir'. *** NOTE *** that if all the rays are parallel, we could precalculate these for all the vertices.
   */
   for(vi=0;vi<nVertPerFace;vi++)
-    xCmpntsRay[vi] = veloproject(dir, gp[gis[entryI][vi]].x);
+    xCmpntsRay[vi] = dotProduct3D(dir, gp[gis[entryI][vi]].x);
 
   doBaryInterp(entryIntcptFirstCell, gp, xCmpntsRay, gis[entryI]\
     , md, par->nSpecies, &gips[entryI]);
@@ -424,7 +424,7 @@ This version of traceray implements a new algorithm in which the population valu
     /* Calculate, for each of the 3 vertices of the exit face, the displacement components in the direction of 'dir'. *** NOTE *** that if all the rays are parallel, we could precalculate these for all the vertices.
     */
     for(vi=0;vi<nVertPerFace;vi++)
-      xCmpntsRay[vi] = veloproject(dir, gp[gis[exitI][vi]].x);
+      xCmpntsRay[vi] = dotProduct3D(dir, gp[gis[exitI][vi]].x);
 
     doBaryInterp(cellExitIntcpts[ci], gp, xCmpntsRay, gis[exitI]\
       , md, par->nSpecies, &gips[exitI]);
@@ -457,7 +457,7 @@ At the moment I will fix the number of segments, but it might possibly be faster
         /* It appears to be necessary to sample the velocity function in the following way rather than interpolating it from the vertices of the Delaunay cell in the same way as with all the other quantities of interest. Velocity varies too much across the cells, and in a nonlinear way, for linear interpolation to yield a totally satisfactory result.
         */
         velocity(gips[2].x[0], gips[2].x[1], gips[2].x[2], vel);
-        projVelRay = veloproject(dir, vel);
+        projVelRay = dotProduct3D(dir, vel);
 
         /* Calculate first the continuum stuff because it is the same for all channels:
         */
