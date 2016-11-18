@@ -12,7 +12,7 @@ function version {
 }
 
 function usage {
-    echo "Usage: lime [OPTION] [[FILE]]"
+    echo "Usage: lime [OPTIONS] [[FILE]]"
     echo " "
     echo "Arguments:"
     echo "   FILE   C model file"
@@ -21,6 +21,7 @@ function usage {
     echo "   -V           Display version information"
     echo "   -h           Display this message"
     echo "   -f           Use fast exponential computation"
+    echo "   -t           Compile with debugging and fixed RNG seeds"
     echo "   -n           Turn off ncurses output"
     echo "   -p NTHREADS  Run in parallel with NTHREADS threads (default: 1)"
     echo ""
@@ -32,8 +33,9 @@ function tip {
     echo "Try 'lime -h' for more information."
 }
 
-options=":Vfnp:h"
+options=":Vfntp:h"
 cpp_flags=""
+do_test="no"
 
 while getopts ${options} opt; do
     case $opt in
@@ -61,6 +63,9 @@ while getopts ${options} opt; do
 		exit 1
 	    fi
 	    ;;
+	t)
+	    do_test="yes"
+	    ;;
 	\?)
 	    echo "lime: error: unknown option" >&2
 	    tip
@@ -84,8 +89,8 @@ export WORKDIR=$PWD
 
 # Compile the code
 pushd ${PATHTOLIME} >> /dev/null
-make EXTRACPPFLAGS="${cpp_flags}" MODELS=$WORKDIR/$1 TARGET=$WORKDIR/lime_$$.x
-make clean
+make -s EXTRACPPFLAGS="${cpp_flags}" MODELS=$WORKDIR/$1 TARGET=$WORKDIR/lime_$$.x DOTEST=$do_test
+make -s clean
 
 # Run the code
 popd >> /dev/null

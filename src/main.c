@@ -11,6 +11,7 @@
 #include "lime.h"
 #include "gridio.h"
 
+int silent = 0;
 
 /* Forward declaration of functions only used in this file */
 int initParImg(inputPars *par, image **img);
@@ -168,7 +169,6 @@ run(inputPars inpars, image *inimg, const int nImages){
 #endif
   fillErfTable();
 
-//  par.nImages = nImages;
   parseInput(inpars, inimg, nImages, &par, &img, &md); /* Sets par.numDensities for !(par.doPregrid || par.restart) */
 
   if(!silent && par.nThreads>1){
@@ -263,8 +263,6 @@ int main () {
   inputPars par;
   image	*img = NULL;
   int nImages;
-
-  silent = 0;
 
   mallocInputPars(&par);
   nImages = initParImg(&par, &img);
