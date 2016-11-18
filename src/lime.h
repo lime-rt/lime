@@ -284,7 +284,7 @@ struct cell {
 };
 
 /* Some global variables */
-int silent;
+extern int silent;
 
 /* User-specifiable functions */
 void density(double,double,double,double *);
@@ -399,14 +399,14 @@ void	collpartmesg(char*, int);
 void	collpartmesg2(char*, int);
 void	collpartmesg3(int, int);
 void	goodnight(int, char*);
-void	greetings();
+void	greetings(void);
 void	greetings_parallel(int);
 void	printDone(int);
 void	printMessage(char *);
 void	progressbar(double, int);
 void	progressbar2(configInfo*, int, int, double, double, double);
 void	quotemass(double);
-void	screenInfo();
+void	screenInfo(void);
 void	warning(char*);
 
 #ifdef FASTEXP

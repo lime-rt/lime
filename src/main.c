@@ -11,6 +11,7 @@
 #include "lime.h"
 #include "gridio.h"
 
+int silent = 0;
 
 /* Forward declaration of functions only used in this file */
 int initParImg(inputPars *par, image **img);
@@ -262,8 +263,6 @@ int main () {
   inputPars par;
   image	*img = NULL;
   int nImages;
-
-  silent = 0;
 
   mallocInputPars(&par);
   nImages = initParImg(&par, &img);

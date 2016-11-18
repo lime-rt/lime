@@ -734,10 +734,15 @@ At the present point in the code, for line images, instead of calculating the 'c
       cmbLineI = img[im].trans;
 
     }else{ /* User didn't set trans. Find the nearest line to the image frequency. */
+      minfreq = fabs(img[im].freq - md[0].freq[0]);;
+      cmbMolI = 0;
+      cmbLineI = 0;
       for(molI=0;molI<par->nSpecies;molI++){
         for(lineI=0;lineI<md[molI].nline;lineI++){
+          if((molI==0 && lineI==0)) continue;
+
           absDeltaFreq = fabs(img[im].freq - md[molI].freq[lineI]);
-          if((molI==0 && lineI==0) || absDeltaFreq < minfreq){
+          if(absDeltaFreq < minfreq){
             minfreq = absDeltaFreq;
             cmbMolI = molI;
             cmbLineI = lineI;
