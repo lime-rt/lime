@@ -12,7 +12,7 @@ TODO:
 
 void __attribute__((weak))
 error(int errCode, char *message){
-  printf("%s\n", message);
+  printf("Error: %s\n", message);
   exit(1);
 }
 
@@ -193,8 +193,8 @@ Notes:
   /* First calculate a normal vector to the face (note that it doesn't need to be of length==1).
   */
   if(numDims==2){
-    norm[0] = vs[0][1];
-    norm[1] = vs[0][0];
+    norm[0] = -vs[0][1];
+    norm[1] =  vs[0][0];
 
   }else if(numDims==3){
     /* Calculate norm via cross product. */
@@ -226,7 +226,7 @@ Notes:
     /*
 Since we have N-1 equations in N unknowns, we would expect at least one of the N elements of svs to be zero (within rounding error). The column of svv which corresponds to this value should then be the normal vector which we require. We'll just check however that not more than 1 value of svs is zero.
 
-The GSL doco says that SV_decomp returns sorted svs values, but I prefer not to reply on that.
+The GSL doco says that SV_decomp returns sorted svs values, but I prefer not to rely on that.
     */
 
     ci = 0;
@@ -519,19 +519,20 @@ At a successful termination, therefore, details of all the cells to the edge of 
       entryFaceI = getNewEntryFaceI(numDims, dci, *(dc[dci].neigh[exitFi]));
       dci = dc[dci].neigh[exitFi]->id;
 
-    } else
+    }else{
       followingSingleChain = 0;
-  } while(followingSingleChain);
+    }
+  }while(followingSingleChain);
 
   /* Now we have run out of good (or at least single) exit-face options, let's try the marginal ones. */
 
   if(numMarginalExits<1)
-    return 1; /* Unsuccessful end of this chain. */
+    return 3; /* Unsuccessful end of this chain. */
 
   /* If we have got to this point, we must have numMarginalExits>1; thus we have a fork in the chain, and must explore each branch. We recurse here because a recursive scheme is the best way to do that. */
 
   i = 0;
-  status = 1; /* default */
+  status = 4; /* default */
   while(i<numMarginalExits && status>0){
     exitFi = marginalExitFis[i];
     (*cellExitIntcpts)[nCellsInChain] = intcpt[exitFi];
@@ -634,7 +635,7 @@ and filled as
   }
 
   if(numEntryFaces<=0)
-    return 1;
+    return 2;
 
   *lenChainPtrs = 1024; /* This can be increased within followCellChain(). */
   *chainOfCellIds  = malloc(sizeof(**chainOfCellIds) *(*lenChainPtrs));
@@ -654,6 +655,8 @@ and filled as
   if(status==0)
     *entryIntcpt = entryIntcpts[i-1];
   /* Note that the order of the bary coords, and the value of fi, are with reference to the vertx list of the _entered_ cell. This can't of course be any other way, because this ray enters this first cell from the exterior of the model, where there are no cells. For all the intersectType objects in the list cellExitIntcpts, the bary coords etc are with reference to the exited cell. */
+
+//*** this is not too good because *entryIntcpt, *chainOfCellIds, *cellExitIntcpts and lenChainPtrs are left at unsuitable values if status!=0.
 
   free(cellVisited);
 
