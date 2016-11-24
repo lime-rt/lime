@@ -283,7 +283,7 @@ warning(char message[80]){
 void
 bail_out(char message[80]){
 #ifdef NO_NCURSES
-  printf("Error : %s\n", message );
+  printf("Error: %s\n", message );
 #else
   move(22,0); printw("*** %s",message);
   move(23,0); printw("*** [Press any key to quit]");

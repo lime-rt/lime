@@ -664,6 +664,115 @@ convertCellType(const unsigned short numDims, const unsigned long numCells\
 
 /*....................................................................*/
 void
+get2DCells(rayData *rays, const int numActiveRays, struct simplex **cells2D\
+  , unsigned long *numCells){
+
+  const int numDims=2,numFaces=numDims+1;
+  const double oneOnNFaces=1.0/(double)numFaces;
+  coordT *pt_array;
+  int ri,i,di,vi;
+  char flags[255];
+  boolT ismalloc = False;
+  int curlong, totlong;
+  facetT *facet,*neighbor,**neighborp;
+  vertexT *vertex,**vertexp;
+  unsigned long fi,ffi,id,dci;
+  _Bool neighbourNotFound;
+  char message[STR_LEN_0];
+  double sum;
+
+  pt_array = malloc(sizeof(*pt_array)*numDims*numActiveRays);
+
+  for(ri=0;ri<numActiveRays;ri++) {
+    pt_array[ri*numDims+0] = rays[ri].x;
+    pt_array[ri*numDims+1] = rays[ri].y;
+  }
+
+  sprintf(flags,"qhull d Qbb Qt");
+  if(qh_new_qhull(numDims, numActiveRays, pt_array, ismalloc, flags, NULL, NULL)) {
+    if(!silent) bail_out("Qhull failed to triangulate");
+    exit(1);
+  }
+
+  (*numCells) = 0;
+  FORALLfacets {
+    if(!facet->upperdelaunay)
+      (*numCells)++;
+  }
+
+  (*cells2D) = malloc(sizeof(**cells2D)*(*numCells));
+
+  fi = 0;
+  FORALLfacets {
+    if (!facet->upperdelaunay) {
+      (*cells2D)[fi].id = (unsigned long)facet->id; /* Do NOT expect this to be equal to fi. */
+      fi++;
+    }
+  }
+
+  fi = 0;
+  FORALLfacets {
+    if (!facet->upperdelaunay) {
+      i = 0;
+      FOREACHneighbor_(facet) {
+        if(neighbor->upperdelaunay){
+          (*cells2D)[fi].neigh[i] = NULL;
+        }else{
+          /* Have to find the member of *cells2D with the same id as neighbour.*/
+          ffi = 0;
+          neighbourNotFound=1;
+          while(ffi<(*numCells) && neighbourNotFound){
+            if((*cells2D)[ffi].id==(unsigned long)neighbor->id){
+              (*cells2D)[fi].neigh[i] = &(*cells2D)[ffi];
+              neighbourNotFound = 0;
+            }
+            ffi++;
+          }
+
+          if(ffi>=(*numCells) && neighbourNotFound){
+            if(!silent){
+              sprintf(message, "Something weird going on. Cannot find a cell with ID %lu", (unsigned long)(neighbor->id));
+              bail_out(message);
+            }
+            exit(1);
+          }
+        }
+        i++;
+      }
+
+      i = 0;
+      FOREACHvertex_( facet->vertices ) {
+        id = (unsigned long)qh_pointid(vertex->point);
+        (*cells2D)[fi].vertx[i] = id;
+        i++;
+      }
+
+      fi++;
+    }
+  }
+
+  /* We need to process the list of cells a bit further - calculate their centres, and reset the id values to be the same as the index of the cell in the list. (This last because we are going to construct other lists to indicate which cells have been visited etc.)
+  */
+  for(dci=0;dci<(*numCells);dci++){
+    for(di=0;di<numDims;di++){
+      sum = 0.0;
+      for(vi=0;vi<numFaces;vi++){
+        id = (*cells2D)[dci].vertx[vi];
+        sum += pt_array[id*numDims+di];
+      }
+      (*cells2D)[dci].centre[di] = sum*oneOnNFaces;
+    }
+
+    (*cells2D)[dci].id = dci;
+  }
+
+  qh_freeqhull(!qh_ALL);
+  qh_memfreeshort (&curlong, &totlong);
+  free(pt_array);
+}
+
+/*....................................................................*/
+void
 raytrace(int im, configInfo *par, struct grid *gp, molData *md\
   , imageInfo *img, double *lamtab, double *kaptab, const int nEntries){
   /*
@@ -679,27 +788,20 @@ Note that the argument 'md', and the grid element '.mol', are only accessed for 
   const int nStepsThruCell=10;
   const double oneOnNSteps=1.0/(double)nStepsThruCell;
 
-  double size,oneOnNumActiveRaysMinus1,imgCentreXPixels,imgCentreYPixels,minfreq,absDeltaFreq,x,xs[2],sum,oneOnNumRays;
+  double pixelSize,oneOnNumActiveRaysMinus1,imgCentreXPixels,imgCentreYPixels,minfreq,absDeltaFreq,x,xs[2],sum,oneOnNumRays;
   unsigned int totalNumImagePixels,ppi,numPixelsForInterp;
   int ichan,numCircleRays,numActiveRaysInternal,numActiveRays;
-  int gi,molI,lineI,i,di,xi,yi,ri,c,id,ids[3],vi;
+  int gi,molI,lineI,i,di,xi,yi,ri,vi;
   int cmbMolI,cmbLineI;
   rayData *rays;
   struct cell *dc=NULL;
   struct simplex *cells=NULL;
-  unsigned long numCells,dci;
-  coordT *pt_array, point[3];
-  char flags[255];
-  boolT ismalloc = False,isoutside;
-  realT bestdist;
-  facetT *facet;
-  vertexT *vertex,**vertexp;
-  int curlong, totlong;
-  double triangle[3][2],barys[3],local_cmb,cmbFreq,circleSpacing,scale,angle;
+  unsigned long numCells,dci,numPointsInAnnulus;
+  double local_cmb,cmbFreq,circleSpacing,scale,angle,rSqu;
   double *xySquared=NULL,*vertexCoords=NULL;
   gsl_error_handler_t *defaultErrorHandler=NULL;
 
-  size = img[im].distance*img[im].imgres;
+  pixelSize = img[im].distance*img[im].imgres;
   totalNumImagePixels = img[im].pxls*img[im].pxls;
   imgCentreXPixels = img[im].pxls/2.0;
   imgCentreYPixels = img[im].pxls/2.0;
@@ -770,11 +872,17 @@ At the present point in the code, for line images, instead of calculating the 'c
     img[im].pixel[ppi].numRays = 0;
 
   /*
-The set of rays which we plan to follow is taken from the set of (non-sink) grid points, projected onto a plane parallel to the observer's X and Y axes with Z coordinate on the observer's side of the model (because solution of the raytracing equations requires that iterate 'backwards' through the model). In addition to these points we will add another tranche located on a circle in this plane with its centre at (X,Y) == (0,0) and radius equal to the model radius. Addition of these circle points seems to be necessary to make qhull behave properly. We choose evenly-spaced points on this circle and choose the spacing such that it is the same as the average nearest-neighbour spacing of the grid points, assuming the grid points were evenly distributed within the circle.
+The set of rays which we plan to follow have starting points which are defined by the set of (non-sink) grid points, projected onto a plane parallel to the observer's X and Y axes. In addition to these points we will add another tranche located on a circle in this plane with its centre at (X,Y) == (0,0) and radius equal to the model radius. Addition of these circle points seems to be necessary to make qhull behave properly. We choose evenly-spaced points on this circle and choose the spacing such that it is the same as the average nearest-neighbour spacing of the grid points in the outer 1/3 annulus of the circular projected model, assuming the grid points were evenly distributed within the annulus.
 
-How to calculate this distance? Well if we have N points randomly but evenly distributed inside a circle of radius R it is not hard to show that the mean NN spacing is G(3/2)*R/sqrt(N), where G() is the gamma function. In fact G(3/2)=sqrt(pi)/2. This will add about 4*sqrt(pi*N) points.
+How to calculate this distance? Well if we have N points randomly but evenly distributed inside an annulus of radius (2/3 to 1)*R it is not hard to show that the mean NN spacing is G(3/2)*R/sqrt(9*N/5), where G() is the gamma function. In fact G(3/2)=sqrt(pi)/2. This will add about 12*sqrt(pi*N/5) points.
   */
-  circleSpacing = 0.5*par->radius*sqrt(PI/(double)par->pIntensity);
+  numPointsInAnnulus = 0;
+  for(gi=0;gi<par->pIntensity;gi++){
+    /* Note that we are *NOT* rotating the model before doing this projection. The reason is that we just want a rough estimate which avoids the centre, which usually has a concentration of points. */
+    rSqu = gp[gi].x[0]*gp[gi].x[0] + gp[gi].x[1]*gp[gi].x[1];
+    if(rSqu > (4.0/9.0)*par->radiusSqu) numPointsInAnnulus += 1;
+  }
+  circleSpacing = (1.0/6.0)*par->radius*sqrt(5.0*PI/(double)numPointsInAnnulus);
   numCircleRays = (int)(2.0*PI*par->radius/circleSpacing);
 
   /* The following is the first of the 3 main loops in raytrace. Here we loop over the (internal or non-sink) grid points. We're doing 2 things: loading the rotated, projected coordinates into the rays list, and counting the rays per image pixel.
@@ -791,7 +899,7 @@ How to calculate this distance? Well if we have N points randomly but evenly dis
       }
     }
 
-    locateRayOnImage(xs, size, imgCentreXPixels, imgCentreYPixels, img, im, maxNumRaysPerPixel, rays, &numActiveRaysInternal);
+    locateRayOnImage(xs, pixelSize, imgCentreXPixels, imgCentreYPixels, img, im, maxNumRaysPerPixel, rays, &numActiveRaysInternal);
   } /* End loop 1, over grid points. */
 
   /* Add the circle rays:
@@ -802,7 +910,7 @@ How to calculate this distance? Well if we have N points randomly but evenly dis
     angle = i*scale;
     xs[0] = par->radius*cos(angle);
     xs[1] = par->radius*sin(angle);
-    locateRayOnImage(xs, size, imgCentreXPixels, imgCentreYPixels, img, im, maxNumRaysPerPixel, rays, &numActiveRays);
+    locateRayOnImage(xs, pixelSize, imgCentreXPixels, imgCentreYPixels, img, im, maxNumRaysPerPixel, rays, &numActiveRays);
   }
 
   oneOnNumActiveRaysMinus1 = 1.0/(double)(numActiveRays-1);
@@ -903,8 +1011,15 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
   */
   xySquared = malloc(sizeof(*xySquared)*img[im].pxls);
   for(xi=0;xi<img[im].pxls;xi++){
-    x = size*(0.5 + xi - imgCentreXPixels); // In all this I'm assuming that the image is square and the X centre is the same as the Y centre. This may not always be the case!
+    x = pixelSize*(0.5 + xi - imgCentreXPixels);
+/* In all this I'm assuming that the image is square and the X centre is the same as the Y centre. This may not always be the case! */
     xySquared[xi] = x*x;
+  }
+
+  free(xySquared);
+  if(par->traceRayAlgorithm==1){
+    free(cells);
+    free(vertexCoords);
   }
 
   /* For pixels with more than a cutoff number of rays, just average those rays into the pixel:
@@ -932,67 +1047,104 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
   if(numPixelsForInterp>0){
     /* Now we enter main loop 3/3, in which we loop over image pixels, and for any we need to interpolate, we do so. But first we need to invoke qhull to get a Delaunay triangulation of the projected points.
     */
-    pt_array=malloc(sizeof(coordT)*2*numActiveRays);
+    double *grid2DCoords=NULL,rasterStarts[2],rasterDirs[2]={0.0,1.0};
+    struct simplex *cells2D=NULL;
+    unsigned long num2DCells,gis[3];
+    intersectType entryIntcptFirstCell,*cellExitIntcpts=NULL;
+    unsigned long *chainOfCellIds=NULL,*rasterCellIDs=NULL;
+    int lenChainPtrs,status=0,startYi,si;
+    double triangle[3][2],barys[3],y,deltaY;
+    _Bool *rasterPixelIsInCells=NULL;
 
+    rasterCellIDs        = malloc(sizeof(*rasterCellIDs)*img[im].pxls);
+    rasterPixelIsInCells = malloc(sizeof(*rasterPixelIsInCells)*img[im].pxls);
+
+    grid2DCoords = malloc(sizeof(double)*2*numActiveRays);
     for(ri=0;ri<numActiveRays;ri++) {
-      pt_array[ri*2+0] = rays[ri].x;
-      pt_array[ri*2+1] = rays[ri].y;
+      grid2DCoords[ri*2+0] = rays[ri].x;
+      grid2DCoords[ri*2+1] = rays[ri].y;
     }
 
-    sprintf(flags,"qhull d Qbb");
-    if(qh_new_qhull(2, numActiveRays, pt_array, ismalloc, flags, NULL, NULL)) {
-      if(!silent) bail_out("Qhull failed to triangulate");
-      exit(1);
-    }
+    get2DCells(rays, numActiveRays, &cells2D, &num2DCells);
 
-    point[2]=0.;
-    for(ppi=0;ppi<totalNumImagePixels;ppi++){
-      if(img[im].pixel[ppi].numRays < minNumRaysForAverage){
-        xi = (int)(ppi%(unsigned int)img[im].pxls);
-        yi = floor(ppi/(double)img[im].pxls);
-        if(xySquared[xi] + xySquared[yi] > par->radiusSqu)
-          continue;
+    rasterStarts[1] = pixelSize*(0.5 - imgCentreYPixels);
+    for(xi=0;xi<img[im].pxls;xi++){
+      x = pixelSize*(0.5 + xi - imgCentreXPixels);
+      rasterStarts[0] = x;
 
-        point[0] = size*(0.5 + xi - imgCentreXPixels);
-        point[1] = size*(0.5 + yi - imgCentreYPixels);
+      for(yi=0;yi<img[im].pxls;yi++){
+        rasterPixelIsInCells[yi] = 0; /* default - signals that the pixel is outside the cell mesh. */
+        rasterCellIDs[yi] = 0;
+      }
 
-        qh_setdelaunay (3, 1, point);
-        facet = qh_findbestfacet (point, qh_ALL, &bestdist, &isoutside);
-        if(isoutside){
-          c=0;
-          FOREACHvertex_( facet->vertices ) {
-            id = qh_pointid(vertex->point);
-            triangle[c][0] = rays[id].x;
-            triangle[c][1] = rays[id].y;
-            ids[c]=id;
-            c++;
+      status = followRayThroughCells(2, rasterStarts, rasterDirs, grid2DCoords\
+        , cells2D, num2DCells, epsilon, NULL, &entryIntcptFirstCell, &chainOfCellIds\
+        , &cellExitIntcpts, &lenChainPtrs);
+
+      if(status==0){
+        startYi = img[im].pxls; /* default */
+        for(yi=0;yi<img[im].pxls;yi++){
+          deltaY = pixelSize*yi;
+          if(deltaY>=entryIntcptFirstCell.dist){
+            startYi = yi;
+        break;
           }
+        }
 
-          calcTriangleBaryCoords(triangle, (double)point[0], (double)point[1], barys);
+        /* Obtain the cell ID for each raster pixel:
+        */
+        si = 0;
+        for(yi=startYi;yi<img[im].pxls;yi++){
+          deltaY = pixelSize*yi;
 
-          /* Interpolate: */
-          for(ichan=0;ichan<img[im].nchan;ichan++){
-            img[im].pixel[ppi].intense[ichan] += barys[0]*rays[ids[0]].intensity[ichan]\
-                                               + barys[1]*rays[ids[1]].intensity[ichan]\
-                                               + barys[2]*rays[ids[2]].intensity[ichan];
-            img[im].pixel[ppi].tau[    ichan] += barys[0]*rays[ids[0]].tau[ichan]\
-                                               + barys[1]*rays[ids[1]].tau[ichan]\
-                                               + barys[2]*rays[ids[2]].tau[ichan];
-          }
-        } /* end if !isoutside */
-      } /* end if(img[im].pixel[ppi].numRays < minNumRaysForAverage) */
-    } /* end loop over image pixels */
+          while(si<lenChainPtrs && deltaY>=cellExitIntcpts[si].dist)
+            si++;
 
-    qh_freeqhull(!qh_ALL);
-    qh_memfreeshort (&curlong, &totlong);
-    free(pt_array);
+          if(si>=lenChainPtrs)
+        break;
+
+          rasterCellIDs[yi] = chainOfCellIds[si];
+          rasterPixelIsInCells[yi] = 1;
+        }
+
+        /* Now interpolate for each pixel of the raster:
+        */
+        for(yi=0;yi<img[im].pxls;yi++){
+          ppi = yi*img[im].pxls + xi;
+          if(img[im].pixel[ppi].numRays >= minNumRaysForAverage)
+        continue;
+
+          y = pixelSize*(0.5 + yi - imgCentreYPixels);
+
+          if(rasterPixelIsInCells[yi]){
+            dci = rasterCellIDs[yi]; /* Just for short. */
+            for(vi=0;vi<3;vi++){
+              gis[vi] = cells2D[dci].vertx[vi];
+              triangle[vi][0] = rays[gis[vi]].x;
+              triangle[vi][1] = rays[gis[vi]].y;
+            }
+
+            calcTriangleBaryCoords(triangle, x, y, barys);
+
+            for(ichan=0;ichan<img[im].nchan;ichan++){
+              img[im].pixel[ppi].intense[ichan] += barys[0]*rays[gis[0]].intensity[ichan]\
+                                                 + barys[1]*rays[gis[1]].intensity[ichan]\
+                                                 + barys[2]*rays[gis[2]].intensity[ichan];
+              img[im].pixel[ppi].tau[    ichan] += barys[0]*rays[gis[0]].tau[ichan]\
+                                                 + barys[1]*rays[gis[1]].tau[ichan]\
+                                                 + barys[2]*rays[gis[2]].tau[ichan];
+            } /* End loop over ichan */
+          } /* End if rasterPixelIsInCells */
+        } /* End loop over yi */
+      } /* End if followRayThroughCells() status==0 */
+    } /* End loop over xi */
+
+    free(cells2D);
+    free(grid2DCoords);
+    free(rasterPixelIsInCells);
+    free(rasterCellIDs);
   } /* end if(numPixelsForInterp>0) */
 
-  free(xySquared);
-  if(par->traceRayAlgorithm==1){
-    free(cells);
-    free(vertexCoords);
-  }
   for(ri=0;ri<numActiveRays;ri++){
     free(rays[ri].tau);
     free(rays[ri].intensity);

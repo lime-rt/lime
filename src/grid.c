@@ -841,7 +841,6 @@ void randomsViaRejection(configInfo *par, const unsigned int desiredNumPoints, g
   double uniformRandom;
   int j,di;
   unsigned int i_u;
-//  _Bool pointIsAccepted;
   int pointIsAccepted;
   double x[DIM];
   const int maxNumAttempts=1000;
