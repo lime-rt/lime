@@ -240,7 +240,9 @@ typedef struct {
   double velres;
   double imgres;
   int pxls;
-  int unit;
+  char *units;
+  int *imgunits;
+  int numunits;
   double freq,bandwidth;
   char *filename;
   double source_vel;
@@ -329,6 +331,7 @@ void    fillErfTable();
 void	fit_d1fi(double, double, double*);
 void	fit_fi(double, double, double*);
 void	fit_rr(double, double, double*);
+void    fitsFilename(char *, configInfo *, imageInfo *, const int, const int);
 void	freeConfigInfo(configInfo par);
 void	freeGrid(const unsigned int, const unsigned short, struct grid*);
 void	freeGridPointData(const int, gridPointData*);
@@ -384,9 +387,9 @@ void	stateq(int, struct grid*, molData*, const int, configInfo*, struct blendInf
 void	statistics(int, molData*, struct grid*, int*, double*, double*, int*);
 void	stokesangles(double*, double (*rotMat)[3], double*);
 double	taylor(const int, const float);
-void	write2Dfits(int, configInfo*, imageInfo*);
-void	write3Dfits(int, configInfo*, imageInfo*);
-void	writeFits(const int, configInfo*, imageInfo*);
+void	write2Dfits(int, int, configInfo*, imageInfo*);
+void	write3Dfits(int, int, configInfo*, imageInfo*);
+void	writeFits(const int, const int, configInfo*, imageInfo*);
 void	writeGridIfRequired(configInfo*, struct grid*, molData*, const int);
 void	write_VTK_unstructured_Points(configInfo*, struct grid*);
 
