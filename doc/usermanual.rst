@@ -831,15 +831,19 @@ In LIME 1.5 and earlier, the number density of the random grid points was tied d
 
 .. code:: c
 
-    void
-    gridDensity(configInfo par, double x, double y, double z, double *fracDensity){
-      *fracDensity = f(x,y,z);
+    double
+    gridDensity(configInfo par, double r){
+      double fracDensity;
+      fracDensity = f(r);
+      return fracDensity;
     }
 
 Notes:
-  1. The returned variable is a scalar, like the doppler width described above. That's why you need to put the star in front of the variable name when setting its value.
-  2. This is the only function which includes the input parameters among the arguments. You cannot write to these, they are only supplied so that you can use their values if you wish to. Because of their 'read-only' character, you should invoke them as in the following example:
-  3. Due to the algorithm used to choose the grid points, we cannot yet make this function have quite the effect intended. Eventually we will manage to do so, but at present we cannot make a hard connection between the values for ``fracDensity`` you set and the actual grid point number density. In many ways LIME is still a work in progress. **In particular**, for the time being, you need to make sure that ``gridDensity()`` returns ``fracDensity=1`` for at least **one** location in the model space. Functions without steps are also recommended.
+  1. The returned variable is a scalar.
+  2. This is the only function which includes the input parameters among the
+     arguments. You cannot write to these, they are only supplied so that you
+     can use their values if you wish to. Because of their 'read-only'
+     character, you should invoke them as in the following example:
 
 .. code:: c
 
@@ -853,6 +857,15 @@ rather than
 
 as in the input() function.
 
+  3. Due to the algorithm used to choose the grid points, we cannot yet make
+     this function have quite the effect intended. Eventually we will manage
+     to do so, but at present we cannot make a hard connection between the
+     values for ``fracDensity`` you set and the actual grid point number
+     density. In many ways LIME is still a work in progress. **In
+     particular**, for the time being, you need to make sure that
+     ``gridDensity()`` returns ``fracDensity=1`` for at least **one**
+     location in the model space. Functions without steps are also
+     recommended.
 
 Other settings
 ~~~~~~~~~~~~~~
