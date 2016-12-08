@@ -136,6 +136,7 @@ void readDustFile(char *dustFileName, double **lamtab, double **kaptab\
 /*....................................................................*/
 double interpolateKappa(const double freq, double *lamtab, double *kaptab\
   , const int nEntries, gsl_spline *spline, gsl_interp_accel *acc){
+  /* Note that the multiplications by 0.1 below are to convert cm^2/g to m^2/kg. */
 
   double loglam, kappa;
 

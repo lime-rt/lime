@@ -43,7 +43,7 @@
 
 #include "dims.h"
 
-#define VERSION	"1.6.1"
+#define VERSION	"1.7"
 #define DEFAULT_NTHREADS 1
 #ifndef NTHREADS /* Value passed from the LIME script */
 #define NTHREADS DEFAULT_NTHREADS

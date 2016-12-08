@@ -75,7 +75,7 @@ initParImg(inputPars *par, image **img)
     for(j=0;j<DIM;j++) par->gridDensMaxLoc[i][j] = 0.0;
   }
 
-  par->tcmb = 2.728;
+  par->tcmb = 2.725;
   par->lte_only=0;
   par->init_lte=0;
   par->samplingAlgorithm=0;

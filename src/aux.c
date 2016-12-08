@@ -315,15 +315,7 @@ The presence of one of these combinations at least is checked here, although the
         if(!silent && (*img)[i].nchan > 0)
           warning("Your nchan value will be overwritten.");
 
-      }else if((*img)[i].bandwidth > 0 && (*img)[i].nchan > 0){
-        if(!silent && (*img)[i].velres > 0)
-          warning("Your velres value will be overwritten.");
-
-      }else if((*img)[i].velres > 0 && (*img)[i].nchan > 0){
-        if(!silent && (*img)[i].bandwidth > 0)
-          warning("Your bandwidth value will be overwritten.");
-
-      }else{
+      }else if((*img)[i].nchan <= 0 || ((*img)[i].bandwidth <= 0 && (*img)[i].velres <= 0)) {
         if(!silent) bail_out("Insufficient info to calculate nchan, velres and bandwidth.");
         exit(1);
       }
