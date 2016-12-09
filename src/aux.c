@@ -56,7 +56,7 @@ The parameters visible to the user have now been strictly confined to members of
 
   int i,j,id;
   double BB[3],normBSquared,dens[MAX_N_COLL_PART],r[DIM];
-  double dummyVel[DIM];
+  double dummyVel[DIM],dummyScale;
   FILE *fp;
   char message[80];
   _Bool doThetaPhi;
@@ -175,8 +175,9 @@ The parameters visible to the user have now been strictly confined to members of
 
   /* Check that the user has supplied the velocity function (needed in raytracing unless par->doPregrid). Note that the other previously mandatory functions (density, abundance, doppler and temperature) may not be necessary if the user reads in the appropriate values from a file. This is tested at the appropriate place in readOrBuildGrid().
   */
+  dummyScale = par->minScale/sqrt(3);
   if(!par->doPregrid || par->traceRayAlgorithm==1)
-    velocity(0.0,0.0,0.0, dummyVel);
+    velocity(dummyScale,dummyScale,dummyScale, dummyVel);
 
   /* Calculate par->numDensities.
   */
@@ -184,7 +185,11 @@ The parameters visible to the user have now been strictly confined to members of
     /* Find out how many density functions we have (which sets par->numDensities).
     */
     for(i=0;i<MAX_N_COLL_PART;i++) dens[i] = -1.0;
-    density(0.0,0.0,0.0,dens); /* Note that the example density function in LIME-1.5 generated a singularity at r==0! Such uglinesses should not be encouraged. I've fixed it now, thus I can use 0s here in (relative) safety. */
+    /* Note that the example density function in LIME-1.5 generated a
+     * singularity at r==0! Currently we find out if the density is different
+     * from zero at r=par->minScale but this check will fail if the
+     * user-defined density function at par->minScale is zero */
+    density(dummyScale,dummyScale,dummyScale,dens);
     i = 0;
     while(i<MAX_N_COLL_PART && dens[i]>=0) i++;
     par->numDensities = i;
