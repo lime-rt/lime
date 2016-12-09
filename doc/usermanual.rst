@@ -387,7 +387,7 @@ no default value.
 
 .. note::
 
-A lot of work has been done on the multi-molecule parts of the LIME code for the 1.7 release, and we can say for certain that this facility did not work previously; whether it works now is a bit of an open question. There is a lot of testing here which still needs to be done.
+   A lot of work has been done on the multi-molecule parts of the LIME code for the 1.7 release, and we can say for certain that this facility did not work previously; whether it works now is a bit of an open question. There is a lot of testing here which still needs to be done.
 
 .. code:: c
 
@@ -478,7 +478,7 @@ file. The default is blend=0 (no line blending).
 
 .. note::
 
-A great deal of work has been done on the blending code for 1.7. We can say for certain that it did not work before; but whether it works now is a bit of an open question. This is another aspect of LIME which needs both testing and line-by-line code checking.
+   A great deal of work has been done on the blending code for 1.7. We can say for certain that it did not work before; but whether it works now is a bit of an open question. This is another aspect of LIME which needs both testing and line-by-line code checking.
 
 .. code:: c
 
@@ -533,7 +533,7 @@ The final one of the density-linked parameters controls how the dust mass densit
 
 .. note::
 
-The calculation of dust mass density at present makes use of a hard-wired average gas density value of 2.4, appropriate to a mix of 90% molecular hydrogen and 10% helium. The only way to compensate for this hard-wired value is to scale all the values of `par->dustWeights` accordingly.
+   The calculation of dust mass density at present makes use of a hard-wired average gas density value of 2.4, appropriate to a mix of 90% molecular hydrogen and 10% helium. The only way to compensate for this hard-wired value is to scale all the values of `par->dustWeights` accordingly.
 
 If none of the three density-linked parameters is provided, LIME will attempt to guess the information, in a manner as close as possible to the way it was done in version 1.5 and earlier. This is safe enough when a single density value is returned, and only H2 provided as collision partner in the moldata file(s), but more complicated situations can very easily result in the code guessing wrongly. For this reason we encourage users to make use of these three parameters, although in order to preserve backward compatibility with old model.c files, we have not (yet) made them mandatory.
 
@@ -545,7 +545,7 @@ This parameter specifies the algorithm used by LIME to solve the radiative-trans
 
 .. note::
 
-The new algorithm is not yet 'thread-safe', which means you should not run raytracing in parallel if `par->traceRayAlgorithm`=1. We'll work on this.
+   The new algorithm is not yet 'thread-safe', which means you should not run raytracing in parallel if `par->traceRayAlgorithm`=1. We'll work on this.
 
 Note also that there have been additional modifications to the raytracing algorithm which have significant effects on the output images since LIME-1.5. Image-plane interpolation is now employed in areas of the image where the grid point spacing is larger than the image pixel spacing. This leads both to a smoother image and a shorter processing time.
 
@@ -569,7 +569,7 @@ This defines the number of solution iterations LIME should perform when solving 
 
     (integer) par->resetRNG (optional)
 
-If this is set non-zero, LIME will use the same random number seeds at the start of each solution iteration. This has the effect of choosing the same photon directions and frequencies for each iteration (although the directions and frequencies change randomly from one grid point to the next). This has the effect of decoupling any oscillation or wandering of the level populations as they relax towards convergence from the intrinsic Monte Carlo noise of the discrete solution algorithm. Best practice might involve alternating episodes with `par->resetRNG`=0 and 1, storing the intermediate populations via the :ref:`I/O interface <grid-io>`. Very little experience has been accumulated as yet with this facility.
+If this is set non-zero, LIME will use the same random number seeds at the start of each solution iteration. This has the effect of choosing the same photon directions and frequencies for each iteration (although the directions and frequencies change randomly from one grid point to the next). This has the effect of decoupling any oscillation or wandering of the level populations as they relax towards convergence from the intrinsic Monte Carlo noise of the discrete solution algorithm. Best practice might involve alternating episodes with `par->resetRNG` =0 and 1, storing the intermediate populations via the :ref:`I/O interface <grid-io>`. Very little experience has been accumulated as yet with this facility.
 
 The default value is 0.
 
