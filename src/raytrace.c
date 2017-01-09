@@ -148,7 +148,7 @@ Note that the algorithm employed here is similar to that employed in the functio
     nposn=-1;
     line_plane_intersect(gp,&ds,posn,&nposn,dx,x,cutoff); /* Returns a new ds equal to the distance to the next Voronoi face, and nposn, the ID of the grid cell that abuts that face. */
 
-    if(par->polarization){ /* Should also imply img[im].doline. */
+    if(par->polarization){ /* Should also imply img[im].doline==0. */
       sourceFunc_pol(gp[posn].B, gp[posn].cont, img[im].rotMat, snu_pol, &alpha);
       dtau=alpha*ds;
       calcSourceFn(dtau, par, &remnantSnu, &expDTau);
@@ -164,7 +164,7 @@ Note that the algorithm employed here is similar to that employed in the functio
         ray.tau[stokesId]+=dtau; //**** But this will be the same for I, Q or U.
       }
     } else {
-      if(!par->doPregrid){
+      if(!par->doPregrid && img[im].doline){
         for(i=0;i<nSteps;i++){
           d = i*ds*oneOnNSteps;
           velocity(x[0]+(dx[0]*d),x[1]+(dx[1]*d),x[2]+(dx[2]*d),vel);
@@ -235,19 +235,19 @@ Note that the algorithm employed here is similar to that employed in the functio
   /* Add or subtract cmb. */
   if(par->polarization){ /* just add it to Stokes I */
 #ifdef FASTEXP
-    ray.intensity[stokesIi]+=FastExp(ray.tau[stokesIi])*local_cmb;
+    ray.intensity[stokesIi] += (FastExp(ray.tau[stokesIi])-1.0)*local_cmb;
 #else
-    ray.intensity[stokesIi]+=exp(   -ray.tau[stokesIi])*local_cmb;
+    ray.intensity[stokesIi] += (exp(   -ray.tau[stokesIi])-1.0)*local_cmb;
 #endif
 
   }else{
 #ifdef FASTEXP
     for(ichan=0;ichan<img[im].nchan;ichan++){
-      ray.intensity[ichan]+=FastExp(ray.tau[ichan])*local_cmb;
+      ray.intensity[ichan] += (FastExp(ray.tau[ichan])-1.0)*local_cmb;
     }
 #else
     for(ichan=0;ichan<img[im].nchan;ichan++){
-      ray.intensity[ichan]+=exp(-ray.tau[ichan])*local_cmb;
+      ray.intensity[ichan] += (exp(   -ray.tau[ichan])-1.0)*local_cmb;
     }
 #endif
   }
@@ -438,7 +438,7 @@ At the moment I will fix the number of segments, but it might possibly be faster
     for(si=0;si<numSegments;si++){
       doSegmentInterp(gips, entryI, md, par->nSpecies, oneOnNumSegments, si);
 
-      if(par->polarization){
+      if(par->polarization){ /* Should also imply img[im].doline==0. */
         sourceFunc_pol(gips[2].B, gips[2].cont, img[im].rotMat, snu_pol, &alpha);
         dtau=alpha*ds;
         calcSourceFn(dtau, par, &remnantSnu, &expDTau);
@@ -456,8 +456,10 @@ At the moment I will fix the number of segments, but it might possibly be faster
       } else {
         /* It appears to be necessary to sample the velocity function in the following way rather than interpolating it from the vertices of the Delaunay cell in the same way as with all the other quantities of interest. Velocity varies too much across the cells, and in a nonlinear way, for linear interpolation to yield a totally satisfactory result.
         */
-        velocity(gips[2].x[0], gips[2].x[1], gips[2].x[2], vel);
-        projVelRay = dotProduct3D(dir, vel);
+        if(img[im].doline){
+          velocity(gips[2].x[0], gips[2].x[1], gips[2].x[2], vel);
+          projVelRay = dotProduct3D(dir, vel);
+        }
 
         /* Calculate first the continuum stuff because it is the same for all channels:
         */
@@ -518,19 +520,19 @@ At the moment I will fix the number of segments, but it might possibly be faster
   /* Add or subtract cmb. */
   if(par->polarization){ /* just add it to Stokes I */
 #ifdef FASTEXP
-    ray.intensity[stokesIi]+=FastExp(ray.tau[stokesIi])*local_cmb;
+    ray.intensity[stokesIi] += (FastExp(ray.tau[stokesIi])-1.0)*local_cmb;
 #else
-    ray.intensity[stokesIi]+=exp(   -ray.tau[stokesIi])*local_cmb;
+    ray.intensity[stokesIi] += (exp(   -ray.tau[stokesIi])-1.0)*local_cmb;
 #endif
 
   }else{
 #ifdef FASTEXP
     for(ichan=0;ichan<img[im].nchan;ichan++){
-      ray.intensity[ichan]+=FastExp(ray.tau[ichan])*local_cmb;
+      ray.intensity[ichan] += (FastExp(ray.tau[ichan])-1.0)*local_cmb;
     }
 #else
     for(ichan=0;ichan<img[im].nchan;ichan++){
-      ray.intensity[ichan]+=exp(-ray.tau[ichan])*local_cmb;
+      ray.intensity[ichan] += (exp(   -ray.tau[ichan])-1.0)*local_cmb;
     }
 #endif
   }
