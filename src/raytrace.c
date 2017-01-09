@@ -884,8 +884,12 @@ How to calculate this distance? Well if we have N points randomly but evenly dis
     rSqu = gp[gi].x[0]*gp[gi].x[0] + gp[gi].x[1]*gp[gi].x[1];
     if(rSqu > (4.0/9.0)*par->radiusSqu) numPointsInAnnulus += 1;
   }
-  circleSpacing = (1.0/6.0)*par->radius*sqrt(5.0*PI/(double)numPointsInAnnulus);
-  numCircleRays = (int)(2.0*PI*par->radius/circleSpacing);
+  if(numPointsInAnnulus>0){
+    circleSpacing = (1.0/6.0)*par->radius*sqrt(5.0*PI/(double)numPointsInAnnulus);
+    numCircleRays = (int)(2.0*PI*par->radius/circleSpacing);
+  }else{
+    numCircleRays = 0;
+  }
 
   /* The following is the first of the 3 main loops in raytrace. Here we loop over the (internal or non-sink) grid points. We're doing 2 things: loading the rotated, projected coordinates into the rays list, and counting the rays per image pixel.
   */
