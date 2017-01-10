@@ -17,7 +17,7 @@ error(int errCode, char *message){
 }
 
 /*....................................................................*/
-faceType *
+faceType
 extractFace(const int numDims, double *vertexCoords, struct simplex *dc\
   , const unsigned long dci, const int fi){
   /* Given a simplex dc[dci] and the face index (in the range {0...numDims}) fi, this returns the desired information about that face. Note that the ordering of the elements of face.r[] is the same as the ordering of the vertices of the simplex, dc[dci].vertx[]; just the vertex fi is omitted.
@@ -27,7 +27,7 @@ Note that the element 'centre' of the faceType struct is mean to contain the spa
 
   const int numFaces=numDims+1;
   int vi, vvi, di;
-  static faceType face;
+  faceType face;
   unsigned long gi;
 
   vvi = 0;
@@ -44,7 +44,7 @@ Note that the element 'centre' of the faceType struct is mean to contain the spa
   for(di=0;di<numDims;di++)
     face.simplexCentre[di] = dc[dci].centre[di];
 
-  return &face;
+  return face;
 }
 
 /*....................................................................*/
@@ -450,7 +450,7 @@ At a successful termination, therefore, details of all the cells to the edge of 
   _Bool followingSingleChain;
   const int bufferSize=1024;
   int numGoodExits, numMarginalExits, fi, goodExitFis[numFaces], marginalExitFis[numFaces], exitFi, i, status, newEntryFaceI;
-  faceType *pFace;
+  faceType face;
   intersectType intcpt[numFaces];
 
   followingSingleChain = 1; /* default */
@@ -472,13 +472,13 @@ At a successful termination, therefore, details of all the cells to the edge of 
       if(fi!=entryFaceI && (dc[dci].neigh[fi]==NULL || !(*cellVisited)[dc[dci].neigh[fi]->id])){
         /* Store points for this face: */
         if(facePtrs==NULL){
-          pFace = extractFace(numDims, vertexCoords, dc, dci, fi);
+          face = extractFace(numDims, vertexCoords, dc, dci, fi);
         }else{
-          pFace = &(*facePtrs)[dci][fi];
+          face = (*facePtrs)[dci][fi];
         }
 
         /* Now calculate the intercept: */
-        intcpt[fi] = intersectLineWithFace(numDims, x, dir, pFace, epsilon);
+        intcpt[fi] = intersectLineWithFace(numDims, x, dir, &face, epsilon);
         intcpt[fi].fi = fi; /* Ultimately we need this so we can relate the bary coords for the face back to the Delaunay cell. */
 
         if(intcpt[fi].orientation>0){ /* it is an exit face. */
@@ -573,11 +573,11 @@ The calling routine should free chainOfCellIds, cellExitIntcpts & cellVisited af
 
 The argument facePtrs may be set to NULL, in which case the function will construct each face from the list of cells etc as it needs it. This saves on memory but takes more time. If the calling routine supplies these values it needs to do something like as follows:
 
-	faceType *pFace,*facePtrs[N_DIMS+1]=malloc(sizeof(*(*facePtrs[N_DIMS+1]))*numFaces); // numFaces must of course be calculated beforehand.
+	faceType face,*facePtrs[N_DIMS+1]=malloc(sizeof(*(*facePtrs[N_DIMS+1]))*numFaces); // numFaces must of course be calculated beforehand.
 	for(i=0;i<numFaces;i++){
 	  for(j=0;j<numDims+1;j++){
-	    pFace = extractFace(numDims, vertexCoords, dc, i, j);
-	    facePtrs[i][j] = *pFace;
+	    face = extractFace(numDims, vertexCoords, dc, i, j);
+	    facePtrs[i][j] = face;
 	  }
 	}
 	status = followRayThroughCells(... &facePtrs, ...);
@@ -597,7 +597,7 @@ and filled as
 
   const int numFaces=numDims+1, maxNumEntryFaces=100;
   int numEntryFaces, fi, entryFis[maxNumEntryFaces], i, status;
-  faceType *pFace;
+  faceType face;
   unsigned long dci, entryDcis[maxNumEntryFaces];
   intersectType intcpt, entryIntcpts[maxNumEntryFaces];
   _Bool *cellVisited=NULL;
@@ -609,13 +609,13 @@ and filled as
       if(dc[dci].neigh[fi]==NULL){ /* means that this face lies on the outside of the model. */
         /* Store points for this face: */
         if(facePtrs==NULL){
-          pFace = extractFace(numDims, vertexCoords, dc, dci, fi);
+          face = extractFace(numDims, vertexCoords, dc, dci, fi);
         }else{
-          pFace = &(*facePtrs)[dci][fi];
+          face = (*facePtrs)[dci][fi];
         }
 
         /* Now calculate the intercept: */
-        intcpt = intersectLineWithFace(numDims, x, dir, pFace, epsilon);
+        intcpt = intersectLineWithFace(numDims, x, dir, &face, epsilon);
         intcpt.fi = fi; /* Ultimately we need this so we can relate the bary coords for the face back to the Delaunay cell. */
 
         if(intcpt.orientation<0){ /* it is an entry face. */
