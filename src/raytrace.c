@@ -232,7 +232,13 @@ Note that the algorithm employed here is similar to that employed in the functio
     posn=nposn;
   } while(col < 2.0*fabs(zp));
 
-  /* Add or subtract cmb. */
+  /*
+Add or subtract cmb.
+
+Some explanation is probably helpful here to explain what is going on. If we think of a ray at a given frequency passing through the model, the starting value of its intensity I(0) will be the cosmic background value, which in the bands of interest to LIME can be assumed to be the familiar ~2.7K black-body value. This is the value encoded in local_cmb. According to the backwards-propagation algorithm described in Hogerheijde & van der Tak, Astron. Astrophys. 362, 697 (2000), the final term in the sum giving the intensity is I(0)*exp(-tau), where tau is the accumulated opacity of the model. For rays passing through areas of zero molecular column density (e.g. outside the model radius), I can be assumed to equal I(0). However, users prefer to subtract away the constant I(0) from the whole image; thus image areas outside the model radius are (in the present function) left at zero, and I(0) (aka local_cmb) is subtracted below from all the in-radius pixels.
+
+Note further that users also do not like the resulting zero-valued pixels (!), hence the addition of IMG_MIN_ALLOWED to all such in functions write2Dfits() and write3Dfits(). Such is life.
+  */
   if(par->polarization){ /* just add it to Stokes I */
 #ifdef FASTEXP
     ray.intensity[stokesIi] += (FastExp(ray.tau[stokesIi])-1.0)*local_cmb;
@@ -517,7 +523,13 @@ At the moment I will fix the number of segments, but it might possibly be faster
     exitI = 1 - exitI;
   } /* End loop over cells in the chain traversed by the ray. */
 
-  /* Add or subtract cmb. */
+  /*
+Add or subtract cmb.
+
+Some explanation is probably helpful here to explain what is going on. If we think of a ray at a given frequency passing through the model, the starting value of its intensity I(0) will be the cosmic background value, which in the bands of interest to LIME can be assumed to be the familiar ~2.7K black-body value. This is the value encoded in local_cmb. According to the backwards-propagation algorithm described in Hogerheijde & van der Tak, Astron. Astrophys. 362, 697 (2000), the final term in the sum giving the intensity is I(0)*exp(-tau), where tau is the accumulated opacity of the model. For rays passing through areas of zero molecular column density (e.g. outside the model radius), I can be assumed to equal I(0). However, users prefer to subtract away the constant I(0) from the whole image; thus image areas outside the model radius are (in the present function) left at zero, and I(0) (aka local_cmb) is subtracted below from all the in-radius pixels.
+
+Note further that users also do not like the resulting zero-valued pixels (!), hence the addition of IMG_MIN_ALLOWED to all such in functions write2Dfits() and write3Dfits(). Such is life.
+  */
   if(par->polarization){ /* just add it to Stokes I */
 #ifdef FASTEXP
     ray.intensity[stokesIi] += (FastExp(ray.tau[stokesIi])-1.0)*local_cmb;
