@@ -504,6 +504,19 @@ void
 locateRayOnImage(double x[2], const double size, const double imgCentreXPixels\
   , const double imgCentreYPixels, imageInfo *img, const int im\
   , const int maxNumRaysPerPixel, rayData *rays, int *numActiveRays){
+  /*
+The present function does several things, as follows:
+	- Calculates the image position in pixel coordinates of the proposed ray position specified by x[].
+	- If the proposed ray is inside the image bounds, and the count of rays for that image pixel does not exceed the maximum allowed, the function:
+	  * adds 1 to the count of rays for that pixel of the image.
+	  * increments *numActiveRays;
+	  * stores information for the new ray in rays[*numActiveRays].
+
+Returned information is thus:
+	- An updated array img[im].pixel[ppi].numRays.
+	- An updated list of accepted rays.
+	- An updated value of *numActiveRays.
+  */
 
   int xi,yi,ichan;
   _Bool isOutsideImage;
@@ -878,10 +891,9 @@ How to calculate this distance? Well if we have N points randomly but evenly dis
       locateRayOnImage(xs, pixelSize, imgCentreXPixels, imgCentreYPixels, img, im, maxNumRaysPerPixel, rays, &numActiveRays);
     }
   }
-
   oneOnNumActiveRaysMinus1 = 1.0/(double)(numActiveRays-1);
 
-  if(numActiveRays<par->pIntensity)
+  if(numActiveRays<par->pIntensity+numCircleRays)
     rays = realloc(rays, sizeof(rayData)*numActiveRays);
 
   if(par->traceRayAlgorithm==1){
@@ -950,7 +962,7 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
     }
 
     #pragma omp for schedule(dynamic)
-    for(ri=0;ri<numActiveRays;ri++){
+    for(ri=0;ri<numActiveRaysInternal;ri++){
       if(par->traceRayAlgorithm==0)
         traceray(rays[ri], im, par, gp, md, img\
           , cutoff, nStepsThruCell, oneOnNSteps);
@@ -962,6 +974,14 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
 
       if (threadI == 0){ /* i.e., is master thread */
         if(!silent) progressbar((double)(ri)*oneOnNumActiveRaysMinus1, 13);
+      }
+    }
+    /* We take, in formal terms, all the 'active' or accepted rays on the model-radius circle to be outside the model; thus we set their intensity and tau to zero.
+    */
+    for(ri=numActiveRaysInternal;ri<numActiveRays;ri++){
+      for(ichan=0;ichan<img[im].nchan;ichan++){
+        rays[ri].intensity[ichan] = 0.0;
+        rays[ri].tau[      ichan] = 0.0;
       }
     }
 
