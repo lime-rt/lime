@@ -173,11 +173,6 @@ The parameters visible to the user have now been strictly confined to members of
   while(i<MAX_N_HIGH && par->gridDensMaxValues[i]>=0) i++;
   par->numGridDensMaxima = i;
 
-  /* Check that the user has supplied the velocity function (needed in raytracing unless par->doPregrid). Note that the other previously mandatory functions (density, abundance, doppler and temperature) may not be necessary if the user reads in the appropriate values from a file. This is tested at the appropriate place in readOrBuildGrid().
-  */
-  if(!par->doPregrid || par->traceRayAlgorithm==1)
-    velocity(0.0,0.0,0.0, dummyVel);
-
   /* Calculate par->numDensities.
   */
   if(!(par->doPregrid || par->restart)){ /* These switches cause par->numDensities to be set in routines they call. */
@@ -493,6 +488,11 @@ LIME provides two different schemes of {R_1, R_2, R_3}: {PA, phi, theta} and {PA
     else
       par->nContImages++;
   }
+
+  /* Check that the user has supplied the velocity function (needed in raytracing unless par->doPregrid). Note that the other previously mandatory functions (density, abundance, doppler and temperature) may not be necessary if the user reads in the appropriate values from a file. This is tested at the appropriate place in readOrBuildGrid().
+  */
+  if(par->nLineImages>0 && (!par->doPregrid || par->traceRayAlgorithm==1))
+    velocity(0.0,0.0,0.0, dummyVel);
 
   /* Allocate moldata array.
   */

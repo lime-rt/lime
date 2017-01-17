@@ -131,7 +131,7 @@ write3Dfits(int im, configInfo *par, imageInfo *img){
           if(!silent) bail_out("Image unit number invalid");
           exit(0);
         }
-        if (fabs(row[px])<(float) eps) row[px]=(float)eps;
+        if (fabs(row[px])<IMG_MIN_ALLOWED) row[px]=IMG_MIN_ALLOWED;
       }
       fpixels[0]=1;
       fpixels[1]=py+1;
@@ -242,7 +242,7 @@ write2Dfits(int im, configInfo *par, imageInfo *img){
   }
 
   if(img[im].unit<5)
-    minVal = eps;
+    minVal = IMG_MIN_ALLOWED;
   else
     minVal = 0.0;
 

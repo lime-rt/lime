@@ -94,7 +94,7 @@ This function returns ds as the (always positive-valued) distance between the pr
 
 /*....................................................................*/
 void
-traceray(rayData ray, const double local_cmb, const int im\
+traceray(rayData ray, const int im\
   , configInfo *par, struct grid *gp, molData *md, imageInfo *img\
   , const double cutoff, const int nSteps, const double oneOnNSteps){
   /*
@@ -102,7 +102,6 @@ For a given image pixel position, this function evaluates the intensity of the t
 
 Note that the algorithm employed here is similar to that employed in the function photon() which calculates the average radiant flux impinging on a grid cell: namely the notional photon is started at the side of the model near the observer and 'propagated' in the receding direction until it 'reaches' the far side. This is rather non-physical in conception but it makes the calculation easier.
   */
-  const int stokesIi=0;
   int ichan,stokesId,di,i,posn,nposn,molI,lineI;
   double xp,yp,zp,x[DIM],dx[DIM],dist2,ndist2,col,ds,snu_pol[3],dtau;
   double contJnu,contAlpha,jnu,alpha,lineRedShift,vThisChan,deltav,vfac=0.;
@@ -148,7 +147,7 @@ Note that the algorithm employed here is similar to that employed in the functio
     nposn=-1;
     line_plane_intersect(gp,&ds,posn,&nposn,dx,x,cutoff); /* Returns a new ds equal to the distance to the next Voronoi face, and nposn, the ID of the grid cell that abuts that face. */
 
-    if(par->polarization){ /* Should also imply img[im].doline. */
+    if(par->polarization){ /* Should also imply img[im].doline==0. */
       sourceFunc_pol(gp[posn].B, gp[posn].cont, img[im].rotMat, snu_pol, &alpha);
       dtau=alpha*ds;
       calcSourceFn(dtau, par, &remnantSnu, &expDTau);
@@ -164,7 +163,7 @@ Note that the algorithm employed here is similar to that employed in the functio
         ray.tau[stokesId]+=dtau; //**** But this will be the same for I, Q or U.
       }
     } else {
-      if(!par->doPregrid){
+      if(!par->doPregrid && img[im].doline){
         for(i=0;i<nSteps;i++){
           d = i*ds*oneOnNSteps;
           velocity(x[0]+(dx[0]*d),x[1]+(dx[1]*d),x[2]+(dx[2]*d),vel);
@@ -231,26 +230,6 @@ Note that the algorithm employed here is similar to that employed in the functio
     col+=ds;
     posn=nposn;
   } while(col < 2.0*fabs(zp));
-
-  /* Add or subtract cmb. */
-  if(par->polarization){ /* just add it to Stokes I */
-#ifdef FASTEXP
-    ray.intensity[stokesIi]+=FastExp(ray.tau[stokesIi])*local_cmb;
-#else
-    ray.intensity[stokesIi]+=exp(   -ray.tau[stokesIi])*local_cmb;
-#endif
-
-  }else{
-#ifdef FASTEXP
-    for(ichan=0;ichan<img[im].nchan;ichan++){
-      ray.intensity[ichan]+=FastExp(ray.tau[ichan])*local_cmb;
-    }
-#else
-    for(ichan=0;ichan<img[im].nchan;ichan++){
-      ray.intensity[ichan]+=exp(-ray.tau[ichan])*local_cmb;
-    }
-#endif
-  }
 }
 
 /*....................................................................*/
@@ -330,7 +309,7 @@ void doSegmentInterp(gridInterp gips[3], const int iA, molData *md\
 
 /*....................................................................*/
 void
-traceray_smooth(rayData ray, const double local_cmb, const int im\
+traceray_smooth(rayData ray, const int im\
   , configInfo *par, struct grid *gp, double *vertexCoords, molData *md\
   , imageInfo *img, struct simplex *dc, const unsigned long numCells\
   , const double epsilon, gridInterp gips[3], const int numSegments\
@@ -342,7 +321,6 @@ Note that the algorithm employed here to solve the RTE is similar to that employ
 
 This version of traceray implements a new algorithm in which the population values are interpolated linearly from those at the vertices of the Delaunay cell which the working point falls within.
   */
-  const int stokesIi=0;
   const int numFaces = DIM+1, nVertPerFace=3;
   int ichan,stokesId,di,status,lenChainPtrs,entryI,exitI,vi,vvi,ci;
   int si,molI,lineI;
@@ -438,7 +416,7 @@ At the moment I will fix the number of segments, but it might possibly be faster
     for(si=0;si<numSegments;si++){
       doSegmentInterp(gips, entryI, md, par->nSpecies, oneOnNumSegments, si);
 
-      if(par->polarization){
+      if(par->polarization){ /* Should also imply img[im].doline==0. */
         sourceFunc_pol(gips[2].B, gips[2].cont, img[im].rotMat, snu_pol, &alpha);
         dtau=alpha*ds;
         calcSourceFn(dtau, par, &remnantSnu, &expDTau);
@@ -456,8 +434,10 @@ At the moment I will fix the number of segments, but it might possibly be faster
       } else {
         /* It appears to be necessary to sample the velocity function in the following way rather than interpolating it from the vertices of the Delaunay cell in the same way as with all the other quantities of interest. Velocity varies too much across the cells, and in a nonlinear way, for linear interpolation to yield a totally satisfactory result.
         */
-        velocity(gips[2].x[0], gips[2].x[1], gips[2].x[2], vel);
-        projVelRay = dotProduct3D(dir, vel);
+        if(img[im].doline){
+          velocity(gips[2].x[0], gips[2].x[1], gips[2].x[2], vel);
+          projVelRay = dotProduct3D(dir, vel);
+        }
 
         /* Calculate first the continuum stuff because it is the same for all channels:
         */
@@ -515,26 +495,6 @@ At the moment I will fix the number of segments, but it might possibly be faster
     exitI = 1 - exitI;
   } /* End loop over cells in the chain traversed by the ray. */
 
-  /* Add or subtract cmb. */
-  if(par->polarization){ /* just add it to Stokes I */
-#ifdef FASTEXP
-    ray.intensity[stokesIi]+=FastExp(ray.tau[stokesIi])*local_cmb;
-#else
-    ray.intensity[stokesIi]+=exp(   -ray.tau[stokesIi])*local_cmb;
-#endif
-
-  }else{
-#ifdef FASTEXP
-    for(ichan=0;ichan<img[im].nchan;ichan++){
-      ray.intensity[ichan]+=FastExp(ray.tau[ichan])*local_cmb;
-    }
-#else
-    for(ichan=0;ichan<img[im].nchan;ichan++){
-      ray.intensity[ichan]+=exp(-ray.tau[ichan])*local_cmb;
-    }
-#endif
-  }
-
   free(chainOfCellIds);
   free(cellExitIntcpts);
 }
@@ -544,6 +504,19 @@ void
 locateRayOnImage(double x[2], const double size, const double imgCentreXPixels\
   , const double imgCentreYPixels, imageInfo *img, const int im\
   , const int maxNumRaysPerPixel, rayData *rays, int *numActiveRays){
+  /*
+The present function does several things, as follows:
+	- Calculates the image position in pixel coordinates of the proposed ray position specified by x[].
+	- If the proposed ray is inside the image bounds, and the count of rays for that image pixel does not exceed the maximum allowed, the function:
+	  * adds 1 to the count of rays for that pixel of the image.
+	  * increments *numActiveRays;
+	  * stores information for the new ray in rays[*numActiveRays].
+
+Returned information is thus:
+	- An updated array img[im].pixel[ppi].numRays.
+	- An updated list of accepted rays.
+	- An updated value of *numActiveRays.
+  */
 
   int xi,yi,ichan;
   _Bool isOutsideImage;
@@ -790,7 +763,7 @@ Note that the argument 'md', and the grid element '.mol', are only accessed for 
 
   double pixelSize,oneOnNumActiveRaysMinus1,imgCentreXPixels,imgCentreYPixels,minfreq,absDeltaFreq,x,xs[2],sum,oneOnNumRays;
   unsigned int totalNumImagePixels,ppi,numPixelsForInterp;
-  int ichan,numCircleRays,numActiveRaysInternal,numActiveRays;
+  int ichan,numCircleRays,numActiveRaysInternal,numActiveRays,lastChan;
   int gi,molI,lineI,i,di,xi,yi,ri,vi;
   int cmbMolI,cmbLineI;
   rayData *rays;
@@ -882,8 +855,12 @@ How to calculate this distance? Well if we have N points randomly but evenly dis
     rSqu = gp[gi].x[0]*gp[gi].x[0] + gp[gi].x[1]*gp[gi].x[1];
     if(rSqu > (4.0/9.0)*par->radiusSqu) numPointsInAnnulus += 1;
   }
-  circleSpacing = (1.0/6.0)*par->radius*sqrt(5.0*PI/(double)numPointsInAnnulus);
-  numCircleRays = (int)(2.0*PI*par->radius/circleSpacing);
+  if(numPointsInAnnulus>0){
+    circleSpacing = (1.0/6.0)*par->radius*sqrt(5.0*PI/(double)numPointsInAnnulus);
+    numCircleRays = (int)(2.0*PI*par->radius/circleSpacing);
+  }else{
+    numCircleRays = 0;
+  }
 
   /* The following is the first of the 3 main loops in raytrace. Here we loop over the (internal or non-sink) grid points. We're doing 2 things: loading the rotated, projected coordinates into the rays list, and counting the rays per image pixel.
   */
@@ -905,17 +882,18 @@ How to calculate this distance? Well if we have N points randomly but evenly dis
   /* Add the circle rays:
   */
   numActiveRays = numActiveRaysInternal;
-  scale = 2.0*PI/(double)numCircleRays;
-  for(i=0;i<numCircleRays;i++){
-    angle = i*scale;
-    xs[0] = par->radius*cos(angle);
-    xs[1] = par->radius*sin(angle);
-    locateRayOnImage(xs, pixelSize, imgCentreXPixels, imgCentreYPixels, img, im, maxNumRaysPerPixel, rays, &numActiveRays);
+  if(numCircleRays>0){
+    scale = 2.0*PI/(double)numCircleRays;
+    for(i=0;i<numCircleRays;i++){
+      angle = i*scale;
+      xs[0] = par->radius*cos(angle);
+      xs[1] = par->radius*sin(angle);
+      locateRayOnImage(xs, pixelSize, imgCentreXPixels, imgCentreYPixels, img, im, maxNumRaysPerPixel, rays, &numActiveRays);
+    }
   }
-
   oneOnNumActiveRaysMinus1 = 1.0/(double)(numActiveRays-1);
 
-  if(numActiveRays<par->pIntensity)
+  if(numActiveRays<par->pIntensity+numCircleRays)
     rays = realloc(rays, sizeof(rayData)*numActiveRays);
 
   if(par->traceRayAlgorithm==1){
@@ -984,18 +962,26 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
     }
 
     #pragma omp for schedule(dynamic)
-    for(ri=0;ri<numActiveRays;ri++){
+    for(ri=0;ri<numActiveRaysInternal;ri++){
       if(par->traceRayAlgorithm==0)
-        traceray(rays[ri], local_cmb, im, par, gp, md, img\
+        traceray(rays[ri], im, par, gp, md, img\
           , cutoff, nStepsThruCell, oneOnNSteps);
 
       else if(par->traceRayAlgorithm==1)
-        traceray_smooth(rays[ri], local_cmb, im, par, gp, vertexCoords, md, img\
+        traceray_smooth(rays[ri], im, par, gp, vertexCoords, md, img\
           , cells, numCells, epsilon, gips\
           , numSegments, oneOnNumSegments, nStepsThruCell, oneOnNSteps);
 
       if (threadI == 0){ /* i.e., is master thread */
         if(!silent) progressbar((double)(ri)*oneOnNumActiveRaysMinus1, 13);
+      }
+    }
+    /* We take, in formal terms, all the 'active' or accepted rays on the model-radius circle to be outside the model; thus we set their intensity and tau to zero.
+    */
+    for(ri=numActiveRaysInternal;ri<numActiveRays;ri++){
+      for(ichan=0;ichan<img[im].nchan;ichan++){
+        rays[ri].intensity[ichan] = 0.0;
+        rays[ri].tau[      ichan] = 0.0;
       }
     }
 
@@ -1150,5 +1136,32 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
     free(rays[ri].intensity);
   }
   free(rays);
+
+  /*
+Add the correct starting value of intensity to the RTE solution, which is
+
+	exp(-total_tau)*I(0)
+
+then (because users are not interested in a uniform scalar offset) subtract the scalar value of this intensity from all pixels:
+  */
+  if(par->polarization){ /* just add it to Stokes I, which is the first 'channel' */
+    lastChan = 0;
+  }else{
+    lastChan = img[im].nchan;
+  }
+
+#ifdef FASTEXP
+  for(ppi=0;ppi<totalNumImagePixels;ppi++){
+    for(ichan=0;ichan<lastChan;ichan++){
+      img[im].pixel[ppi].intense[ichan] += (FastExp(img[im].pixel[ppi].tau[ichan])-1.0)*local_cmb;
+    }
+  }
+#else
+  for(ppi=0;ppi<totalNumImagePixels;ppi++){
+    for(ichan=0;ichan<lastChan;ichan++){
+      img[im].pixel[ppi].intense[ichan] += (exp(   -img[im].pixel[ppi].tau[ichan])-1.0)*local_cmb;
+    }
+  }
+#endif
 }
 
