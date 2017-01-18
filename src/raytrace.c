@@ -771,7 +771,6 @@ Note that the argument 'md', and the grid element '.mol', are only accessed for 
   struct simplex *cells=NULL;
   unsigned long numCells,dci,numPointsInAnnulus;
   double local_cmb,cmbFreq,circleSpacing,scale,angle,rSqu;
-//  double *xySquared=NULL,*vertexCoords=NULL;
   double *vertexCoords=NULL;
   gsl_error_handler_t *defaultErrorHandler=NULL;
 
