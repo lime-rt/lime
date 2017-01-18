@@ -28,6 +28,10 @@ freeConfigInfo(configInfo par){
       free(par.moldatfile[i]);
     free(par.moldatfile);
   }
+
+  free(par.gridOutFiles);
+  free(par.gridDensMaxValues);
+  free(par.gridDensMaxLoc);
 }
 
 void

@@ -23,21 +23,6 @@ dotProduct3D(const double *vA, const double *vB){
 
 /*....................................................................*/
 void
-mallocInputPars(inputPars *par){
-  int i;
-
-  par->moldatfile = malloc(sizeof(char *)*MAX_NSPECIES);
-
-  par->collPartIds  = malloc(sizeof(int)*MAX_N_COLL_PART);
-  for(i=0;i<MAX_N_COLL_PART;i++) par->collPartIds[i] = 0;
-  par->nMolWeights  = malloc(sizeof(double)*MAX_N_COLL_PART);
-  for(i=0;i<MAX_N_COLL_PART;i++) par->nMolWeights[i] = -1.0;
-  par->dustWeights  = malloc(sizeof(double)*MAX_N_COLL_PART);
-  for(i=0;i<MAX_N_COLL_PART;i++) par->dustWeights[i] = -1.0;
-}
-
-/*....................................................................*/
-void
 copyInparStr(const char *inStr, char **outStr){
   if(inStr==NULL || strlen(inStr)<=0 || strlen(inStr)>STR_LEN_0){
     *outStr = NULL;

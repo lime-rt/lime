@@ -264,7 +264,6 @@ int main () {
   image	*img = NULL;
   int nImages;
 
-  mallocInputPars(&par);
   nImages = initParImg(&par, &img);
 
   run(par, img, nImages);
@@ -274,6 +273,9 @@ int main () {
   free(par.nMolWeights);
   free(par.dustWeights);
   free(par.moldatfile);
+  free(par.gridOutFiles);
+  free(par.gridDensMaxValues);
+  free(par.gridDensMaxLoc);
 
   return 0;
 }

@@ -985,14 +985,14 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
 
   gsl_set_error_handler(defaultErrorHandler);
 
-    /* We take, in formal terms, all the 'active' or accepted rays on the model-radius circle to be outside the model; thus we set their intensity and tau to zero.
-    */
-    for(ri=numActiveRaysInternal;ri<numActiveRays;ri++){
-      for(ichan=0;ichan<img[im].nchan;ichan++){
-        rays[ri].intensity[ichan] = 0.0;
-        rays[ri].tau[      ichan] = 0.0;
-      }
+  /* We take, in formal terms, all the 'active' or accepted rays on the model-radius circle to be outside the model; thus we set their intensity and tau to zero.
+  */
+  for(ri=numActiveRaysInternal;ri<numActiveRays;ri++){
+    for(ichan=0;ichan<img[im].nchan;ichan++){
+      rays[ri].intensity[ichan] = 0.0;
+      rays[ri].tau[      ichan] = 0.0;
     }
+  }
 
   /* Set up for testing image pixel coords against model radius:
   */
@@ -1124,6 +1124,9 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
           } /* End if rasterPixelIsInCells */
         } /* End loop over yi */
       } /* End if followRayThroughCells() status==0 */
+
+      free(chainOfCellIds);
+      free(cellExitIntcpts);
     } /* End loop over xi */
 
     free(cells2D);
