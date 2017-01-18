@@ -771,7 +771,8 @@ Note that the argument 'md', and the grid element '.mol', are only accessed for 
   struct simplex *cells=NULL;
   unsigned long numCells,dci,numPointsInAnnulus;
   double local_cmb,cmbFreq,circleSpacing,scale,angle,rSqu;
-  double *xySquared=NULL,*vertexCoords=NULL;
+//  double *xySquared=NULL,*vertexCoords=NULL;
+  double *vertexCoords=NULL;
   gsl_error_handler_t *defaultErrorHandler=NULL;
 
   pixelSize = img[im].distance*img[im].imgres;
@@ -994,16 +995,6 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
     }
   }
 
-  /* Set up for testing image pixel coords against model radius:
-  */
-  xySquared = malloc(sizeof(*xySquared)*img[im].pxls);
-  for(xi=0;xi<img[im].pxls;xi++){
-    x = pixelSize*(0.5 + xi - imgCentreXPixels);
-/* In all this I'm assuming that the image is square and the X centre is the same as the Y centre. This may not always be the case! */
-    xySquared[xi] = x*x;
-  }
-
-  free(xySquared);
   if(par->traceRayAlgorithm==1){
     free(cells);
     free(vertexCoords);
