@@ -78,6 +78,7 @@ void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *
     /* Read the header of the data file */
     fgets(string, sizeI, fp);
     fgets(md[i].molName, 90, fp);
+    md[i].molName[strcspn(md[i].molName, "\r\n")] = 0;
     fgets(string, sizeI, fp);
     fscanf(fp, "%lf\n", &md[i].amass);
     fgets(string, sizeI, fp);
