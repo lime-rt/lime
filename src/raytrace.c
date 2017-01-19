@@ -771,7 +771,7 @@ Note that the argument 'md', and the grid element '.mol', are only accessed for 
   struct simplex *cells=NULL;
   unsigned long numCells,dci,numPointsInAnnulus;
   double local_cmb,cmbFreq,circleSpacing,scale,angle,rSqu;
-  double *xySquared=NULL,*vertexCoords=NULL;
+  double *vertexCoords=NULL;
   gsl_error_handler_t *defaultErrorHandler=NULL;
 
   pixelSize = img[im].distance*img[im].imgres;
@@ -976,14 +976,6 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
         if(!silent) progressbar((double)(ri)*oneOnNumActiveRaysMinus1, 13);
       }
     }
-    /* We take, in formal terms, all the 'active' or accepted rays on the model-radius circle to be outside the model; thus we set their intensity and tau to zero.
-    */
-    for(ri=numActiveRaysInternal;ri<numActiveRays;ri++){
-      for(ichan=0;ichan<img[im].nchan;ichan++){
-        rays[ri].intensity[ichan] = 0.0;
-        rays[ri].tau[      ichan] = 0.0;
-      }
-    }
 
     if(par->traceRayAlgorithm==1){
       for(ii=0;ii<numInterpPoints;ii++)
@@ -993,16 +985,15 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
 
   gsl_set_error_handler(defaultErrorHandler);
 
-  /* Set up for testing image pixel coords against model radius:
+  /* We take, in formal terms, all the 'active' or accepted rays on the model-radius circle to be outside the model; thus we set their intensity and tau to zero.
   */
-  xySquared = malloc(sizeof(*xySquared)*img[im].pxls);
-  for(xi=0;xi<img[im].pxls;xi++){
-    x = pixelSize*(0.5 + xi - imgCentreXPixels);
-/* In all this I'm assuming that the image is square and the X centre is the same as the Y centre. This may not always be the case! */
-    xySquared[xi] = x*x;
+  for(ri=numActiveRaysInternal;ri<numActiveRays;ri++){
+    for(ichan=0;ichan<img[im].nchan;ichan++){
+      rays[ri].intensity[ichan] = 0.0;
+      rays[ri].tau[      ichan] = 0.0;
+    }
   }
 
-  free(xySquared);
   if(par->traceRayAlgorithm==1){
     free(cells);
     free(vertexCoords);
@@ -1123,6 +1114,9 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
           } /* End if rasterPixelIsInCells */
         } /* End loop over yi */
       } /* End if followRayThroughCells() status==0 */
+
+      free(chainOfCellIds);
+      free(cellExitIntcpts);
     } /* End loop over xi */
 
     free(cells2D);
@@ -1138,13 +1132,13 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
   free(rays);
 
   /*
-Add the correct starting value of intensity to the RTE solution, which is
+Add and subtract appropriate amounts of cmb.
 
-	exp(-total_tau)*I(0)
+Some explanation is probably helpful here to explain what is going on. If we think of a ray at a given frequency passing through the model, the starting value of its intensity I(0) will be the cosmic background value, which in the bands of interest to LIME can be assumed to be the familiar ~2.7K black-body value. This is the value encoded in local_cmb. According to the backwards-propagation algorithm for solving the RTE described in Hogerheijde & van der Tak, Astron. Astrophys. 362, 697 (2000), the final term in the sum giving the intensity is I(0)*exp(-tau), where tau is the accumulated opacity of the model. For rays passing through areas of zero molecular column density (e.g. outside the model radius), the final or total radiation intensity can be assumed to equal I(0). However, LIME users prefer images not have scalar offsets, no matter how faithful to reality the offset is, thus we also subtract away a constant I(0) from the whole image; thus image areas outside the model radius are (in the present function) left at, or returned to, zero, and I(0) (aka local_cmb) is subtracted from all the in-radius pixels after the final RTE addition.
 
-then (because users are not interested in a uniform scalar offset) subtract the scalar value of this intensity from all pixels:
+Note further that users also do not like the resulting zero-valued pixels (!), hence the addition of IMG_MIN_ALLOWED done to all such pixels in functions write2Dfits() and write3Dfits(). Such is life.
   */
-  if(par->polarization){ /* just add it to Stokes I, which is the first 'channel' */
+  if(par->polarization){ /* just add cmb to Stokes I, which is the first 'channel' */
     lastChan = 0;
   }else{
     lastChan = img[im].nchan;

@@ -355,7 +355,6 @@ void	lineBlend(molData*, configInfo*, struct blendInfo*);
 void	LTE(configInfo*, struct grid*, molData*);
 void	lteOnePoint(molData*, const int, const double, double*);
 void	mallocAndSetDefaultGrid(struct grid**, const unsigned int);
-void	mallocInputPars(inputPars*);
 void	molInit(configInfo*, molData*);
 void	openSocket(char*);
 void	parseInput(inputPars, image*, const int, configInfo*, imageInfo**, molData**);
