@@ -118,9 +118,8 @@ The parameters visible to the user have now been strictly confined to members of
 
   /* Copy over the moldatfiles.
   */
-  if(par->nSpecies == 0){
-    par->nSpecies = 1;/* ******************* should not confuse continuum and line in this way. */
-    par->moldatfile = NULL;
+  if(par->nSpecies <= 0){
+    par->moldatfile = NULL; /* This will be tested for all line images, so we can never get par->nLineImages>0 if no moldata files have been supplied. */
 
   } else {
     par->moldatfile=malloc(sizeof(char *)*par->nSpecies);
@@ -481,19 +480,21 @@ LIME provides two different schemes of {R_1, R_2, R_3}: {PA, phi, theta} and {PA
 
   /* Allocate moldata array.
   */
-  (*md)=malloc(sizeof(molData)*par->nSpecies);
-  for( i=0; i<par->nSpecies; i++ ){
-    (*md)[i].part = NULL;
-    (*md)[i].lal = NULL;
-    (*md)[i].lau = NULL;
-    (*md)[i].aeinst = NULL;
-    (*md)[i].freq = NULL;
-    (*md)[i].beinstu = NULL;
-    (*md)[i].beinstl = NULL;
-    (*md)[i].eterm = NULL;
-    (*md)[i].gstat = NULL;
-    (*md)[i].cmb = NULL;
-  }
+  if(par->nSpecies>0){
+    (*md)=malloc(sizeof(molData)*par->nSpecies);
+    for( i=0; i<par->nSpecies; i++ ){
+      (*md)[i].part = NULL;
+      (*md)[i].lal = NULL;
+      (*md)[i].lau = NULL;
+      (*md)[i].aeinst = NULL;
+      (*md)[i].freq = NULL;
+      (*md)[i].beinstu = NULL;
+      (*md)[i].beinstl = NULL;
+      (*md)[i].eterm = NULL;
+      (*md)[i].gstat = NULL;
+      (*md)[i].cmb = NULL;
+    }
+  } /* otherwise leave it at NULL - we will not be using it. */
 }
 
 void checkUserDensWeights(configInfo *par){
