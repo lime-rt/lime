@@ -14,7 +14,7 @@ getVelocities(configInfo *par, struct grid *gp){
   int i,k,j,l;
   double vel[3], x[3];
   
-  for(i=0;i<par->pIntensity;i++){
+  for(i=0;i<par->ncell;i++){
     gp[i].v1=malloc(3*gp[i].numNeigh*sizeof(double));
     gp[i].v2=malloc(3*gp[i].numNeigh*sizeof(double));
     gp[i].v3=malloc(3*gp[i].numNeigh*sizeof(double));
@@ -38,21 +38,6 @@ getVelocities(configInfo *par, struct grid *gp){
 		
         for(j=0;j<3;j++) x[j]=x[j]+(gp[i].dir[k].xn[j]*gp[i].ds[k])/4.;
       }
-    }		
-  }
-
-  for(i=par->pIntensity;i<par->ncell;i++){
-    /* Set velocity values also for sink points (otherwise Delaunay ray-tracing has problems) */
-    velocity(gp[i].x[0],gp[i].x[1],gp[i].x[2],gp[i].vel);
-
-    gp[i].v1=malloc(3*gp[i].numNeigh*sizeof(double));
-    gp[i].v2=malloc(3*gp[i].numNeigh*sizeof(double));
-    gp[i].v3=malloc(3*gp[i].numNeigh*sizeof(double));
-
-    for(j=0;j<gp[i].numNeigh;j++){
-      gp[i].v1[3*j]=0.; gp[i].v1[3*j+1]=0.; gp[i].v1[3*j+2]=0.;
-      gp[i].v2[3*j]=0.; gp[i].v2[3*j+1]=0.; gp[i].v2[3*j+2]=0.;
-      gp[i].v3[3*j]=0.; gp[i].v3[3*j+1]=0.; gp[i].v3[3*j+2]=0.;
     }
   }
 }

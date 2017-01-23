@@ -40,6 +40,7 @@ typedef struct {
   double source_vel;
   double theta,phi,incl,posang,azimuth;
   double distance;
+  _Bool doInterpolateVels;
 } image;
 
 #endif /* INPARS_H */

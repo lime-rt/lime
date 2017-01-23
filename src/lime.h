@@ -154,7 +154,7 @@ typedef struct {
   int sampling,lte_only,init_lte,antialias,polarization,nThreads,numDims;
   int nLineImages, nContImages;
   char **moldatfile;
-  _Bool writeGridAtStage[NUM_GRID_STAGES], resetRNG;
+  _Bool writeGridAtStage[NUM_GRID_STAGES],resetRNG;
   char *gridInFile,**gridOutFiles;
   int dataFlags,nSolveIters;
   double (*gridDensMaxLoc)[DIM], *gridDensMaxValues;
@@ -248,6 +248,7 @@ typedef struct {
   double theta,phi,incl,posang,azimuth;
   double distance;
   double rotMat[3][3];
+  _Bool doInterpolateVels;
 } imageInfo;
 
 typedef struct {
@@ -341,6 +342,7 @@ void	freeSomeGridFields(const unsigned int, const unsigned short, struct grid*);
 double  gaussline(const double, const double);
 void	getArea(configInfo*, struct grid*, const gsl_rng*);
 void	getclosest(double, double, double, long*, long*, double*, double*, double*);
+double	geterf(const double, const double);
 void	getjbar(int, molData*, struct grid*, const int, configInfo*, struct blendInfo, int, gridPointData*, double*);
 void	getMass(configInfo*, struct grid*, const gsl_rng*);
 void	getmatrix(int, gsl_matrix*, molData*, struct grid*, int, gridPointData*);

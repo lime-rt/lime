@@ -449,7 +449,7 @@ At a successful termination, therefore, details of all the cells to the edge of 
   const int numFaces=numDims+1;
   _Bool followingSingleChain;
   const int bufferSize=1024;
-  int numGoodExits, numMarginalExits, fi, goodExitFis[numFaces], marginalExitFis[numFaces], exitFi, i, status, newEntryFaceI;
+  int numGoodExits,numMarginalExits,fi,goodExitFis[numFaces],marginalExitFis[numFaces],exitFi,i,status,newEntryFaceI;
   faceType face;
   intersectType intcpt[numFaces];
 
@@ -457,12 +457,14 @@ At a successful termination, therefore, details of all the cells to the edge of 
   do{ /* Follow the chain through 'good' cells, i.e. ones for which entry and exit are nicely distant from face edges. (Here we also follow marginal exits if there are no good ones, and only 1 marginal one.) */
     (*cellVisited)[dci] = 1;
 
-    /* Store the current cell ID (we leave storing the exit face for later, when we know what it is). (If there is not enough room in chainOfCellIds and cellExitIntcpts, realloc them to new value of lenChainPtrs.) */
+    /* If there is not enough room in chainOfCellIds and cellExitIntcpts, realloc them to new value of lenChainPtrs. */
     if(nCellsInChain>=(*lenChainPtrs)){
       *lenChainPtrs += bufferSize;
       *chainOfCellIds  = realloc(*chainOfCellIds,  sizeof(**chainOfCellIds) *(*lenChainPtrs));
       *cellExitIntcpts = realloc(*cellExitIntcpts, sizeof(**cellExitIntcpts)*(*lenChainPtrs));
     }
+
+    /* Store the current cell ID (we leave storing the exit face for later, when we know what it is). */
     (*chainOfCellIds)[nCellsInChain] = dci;
 
     /* calculate num good and bad exits */
@@ -596,7 +598,7 @@ and filled as
   */
 
   const int numFaces=numDims+1, maxNumEntryFaces=100;
-  int numEntryFaces, fi, entryFis[maxNumEntryFaces], i, status;
+  int numEntryFaces,fi,entryFis[maxNumEntryFaces],i,status,di;
   faceType face;
   unsigned long dci, entryDcis[maxNumEntryFaces];
   intersectType intcpt, entryIntcpts[maxNumEntryFaces];
@@ -655,8 +657,22 @@ and filled as
   if(status==0)
     *entryIntcpt = entryIntcpts[i-1];
   /* Note that the order of the bary coords, and the value of fi, are with reference to the vertx list of the _entered_ cell. This can't of course be any other way, because this ray enters this first cell from the exterior of the model, where there are no cells. For all the intersectType objects in the list cellExitIntcpts, the bary coords etc are with reference to the exited cell. */
+  else{
+    entryIntcpt->fi = -1;
+    entryIntcpt->orientation = 0;
+    for(di=0;di<numDims;di++)
+      entryIntcpt->bary[di] = 0.0;
+    entryIntcpt->dist = 0.0;
+    entryIntcpt->collPar = 0.0;
 
-//*** this is not too good because *entryIntcpt, *chainOfCellIds, *cellExitIntcpts and lenChainPtrs are left at unsuitable values if status!=0.
+    free(*chainOfCellIds);
+    *chainOfCellIds=NULL;
+
+    free(*cellExitIntcpts);
+    *cellExitIntcpts=NULL;
+
+    *lenChainPtrs=0;
+  }
 
   free(cellVisited);
 
