@@ -105,11 +105,20 @@ input(inputPars *par, image *img){
   img[i].imgres                 = 0.1;            // Resolution in arc seconds
   img[i].distance               = 140*PC;         // source distance in m
   img[i].source_vel             = 0;              // source velocity in m/s
-  img[i].unit                   = 0;              // 0:Kelvin 1:Jansky/pixel 2:SI 3:Lsun/pixel 4:tau
-  img[i].filename               = "image0.fits";  // Output filename
   img[i].azimuth                = 0.0;
   img[i].incl                   = 0.0;
   img[i].posang                 = 0.0;
+  /* For each set of image parameters above, numerous images with different units can be outputted. This is done by
+   * setting img[].units to a delimited (space, comma, colon, underscore) string of the required outputs, where:
+   *        0:Kelvin
+   *        1:Jansky/pixel
+   *        2:SI
+   *        3:Lsun/pixel
+   *        4:tau
+   * The unit name and file extension is then added automatically.
+  */
+  img[i].units                  = "0 1";
+  img[i].filename               = "image0";  // Output filename
 }
 
 /******************************************************************************/
