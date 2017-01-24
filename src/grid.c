@@ -5,6 +5,8 @@
  *  Copyright (C) 2006-2014 Christian Brinch
  *  Copyright (C) 2015-2016 The LIME development team
  *
+TODO:
+	- In readOrBuildGrid(), test for the presence of the 5 mandatory functions (actually 4, since velocity() is already tested in aux.c:parseInput() ) before doing smoothing.
  */
 
 #include "lime.h"
@@ -136,6 +138,7 @@ void readDustFile(char *dustFileName, double **lamtab, double **kaptab\
 /*....................................................................*/
 double interpolateKappa(const double freq, double *lamtab, double *kaptab\
   , const int nEntries, gsl_spline *spline, gsl_interp_accel *acc){
+  /* Note that the multiplications by 0.1 below are to convert cm^2/g to m^2/kg. */
 
   double loglam, kappa;
 

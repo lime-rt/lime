@@ -75,7 +75,7 @@ initParImg(inputPars *par, image **img)
     for(j=0;j<DIM;j++) par->gridDensMaxLoc[i][j] = 0.0;
   }
 
-  par->tcmb = 2.728;
+  par->tcmb = 2.725;
   par->lte_only=0;
   par->init_lte=0;
   par->samplingAlgorithm=0;
@@ -275,7 +275,6 @@ int main () {
   image	*img = NULL;
   int nImages;
 
-  mallocInputPars(&par);
   nImages = initParImg(&par, &img);
 
   run(par, img, nImages);
@@ -285,6 +284,9 @@ int main () {
   free(par.nMolWeights);
   free(par.dustWeights);
   free(par.moldatfile);
+  free(par.gridOutFiles);
+  free(par.gridDensMaxValues);
+  free(par.gridDensMaxLoc);
 
   return 0;
 }

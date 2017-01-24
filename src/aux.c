@@ -23,21 +23,6 @@ dotProduct3D(const double *vA, const double *vB){
 
 /*....................................................................*/
 void
-mallocInputPars(inputPars *par){
-  int i;
-
-  par->moldatfile = malloc(sizeof(char *)*MAX_NSPECIES);
-
-  par->collPartIds  = malloc(sizeof(int)*MAX_N_COLL_PART);
-  for(i=0;i<MAX_N_COLL_PART;i++) par->collPartIds[i] = 0;
-  par->nMolWeights  = malloc(sizeof(double)*MAX_N_COLL_PART);
-  for(i=0;i<MAX_N_COLL_PART;i++) par->nMolWeights[i] = -1.0;
-  par->dustWeights  = malloc(sizeof(double)*MAX_N_COLL_PART);
-  for(i=0;i<MAX_N_COLL_PART;i++) par->dustWeights[i] = -1.0;
-}
-
-/*....................................................................*/
-void
 copyInparStr(const char *inStr, char **outStr){
   if(inStr==NULL || strlen(inStr)<=0 || strlen(inStr)>STR_LEN_0){
     *outStr = NULL;
@@ -173,11 +158,6 @@ The parameters visible to the user have now been strictly confined to members of
   i = 0;
   while(i<MAX_N_HIGH && par->gridDensMaxValues[i]>=0) i++;
   par->numGridDensMaxima = i;
-
-  /* Check that the user has supplied the velocity function (needed in raytracing unless par->doPregrid). Note that the other previously mandatory functions (density, abundance, doppler and temperature) may not be necessary if the user reads in the appropriate values from a file. This is tested at the appropriate place in readOrBuildGrid().
-  */
-  if(!par->doPregrid || par->traceRayAlgorithm==1)
-    velocity(0.0,0.0,0.0, dummyVel);
 
   /* Calculate par->numDensities.
   */
@@ -336,15 +316,7 @@ The presence of one of these combinations at least is checked here, although the
         if(!silent && (*img)[i].nchan > 0)
           warning("Your nchan value will be overwritten.");
 
-      }else if((*img)[i].bandwidth > 0 && (*img)[i].nchan > 0){
-        if(!silent && (*img)[i].velres > 0)
-          warning("Your velres value will be overwritten.");
-
-      }else if((*img)[i].velres > 0 && (*img)[i].nchan > 0){
-        if(!silent && (*img)[i].bandwidth > 0)
-          warning("Your bandwidth value will be overwritten.");
-
-      }else{
+      }else if((*img)[i].nchan <= 0 || ((*img)[i].bandwidth <= 0 && (*img)[i].velres <= 0)) {
         if(!silent) bail_out("Insufficient info to calculate nchan, velres and bandwidth.");
         exit(1);
       }
@@ -522,6 +494,11 @@ LIME provides two different schemes of {R_1, R_2, R_3}: {PA, phi, theta} and {PA
     else
       par->nContImages++;
   }
+
+  /* Check that the user has supplied the velocity function (needed in raytracing unless par->doPregrid). Note that the other previously mandatory functions (density, abundance, doppler and temperature) may not be necessary if the user reads in the appropriate values from a file. This is tested at the appropriate place in readOrBuildGrid().
+  */
+  if(par->nLineImages>0 && (!par->doPregrid || par->traceRayAlgorithm==1))
+    velocity(0.0,0.0,0.0, dummyVel);
 
   /* Allocate moldata array.
   */

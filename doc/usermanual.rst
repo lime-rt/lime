@@ -60,16 +60,22 @@ Subsequent to the creation of the package by Christian Brinch, contributors to L
 - Tuomas Lunttila
 - Sébastien Maret
 - Marco Padovani
+- Sergey Parfenov
+- Reinhold Schaaf
 - Anika Schmiedeke
 - Ian Stewart
+- Miguel de Val-Borro
 - Mathieu Westphal
 
+LIME is at present in a somewhat awkward phase of development in which many new ways to do things have been added to the code, while still making every effort to preserve backward compatibility - i.e. to allow users not only to run LIME with their old model files, but also to obtain output from that which is as near as possible the same as previously (except for corrections to errors and bugs). At some point however we will have to abandon backward compatibility, but that will also give us the opportunity to put the parameter interface on a more systematic and less idiosyncratic basis. So, watch this space...
 
 Obtaining LIME
 ~~~~~~~~~~~~~~
 
 The LIME code can be obtained from gitHub at `<https://github.com/lime-rt/lime>`_. The available files include the source code,
 this documentation, and an example model. The documentation can be read on line at `<https://readthedocs.org/projects/lime/>`_.
+
+In the remainder of this documentation it will be assumed that the user has unpacked LIME into a directory LimePackage.
 
 Requirements
 ~~~~~~~~~~~~
@@ -135,29 +141,26 @@ settings in the model file. All user defined settings are checked for
 sanity and in case there are inconsistencies, LIME will abort with an
 error message. It then goes on to generate the grid (unless a predefined
 grid is provided) by picking and evaluating random points until enough
-points have been chosen to form the grid. The grid is then iteratively
-smoothed to avoid oddly-shaped Delaunay triangles.
-Because the grid needs to be re-triangulated at each iteration, the
+points have been chosen to form the grid. It is desirable to avoid oddly-shaped Delaunay triangles, and this is accomplished in one of two ways, depending on the setting chosen for the parameter :ref:`par->samplingAlgorithm <par-samplingAlgorithm>`. With choice 1, the initial grid points are selected using a quasi-random algorithm which avoids too-close pairs of points; no further grid processing is necessary after this is done. With choice 0, the initial, random grid is iteratively smoothed. Because the grid needs to be re-triangulated at each iteration, the
 smoothing process may take a while. After smoothing, a number of grid
-properties (e.g. velocity splines) are pre-calculated for later use, and
-the grid is written to file.
+properties (e.g. velocity samples along the point-to-point links) are pre-calculated for later use. Once this stage is complete, the grid is written to file.
 
 When the grid is ready, LIME decides whether to calculate populations or
 not, depending on the user's choice of output images and LTE options (see
 chapter 2). If one or more non-LTE line images are asked for, LIME will
 proceed to calculate the level populations. This too is an iterative
-process where the radiation field and the populations are recalculated
+process in which the radiation field and the populations are recalculated
 repeatedly. The radiation field is obtained by propagating photons
 through the grid, a fixed number for each grid point; using the
 resulting radiation field, the code enters a minor iteration loop where
 a set of linear equations, determining the statistical equilibrium, are
-iterated upon in order to converge upon a set of populations. This is
+iterated in order to converge upon a set of populations. This is
 done for each grid point in turn. Once all the grid points have
 new populations, the process is repeated.
 
-When the solution has converged, the code will ray-trace the model to
+When the solution has converged (actually there is no convergence testing active in present LIME: all it does is run through the number of iterations specified via the :ref:`par->nSolveIters <par-nSolveIters>` parameter), the code will ray-trace the model to
 obtain an image. Ray-tracing is done for each user-defined image in
-turn. At the end of the ray-tracing, FITS files will be written to the
+turn. At the end of the ray-tracing, FITS-format image files are written to the
 disk, after which the code will clean up the memory and terminate.
 
 .. _lime-options:
@@ -194,15 +197,19 @@ LIME accepts several command line options:
    Turn off `ncurses` messages. This is useful when running LIME in a
    non-interactive way.
 
+.. option:: -t
+
+   This runs LIME in a test mode, in which it is compiled with the debugging flag set; fixed random seeds are also employed in this mode, so the results of any two runs will be identical.
+
 .. option:: -p nthreads
 
-   Run in parallel mode with `nthreads`. The default a single thread,
+   Run in parallel mode with `nthreads`. The default is a single thread,
    i.e. serial execution.
 
 .. note::
 
    The number of threads may also be set with the :ref:`par->nThreads <par-nthreads>`
-   parameter.
+   parameter. This will override the value set via the -p option.
 
 Setting up models
 -----------------
@@ -211,22 +218,22 @@ The model file
 ~~~~~~~~~~~~~~
 
 All basic setup of a model is done in a single file which we refer to as
-model.c (although it may be given any name). Model.c is, as the name
+model.c (although it may be given any name). The file model.c is, as the name
 suggests, C source code which is compiled together with LIME at runtime,
 and therefore it must conform to the ANSI C standard. Setting up a model
-however, requires only little knowledge of the C programming language.
+however requires only a little knowledge of the C programming language.
 For an in-depth introduction to C the user is referred to “The C
-Programming Language 2nd ed.” by Kernighan and Ritchie, and otherwise,
-numerous tutorials and introductions can be found on the Internet. The
+Programming Language 2nd ed.” by Kernighan and Ritchie;
+numerous tutorials and introductions can also be found on the Internet. The
 file lime\_cs.pdf, contained in the LimePackage directory, is a quick
 reference for setting up models for LIME. Please note that all physical
-numbers in model.c should be given in SI units. A number of macros are available however for easier expression of some quantities: PI, PC (= the number of metres in a parsec) and AU (= 1 Astronomical Unit in metres).
+numbers in model.c should be given in SI units. A number of macros are available in the src/lime.h file for easier expression of some quantities: e.g. PI, PC (= the number of metres in a parsec) and AU (= 1 Astronomical Unit in metres).
 
 In most common cases, everything about a model should be described
 within model.c. However, model.c can be set up as a wrapper that will
 call other files containing parts of the model or even call external
 codes or subroutines. Examples of such usage are given below in the
-section `Advanced Setup`.
+section :ref:`Advanced Setup <advanced-setup>`.
 
 model.c should always begin with the following inclusion
 
@@ -251,7 +258,7 @@ This function should contain the parameter and image settings.
 Parameters
 ~~~~~~~~~~
 
-A structure named "par" is defined in lime.h. This structure contains
+A structure named "inputPars" is defined in src/inpars.h. This structure contains
 all basic settings such as number of grid points, model radius, input
 and output filenames, etc. Some of these parameters always need to be
 set by the user, while others are optional with preset default values.
@@ -273,7 +280,7 @@ rather the distance from the center to the corner of the (r,z)-plane.
 
     (double) par->minScale (required)
 
-minScale is the smallest scales sampled by the code. Structures smaller
+minScale is the smallest spatial scale sampled by the code. Structures smaller
 than minScale will not be sampled properly. If one uses spherical
 sampling (see below) this number can also be thought of as the inner
 edge of the grid. This number should not be set smaller than needed,
@@ -295,7 +302,7 @@ about one hundred thousand.
     (integer) par->sinkPoints (required)
 
 The sinkPoints are grid points that are distributed randomly at
-par->radius forming the surface of the model. As a photon from within
+`par->radius` forming the surface of the model. As a photon from within
 the model reaches a sink point it is said to escape and is not tracked
 any longer. The number of sink points is a user-defined quantity since
 the exact number may affect the resulting image as well as the running
@@ -305,19 +312,43 @@ not to slow down the gridding too much. Since this is model dependent, a
 global best value cannot be given, but a useful range is between a few
 thousands and about ten thousand.
 
+.. _par-samplingAlgorithm:
+
+.. code:: c
+
+    (integer) par->samplingAlgorithm (optional)
+
+If this is left at the default value of 0, grid point sampling is performed according to the LIME<1.7 algorithm, as governed by parameter :ref:`par->sampling <par-sampling>`. If 1 is chosen, a new algorithm is employed which can quickly generate points with a distribution which accurately follows any feasible :ref:`gridDensity <grid-density>` function - including with sharp step-changes. This algorithm also incorporates a quasi-random choice of point candidates which avoids the requirement for the relatively time-consuming post-gridding smoothing phase.
+
+.. _par-sampling:
+
 .. code:: c
 
     (integer) par->sampling (optional)
 
-The sampling parameter takes value 0, 1 or 2. sampling=0 is used for
+The sampling parameter is only read if `par->samplingAlgorithm==0`. It can take values 0, 1 or 2. sampling=0 is used for
 uniform sampling in Log(radius) which is useful for models with a
-central condensation (i.e., envelopes, disks), whereas sampling=1 is
-uniform sampling in x, y, and z. The latter is useful for models with no
+central condensation (i.e., envelopes, disks), whereas sampling=1 gives
+uniform-biased sampling in x, y, and z. The latter is useful for models with no
 central condensation (molecular clouds, galaxies, slab geometries).
 
 The value sampling=2 was added because the routine for 0 was found not to generate grid points with exact spherical rotational symmetry. The 2 setting implements this now properly; sampling=0 has, however, been retained for purposes of backward compatibility. In practice there is little obvious difference between the outputs from 0 versus 2.
 
 The default value is now sampling=2.
+
+.. code:: c
+
+    (double) par->gridDensMaxLoc[i][j] (optional)
+
+This parameter, which is only read if `par->samplingAlgorithm==1`, allows the user to provide LIME with the location of maxima in the grid point number density function. This is not required, but if the GPNDF is varies over the model field by very many orders of magnitude, it may speed the gridding process if provided.
+
+The parameter is a 2D array: the first index is the number of the maxium, the second is the spatial coordinate. Thus `par->gridDensMaxLoc[2][0]` refers to the X coordinate (coordinate 0) of the 3rd maximum (remember that C always counts from zero!)
+
+.. code:: c
+
+    (double) par->gridDensMaxValues[i] (optional)
+
+This (vector) parameter is only read if `par->samplingAlgorithm==1`. It must be provided if `par->gridDensMaxLoc` is set, and the number of entries must be the same as the number of maxima described by `par->gridDensMaxLoc`.
 
 .. code:: c
 
@@ -328,16 +359,20 @@ This parameter defaults to 2.725K which is the value at zero redshift
 (i.e., the solar neighborhood). One should make sure to set this
 parameter properly when calculating models at a redshift larger than
 zero: TCMB = 2.725(1+z) K. It should be noted that even though LIME can
-now take the change in CMB temperature with increasing z into account,
+in this way take the change in CMB temperature with increasing z into account,
 it does not (yet) take cosmological effects into account when
 ray-tracing (such as stretching of the frequencies when using Jansky as
 unit). This is currently under development.
+
+.. _par-moldatfile:
 
 .. code:: c
 
     (string) par->moldatfile[i] (optional)
 
-Path to the i’th molecular data file. Molecular data files contain the
+Path to the i’th molecular data file. This must be be provided if any line images are specified. It is not read if only continuum images are required.
+
+Molecular data files contain the
 energy states, Einstein coefficients, and collisional rates which are
 needed by LIME to solve the excitation. These files must conform to
 the standard of the LAMDA database
@@ -350,18 +385,23 @@ without the surname .dat (i.e., “co” or “co.dat”). moldatfile is an
 array, so multiple data files can be used for a single LIME run. There is
 no default value.
 
+.. note::
+
+   A lot of work has been done on the multi-molecule parts of the LIME code for the 1.7 release, and we can say for certain that this facility did not work previously; whether it works now is a bit of an open question. There is a lot of testing here which still needs to be done.
+
 .. code:: c
 
     (string) par->dust (optional)
 
-Path to a dust opacity table. This table should be a two column ascii
+Path to a dust opacity table. This must be provided if any continuum images are specified - it is fully optional if only line images are required.
+
+This table should be a two column ascii
 file with wavelength in the first column and opacity in the second
 column. Currently LIME uses the same tables as RATRAN from Ossenkopf and
 Henning (1994), and so the wavelength should be given in microns (1e-6
-meters) and the opacity in cm2/g. This is the only place in LIME where
-SI units are not used. The moldatfile and dust parameters are optional
-in the sense that at least one of them (or both) should be set. There is
-no default value. A future version of LIME will allow spatial variance
+meters) and the opacity in cm^2/g. This is the only place in LIME where
+SI units are not used. There is
+no default value. A future version of LIME may allow spatial variance
 of the dust opacities, so that opacities can be given as function of x,
 y, and z.
 
@@ -381,7 +421,7 @@ This is the file name of the output file that contains the grid,
 populations, and molecular data in binary format. This file is used to
 restart LIME with previously calculated populations. Once the
 populations have been calculated and the binoutputfile has been written,
-LIME can re-ray-trace for a different set of image parameters without
+LIME can re-raytrace for a different set of image parameters without
 re-calculating the populations. There is no default value.
 
 .. code:: c
@@ -389,8 +429,7 @@ re-calculating the populations. There is no default value.
     (string) par->restart (optional)
 
 This is the file name of a binoutputfile that will be used to restart
-LIME. If this parameter is set, all other parameter statements (except
-par->antialias; see below) will be ignored and can safely be left out of
+LIME. If this parameter is set, all other parameter statements will be ignored and can safely be left out of
 the model file. There is no default value.
 
 .. code:: c
@@ -417,19 +456,29 @@ abundance, velocity etc. There is no default value.
 
     (integer) par->lte_only (optional)
 
-If set, LIME performs an LTE calculation. Useful for quick checks. The
-default lte\_only=0, i.e., full non-LTE calculation.
+If non-zero, LIME performs a direct LTE calculation rather than solving for the populations iteratively. This facility is useful for quick checks. The
+default is lte\_only=0, i.e., full non-LTE calculation.
+
+.. code:: c
+
+    (integer) par->init_lte (optional)
+
+If non-zero, LIME solves for the level populations as usual, but LTE values are used for the starting values instead of the T=0 values normally used.
 
 .. code:: c
 
     (integer) par->blend (optional)
 
-If set, LIME takes line blending into account, however, only if there
+If non-zero, LIME takes line blending into account, however, only if there
 are any overlapping lines among the transitions found in the
 moldatfile(s). LIME will print a message on screen if it finds
 overlapping lines. Switching line blending on will slow the code down
 considerably, in particular if there is more than one molecular data
 file. The default is blend=0 (no line blending).
+
+.. note::
+
+   A great deal of work has been done on the blending code for 1.7. We can say for certain that it did not work before; but whether it works now is a bit of an open question. This is another aspect of LIME which needs both testing and line-by-line code checking.
 
 .. code:: c
 
@@ -441,37 +490,50 @@ This parameter is no longer used, although it is retained for the present for pu
 
     (integer) par->polarization (optional)
 
-If set, LIME will calculate the polarized continuum emission. This
-parameter only has an effect if LIME is set up to do a continuum
-calculation only. The resulting image cube will have three channels
-containing the Stokes I, Q, and U. In order for the polarization to
+If non-zero, LIME will calculate the polarized continuum emission. This
+parameter only has an effect for continuum images. The resulting image cube will have three channels
+containing the Stokes I, Q, and U of the continuum emission (theory says there is zero V component). In order for the polarization to
 work, a magnetic field needs to be defined (see below). When
 polarization is switched on, LIME is identical to the DustPol code
 (Padovani et al., 2012), except that the expression Padovani et al. give for sigma2 has been shown by Ade et al. (2015) to be too small by a factor of 2. This correction has now been included in LIME.
 
-The next three (optional) parameters are linked to the density function you provide in model.c. All three are vector quantities, and should therefore be indexed, the same as moldatfile or img. If you choose to make use of any or all of the three (which is recommended though not mandatory), you must supply, for each one you use, the same number of elements as your density function returns. As described below in the relevant section, the density function can return multiple values per call, 1 for each species which is present in significant quantity. The contribution of such species to the physics of the situation is most usually via collisional excitation or quenching of levels of the radiating species of interest, and for this reason they are known in LIME as collision partners (CPs). 
+The next three (optional) parameters are linked to the density function you provide in your model file. All three parameters are vector quantities, and should therefore be indexed, the same as :ref:`par->moldatfile <par-moldatfile>` or :ref:`img <images>`. If you choose to make use of any or all of the three (which is recommended though not mandatory), you must supply, for each one you use, the same number of elements as your density function returns. As described below in the relevant section, the :ref:`density function <density>` can return multiple values per call, 1 for each species which is present in significant quantity. The contribution of such species to the physics of the situation is most usually via collisional excitation or quenching of levels of the radiating species of interest, and for this reason they are known in LIME as collision partners (CPs). 
 
-Because there are 2 independent sources of information about these so-called collision partners, namely via the density function on the one hand and via any collisional transition-rate tables present in the moldata file on the other, we have to be careful to match up these sources properly. That is the intent of the parameter
+Because there are 2 independent sources of information about these collision partners, namely via the density function on the one hand and via any collisional transition-rate tables present in the moldata file on the other, we have to be careful to match up these sources properly. That is the intent of the parameter
 
 .. code:: c
 
-    (integer) par->collPartIds (optional)
+    (integer) par->collPartIds[i] (optional)
 
-The integer values are the codes given in `<http://home.strw.leidenuniv.nl/~moldata/molformat.html>`_. Currently recognized values range from 1 to 7 inclusive. E.g if the only colliding species of interest in your model is H2, your density function should return a single value, namely the density of molecular hydrogen, and (if you supply a collPartIds value at all) you should set collPartIds[0] = 1 (the LAMDA code for H2).
+The integer values are the codes given in
+`<http://home.strw.leidenuniv.nl/~moldata/molformat.html>`_. Currently
+recognized values range from 1 to 7 inclusive. E.g if the only colliding
+species of interest in your model is H2, your density function should return a
+single value, namely the density of molecular hydrogen, and (if you supply a
+collPartIds value at all) you should set collPartIds[0] = 1 (the LAMDA code for
+H2). However, if you use collisional partners that are not one of LAMDA 
+partners, it is fine to use any of the values between 1 and 7 to match
+the density function with collisional information in the datafiles.  Some of
+the messages in LIME will refer to the default LAMDA partner molecules, but
+this does not affect the calculations. In future we will introduce a better mechanism to allow the user to specify non-LAMDA collision partners.
 
 LIME calculates the number density of each of its radiating species, at each grid point, by multiplying the abundance of the species (returned via the function of that name) by a weighted sum of the density values. The next parameter allows the user to specify the weights in that sum.
 
 .. code:: c
 
-    (double) par->nMolWeights (optional)
+    (double) par->nMolWeights[i] (optional)
 
 An example of when this might be useful is if a density for electrons is provided, they being of collisional importance, but it is not desired to include electrons in the sum when calculating nmol values. In that case one would set the appropriate value of nMolWeights to zero.
 
-The final one of the density-linked parameters controls how the dust opacity is calculated. This again involves a weighted sum of provided density values, and this parameter allows the user to specify the weights to be used.
+The final one of the density-linked parameters controls how the dust mass density and hence opacity is calculated. This again involves a weighted sum of provided density values, and this parameter allows the user to specify the weights to be used.
 
 .. code:: c
 
-    (double) par->dustWeights (optional)
+    (double) par->dustWeights[i] (optional)
+
+.. note::
+
+   The calculation of dust mass density at present makes use of a hard-wired average gas density value of 2.4, appropriate to a mix of 90% molecular hydrogen and 10% helium. The only way to compensate for this hard-wired value is to scale all the values of `par->dustWeights` accordingly.
 
 If none of the three density-linked parameters is provided, LIME will attempt to guess the information, in a manner as close as possible to the way it was done in version 1.5 and earlier. This is safe enough when a single density value is returned, and only H2 provided as collision partner in the moldata file(s), but more complicated situations can very easily result in the code guessing wrongly. For this reason we encourage users to make use of these three parameters, although in order to preserve backward compatibility with old model.c files, we have not (yet) made them mandatory.
 
@@ -479,9 +541,13 @@ If none of the three density-linked parameters is provided, LIME will attempt to
 
     (integer) par->traceRayAlgorithm (optional)
 
-This parameter specifies the algorithm used by LIME to solve the radiative-transfer equations during ray-tracing. The default value of zero invokes the algorithm used in LIME-1.5 and previous; a value of 1 invokes a new algorithm which is much more time-consuming but which produces much smoother images, free from step-artifacts.
+This parameter specifies the algorithm used by LIME to solve the radiative-transfer equations during ray-tracing. The default value of zero invokes the algorithm used in LIME<1.6; a value of 1 invokes a new algorithm which is much more time-consuming but which produces much smoother images, free from step-artifacts.
 
-Note that there have been additional modifications to the raytracing algorithm which have significant effects on the output images since LIME-1.5. Image-plane interpolation is now employed in areas of the image where the grid point spacing is larger than the image pixel spacing. This leads both to a smoother image and a shorter processing time.
+.. note::
+
+   The new algorithm is not yet 'thread-safe', which means you should not run raytracing in parallel if `par->traceRayAlgorithm`=1. We'll work on this.
+
+Note also that there have been additional modifications to the raytracing algorithm which have significant effects on the output images since LIME-1.5. Image-plane interpolation is now employed in areas of the image where the grid point spacing is larger than the image pixel spacing. This leads both to a smoother image and a shorter processing time.
 
 .. _par-nthreads:
 
@@ -489,7 +555,44 @@ Note that there have been additional modifications to the raytracing algorithm w
 
     (integer) par->nThreads (optional)
 
-If set, LIME will perform the most time-consuming sections of its calculations in parallel, using the specified number of threads. Serial operation is the default.
+If set, LIME will perform the most time-consuming sections of its calculations in parallel, using the specified number of threads. Serial operation is the default. This parameter overrides any value supplied to LIME on the command line.
+
+.. _par-nSolveIters:
+
+.. code:: c
+
+    (integer) par->nSolveIters (optional)
+
+This defines the number of solution iterations LIME should perform when solving non-LTE level populations. The default is currently 17. 
+
+.. code:: c
+
+    (integer) par->resetRNG (optional)
+
+If this is set non-zero, LIME will use the same random number seeds at the start of each solution iteration. This has the effect of choosing the same photon directions and frequencies for each iteration (although the directions and frequencies change randomly from one grid point to the next). This has the effect of decoupling any oscillation or wandering of the level populations as they relax towards convergence from the intrinsic Monte Carlo noise of the discrete solution algorithm. Best practice might involve alternating episodes with `par->resetRNG` =0 and 1, storing the intermediate populations via the :ref:`I/O interface <grid-io>`. Very little experience has been accumulated as yet with this facility.
+
+The default value is 0.
+
+.. _grid-io:
+
+.. code:: c
+
+    (string) par->gridOutFiles[i] (optional)
+
+Up to 4 file names can be provided to this parameter, which allows LIME to write the entire grid information to file at each of four defined stages of completeness. Broadly speaking these stages are (i) grid points chosen, (ii) Delaunay tetrahedra calculated, (iii) user-provided functions sampled, (iv) populations solved. Any of these files can be read in again via the `par->gridInFile` parameter: LIME will calculate the stage from the information present in the file.
+
+The only file format available at present is FITS, but it is also planned to write an HDF5 backend.
+
+
+.. code:: c
+
+    (string) par->gridInFile (optional)
+
+This file should conform to the format described in the header of src/grid2fits.c. (Files written by LIME to one of the recognized four `par->gridOutFiles` stages automatically conform to this format.) LIME will not recalculate any information it finds in the file. The user may, for example, perform several iterations of population solution, store this information by providing a file name to `par->gridOutFiles[3]` (remember C counts from zero!), then read it back in again via `par->gridInFile` without going through the gridding stage again. This allows solution to be decoupled from raytracing.
+
+These last two parameters mostly replace the functionality of the older `par->outputfile`, `par->binoutputfile`, `par->pregrid`, `par->restart` parameters. These may be abolished in a future version of LIME. Note that `par->gridfile` is still however of use.
+
+.. _images:
 
 Images
 ~~~~~~
@@ -500,7 +603,7 @@ in the image array can be either line or continuum images or both. All
 definitions of an image may be different between images (i.e., distance,
 resolution, inclination, etc.) so that a number of images with varying
 source distance or image resolution can be made in one go. In the
-following, i should be replaced by the image number (0, 1, 2, ...)
+following, i should be replaced by the image number (0, 1, 2, ...).
 
 .. code:: c
 
@@ -524,6 +627,8 @@ seconds. The image field of view is therefore pxls x imgres.
 The source distance in meters. LIME predefines macros PC and AU which express respectively the sizes of the parsec and the Astronomical Unit in meters, so it is valid to write the distance as 100\*PC for example. If
 the source is located at a cosmological distance, this parameter is the
 luminosity distance.
+
+Note that LIME assumes far-field geometry - you will get a distorted image if `img[i]->distance` is not much greater than the model radius.
 
 .. code:: c
 
@@ -553,21 +658,27 @@ astronomical source with a known relative line-of-sight velocity.
     (integer) img[i]->nchan (semi optional)
 
 nchan is the number of velocity channels in a spectral image cube. See
-the note below for additional information.
+the :ref:`note below <img-semi>` for additional information.
 
 .. code:: c
 
     (double) img[i]->velres (semi optional)
 
 The velocity resolution of the spectral dimension of the FITS file (the
-width of a velocity channel). This number is given in m/s. See the note
-below for additional information.
+width of a velocity channel). This number is given in m/s. See the :ref:`note below <img-semi>` for additional information.
+
+.. code:: c
+
+    (double) img[i]->bandwidth (semi optional)
+
+With of the spectral axis in Hz. See the :ref:`note below <img-semi>` for additional
+information.
 
 .. code:: c
 
     (integer) img[i]->trans (semi optional)
 
-The transition number when ray-tracing line images. This number refers
+The transition number, used to determine the image frequency when ray-tracing line images. This number refers
 to the transition number in the molecular data files. Contrary to the
 numbers in the data files, trans is zero-index, meaning that the first
 transition is labeled 0, the second transition 1, and so on. For linear
@@ -576,45 +687,44 @@ rotor molecules without fine structure transition in their data files
 of the transition. For example, for CO J=1-0 the trans label would be
 zero and for CO J=6-5 the trans label would be 5. For molecules with a
 complex level configuration (e.g., H2O), the user needs to refer to the
-datafile to find the correct label for a given transition. See the note
-below for additional information.
+datafile to find the correct label for a given transition. See the :ref:`note below <img-semi>` for additional information.
 
 .. code:: c
 
     (integer) img[i]->molI (optional)
 
-If img[i]->trans is set, this parameter will also be read, although to preserve backward compatibility it is not at present required. This refers to the molecule whose transition should be used. Its default value is zero.
+If `img[i]->trans` is set, this parameter will also be read, although to preserve backward compatibility it is not at present required. This refers to the molecule whose transition should be used. Its default value is zero.
 
 .. code:: c
 
     (double) img[i]->freq (semi optional)
 
 Center frequency of the spectral axis in Hz. This parameter can be used
-for both line and continuum images. See the note below for additional
+for both line and continuum images. See the :ref:`note below <img-semi>` for additional
 information.
 
-.. code:: c
-
-    (double) img[i]->bandwidth (semi optional)
-
-With of the spectral axis in Hz. See the note below for additional
-information.
+.. _img-semi:
 
 Note on semi-optional image parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The above parameters listed as semi optional determine what kind of
-image is produced (line or continuum). Only certain combinations are
-permitted, however some of them have to be set. LIME decides to make a
-continuum image if the parameter nchan is left unset. This will result
-in a single channel continuum image. In nchan is unset, the only other
-parameter which is allowed to be set is freq, which, however, has to be
-set. In addition, the parameter par->dust needs to be set as well,
-otherwise, LIME will produce an error. In order to produce a line image
-cube, either the parameter nchan, velres, and trans or nchan, freq, and
-bandwidth should be set. Any other combination will produce an error.
-For line images, at least one moldatfile should be provided and
-optionally a dust opacity table as well.
+The interaction between image parameters is complicated and potentially confusing. The key to understanding which of the image parameters you have to supply under what circumstances is to realize that LIME has to deduce three things from the image parameters: (i) whether the desired image is line or continuum, (ii) the image frequency, (iii) (for line images) the number and width of spectral channels.
+
+  1. If the user sets either `img[i]->nchan` or `img[i]->velres`, LIME will assume they want a line image. Img fields nchan, trans, molI, velres and bandwidth are ignored for a continuum image.
+
+  2. `img[i]->freq` is the only way a user can set image frequency for a continuum image. For a line image, LIME looks first for `img[i]->trans`, and will obtain the image frequency from that (in conjunction with the mol data) if set; if not, it needs `img[i]->freq`.
+
+  3. To calculate the channel number and spacing, LIME needs 2 out of the 3 parameters `img[i]->bandwidth`, `img[i]->velres` or `img[i]->nchan` to be set. If all three are set, `img[i]->nchan` will be overwritten by a calculation using the other 2.
+
+
+.. figure:: images/fig_coords_big.png
+   :alt: coordinates
+   :width: 380
+   :align: right
+   :figwidth: 400
+
+   The cartesian coordinate system used by LIME, showing the direction of the observer (red arrow) and the relation to the axes of the user-specifiable angles theta and phi.
+
 
 Image rotation parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -678,15 +788,7 @@ be included for continuum polarization images.
 
 Note that you should avoid singularities in these functions - i.e., places where LIME might attempt to divide by zero, or in some other way generate an overflow.
 
-
-.. figure:: images/fig_coords_big.png
-   :alt: coordinates
-   :width: 380
-   :align: right
-   :figwidth: 400
-
-   The cartesian coordinate system used by LIME, showing the direction of the observer (red arrow) and the relation to the axes of the user-specifiable angles theta and phi.
-
+.. _density:
 
 Density
 ~~~~~~~
@@ -703,14 +805,14 @@ The density subroutine contains a user-defined description of the 3D density pro
       density[n] = f(x,y,z);
     }
 
-LIME can deal with an unlimited number n of collision partners (CPs). In most cases, a single density profile will suffice. Note that the number of returned density function values no longer has to be the same as the number of CPs listed in the moldata file(s) so long as the user sets values for the collPartIds parameter, but if this parameter is not supplied, and the numbers are different, LIME may not be able to match the CPs associated with each density value to those in the moldata file(s). Note also that moldata CPs for which there is no matching density will be ignored.
+LIME can at present only deal with 7 collision partners (CPs), namely those listed in the LAMDA database. In most cases, a single density profile will suffice. Note that the number of returned density function values no longer has to be the same as the number of CPs listed in the moldata file(s) so long as the user sets values for the collPartIds parameter; but if this parameter is not supplied, and the numbers are different, LIME may not be able to match the CPs associated with each density value to those in the moldata file(s). Note also that moldata CPs for which there is no matching density will be ignored.
 
 The density is a number density, that is, the number of molecules of the respective CP per unit volume (in cubic meters, not cubic centimeters).
 
 Molecular abundance
 ~~~~~~~~~~~~~~~~~~~
 
-The abundance subroutine contains descriptions of the molecular abundance profiles of the radiating species in the input model. The number of abundance profiles should match exactly the number of molecular data files defined in par->moldatfile.
+The abundance subroutine contains descriptions of the molecular abundance profiles of the radiating species in the input model. The number of abundance profiles should match exactly the number of molecular data files defined in `par->moldatfile`.
 
 .. code:: c
 
@@ -750,10 +852,10 @@ Random velocities
 ~~~~~~~~~~~~~~~~~
 
 This subroutine contains a scalar field which describes the velocity
-dispersion of the random motions of the gas. This number is the Doppler
+dispersion of the random macroscopic (i.e. turbulent) motions of the gas. When added in quadrature to the thermal Doppler broadening specific to each molecule, this number gives the Doppler
 b-parameter which is the 1/e half-width of the line profile. The doppler
-subroutines differs from the other model subroutines in the sense that
-the return type is a scalar, and not an array. The doppler b-parameter
+subroutine differs from the other model subroutine in that
+the return type is a scalar, and not an array. The doppler value
 should be given in m/s.
 
 .. code:: c
@@ -782,14 +884,8 @@ with components for the x, y, and z axis.
       velocity[2] = f(x,y,z);
     }
 
-In the current version of LIME, splines are calculated based on the
-information in the velocity field function and therefore this function
-is only called once. Hence, it need not be as optimized as in previous
-versions of LIME. It is now feasible to use look-up tables for the
-velocity field as well. LIME will use a forth-order polynomial to
-approximate the line-of-sight velocity field component. In case the
-par-pregrid option is set, LIME will use linear interpolation between
-grid points.
+In LIME 1.7 the previous 'spline' estimation (which was actually a polynomial interpolation) of velocities along the links betwene grid points has been replaced by a simpler system in which the velocity is sampled at (currently 3) equally-spaced intervals along each link, as well as at the grid cells. These link values are stored and used to estimate the average line amplitude per link via an error-function lookup. Ideally we would not need to call the velocity function again, but would be able to restrict calls of it (as is the case with all the other functions) purely to the gridding section. However it is found that linear interpolation of velocity within Delaunay cells at the raytracing is insufficient to produce accurate images; thus velocity is still called during the raytracing. In the near future we will try a 2nd-order in-cell interpolation, and if that proves adequate, we will have succeeded in relegating velocity calls to the gridding section alone.
+
 
 Magnetic field
 ~~~~~~~~~~~~~~
@@ -798,7 +894,7 @@ This is an optional function which contains a description of the magnetic
 field. The return type of this subroutine is a three component vector,
 with components for the x, y, and z axis. The magnetic field only has an
 effect for continuum polarization calulations, that is, if
-par->polarization is set.
+`par->polarization` is set.
 
 .. code:: c
 
@@ -824,6 +920,8 @@ has an effect if the continuum is included in the calculations.
       *gtd = f(x,y,z);
     }
 
+.. _grid-density:
+
 Grid point number density
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -831,28 +929,23 @@ In LIME 1.5 and earlier, the number density of the random grid points was tied d
 
 .. code:: c
 
-    void
-    gridDensity(configInfo par, double x, double y, double z, double *fracDensity){
-      *fracDensity = f(x,y,z);
+    double
+    gridDensity(configInfo *par, double *r){
+      double fracDensity;
+      fracDensity = f(r);
+      return fracDensity;
     }
 
 Notes:
-  1. The returned variable is a scalar, like the doppler width described above. That's why you need to put the star in front of the variable name when setting its value.
-  2. This is the only function which includes the input parameters among the arguments. You cannot write to these, they are only supplied so that you can use their values if you wish to. Because of their 'read-only' character, you should invoke them as in the following example:
-  3. Due to the algorithm used to choose the grid points, we cannot yet make this function have quite the effect intended. Eventually we will manage to do so, but at present we cannot make a hard connection between the values for ``fracDensity`` you set and the actual grid point number density. In many ways LIME is still a work in progress. **In particular**, for the time being, you need to make sure that ``gridDensity()`` returns ``fracDensity=1`` for at least **one** location in the model space. Functions without steps are also recommended.
-
-.. code:: c
-
-    par.minScale
-
-rather than
-
-.. code:: c
-
-    par->minScale
-
-as in the input() function.
-
+  1. The returned variable is a scalar.
+  2. This is the only function which includes the input parameters among the
+     arguments. You cannot write to these, they are only supplied so that you
+     can use their values if you wish to.
+  3. Note that ``fracDensity`` is interpreted as a relative value. LIME will scale the integral of the gridDensity function to the desired number of internal points set by the user via the parameter `par->pIntensity`.
+  4. If you leave `par->samplingAlgorithm` at its default of 0, but wish nevertheless to define a non-default gridDensity function, be aware that these two algorithms are a poor match, since they are built on different assumptions. You will need to make sure that
+     ``gridDensity()`` returns ``fracDensity=1`` for at least **one**
+     location in the model space in this case. Functions without steps are also
+     recommended for `par->samplingAlgorithm`==0.
 
 Other settings
 ~~~~~~~~~~~~~~
@@ -860,17 +953,13 @@ Other settings
 A number of additional settings can be found in the file
 LimePackage/src/lime.h. These settings should in general not be changed
 by the user, unless there is an explicit need to do so. A few of them
-however, could be useful to some users. The keyword silent which is by
+however could be useful to some users. The keyword ``silent`` which is by
 default set to zero can be set to one. This will cause LIME to run
 completely silent with no output to the screen at all. This can be
 useful for running LIME in batch mode in the background.
 
-Another number that might be of interest is NITERATIONS, by default set
-to 16. This is the number of major iteration loops LIME will go through
-before ray-tracing. If the user is happy with the signal-to-noise
-achieved after fewer iterations, this number can be lowered accordingly.
-Obviously, a higher number will cause LIME to go through more
-iterations, which may be needed for models with slow convergence.
+
+.. _advanced-setup:
 
 Advanced setup
 ~~~~~~~~~~~~~~
@@ -901,8 +990,8 @@ particular cell. In the case where the model is described on cell nodes,
 the user must loop through the nodes to find the node which lies closest
 to the LIME point and return that node value. This approach obviously
 limits the LIME model smoothness to the input model resolution since all
-LIME points which falls with an input model grid cell (or within a
-certain distance from a grid node) gets the same value. One way to get
+LIME points which fall within an input model grid cell (or within a
+certain distance from a grid node) get the same value. One way to get
 around this is to interpolate in the input grid, which in principle can
 be done in either case, although this may be highly non-trivial if the
 model is described on unstructured grid nodes or is of a dimensionality
@@ -912,11 +1001,11 @@ dimensional table can be found in the example model.c file below.
 In the special case where the input model is described on unstructured
 grid nodes (e.g., Smoothed Particle Hydrodynamics simulations) the input
 grid can be used directly in LIME. This requires the user to set the
-par->pregrid parameter.
+`par->pregrid` parameter.
 
 If the user is more comfortable writing code in the FORTRAN language, it
 is possible to use the model subroutines as wrappers to call FORTRAN
-functions which then carries out any necessary calculations and return
+functions which then carry out any necessary calculations and return
 the values to model.c. This can be done the following way:
 
 .. code:: c
@@ -1052,103 +1141,9 @@ function should read
 
 Obviously it is possible to mix RATRAN input, that is, using different
 .mdl files for the different functions. All parameters in model.c still
-need to be set, ie., par->radius, even though this information is
+need to be set, ie., `par->radius`, even though this information is
 contained in the RATRAN header. If the RATRAN grid is not
-logarithmically spaced, it may be advantageous to set par->sampling=1.
-
-Example model file
-~~~~~~~~~~~~~~~~~~
-
-Here follows the model.c file that can be found in the example directory
-in the LimePackage. This model describes a simple spherical envelope of
-HCO+ gas. The temperature is also one dimensional, but provided as a
-table of value. The additional code in the temperature subroutine
-interpolates the values of the table. A constant molecular abundance and
-Doppler b- parameter is used. The velocity field is described by a
-free-fall on radial trajectories toward a central mass of one Solar
-mass. This example will produce a single image of the HCO+ J=4-3 line in
-the approximate distance of the Taurus star forming region, using
-Kelvins as the unit.
-
-.. code:: c
-
-    #include "lime.h"
-
-    void
-    input(inputPars *par, image *img){
-      par->radius       = 2000*AU;
-      par->minScale     = 0.5*AU;
-      par->pIntensity       = 4000;
-      par->sinkPoints       = 3000;
-      par->dust     = "jena_thin_e6.tab";
-      par->moldatfile[0]    = "hco+@xpol.dat";
-      par->outputfile   = "populations.pop";
-      par->binoutputfile    = "restart.pop";
-      par->gridfile     = "grid.vtk";
-
-      img[0].nchan      = 60;
-      img[0].velres     = 500.;
-      img[0].trans      = 3;
-      img[0].pxls       = 100
-      img[0].imgres     = 0.1;
-      img[0].theta      = 0.0;
-      img[0].distance   = 140*PC;
-      img[0].source_vel = 0;
-      img[0].unit       = 0;
-      img[0].filename   = "image0.fits";
-    }
-
-    void
-    density(double x, double y, double z, double *density){
-      double r;
-      r=sqrt(x*x+y*y+z*z);
-      density[0] = 1.5e6*pow(r/(300*AU),-1.5)*1e6;
-    }
-
-    void
-    temperature(double x, double y, double z, double *temperature){
-      int i,k,x0=0;
-      double r;
-      double temp[2][10] = {
-          {2.0e13, 5.0e13, 8.0e13, 1.1e14, 1.4e14, 1.7e14, 2.0e14, 2.3e14, 2.6e14, 2.9e14},
-          {44.777, 31.037, 25.718, 22.642, 20.560, 19.023, 17.826, 16.857, 16.050, 15.364}
-      };
-      r=sqrt(x*x+y*y+z*z);
-      if(r > temp[0][0] && r<temp[0][9]){
-        for(i=0;i<9;i++){
-          if(r>temp[0][i] && r<temp[0][i+1]) x0=i;
-        }
-      }
-      if(r<temp[0][0])
-        temperature[0]=temp[1][0];
-      else if (r>temp[0][9])
-        temperature[0]=temp[1][9];
-      else
-        temperature[0]=temp[1][x0]+(r-temp[0][x0])*(temp[1][x0+1]-temp[1][x0])/(temp[0][x0+1]-temp[0][x0]);
-    }
-
-    void
-    abundance(double x, double y, double z, double *abundance){
-      abundance[0] = 1.e-9;
-    }
-
-    void
-    doppler(double x, double y, double z, double *doppler){
-      *doppler = 200.;
-    }
-
-    void
-    velocity(double x, double y, double z, double *vel){
-      double R, phi,r,theta;
-      R=sqrt(x*x+y*y+z*z);
-      theta=atan2(sqrt(x*x+y*y),z);
-      phi=atan2(y,x);
-      r=-sqrt(2*6.67e-11*1.989e30/R);
-      vel[0]=r*sin(theta)*cos(phi);
-      vel[1]=r*sin(theta)*sin(phi);
-      vel[2]=r*cos(theta);
-    }
-
+logarithmically spaced, it may be advantageous to set `par->sampling`=1.
 
 Output from LIME
 ----------------
@@ -1162,7 +1157,7 @@ The grid
 ~~~~~~~~
 
 Once the Delaunay grid has been created by LIME, a VTK file with the
-grid and grid properties are written (if the parameter par->gridfile is
+grid and grid properties are written (if the parameter `par->gridfile` is
 set, see chapter 2). The VTK (Visualization Tool Kit) format is a
 formatted ascii file that are used to handle geometrical objects, in our
 case an unstructured grid. VTK files can be read by several
@@ -1189,8 +1184,8 @@ Populations
 The level populations are written out in a separate file if LIME is set
 up to calculate the level populations, that is, if at least one
 molecular data file is defined in model.c (and if the parameter
-par->outputfile is set). Currently, LIME can only write out populations
-from the first molecule (par->moldatfile[0]). The populations output
+`par->outputfile` is set). Currently, LIME can only write out populations
+from the first molecule (`par->moldatfile[0]`). The populations output
 file contains the x, y, and z coordinates for each grid point as well as
 the H2 density, temperature, and molecular density besides the level
 populations. Contrary to the grid file, it does not, however, contain

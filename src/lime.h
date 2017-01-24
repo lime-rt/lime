@@ -43,7 +43,7 @@
 
 #include "dims.h"
 
-#define VERSION	"1.6.1"
+#define VERSION	"1.7.1"
 #define DEFAULT_NTHREADS 1
 #ifndef NTHREADS /* Value passed from the LIME script */
 #define NTHREADS DEFAULT_NTHREADS
@@ -69,11 +69,12 @@
 #define PI                      3.14159265358979323846	/* pi	*/
 #define SPI                     1.77245385091		/* sqrt(pi)	*/
 #define maxp                    0.15
-#define NITERATIONS 		16
+#define NITERATIONS             16
 #define MAX_RAYS_PER_POINT      10000
-#define RAYS_PER_POINT		200
+#define RAYS_PER_POINT          200
 #define minpop                  1.e-6
 #define eps                     1.0e-30
+#define IMG_MIN_ALLOWED         1.0e-30
 #define TOL                     1e-6
 #define MAXITER                 50
 #define goal                    50
@@ -82,22 +83,22 @@
 #define MAX_NSPECIES            100
 #define MAX_NIMAGES             100
 #define N_RAN_PER_SEGMENT       3
-#define FAST_EXP_MAX_TAYLOR	3
-#define FAST_EXP_NUM_BITS	8
-#define NUM_GRID_STAGES		4
-#define MAX_N_COLL_PART		7
+#define FAST_EXP_MAX_TAYLOR     3
+#define FAST_EXP_NUM_BITS       8
+#define NUM_GRID_STAGES         4
+#define MAX_N_COLL_PART         7
 #define N_SMOOTH_ITERS          20
 #define TYPICAL_ISM_DENS        1000.0
 #define STR_LEN_0               80
-#define DENSITY_POWER		0.2
+#define DENSITY_POWER           0.2
 #define MAX_N_HIGH              10
-#define TREE_POWER		2.0
-#define ERF_TABLE_LIMIT		6.0             /* For x>6 erf(x)-1<double precision machine epsilon, so no need to store the values for larger x. */
-#define ERF_TABLE_SIZE		6145
-#define BIN_WIDTH		(ERF_TABLE_LIMIT/(ERF_TABLE_SIZE-1.))
-#define IBIN_WIDTH 		(1./BIN_WIDTH)
-#define N_VEL_SEG_PER_HALF	1
-#define NUM_VEL_COEFFS		(1+2*N_VEL_SEG_PER_HALF) /* This is the number of velocity samples per edge (not including the grid vertices at each end of the edge). Currently this is elsewhere hard-wired at 3, the macro just being used in the file I/O modules. Note that we want an odd number of velocity samples per edge if we want to have the ability to do 2nd-order interpolation of velocity within Delaunay tetrahedra. */
+#define TREE_POWER              2.0
+#define ERF_TABLE_LIMIT         6.0             /* For x>6 erf(x)-1<double precision machine epsilon, so no need to store the values for larger x. */
+#define ERF_TABLE_SIZE          6145
+#define BIN_WIDTH               (ERF_TABLE_LIMIT/(ERF_TABLE_SIZE-1.))
+#define IBIN_WIDTH              (1./BIN_WIDTH)
+#define N_VEL_SEG_PER_HALF      1
+#define NUM_VEL_COEFFS          (1+2*N_VEL_SEG_PER_HALF) /* This is the number of velocity samples per edge (not including the grid vertices at each end of the edge). Currently this is elsewhere hard-wired at 3, the macro just being used in the file I/O modules. Note that we want an odd number of velocity samples per edge if we want to have the ability to do 2nd-order interpolation of velocity within Delaunay tetrahedra. */
 
 /* Collision partner ID numbers from LAMDA */
 #define CP_H2			1
@@ -357,7 +358,6 @@ void	lineBlend(molData*, configInfo*, struct blendInfo*);
 void	LTE(configInfo*, struct grid*, molData*);
 void	lteOnePoint(molData*, const int, const double, double*);
 void	mallocAndSetDefaultGrid(struct grid**, const unsigned int);
-void	mallocInputPars(inputPars*);
 void	molInit(configInfo*, molData*);
 void	openSocket(char*);
 void	parseInput(inputPars, image*, const int, configInfo*, imageInfo**, molData**);

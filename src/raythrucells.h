@@ -67,7 +67,7 @@ typedef struct{
   faceType *faces,*(*facePtrs[N_DIMS+1]);
 } faceListType;
 
-faceType *extractFace(const int numDims, double *vertexCoords, struct simplex *dc\
+faceType extractFace(const int numDims, double *vertexCoords, struct simplex *dc\
   , const unsigned long dci, const int fi);
 int	followRayThroughCells(const int numDims, double *x, double *dir\
   , double *vertexCoords, struct simplex *dc, const unsigned long numCells\
