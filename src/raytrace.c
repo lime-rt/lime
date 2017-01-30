@@ -313,7 +313,7 @@ traceray_smooth(rayData ray, const int im\
   , configInfo *par, struct grid *gp, double *vertexCoords, molData *md\
   , imageInfo *img, struct simplex *dc, const unsigned long numCells\
   , const double epsilon, gridInterp gips[3], const int numSegments\
-  , const double oneOnNumSegments, const int nSteps, const double oneOnNSteps){
+  , const double oneOnNumSegments){
   /*
 For a given image pixel position, this function evaluates the intensity of the total light emitted/absorbed along that line of sight through the (possibly rotated) model. The calculation is performed for several frequencies, one per channel of the output image.
 
@@ -322,7 +322,7 @@ Note that the algorithm employed here to solve the RTE is similar to that employ
 This version of traceray implements a new algorithm in which the population values are interpolated linearly from those at the vertices of the Delaunay cell which the working point falls within.
   */
   const int numFaces = DIM+1, nVertPerFace=3;
-  int ichan,stokesId,di,status,lenChainPtrs,entryI,exitI,vi,vvi,ci;
+  int ichan,stokesId,di,status,lenChainPtrs=0,entryI,exitI,vi,vvi,ci;
   int si,molI,lineI;
   double xp,yp,zp,x[DIM],dir[DIM],projVelRay,vel[DIM];
   double xCmpntsRay[nVertPerFace], ds, snu_pol[3], dtau, contJnu, contAlpha;
@@ -891,7 +891,7 @@ How to calculate this distance? Well if we have N points randomly but evenly dis
       locateRayOnImage(xs, pixelSize, imgCentreXPixels, imgCentreYPixels, img, im, maxNumRaysPerPixel, rays, &numActiveRays);
     }
   }
-  oneOnNumActiveRaysMinus1 = 1.0/(double)(numActiveRays-1);
+  oneOnNumActiveRaysMinus1 = 1.0/(double)(numActiveRaysInternal-1);
 
   if(numActiveRays<par->pIntensity+numCircleRays)
     rays = realloc(rays, sizeof(rayData)*numActiveRays);
@@ -970,7 +970,7 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
       else if(par->traceRayAlgorithm==1)
         traceray_smooth(rays[ri], im, par, gp, vertexCoords, md, img\
           , cells, numCells, epsilon, gips\
-          , numSegments, oneOnNumSegments, nStepsThruCell, oneOnNSteps);
+          , numSegments, oneOnNumSegments);
 
       if (threadI == 0){ /* i.e., is master thread */
         if(!silent) progressbar((double)(ri)*oneOnNumActiveRaysMinus1, 13);
@@ -1029,7 +1029,7 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
     unsigned long num2DCells,gis[3];
     intersectType entryIntcptFirstCell,*cellExitIntcpts=NULL;
     unsigned long *chainOfCellIds=NULL,*rasterCellIDs=NULL;
-    int lenChainPtrs,status=0,startYi,si;
+    int lenChainPtrs=0,status=0,startYi,si;
     double triangle[3][2],barys[3],y,deltaY;
     _Bool *rasterPixelIsInCells=NULL;
 
