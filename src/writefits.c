@@ -20,24 +20,65 @@ void writeFits(const int i, const int unit, configInfo *par, imageInfo *img){
   }
 }
 
-void fitsFilename(char *fits_filename, configInfo *par, imageInfo *img, const int im, const int unit){
-  char *temp_filename;
-  static char* unit_names[] = {"Kelvin", "Jansky-per-px", "SI", "LSun-per-px", "Tau", "#Rays"};
+char *removeFilenameExtension(char* inStr, char extensionChar, char pathSeparator) {
+    char *outStr, *lastDotInFilename, *lastPathSeparatorInFilename;
 
-  /* Check unit number has a corresponding unit name */
-  if(img[im].numunits < 0 || img[im].numunits > sizeof(unit_names)/sizeof(*unit_names) - 1){
-    if(!silent) bail_out("Image unit number does not have a corresponding unit name");
+    if (inStr == NULL)
+        return NULL;
+
+    outStr = malloc(strlen(inStr) + 1);
+    if(!outStr){
+        if(!silent) bail_out("Error allocating memory for filename extension removal");
+        exit(0);
+    }
+    strcpy(outStr, inStr);
+    /* Find last occurrences of extension character and path separator character */
+    lastDotInFilename = strrchr(outStr, extensionChar);
+    lastPathSeparatorInFilename = (pathSeparator == 0) ? NULL : strrchr(outStr, pathSeparator);
+
+    /* Truncate filename at occurrence of last extension character assuming it comes after the last path separator character */
+    if (lastDotInFilename != NULL) {
+        if (lastPathSeparatorInFilename != NULL) {
+            if (lastPathSeparatorInFilename < lastDotInFilename) {
+                *lastDotInFilename = '\0';
+            }
+        } else {
+            *lastDotInFilename = '\0';
+        }
+    }
+    return outStr;
+}
+
+void insertUnitStrInFilename(char *img_filename_root, configInfo *par, imageInfo *img, const int im, const int unit_index){
+  char *temp_filename, message[STR_LEN_0];
+  static char* unit_names[] = {"Kelvin", "Jansky-per-px", "SI", "LSun-per-px", "Tau", "#Rays"};
+  char *ext;
+
+  /* Check if unit index falls outside range of possible unit names */
+  if(unit_index < 0 || unit_index > sizeof(unit_names)/sizeof(*unit_names) - 1){
+    sprintf(message, "Image unit index '%d' does not have a corresponding unit name", unit_index);
+    if(!silent) bail_out(message);
     exit(0);
   }
 
+  copyInparStr(img_filename_root, &(temp_filename));
+  /* Extract filename extension */
+  ext = strrchr(img_filename_root, '.');
+  if (!ext) {
+    /* Set to default if no filename extension was extracted */
+    ext = ".fits";
+  } else {
+    /* Remove extension from temporary filename */
+    temp_filename = removeFilenameExtension(temp_filename, '.', '/');
+  }
   /* Append unit name to temporary filename */
-  copyInparStr(fits_filename, &(temp_filename));
   strcat(temp_filename, "_");
-  strcat(temp_filename, unit_names[img[im].imgunits[unit]]);
-  strcat(temp_filename, ".fits");
+  strcat(temp_filename, unit_names[img[im].imgunits[unit_index]]);
+  strcat(temp_filename, ext);
 
   /* Update image filename from temporary filename */
   copyInparStr(temp_filename, &(img[im].filename));
+  free(temp_filename);
 }
 
 void 

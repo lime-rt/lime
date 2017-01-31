@@ -108,6 +108,7 @@ input(inputPars *par, image *img){
   img[i].azimuth                = 0.0;
   img[i].incl                   = 0.0;
   img[i].posang                 = 0.0;
+
   /* For each set of image parameters above, numerous images with different units can be outputted. This is done by
    * setting img[].units to a delimited (space, comma, colon, underscore) string of the required outputs, where:
    *        0:Kelvin
@@ -115,10 +116,15 @@ input(inputPars *par, image *img){
    *        2:SI
    *        3:Lsun/pixel
    *        4:tau
-   * The unit name and file extension is then added automatically.
+   * The unit name is then added automatically. If img[].filename does not have an extension then '.fits' will be
+   * appended automatically. Otherwise the existing extension is maintained.
+
+   * A single image unit can also be specified for each image using img[].unit as in previous LIME versions. Note that
+   * only img[].units or img[].unit should be set for each image.
   */
+//  img[i].unit                   = 0;
   img[i].units                  = "0 1";
-  img[i].filename               = "image0";  // Output filename
+  img[i].filename               = "image0";        // Output filename
 }
 
 /******************************************************************************/

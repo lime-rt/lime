@@ -102,7 +102,6 @@ initParImg(inputPars *par, image **img)
   (*img)=malloc(sizeof(**img)*MAX_NIMAGES);
   for(i=0;i<MAX_NIMAGES;i++){
     (*img)[i].filename=NULL;
-    (*img)[i].imgunits= NULL;
   }
 
   /* First call to the user function which sets par, img values. Note that, as far as img is concerned, here we just want to find out how many images the user wants, so we can malloc the array properly. We call input() a second time then to get the actual per-image parameter values.
@@ -132,6 +131,7 @@ initParImg(inputPars *par, image **img)
     (*img)[i].incl    = defaultAngle;
     (*img)[i].azimuth = defaultAngle;
     (*img)[i].posang  = defaultAngle;
+    (*img)[i].unit = 0;
   }
 
   /* Second-pass reading of the user-set parameters (this time just to read the par->moldatfile and img stuff). */
@@ -159,7 +159,7 @@ run(inputPars inpars, image *inimg, const int nImages){
   char message[80];
   int nEntries=0;
   double *lamtab=NULL, *kaptab=NULL;
-  char *fits_filename;
+  char *img_filename_root;
 
   /*Set locale to avoid trouble when reading files*/
   setlocale(LC_ALL, "C");
@@ -198,11 +198,11 @@ run(inputPars inpars, image *inimg, const int nImages){
   if(par.nContImages>0){
     for(i=0;i<par.nImages;i++){
       if(!img[i].doline){
-        copyInparStr(img[i].filename, &(fits_filename));
+        copyInparStr(img[i].filename, &(img_filename_root));
         raytrace(i, &par, gp, md, img, lamtab, kaptab, nEntries);
         for(j=0;j<img[i].numunits;j++) {
-	        fitsFilename(fits_filename, &par, img, i, j);
-        	writeFits(i,j,&par,img);
+          insertUnitStrInFilename(img_filename_root, &par, img, i, j);
+          writeFits(i,j,&par,img);
         }
       }
     }
@@ -245,11 +245,11 @@ run(inputPars inpars, image *inimg, const int nImages){
   if(par.nLineImages>0){
     for(i=0;i<par.nImages;i++){
       if(img[i].doline){
-        copyInparStr(img[i].filename, &(fits_filename));
+        copyInparStr(img[i].filename, &(img_filename_root));
         raytrace(i, &par, gp, md, img, lamtab, kaptab, nEntries);
         for(j=0;j<img[i].numunits;j++) {
-	        fitsFilename(fits_filename, &par, img, i, j);
-        	writeFits(i,j,&par,img);
+          insertUnitStrInFilename(img_filename_root, &par, img, i, j);
+          writeFits(i,j,&par,img);
         }
       }
     }

@@ -48,7 +48,7 @@ The parameters visible to the user have now been strictly confined to members of
   double cos_pa,sin_pa,cosPhi,sinPhi,cos_incl,sin_incl,cosTheta,sinTheta,cos_az,sin_az;
   double tempRotMat[3][3],auxRotMat[3][3];
   int row,col;
-  char *pch_sep = " ,:_", *pch, *units_str;
+  char *pch_sep = " ,:_", *pch, *pch_end, *units_str;
 
   /* Check that the mandatory parameters now have 'sensible' settings (i.e., that they have been set at all). Raise an exception if not. */
   if (inpar.radius<=0){
@@ -165,8 +165,7 @@ The parameters visible to the user have now been strictly confined to members of
     /* Find out how many density functions we have (which sets par->numDensities).
     */
     for(i=0;i<MAX_N_COLL_PART;i++) dens[i] = -1.0;
-    density(0.0,0.0,0.0,dens); /* Note that the example density function in LIME-1.5 generated a singularity at r==0!
- * Such uglinesses should not be encouraged. I've fixed it now, thus I can use 0s here in (relative) safety. */
+    density(0.0,0.0,0.0,dens); /* Note that the example density function in LIME-1.5 generated a singularity at r==0! Such uglinesses should not be encouraged. I've fixed it now, thus I can use 0s here in (relative) safety. */
     i = 0;
     while(i<MAX_N_COLL_PART && dens[i]>=0) i++;
     par->numDensities = i;
@@ -177,8 +176,7 @@ The parameters visible to the user have now been strictly confined to members of
     }
   }
 
-  /* See if we can deduce a global maximum for the grid point number density function. Set the starting value from the
-   * unnormalized number density at the origin of coordinates:
+  /* See if we can deduce a global maximum for the grid point number density function. Set the starting value from the unnormalized number density at the origin of coordinates:
   */
   par->gridDensGlobalMax = 1.0;
   for(i=0;i<DIM;i++) r[i] = par->minScale;//****0.0;
@@ -228,8 +226,6 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
     (*img)[i].imgres     = inimg[i].imgres;
     (*img)[i].pxls       = inimg[i].pxls;
     copyInparStr(inimg[i].units, &((*img)[i].units));
-    (*img)[i].imgunits       = inimg[i].imgunits;
-    (*img)[i].numunits       = inimg[i].numunits;
     (*img)[i].freq       = inimg[i].freq;
     (*img)[i].bandwidth  = inimg[i].bandwidth;
     copyInparStr(inimg[i].filename, &((*img)[i].filename));
@@ -245,21 +241,34 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
   /* Allocate pixel space and parse image information.
   */
   for(i=0;i<nImages;i++){
-  
-  	/* Parse image units, populate imgunits array with appropriate image identifiers and track number of units
-     * requested for each image */
-    copyInparStr((*img)[i].units, &(units_str));
-    pch = strtok(units_str, pch_sep);
-    j = 0;
-    while(pch){
-      (*img)[i].imgunits = realloc((*img)[i].imgunits, sizeof(int) * j++);
-      if((*img)[i].imgunits == NULL){
-        if(!silent) bail_out("Error allocating memory for units");
-      }
-      (*img)[i].imgunits[j-1] = strtol(pch, NULL, 0);
-      pch = strtok(NULL, pch_sep);
+
+    /* If user has not supplied a units string then use unit value (default 0) to maintain backwards compatibility */
+    if((*img)[i].units == NULL){
+      (*img)[i].numunits = 1;
+      (*img)[i].imgunits = realloc((*img)[i].imgunits, sizeof(int));
+      (*img)[i].imgunits[0] = inimg[i].unit;
     }
-    (*img)[i].numunits = j;
+    else{
+      /* Otherwise parse image units, populate imgunits array with appropriate image identifiers and track number
+       * of units requested */
+      copyInparStr((*img)[i].units, &(units_str));
+      pch = strtok(units_str, pch_sep);
+      j = 0;
+      while(pch){
+        (*img)[i].imgunits = realloc((*img)[i].imgunits, sizeof(int) * j++);
+        if((*img)[i].imgunits == NULL){
+          if(!silent) bail_out("Error allocating memory for units");
+        }
+        (*img)[i].imgunits[j-1] = strtol(pch, &pch_end, 0);
+        if(*pch_end){
+          sprintf(message, "Units string contains '%s' which could not be converted to an integer", pch_end);
+          if(!silent) bail_out(message);
+          exit(0);
+        }
+        pch = strtok(NULL, pch_sep);
+      }
+      (*img)[i].numunits = j;
+    }
     
     if((*img)[i].nchan == 0 && (*img)[i].velres<0 ){ /* => user has set neither nchan nor velres. One of the two is required for a line image. */
       /* Assume continuum image */

@@ -332,7 +332,7 @@ void    fillErfTable();
 void	fit_d1fi(double, double, double*);
 void	fit_fi(double, double, double*);
 void	fit_rr(double, double, double*);
-void    fitsFilename(char *, configInfo *, imageInfo *, const int, const int);
+void    insertUnitsStrInFilename(char *, configInfo *, imageInfo *, const int, const int);
 void	freeConfigInfo(configInfo par);
 void	freeGrid(const unsigned int, const unsigned short, struct grid*);
 void	freeGridPointData(const int, gridPointData*);
