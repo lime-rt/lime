@@ -955,7 +955,7 @@ void writeGridIfRequired(configInfo *par, struct grid *gp, molData *md, const in
       gridInfo.mols = NULL;
     else{
       gridInfo.mols = malloc(sizeof(*(gridInfo.mols))*gridInfo.nSpecies);
-      for(i_us=0;i_us<gridInfo.nSpecies;i_us++){
+      for(i_us=0;i_us<gridInfo.nSpecies;i_us++){ /* md should only ==NULL if gridInfo.nSpecies==0. */
         gridInfo.mols[i_us].molName = md[i_us].molName; /* NOTE*** this just copies the pointer. Should be safe enough if we just want to read this value. */
         gridInfo.mols[i_us].nLevels = md[i_us].nlev;
         gridInfo.mols[i_us].nLines  = md[i_us].nline;
