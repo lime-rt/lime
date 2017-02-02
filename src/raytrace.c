@@ -485,7 +485,7 @@ traceray_smooth(rayData ray, const int im\
   , configInfo *par, struct grid *gp, double *vertexCoords, molData *md\
   , imageInfo *img, struct simplex *dc, const unsigned long numCells\
   , const double epsilon, gridInterp gips[3], const int numSegments\
-  , const double oneOnNumSegments, const int nSteps, const double oneOnNSteps){
+  , const double oneOnNumSegments){
   /*
 For a given image pixel position, this function evaluates the intensity of the total light emitted/absorbed along that line of sight through the (possibly rotated) model. The calculation is performed for several frequencies, one per channel of the output image.
 
@@ -496,7 +496,7 @@ This version of traceray implements a new algorithm in which the population valu
 A note about the object 'gips': this is an array with 3 elements, each one a struct of type 'gridInterp'. This struct is meant to store as many of the grid-point quantities (interpolated from the appropriate values at actual grid locations) as are necessary for solving the radiative transfer equations along the ray path. The first 2 entries give the values for the entry and exit points to a Delaunay cell, but which is which can change, and is indicated via the variables entryI and exitI (this is a convenience to avoid copying the values, since the values for the exit point of one cell are obviously just those for entry point of the next). The third entry stores values interpolated along the ray path within a cell.
   */
   const int numFaces = DIM+1,nVertPerFace=3,numVertices=DIM+1,numRayInterpSamp=3;
-  int ichan,stokesId,di,status,lenChainPtrs,entryI,exitI,vi,vvi,ci,ei,fi,i0,i1;
+  int ichan,stokesId,di,status,lenChainPtrs=0,entryI,exitI,vi,vvi,ci,ei,fi,i0,i1;
   int si,molI,lineI,k,i;
   double xp,yp,zp,x[DIM],dir[DIM],projVelRay,vel[DIM],projVelOffset,projVel2ndDeriv;
   double xCmpntsRay[nVertPerFace],ds,snu_pol[3],dtau,contJnu,contAlpha;
@@ -1240,7 +1240,7 @@ How to calculate this distance? Well if we have N points randomly but evenly dis
       locateRayOnImage(xs, pixelSize, imgCentreXPixels, imgCentreYPixels, img, im, maxNumRaysPerPixel, rays, &numActiveRays);
     }
   }
-  oneOnNumActiveRaysMinus1 = 1.0/(double)(numActiveRays-1);
+  oneOnNumActiveRaysMinus1 = 1.0/(double)(numActiveRaysInternal-1);
 
   if(numActiveRays<par->pIntensity+numCircleRays)
     rays = realloc(rays, sizeof(rayData)*numActiveRays);
@@ -1319,7 +1319,7 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
       else if(par->traceRayAlgorithm==1)
         traceray_smooth(rays[ri], im, par, gp, vertexCoords, md, img\
           , cells, numCells, epsilon, gips\
-          , numSegments, oneOnNumSegments, nStepsThruCell, oneOnNSteps);
+          , numSegments, oneOnNumSegments);
 
       if (threadI == 0){ /* i.e., is master thread */
         if(!silent) progressbar((double)(ri)*oneOnNumActiveRaysMinus1, 13);
@@ -1378,7 +1378,7 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
     unsigned long num2DCells,gis[3];
     intersectType entryIntcptFirstCell,*cellExitIntcpts=NULL;
     unsigned long *chainOfCellIds=NULL,*rasterCellIDs=NULL;
-    int lenChainPtrs,status=0,startYi,si;
+    int lenChainPtrs=0,status=0,startYi,si;
     double triangle[3][2],barys[3],y,deltaY;
     _Bool *rasterPixelIsInCells=NULL;
 
