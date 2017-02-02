@@ -613,7 +613,7 @@ and filled as
   */
 
   const int numFaces=numDims+1, maxNumEntryFaces=100;
-  int numEntryFaces,fi,entryFis[maxNumEntryFaces],i,status,di;
+  int numEntryFaces,fi,entryFis[maxNumEntryFaces],i,status;
   faceType face;
   unsigned long dci, entryDcis[maxNumEntryFaces];
   intersectType intcpt, entryIntcpts[maxNumEntryFaces];
