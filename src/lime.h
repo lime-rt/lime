@@ -323,6 +323,7 @@ void	calcSourceFn(double, const configInfo*, double*, double*);
 void	calcTableEntries(const int, const int);
 void	checkGridDensities(configInfo*, struct grid*);
 void	checkUserDensWeights(configInfo*);
+void    copyInparStr(const char*, char**);
 void	delaunay(const int, struct grid*, const unsigned long, const _Bool, const _Bool, struct cell**, unsigned long*);
 void	distCalc(configInfo*, struct grid*);
 double	dotProduct3D(const double*, const double*);

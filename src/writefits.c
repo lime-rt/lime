@@ -50,7 +50,7 @@ char *removeFilenameExtension(char* inStr, char extensionChar, char pathSeparato
 }
 
 void insertUnitStrInFilename(char *img_filename_root, configInfo *par, imageInfo *img, const int im, const int unit_index){
-  char *temp_filename, message[STR_LEN_0];
+  char *temp_filename, *temp_extensionless_filename, message[STR_LEN_0];
   static char* unit_names[] = {"Kelvin", "Jansky-per-px", "SI", "LSun-per-px", "Tau", "#Rays"};
   char *ext;
 
@@ -65,11 +65,13 @@ void insertUnitStrInFilename(char *img_filename_root, configInfo *par, imageInfo
   /* Extract filename extension */
   ext = strrchr(img_filename_root, '.');
   if (!ext) {
-    /* Set to default if no filename extension was extracted */
-    ext = ".fits";
+    /* Set to blank string if no filename extension was extracted */
+    ext = "";
   } else {
     /* Remove extension from temporary filename */
-    temp_filename = removeFilenameExtension(temp_filename, '.', '/');
+      temp_extensionless_filename = removeFilenameExtension(temp_filename, '.', '/');
+      strcpy(temp_filename, temp_extensionless_filename);
+      free(temp_extensionless_filename);
   }
   /* Append unit name to temporary filename */
   strcat(temp_filename, "_");

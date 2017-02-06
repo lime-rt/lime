@@ -246,6 +246,9 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
     if((*img)[i].units == NULL){
       (*img)[i].numunits = 1;
       (*img)[i].imgunits = realloc((*img)[i].imgunits, sizeof(int));
+      if((*img)[i].imgunits == NULL){
+        if(!silent) bail_out("Error allocating memory for single unit");
+      }
       (*img)[i].imgunits[0] = inimg[i].unit;
     }
     else{
@@ -257,9 +260,9 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
       while(pch){
         (*img)[i].imgunits = realloc((*img)[i].imgunits, sizeof(int) * j++);
         if((*img)[i].imgunits == NULL){
-          if(!silent) bail_out("Error allocating memory for units");
+          if(!silent) bail_out("Error allocating memory for multiple units");
         }
-        (*img)[i].imgunits[j-1] = strtol(pch, &pch_end, 0);
+        (*img)[i].imgunits[j-1] = (int)strtol(pch, &pch_end, 0);
         if(*pch_end){
           sprintf(message, "Units string contains '%s' which could not be converted to an integer", pch_end);
           if(!silent) bail_out(message);

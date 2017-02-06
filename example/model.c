@@ -116,14 +116,15 @@ input(inputPars *par, image *img){
    *        2:SI
    *        3:Lsun/pixel
    *        4:tau
-   * The unit name is then added automatically. If img[].filename does not have an extension then '.fits' will be
-   * appended automatically. Otherwise the existing extension is maintained.
+   * If multiple units are specified for a single set of image parameters (e.g. "0 1 2") then the unit name is added
+   * automatically at the end of the given filename, but before the filename extension if it exists. Otherwise if a
+   * single unit is specified then the filename is unchanged.
 
    * A single image unit can also be specified for each image using img[].unit as in previous LIME versions. Note that
    * only img[].units or img[].unit should be set for each image.
   */
 //  img[i].unit                   = 0;
-  img[i].units                  = "0 1";
+  img[i].units                  = "0 1 2";
   img[i].filename               = "image0";        // Output filename
 }
 
