@@ -241,7 +241,8 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
   /* Allocate pixel space and parse image information.
   */
   for(i=0;i<nImages;i++){
-
+      
+    (*img)[i].imgunits = NULL;
     /* If user has not supplied a units string then use unit value (default 0) to maintain backwards compatibility */
     if((*img)[i].units == NULL){
       (*img)[i].numunits = 1;
