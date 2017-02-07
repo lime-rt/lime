@@ -15,7 +15,7 @@ int silent = 0;
 
 /* Forward declaration of functions only used in this file */
 int initParImg(inputPars *par, image **img);
-int main ();
+int main();
 
 
 
@@ -279,7 +279,7 @@ run(inputPars inpars, image *inimg, const int nImages){
   }
 }
 
-int main () {
+int main() {
   /* Main program for stand-alone LIME */
 
   inputPars par;

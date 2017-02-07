@@ -17,6 +17,21 @@ error(int errCode, char *message){
 }
 
 /*....................................................................*/
+intersectType initializeIntersect(const int numDims){
+  int di;
+  intersectType intcpt;
+
+  intcpt.fi = -1;
+  intcpt.orientation = 0;
+  for(di=0;di<numDims;di++)
+    intcpt.bary[di] = 0.0;
+  intcpt.dist = 0.0;
+  intcpt.collPar = 0.0;
+
+  return intcpt;
+}
+
+/*....................................................................*/
 faceType
 extractFace(const int numDims, double *vertexCoords, struct simplex *dc\
   , const unsigned long dci, const int fi){
@@ -569,11 +584,11 @@ followRayThroughCells(const int numDims, double *x, double *dir, double *vertexC
   /*
 The present function follows a ray through a connected, convex set of cells (assumed to be simplices) and returns information about the chain of cells it passes through. If the ray is found to pass through 1 or more cells, the function returns 0, indicating success; if not, it returns a non-zero value. The chain description consists of three pieces of information: (i) intercept information for the entry face of the first cell encountered; (ii) the IDs of the cells in the chain; (iii) intercept information for the exit face of the ith cell.
 
-The calling routine should free chainOfCellIds, cellExitIntcpts & cellVisited after use.
+The pointers *chainOfCellIds and *cellExitIntcpts should be freed after the function is called.
 
 The argument facePtrs may be set to NULL, in which case the function will construct each face from the list of cells etc as it needs it. This saves on memory but takes more time. If the calling routine supplies these values it needs to do something like as follows:
 
-	faceType face,*facePtrs[N_DIMS+1]=malloc(sizeof(*(*facePtrs[N_DIMS+1]))*numFaces); // numFaces must of course be calculated beforehand.
+	faceType face,*facePtrs[N_DIMS+1]=malloc(sizeof(*(*facePtrs[N_DIMS+1]))*numFaces);
 	for(i=0;i<numFaces;i++){
 	  for(j=0;j<numDims+1;j++){
 	    face = extractFace(numDims, vertexCoords, dc, i, j);
@@ -634,8 +649,14 @@ and filled as
     }
   }
 
-  if(numEntryFaces<=0)
+  if(numEntryFaces<=0){
+    *entryIntcpt = initializeIntersect(numDims);
+    *lenChainPtrs=0;
+    *chainOfCellIds=NULL;
+    *cellExitIntcpts=NULL;
+
     return 2;
+  }
 
   *lenChainPtrs = 1024; /* This can be increased within followCellChain(). */
   *chainOfCellIds  = malloc(sizeof(**chainOfCellIds) *(*lenChainPtrs));
@@ -654,9 +675,16 @@ and filled as
 
   if(status==0)
     *entryIntcpt = entryIntcpts[i-1];
-  /* Note that the order of the bary coords, and the value of fi, are with reference to the vertx list of the _entered_ cell. This can't of course be any other way, because this ray enters this first cell from the exterior of the model, where there are no cells. For all the intersectType objects in the list cellExitIntcpts, the bary coords etc are with reference to the exited cell. */
+    /* Note that the order of the bary coords, and the value of fi, are with reference to the vertx list of the _entered_ cell. This can't of course be any other way, because this ray enters this first cell from the exterior of the model, where there are no cells. For all the intersectType objects in the list cellExitIntcpts, the bary coords etc are with reference to the exited cell. */
 
-//*** this is not too good because *entryIntcpt, *chainOfCellIds, *cellExitIntcpts and lenChainPtrs are left at unsuitable values if status!=0.
+  else{
+    *entryIntcpt = initializeIntersect(numDims);
+    free(*chainOfCellIds);
+    *chainOfCellIds=NULL;
+    free(*cellExitIntcpts);
+    *cellExitIntcpts=NULL;
+    *lenChainPtrs=0;
+  }
 
   free(cellVisited);
 
