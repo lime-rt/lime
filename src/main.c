@@ -133,6 +133,7 @@ initParImg(inputPars *par, image **img)
     (*img)[i].azimuth = defaultAngle;
     (*img)[i].posang  = defaultAngle;
     (*img)[i].unit = 0;
+    (*img)[i].doInterpolateVels = 0;
   }
 
   /* Second-pass reading of the user-set parameters (this time just to read the par->moldatfile and img stuff). */

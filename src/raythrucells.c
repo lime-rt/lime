@@ -464,7 +464,7 @@ At a successful termination, therefore, details of all the cells to the edge of 
   const int numFaces=numDims+1;
   _Bool followingSingleChain;
   const int bufferSize=1024;
-  int numGoodExits, numMarginalExits, fi, goodExitFis[numFaces], marginalExitFis[numFaces], exitFi, i, status, newEntryFaceI;
+  int numGoodExits,numMarginalExits,fi,goodExitFis[numFaces],marginalExitFis[numFaces],exitFi,i,status,newEntryFaceI;
   faceType face;
   intersectType intcpt[numFaces];
 
@@ -472,12 +472,14 @@ At a successful termination, therefore, details of all the cells to the edge of 
   do{ /* Follow the chain through 'good' cells, i.e. ones for which entry and exit are nicely distant from face edges. (Here we also follow marginal exits if there are no good ones, and only 1 marginal one.) */
     (*cellVisited)[dci] = 1;
 
-    /* Store the current cell ID (we leave storing the exit face for later, when we know what it is). (If there is not enough room in chainOfCellIds and cellExitIntcpts, realloc them to new value of lenChainPtrs.) */
+    /* If there is not enough room in chainOfCellIds and cellExitIntcpts, realloc them to new value of lenChainPtrs. */
     if(nCellsInChain>=(*lenChainPtrs)){
       *lenChainPtrs += bufferSize;
       *chainOfCellIds  = realloc(*chainOfCellIds,  sizeof(**chainOfCellIds) *(*lenChainPtrs));
       *cellExitIntcpts = realloc(*cellExitIntcpts, sizeof(**cellExitIntcpts)*(*lenChainPtrs));
     }
+
+    /* Store the current cell ID (we leave storing the exit face for later, when we know what it is). */
     (*chainOfCellIds)[nCellsInChain] = dci;
 
     /* calculate num good and bad exits */
@@ -611,7 +613,7 @@ and filled as
   */
 
   const int numFaces=numDims+1, maxNumEntryFaces=100;
-  int numEntryFaces, fi, entryFis[maxNumEntryFaces], i, status;
+  int numEntryFaces,fi,entryFis[maxNumEntryFaces],i,status;
   faceType face;
   unsigned long dci, entryDcis[maxNumEntryFaces];
   intersectType intcpt, entryIntcpts[maxNumEntryFaces];

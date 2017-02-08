@@ -152,13 +152,6 @@ freeSomeGridFields(const unsigned int numPoints, const unsigned short numSpecies
 
   if(gp != NULL){
     for(i_u=0;i_u<numPoints;i_u++){
-      free(gp[i_u].v1);
-      gp[i_u].v1 = NULL;
-      free(gp[i_u].v2);
-      gp[i_u].v2 = NULL;
-      free(gp[i_u].v3);
-      gp[i_u].v3 = NULL;
-      free(gp[i_u].w);
       gp[i_u].w    = NULL;
       free(gp[i_u].abun);
       gp[i_u].abun = NULL;

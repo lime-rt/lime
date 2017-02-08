@@ -12,44 +12,6 @@
 
 
 /*....................................................................*/
-double
-geterf(const double x0, const double x1) {
-  /* table lookup erf thingy */
-
-  double val0=0.,val1=0.;
-  
-  if (fabs(x0)>=ERF_TABLE_LIMIT) val0=(SPI/2.);
-  else {
-    int index = (int)(fabs(x0*IBIN_WIDTH));
-    double inter_coeff = (fabs(x0*IBIN_WIDTH)-index);
-    val0=(1-inter_coeff)*ERF_TABLE[index]+inter_coeff*ERF_TABLE[index+1];
-  }
-  if (x0<0.) val0=-val0;
- 
-  if (fabs(x1)>=ERF_TABLE_LIMIT) val1=(SPI/2.);
-  else {
-    int index = (int)(fabs(x1*IBIN_WIDTH));
-    double inter_coeff = (fabs(x1*IBIN_WIDTH)-index);
-    val1=(1-inter_coeff)*ERF_TABLE[index]+inter_coeff*ERF_TABLE[index+1];
-  }
-  if (x1<0.) val1=-val1;
-
-  return fabs((val1-val0)/(x1-x0));
-}
-
-/*....................................................................*/
-double
-gaussline(const double v, const double oneOnSigma){
-  double val;
-  val = v*v*oneOnSigma*oneOnSigma;
-#ifdef FASTEXP
-  return FastExp(val);
-#else
-  return exp(-val);
-#endif
-}
-
-/*....................................................................*/
 int
 getNextEdge(double *inidir, const int startGi, const int presentGi\
   , struct grid *gp, const gsl_rng *ran){
