@@ -100,8 +100,10 @@ initParImg(inputPars *par, image **img)
 
   /* Allocate initial space for output fits images */
   (*img)=malloc(sizeof(**img)*MAX_NIMAGES);
-  for(i=0;i<MAX_NIMAGES;i++)
+  for(i=0;i<MAX_NIMAGES;i++){
     (*img)[i].filename=NULL;
+    (*img)[i].units=NULL;
+  }
 
   /* First call to the user function which sets par, img values. Note that, as far as img is concerned, here we just want to find out how many images the user wants, so we can malloc the array properly. We call input() a second time then to get the actual per-image parameter values.
   */
@@ -130,6 +132,7 @@ initParImg(inputPars *par, image **img)
     (*img)[i].incl    = defaultAngle;
     (*img)[i].azimuth = defaultAngle;
     (*img)[i].posang  = defaultAngle;
+    (*img)[i].unit = 0;
     (*img)[i].doInterpolateVels = 0;
   }
 
@@ -148,7 +151,7 @@ run(inputPars inpars, image *inimg, const int nImages){
      programs. In this case, inpars and img must be specified by the
      external program.
   */
-  int i,gi,si;
+  int i,j,gi,si;
   int initime=time(0);
   int popsdone=0;
   molData *md=NULL;
@@ -157,7 +160,8 @@ run(inputPars inpars, image *inimg, const int nImages){
   struct grid *gp=NULL;
   char message[80];
   int nEntries=0;
-  double *lamtab=NULL, *kaptab=NULL; 
+  double *lamtab=NULL, *kaptab=NULL;
+  char *img_filename_root;
 
   /*Set locale to avoid trouble when reading files*/
   setlocale(LC_ALL, "C");
@@ -197,7 +201,16 @@ run(inputPars inpars, image *inimg, const int nImages){
     for(i=0;i<par.nImages;i++){
       if(!img[i].doline){
         raytrace(i, &par, gp, md, img, lamtab, kaptab, nEntries);
-        writeFits(i,&par,img);
+        if(img[i].numunits == 1){
+          writeFits(i,0,&par,img);
+        }
+        else{
+          copyInparStr(img[i].filename, &(img_filename_root));
+          for(j=0;j<img[i].numunits;j++) {
+            insertUnitStrInFilename(img_filename_root, &par, img, i, j);
+            writeFits(i,j,&par,img);
+          }
+        }
       }
     }
   }
@@ -240,7 +253,16 @@ run(inputPars inpars, image *inimg, const int nImages){
     for(i=0;i<par.nImages;i++){
       if(img[i].doline){
         raytrace(i, &par, gp, md, img, lamtab, kaptab, nEntries);
-        writeFits(i,&par,img);
+        if(img[i].numunits == 1){
+          writeFits(i,0,&par,img);
+        }
+        else{
+          copyInparStr(img[i].filename, &(img_filename_root));
+          for(j=0;j<img[i].numunits;j++) {
+            insertUnitStrInFilename(img_filename_root, &par, img, i, j);
+            writeFits(i,j,&par,img);
+          }
+        }
       }
     }
   }

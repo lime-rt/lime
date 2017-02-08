@@ -86,6 +86,7 @@ The parameters visible to the user have now been strictly confined to members of
   double cos_pa,sin_pa,cosPhi,sinPhi,cos_incl,sin_incl,cosTheta,sinTheta,cos_az,sin_az;
   double tempRotMat[3][3],auxRotMat[3][3];
   int row,col;
+  char *pch_sep = " ,:_", *pch, *pch_end, *units_str;
 
   /* Check that the mandatory parameters now have 'sensible' settings (i.e., that they have been set at all). Raise an exception if not. */
   if (inpar.radius<=0){
@@ -261,7 +262,7 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
     (*img)[i].velres     = inimg[i].velres;
     (*img)[i].imgres     = inimg[i].imgres;
     (*img)[i].pxls       = inimg[i].pxls;
-    (*img)[i].unit       = inimg[i].unit;
+    copyInparStr(inimg[i].units, &((*img)[i].units));
     (*img)[i].freq       = inimg[i].freq;
     (*img)[i].bandwidth  = inimg[i].bandwidth;
     copyInparStr(inimg[i].filename, &((*img)[i].filename));
@@ -278,6 +279,40 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
   /* Allocate pixel space and parse image information.
   */
   for(i=0;i<nImages;i++){
+    (*img)[i].imgunits = NULL;
+
+    /* If user has not supplied a units string then use unit value (default 0) to maintain backwards compatibility */
+    if((*img)[i].units == NULL){
+      (*img)[i].numunits = 1;
+      (*img)[i].imgunits = malloc(sizeof(*(*img)[i].imgunits));
+      if((*img)[i].imgunits == NULL){
+        if(!silent) bail_out("Error allocating memory for single unit");
+      }
+      (*img)[i].imgunits[0] = inimg[i].unit;
+    }
+    else{
+      /* Otherwise parse image units, populate imgunits array with appropriate image identifiers and track number
+       * of units requested */
+      copyInparStr((*img)[i].units, &(units_str));
+      pch = strtok(units_str, pch_sep);
+      j = 0;
+      while(pch){
+        j++;
+        (*img)[i].imgunits = realloc((*img)[i].imgunits, sizeof(*(*img)[i].imgunits)*j);
+        if((*img)[i].imgunits == NULL){
+          if(!silent) bail_out("Error allocating memory for multiple units");
+        }
+        (*img)[i].imgunits[j-1] = (int)strtol(pch, &pch_end, 0);
+        if(*pch_end){
+          sprintf(message, "Units string contains '%s' which could not be converted to an integer", pch_end);
+          if(!silent) bail_out(message);
+          exit(0);
+        }
+        pch = strtok(NULL, pch_sep);
+      }
+      (*img)[i].numunits = j;
+    }
+    
     if((*img)[i].nchan == 0 && (*img)[i].velres<0 ){ /* => user has set neither nchan nor velres. One of the two is required for a line image. */
       /* Assume continuum image */
 

@@ -105,11 +105,27 @@ input(inputPars *par, image *img){
   img[i].imgres                 = 0.1;            // Resolution in arc seconds
   img[i].distance               = 140*PC;         // source distance in m
   img[i].source_vel             = 0;              // source velocity in m/s
-  img[i].unit                   = 0;              // 0:Kelvin 1:Jansky/pixel 2:SI 3:Lsun/pixel 4:tau
-  img[i].filename               = "image0.fits";  // Output filename
   img[i].azimuth                = 0.0;
   img[i].incl                   = 0.0;
   img[i].posang                 = 0.0;
+
+  /* For each set of image parameters above, numerous images with different units can be outputted. This is done by
+   * setting img[].units to a delimited (space, comma, colon, underscore) string of the required outputs, where:
+   *        0:Kelvin
+   *        1:Jansky/pixel
+   *        2:SI
+   *        3:Lsun/pixel
+   *        4:tau
+   * If multiple units are specified for a single set of image parameters (e.g. "0 1 2") then the unit name is added
+   * automatically at the end of the given filename, but before the filename extension if it exists. Otherwise if a
+   * single unit is specified then the filename is unchanged.
+
+   * A single image unit can also be specified for each image using img[].unit as in previous LIME versions. Note that
+   * only img[].units or img[].unit should be set for each image.
+  */
+//  img[i].unit                   = 0;
+  img[i].units                  = "0 1 2";
+  img[i].filename               = "image0";        // Output filename
 }
 
 /******************************************************************************/

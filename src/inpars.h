@@ -35,6 +35,7 @@ typedef struct {
   double imgres;
   int pxls;
   int unit;
+  char *units;
   double freq,bandwidth;
   char *filename;
   double source_vel;

@@ -80,6 +80,7 @@ freeImgInfo(const int nImages, imageInfo *img){
     }
     free(img[i].pixel);
     free(img[i].filename);
+    free(img[i].imgunits);
   }
   free(img);
 }
