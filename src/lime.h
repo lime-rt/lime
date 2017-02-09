@@ -152,9 +152,9 @@ typedef struct {
   char *restart;
   char *dust;
   int sampling,lte_only,init_lte,antialias,polarization,nThreads,numDims;
-  int nLineImages, nContImages;
+  int nLineImages,nContImages;
   char **moldatfile;
-  _Bool writeGridAtStage[NUM_GRID_STAGES],resetRNG;
+  _Bool writeGridAtStage[NUM_GRID_STAGES],resetRNG,doInterpolateVels;
   char *gridInFile,**gridOutFiles;
   int dataFlags,nSolveIters;
   double (*gridDensMaxLoc)[DIM], *gridDensMaxValues;

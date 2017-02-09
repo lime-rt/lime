@@ -32,6 +32,7 @@ struct gridInfoType{
 
 int	readGrid(char*, const int, struct gridInfoType*, struct keywordType*, const int, struct grid**, char***, int*, int*);
 int	writeGrid(char*, const int, struct gridInfoType, struct keywordType*, const int, struct grid*, char**, const int);
+int	countDensityCols(char*, const int, int*);
 
 #endif /* GRIDIO_H */
 

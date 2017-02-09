@@ -37,6 +37,7 @@ void	writeGridExtToFits(fitsfile*, struct gridInfoType, struct grid*, unsigned i
 void	writeLinksExtToFits(fitsfile*, struct gridInfoType, struct linkType*);
 void	writeNnIndicesExtToFits(fitsfile*, struct gridInfoType, struct linkType**);//, struct linkType*);
 void	writePopsExtToFits(fitsfile*, struct gridInfoType, const unsigned short, struct grid*);
+int	countDensityColsFITS(char *inFileName);
 
 #endif /* GRID2FITS_H */
 

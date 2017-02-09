@@ -851,5 +851,17 @@ NOTE that gp should not be allocated before this routine is called.
   return 0;
 }
 
+/*....................................................................*/
+int
+countDensityCols(char *inFileName, const int fileFormatI, int *numDensities){
+  int status=0;
 
+  if(fileFormatI==lime_FITS){
+    *numDensities = countDensityColsFITS(inFileName);
+  }else{
+    status = 1;
+  }
+
+  return status;
+}
 

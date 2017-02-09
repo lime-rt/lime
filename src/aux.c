@@ -14,6 +14,8 @@ TODO:
 #include <gsl/gsl_statistics.h>
 #include <float.h>
 
+#include "gridio.h" //**** should not need this - fix up these gridio macros!
+
 
 /*....................................................................*/
 double
@@ -77,7 +79,7 @@ parseInput(const inputPars inpar, image *inimg, const int nImages, configInfo *p
 The parameters visible to the user have now been strictly confined to members of the structs 'inputPars' and 'image', both of which are defined in inpars.h. There are however further internally-set values which is is convenient to bundle together with the user-set ones. At present we have a fairly clunky arrangement in which the user-set values are copied member-by-member from the user-dedicated structs to the generic internal structs 'configInfo' and 'imageInfo'. This is done in the present function, along with some checks and other initialization.
   */
 
-  int i,j,id;
+  int i,j,id,status=0;
   double BB[3],normBSquared,dens[MAX_N_COLL_PART],r[DIM];
   double dummyVel[DIM];
   FILE *fp;
@@ -177,7 +179,7 @@ The parameters visible to the user have now been strictly confined to members of
 
   /* Copy over the collision-partner pointers:
   */
-  par->collPartIds  = malloc(sizeof(int)*MAX_N_COLL_PART);
+  par->collPartIds  = malloc(sizeof(int   )*MAX_N_COLL_PART);
   for(i=0;i<MAX_N_COLL_PART;i++) par->collPartIds[i] = inpar.collPartIds[i];
   par->nMolWeights  = malloc(sizeof(double)*MAX_N_COLL_PART);
   for(i=0;i<MAX_N_COLL_PART;i++) par->nMolWeights[i] = inpar.nMolWeights[i];
@@ -199,17 +201,33 @@ The parameters visible to the user have now been strictly confined to members of
   /* Calculate par->numDensities.
   */
   if(!(par->doPregrid || par->restart)){ /* These switches cause par->numDensities to be set in routines they call. */
-    /* Find out how many density functions we have (which sets par->numDensities).
-    */
-    for(i=0;i<MAX_N_COLL_PART;i++) dens[i] = -1.0;
-    density(0.0,0.0,0.0,dens); /* Note that the example density function in LIME-1.5 generated a singularity at r==0! Such uglinesses should not be encouraged. I've fixed it now, thus I can use 0s here in (relative) safety. */
-    i = 0;
-    while(i<MAX_N_COLL_PART && dens[i]>=0) i++;
-    par->numDensities = i;
+    par->numDensities = 0; /* default. */
+    if(par->gridInFile!=NULL){
+      status = countDensityCols(par->gridInFile, lime_FITS, &(par->numDensities));
+//*** some time fix up these macros: change lime_FITS for GRID_FILE_TYPE, defined in lime.h.
+      if (status){
+        if(!silent){
+          printf(message, "countDensityCols() status return %d", status);
+          bail_out(message);
+        }
+        exit(1);
+      }
+    }
 
     if(par->numDensities<=0){
-      if(!silent) bail_out("No density values returned.");
-      exit(1);
+      /* Find out how many density functions we have (which sets par->numDensities).
+      */
+      for(i=0;i<MAX_N_COLL_PART;i++) dens[i] = -1.0;
+      density(0.0,0.0,0.0,dens);
+      /* Testing for a singularity in the density function at the origin is now performed in readOrBuildGrid() */
+      i = 0;
+      while(i<MAX_N_COLL_PART && dens[i]>=0) i++;
+      par->numDensities = i;
+
+      if(par->numDensities<=0){
+        if(!silent) bail_out("No density values returned.");
+        exit(1);
+      }
     }
   }
 
@@ -540,17 +558,30 @@ LIME provides two different schemes of {R_1, R_2, R_3}: {PA, phi, theta} and {PA
 
   par->nLineImages = 0;
   par->nContImages = 0;
+  par->doInterpolateVels = 0;
   for(i=0;i<nImages;i++){
     if((*img)[i].doline)
       par->nLineImages++;
     else
       par->nContImages++;
+
+    if((*img)[i].doInterpolateVels)
+      par->doInterpolateVels = 1;
   }
 
-  /* Check that the user has supplied the velocity function (needed in raytracing unless par->doPregrid). Note that the other previously mandatory functions (density, abundance, doppler and temperature) may not be necessary if the user reads in the appropriate values from a file. This is tested at the appropriate place in readOrBuildGrid().
+  /*
+In readOrBuildGrid() we check to see if values of all five of the 'mandatory' bit of information (velocity, density, abundance, doppler and temperature) have been supplied by the user in par->gridInFile. If not, then the relevant values are obtained from user-supplied functions. If any of the necessary functions are not supplied, Lime will then fail with an error.
+
+Eventually I hope readOrBuildGrid() will be unilaterally called within LIME; if we ever reach that state, the following lines may be removed, because the proper place for all these tests will then be within that function. At present however LIME may still avoid calling readOrBuildGrid() in two different ways. Even if this occurs however we still may need to access the velocity function within raytrace(). Thus we have this separate test.
   */
-  if(par->nLineImages>0 && (!par->doPregrid || par->traceRayAlgorithm==1))
-    velocity(0.0,0.0,0.0, dummyVel);
+  if(par->nLineImages>0\
+  && ((par->traceRayAlgorithm==0 && !par->doPregrid)\
+  ||  (par->traceRayAlgorithm==1 && !par->doInterpolateVels))){
+    velocity(0.0,0.0,0.0,dummyVel);
+    if(isinf(dummyVel[0])||isinf(dummyVel[1])||isinf(dummyVel[2])){
+      if(!silent) warning("You have a singularity at the origin in your velocity() function.");
+    }
+  }
 
   /* Allocate moldata array.
   */
