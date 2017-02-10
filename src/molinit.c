@@ -16,7 +16,7 @@ char *collpartnames[] = {"H2","p-H2","o-H2","electrons","H","He","H+"}; /* defin
 /*....................................................................*/
 void molInit(configInfo *par, molData *md){
   int *allUniqueCollPartIds=NULL;
-  int numUniqueCollPartsFound,i,j,jStart,numActiveCollParts;
+  int numUniqueCollPartsFound,i,j,k,jStart,numActiveCollParts;
   char partstr[90];
 
   readMolData(par, md, &allUniqueCollPartIds, &numUniqueCollPartsFound);
@@ -28,18 +28,20 @@ void molInit(configInfo *par, molData *md){
     /* Print out collision partner information.
     */
     for(i=0;i<par->nSpecies;i++){
-      if(par->collPartNames==NULL){
+      if(par->collPartNames[0]==NULL){
         /* Interpret collPartId-1 as an index to the list collpartnames. */
         for(j=0;j<md[i].npart;j++){
+          k = md[i].part[j].collPartId-1;
           if(md[i].part[j].densityIndex>=0)
-            copyInparStr(collpartnames[md[i].part[j].collPartId-1], &(md[i].part[j].name));
+            copyInparStr(collpartnames[k], &(md[i].part[j].name));
         }
 
       }else{
         /* Interpret collPartId-1 as an index to par->collPartNames. */
         for(j=0;j<md[i].npart;j++){
+          k = md[i].part[j].collPartId-1;
           if(md[i].part[j].densityIndex>=0)
-            copyInparStr(par->collPartNames[md[i].part[j].collPartId-1], &(md[i].part[j].name));
+            copyInparStr(par->collPartNames[k], &(md[i].part[j].name));
         }
       }
 
@@ -53,8 +55,9 @@ void molInit(configInfo *par, molData *md){
           if(md[i].part[j].densityIndex<0)
         continue;
 
+          k = md[i].part[j].collPartId-1;
           strcat( partstr, ", ");
-          strcat( partstr, collpartnames[md[i].part[j].collPartId-1]);
+          strcat( partstr, collpartnames[k]);
           numActiveCollParts++;
         }
 
@@ -111,7 +114,7 @@ void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds\
   */
   int i,j,k,ilev,idummy,iline,numPartsAcceptedThisMol,ipart,collPartId,itemp,itrans;
   double dummy;
-  _Bool cpFound,previousCpFound;
+  _Bool cpWasFoundInUserList,previousCpFound;
   const int sizeI=200;
   char string[sizeI],message[80];
   FILE *fp;
@@ -207,13 +210,13 @@ void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds\
 
       /* Look for this CP in par->collPartIds
       */
-      cpFound = 0;
+      cpWasFoundInUserList = 0;
       if(par->collPartIds!=NULL){
         for(j=0;j<par->numDensities;j++)
-          if(collPartId==par->collPartIds[j]) cpFound = 1;
+          if(collPartId==par->collPartIds[j]) cpWasFoundInUserList = 1;
       }
 
-      if(par->collPartIds==NULL || cpFound){
+      if(par->collPartIds==NULL || cpWasFoundInUserList){
         /* Check to see if we have encountered collPartId already in a previous moldata file. If not, add it to the list of unique coll parts.
         */
         j = 0;

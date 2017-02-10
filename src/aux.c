@@ -712,8 +712,8 @@ Re the interaction between par->collPartIds and par->collPartNames: there are th
 		* If the user supplies both par->collPartIds and par->collPartNames, the values in par->collPartIds must (after subtraction of 1) be the indices of that collision partner in par->collPartNames, as well of course as matching the value the user has supplied in the moldatfiles.
   */
   if(numUserSetCPNames>0){
-    if(numUserSetCPNames != par->numDensities){
-      if(!silent) bail_out("There must be 1 value of par.collPartNames for each density() return.");
+    if(numUserSetCPNames <= par->numDensities){
+      if(!silent) bail_out("There must be at least 1 value of par.collPartNames for each density() return.");
       exit(1);
     }
 
