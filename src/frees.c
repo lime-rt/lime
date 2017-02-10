@@ -16,6 +16,11 @@ freeConfigInfo(configInfo par){
   free(par.nMolWeights);
   free(par.dustWeights);
   free(par.collPartIds);
+  if(par.collPartNames!= NULL){
+    for(i=0;i<MAX_N_COLL_PART;i++)
+      free(par.collPartNames[i]);
+    free(par.collPartNames);
+  }
 
   free(par.outputfile);
   free(par.binoutputfile);
@@ -29,6 +34,18 @@ freeConfigInfo(configInfo par){
     free(par.moldatfile);
   }
 
+  free(par.gridOutFiles);
+  free(par.gridDensMaxValues);
+  free(par.gridDensMaxLoc);
+}
+
+void
+freeInputPars(inputPars par){
+  free(par.collPartIds);
+  free(par.nMolWeights);
+  free(par.dustWeights);
+  free(par.moldatfile);
+  free(par.collPartNames);
   free(par.gridOutFiles);
   free(par.gridDensMaxValues);
   free(par.gridDensMaxLoc);

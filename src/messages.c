@@ -315,7 +315,7 @@ collpartmesg(char molecule[80], int partners){//, int specnumber){
 }
 
 void
-collpartmesg2(char name[10], int partner){
+collpartmesg2(char name[10]){
 #ifdef NO_NCURSES
   printf("      %s\n ", name);
 #else

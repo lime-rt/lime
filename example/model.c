@@ -136,7 +136,7 @@ density(double x, double y, double z, double *density){
    * Define variable for radial coordinate
    */
   double r, rToUse;
-  const double rMin = 0.1*AU; /* This cutoff should be chosen smaller than par->minScale but greater than zero (to avoid a singularity at the origin). */
+  const double rMin = 0.5*AU; /* This cutoff should be chosen smaller than par->minScale but greater than zero (to avoid a singularity at the origin). */
 
   /*
    * Calculate radial distance from origin

@@ -15,14 +15,63 @@ char *collpartnames[] = {"H2","p-H2","o-H2","electrons","H","He","H+"}; /* defin
 
 /*....................................................................*/
 void molInit(configInfo *par, molData *md){
-  int *allCollPartIds=NULL;
-  int numCollParts;
+  int *allUniqueCollPartIds=NULL;
+  int numUniqueCollPartsFound,i,j,jStart,numActiveCollParts;
+  char partstr[90];
 
-  readMolData(par, md, &allCollPartIds, &numCollParts);
-  setUpDensityAux(par, allCollPartIds, numCollParts);
-  free(allCollPartIds);
-  if(!par->lte_only)
+  readMolData(par, md, &allUniqueCollPartIds, &numUniqueCollPartsFound);
+  setUpDensityAux(par, allUniqueCollPartIds, numUniqueCollPartsFound);
+  free(allUniqueCollPartIds);
+  if(!par->lte_only){
     assignMolCollPartsToDensities(par, md);
+
+    /* Print out collision partner information.
+    */
+    for(i=0;i<par->nSpecies;i++){
+      if(par->collPartNames==NULL){
+        /* Interpret collPartId-1 as an index to the list collpartnames. */
+        for(j=0;j<md[i].npart;j++){
+          if(md[i].part[j].densityIndex>=0)
+            copyInparStr(collpartnames[md[i].part[j].collPartId-1], &(md[i].part[j].name));
+        }
+
+      }else{
+        /* Interpret collPartId-1 as an index to par->collPartNames. */
+        for(j=0;j<md[i].npart;j++){
+          if(md[i].part[j].densityIndex>=0)
+            copyInparStr(par->collPartNames[md[i].part[j].collPartId-1], &(md[i].part[j].name));
+        }
+      }
+
+      jStart = 0;
+      while(md[i].part[jStart].densityIndex<0) jStart++;
+
+      if(jStart<md[i].npart){
+        numActiveCollParts = 1;
+        strcpy(partstr, md[i].part[jStart].name);
+        for(j=jStart+1;j<md[i].npart;j++){
+          if(md[i].part[j].densityIndex<0)
+        continue;
+
+          strcat( partstr, ", ");
+          strcat( partstr, collpartnames[md[i].part[j].collPartId-1]);
+          numActiveCollParts++;
+        }
+
+        if(!silent) {
+          collpartmesg(md[i].molName, numActiveCollParts);
+          collpartmesg2(partstr);
+          collpartmesg3(par->numDensities, 0);//**************** was the 2nd arg used in lime-1.5??
+        }
+      }else{
+        if(!silent) {
+          collpartmesg(md[i].molName, 0);
+          collpartmesg3(par->numDensities, 0);//**************** was the 2nd arg used in lime-1.5??
+        }
+      }
+    } /* end loop over molecule index i */
+  }
+
   calcMolCMBs(par, md);
 }
 
@@ -56,18 +105,19 @@ double planckfunc(const double freq, const double temp){
 }
 
 /*....................................................................*/
-void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *numCollPartsFound){
+void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds\
+  , int *numUniqueCollPartsFound){
   /* NOTE! allUniqueCollPartIds is malloc'd in the present function, but not freed. The calling program must free it elsewhere.
   */
   int i,j,k,ilev,idummy,iline,numPartsAcceptedThisMol,ipart,collPartId,itemp,itrans;
   double dummy;
   _Bool cpFound,previousCpFound;
   const int sizeI=200;
-  char string[sizeI], partstr[90];
+  char string[sizeI],message[80];
   FILE *fp;
 
   *allUniqueCollPartIds = malloc(sizeof(**allUniqueCollPartIds)*MAX_N_COLL_PART);
-  *numCollPartsFound = 0;
+  *numUniqueCollPartsFound = 0;
 
   for(i=0;i<par->nSpecies;i++){
     if((fp=fopen(par->moldatfile[i], "r"))==NULL) {
@@ -147,7 +197,10 @@ void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *
         if(string[sizeof(string)-1]=='\0' && string[sizeof(string)-2]!='\n'){
           /* The presence now of a final \0 means the comment string was either just long enough for the buffer, or too long; the absence of \n in the 2nd-last place means it was too long.
           */
-          if(!silent) bail_out("Collision-partner comment line is too long.");
+          if(!silent){
+            sprintf(message, "Collision-partner comment line must be shorter than %d characters.", sizeI-1);
+            bail_out(message);
+          }
           exit(1);
         }
       }
@@ -165,24 +218,28 @@ void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *
         */
         j = 0;
         previousCpFound = 0;
-        while(j<(*numCollPartsFound) && !previousCpFound){
+        while(j<(*numUniqueCollPartsFound) && !previousCpFound){
           if(collPartId==(*allUniqueCollPartIds)[j])
             previousCpFound = 1;
           j++;
         }
 
         if(!previousCpFound){
-          if((*numCollPartsFound)>=MAX_N_COLL_PART){
-            if(!silent) bail_out("Unrecognized collision partner ID found.");
+          if((*numUniqueCollPartsFound)>=MAX_N_COLL_PART){
+            if(!silent){
+              sprintf(message, "More than %d unique collision partners found in the moldata files.", MAX_N_COLL_PART);
+              bail_out(message);
+            }
             exit(1);
           }
 
-          (*allUniqueCollPartIds)[*numCollPartsFound] = collPartId;
-          (*numCollPartsFound)++;
+          (*allUniqueCollPartIds)[*numUniqueCollPartsFound] = collPartId;
+          (*numUniqueCollPartsFound)++;
         }
 
         md[i].part[k].collPartId = collPartId;
         md[i].part[k].densityIndex = -1; /* Default, signals that there is no density function for this CP. */
+        md[i].part[k].name = NULL; /* If it turns out to have a matching density function we will store the name. */
 
         if(par->lte_only){
           readDummyCollPart(fp, sizeI);
@@ -237,23 +294,10 @@ void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *
       md[i].npart = numPartsAcceptedThisMol;
     }
 
-    /* Print out collision partner information.
-    */
-    strcpy(partstr, collpartnames[md[i].part[0].collPartId-1]);
-    for(ipart=1;ipart<md[i].npart;ipart++){
-      strcat( partstr, ", ");
-      strcat( partstr, collpartnames[md[i].part[ipart].collPartId-1]);
-    }
-    if(!silent) {
-      collpartmesg(md[i].molName, md[i].npart);
-      collpartmesg2(partstr, ipart);
-      collpartmesg3(par->numDensities, 0);
-    }
-
     fclose(fp);
   } /* end loop over molecule index i */
 
-  if((*numCollPartsFound)<=0){
+  if((*numUniqueCollPartsFound)<=0){
     if(!silent) bail_out("No recognized collision partners read from file.");
     exit(1);
   }
@@ -262,7 +306,7 @@ void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *
 /*....................................................................*/
 void setUpDensityAux(configInfo *par, int *allUniqueCollPartIds, const int numUniqueCollParts){
   /*
-The present function, which needs to be called only if we have to calculate the energy level populations at the grid points, deals with the user-settable vectors par->collPartIds and par->nMolWeights. The former of these is used to associate density values with collision-partner species, and the latter is used in converting, for each radiating species, its abundance to a number density, stored respectively in the grid struct attributes abun and nmol. The function deals specifically with the case in which the user has either not set par->collPartIds or par->nMolWeights at all (which they may choose to do), or has set the incorrectly. In either case the respective parameter will have been freed and set to NULL in checkUserDensWeights(). The function tries its best to guess likely values for the parameters, in line with the algorithm used in the code before par->collPartIds and par->nMolWeights were introduced.
+The present function, which needs to be called only if we have to calculate the energy level populations at the grid points, deals with the user-settable vectors par->collPartIds and par->nMolWeights. The former of these is used to associate density values with collision-partner species, and the latter is used in converting, for each radiating species, its abundance to a number density, stored respectively in the grid struct attributes abun and nmol. The function deals specifically with the case in which the user has either not set par->collPartIds or par->nMolWeights at all (which they may choose to do), or has set them incorrectly. In either case the respective parameter will have been freed and set to NULL in checkUserDensWeights(). The function tries its best to guess likely values for the parameters, in line with the algorithm used in the code before par->collPartIds and par->nMolWeights were introduced.
   */
   int i;
 
@@ -304,6 +348,7 @@ To preserve backward compatibility I am going to try to make the same guesses as
         par->collPartIds[i] = allUniqueCollPartIds[i];
 
       if(!silent) warning("Calculating molecular density with respect to first two collision partners only.");
+//*** Huh? What if they both ==3? Don't think this warning here is valid.
 
     }else{ /* numUniqueCollParts>2 && par->numDensities<numUniqueCollParts */
       if(!silent) bail_out("More than 2 collision partners, but number of density returns doesn't match.");
