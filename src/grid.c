@@ -991,7 +991,7 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
   int i,j,k,di,si,levelI=0,status=0,numCollPartRead;
   double theta,semiradius,z,dummyScalar;
   double *outRandDensities=NULL,*dummyPointer=NULL,x[DIM];
-  double (*outRandLocations)[DIM]=NULL,dummyTemp[2],dummyVel[DIM];
+  double (*outRandLocations)[DIM]=NULL,dummyTemp[]={-1.0,-1.0},dummyVel[DIM];
   treeRandConstType rinc;
   treeRandVarType rinv;
   struct cell *dc=NULL; /* Not used at present. */
