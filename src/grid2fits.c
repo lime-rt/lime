@@ -1614,4 +1614,22 @@ long naxes[2];
   processFitsError(status);
 }
 
+/*....................................................................*/
+int
+countDensityColsFITS(char *inFileName){
+  int numDensities;
+  fitsfile *fptr=NULL;
+  int status=0;
+
+  fptr = openFITSFileForRead(inFileName);
+
+  fits_movnam_hdu(fptr, BINARY_TBL, "GRID", 0, &status);
+  processFitsError(status);
+
+  numDensities = countColsBasePlusInt(fptr, "DENSITY");
+
+  closeFITSFile(fptr);
+
+  return numDensities;
+}
 

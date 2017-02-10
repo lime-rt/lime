@@ -615,8 +615,8 @@ and filled as
   const int numFaces=numDims+1, maxNumEntryFaces=100;
   int numEntryFaces,fi,entryFis[maxNumEntryFaces],i,status;
   faceType face;
-  unsigned long dci, entryDcis[maxNumEntryFaces];
-  intersectType intcpt, entryIntcpts[maxNumEntryFaces];
+  unsigned long dci,entryDcis[maxNumEntryFaces];
+  intersectType intcpt,entryIntcpts[maxNumEntryFaces];
   _Bool *cellVisited=NULL;
 
   /* Choose a set of starting faces by testing all the 'external' faces of cells which have some. */

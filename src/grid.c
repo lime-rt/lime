@@ -989,9 +989,9 @@ void
 readOrBuildGrid(configInfo *par, struct grid **gp){
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
   int i,j,k,di,si,levelI=0,status=0,numCollPartRead;
-  double theta,semiradius,z;
-  double *outRandDensities=NULL;
-  double (*outRandLocations)[DIM]=NULL;
+  double theta,semiradius,z,dummyScalar;
+  double *outRandDensities=NULL,*dummyPointer=NULL,x[DIM];
+  double (*outRandLocations)[DIM]=NULL,dummyTemp[2],dummyVel[DIM];
   treeRandConstType rinc;
   treeRandVarType rinv;
   struct cell *dc=NULL; /* Not used at present. */
@@ -999,8 +999,8 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
   struct gridInfoType gridInfoRead;
   char **collPartNames;
   char message[80];
-  double x[DIM];
   treeType tree;
+  _Bool notWarned;
 
   par->dataFlags = 0;
   if(par->gridInFile!=NULL){
@@ -1089,6 +1089,54 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
 */
   } /* End of read grid file. Whether and what we subsequently calculate will depend on the value of par->dataStageI returned. */
 
+  /* Check for the existence of any mandatory functions we have not supplied grid values for. (Test for singularities at the origin at the same time.)
+  */
+  if(!allBitsSet(par->dataFlags, DS_mask_density)){
+    dummyPointer = malloc(sizeof(*dummyPointer)*par->numDensities);
+    density(0.0,0.0,0.0,dummyPointer);
+    notWarned = 1;
+    for(i=0;i<par->numDensities;i++){
+      if(isinf(dummyPointer[i]) && notWarned){
+        if(!silent) warning("You have a singularity at the origin in your density() function.");
+        notWarned = 0;
+      }
+    }
+    free(dummyPointer);
+  }
+
+  if(!allBitsSet(par->dataFlags, DS_mask_temperatures)){
+    temperature(0.0,0.0,0.0,dummyTemp);
+    if(isinf(dummyTemp[0])||isinf(dummyTemp[1]))
+      if(!silent) warning("You have a singularity at the origin in your temperature() function.");
+  }
+
+  if(!allBitsSet(par->dataFlags, DS_mask_abundance) && par->nLineImages>0){
+    dummyPointer = malloc(sizeof(*dummyPointer)*par->nSpecies);
+    abundance(0.0,0.0,0.0,dummyPointer);
+    notWarned = 1;
+    for(i=0;i<par->nSpecies;i++){
+      if(isinf(dummyPointer[i]) && notWarned){
+        if(!silent) warning("You have a singularity at the origin in your abundance() function.");
+        notWarned = 0;
+      }
+    }
+    free(dummyPointer);
+  }
+
+  if(!allBitsSet(par->dataFlags, DS_mask_turb_doppler) && par->nLineImages>0){
+    doppler(0.0,0.0,0.0,&dummyScalar);	
+    if(isinf(dummyScalar))
+      if(!silent) warning("You have a singularity at the origin in your doppler() function.");
+  }
+
+  if(!allBitsSet(par->dataFlags, DS_mask_velocity) && par->nLineImages>0){
+    velocity(0.0,0.0,0.0,dummyVel);
+    if(isinf(dummyVel[0])||isinf(dummyVel[1])||isinf(dummyVel[2]))
+      if(!silent) warning("You have a singularity at the origin in your velocity() function.");
+  }
+
+  /* Generate the grid point locations.
+  */
   if(!anyBitSet(par->dataFlags, DS_mask_x)){ /* This should only happen if we did not read a file. Generate the grid point locations. */
     mallocAndSetDefaultGrid(gp, (unsigned int)par->ncell);
 
@@ -1218,17 +1266,6 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
   if(onlyBitsSet(par->dataFlags, DS_mask_2)) /* Only happens if (i) we read no file and have constructed this data within LIME, or (ii) we read a file at dataStageI==2. */
     writeGridIfRequired(par, *gp, NULL, lime_FITS);
 
-  if(!allBitsSet(par->dataFlags, DS_mask_velocity)){
-    for(i=0;i<par->pIntensity;i++)
-      velocity((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],(*gp)[i].vel);
-
-    /* Set velocity values also for sink points (otherwise Delaunay ray-tracing has problems) */
-    for(i=par->pIntensity;i<par->ncell;i++)
-      velocity((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],(*gp)[i].vel);
-
-    par->dataFlags |= DS_mask_velocity;
-  }
-
   if(!allBitsSet(par->dataFlags, DS_mask_density)){
     for(i=0;i<par->ncell; i++)
       (*gp)[i].dens = malloc(sizeof(double)*par->numDensities);
@@ -1244,7 +1281,18 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
 
   checkGridDensities(par, *gp);
 
-  if(!allBitsSet(par->dataFlags, DS_mask_abundance)){
+  if(!allBitsSet(par->dataFlags, DS_mask_temperatures)){
+    for(i=0;i<par->pIntensity;i++)
+      temperature((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],(*gp)[i].t);
+    for(i=par->pIntensity;i<par->ncell;i++){
+      (*gp)[i].t[0]=par->tcmb;
+      (*gp)[i].t[1]=par->tcmb;
+    }
+
+    par->dataFlags |= DS_mask_temperatures;
+  }
+
+  if(!allBitsSet(par->dataFlags, DS_mask_abundance) && par->nLineImages>0){
     for(i=0;i<par->ncell; i++)
       (*gp)[i].abun = malloc(sizeof(double)*par->nSpecies);
     for(i=0;i<par->pIntensity;i++)
@@ -1257,7 +1305,7 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
     par->dataFlags |= DS_mask_abundance;
   }
 
-  if(!allBitsSet(par->dataFlags, DS_mask_turb_doppler)){
+  if(!allBitsSet(par->dataFlags, DS_mask_turb_doppler) && par->nLineImages>0){
     for(i=0;i<par->pIntensity;i++)
       doppler((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],&(*gp)[i].dopb_turb);	
     for(i=par->pIntensity;i<par->ncell;i++)
@@ -1266,15 +1314,15 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
     par->dataFlags |= DS_mask_turb_doppler;
   }
 
-  if(!allBitsSet(par->dataFlags, DS_mask_temperatures)){
+  if(!allBitsSet(par->dataFlags, DS_mask_velocity) && par->nLineImages>0){
     for(i=0;i<par->pIntensity;i++)
-      temperature((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],(*gp)[i].t);
-    for(i=par->pIntensity;i<par->ncell;i++){
-      (*gp)[i].t[0]=par->tcmb;
-      (*gp)[i].t[1]=par->tcmb;
-    }
+      velocity((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],(*gp)[i].vel);
 
-    par->dataFlags |= DS_mask_temperatures;
+    /* Set velocity values also for sink points (otherwise Delaunay ray-tracing has problems) */
+    for(i=par->pIntensity;i<par->ncell;i++)
+      velocity((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],(*gp)[i].vel);
+
+    par->dataFlags |= DS_mask_velocity;
   }
 
   if(!allBitsSet(par->dataFlags, DS_mask_magfield)){

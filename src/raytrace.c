@@ -742,7 +742,7 @@ We're going to calculate the line amplitude increment per segment for the 2nd-or
       projVelOld = doSegmentInterpScalar(projRayVels, 0);
       projVel2ndDeriv = (projRayVels[0] + projRayVels[1] - 2.0*projRayVels[2])*4.0; /* The times 4 is actually a divide by deltaX^2, because in this case deltaX is nominally 0.5, i.e. half-way across the path through the cell. */
       projVelOffset = -projVel2ndDeriv*oneOnNumSegments*oneOnNumSegments/6.0;
-    } /* end if(img[im].doline) */
+    } /* end if(img[im].doline) && img[im].doInterpolateVels */
 
     /* At this point we have interpolated all the values of interest to both the entry and exit points of the cell. Now we break the path between entry and exit into several segments and calculate all these values at the midpoint of each segment.
 
