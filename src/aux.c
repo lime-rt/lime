@@ -18,6 +18,20 @@ TODO:
 
 
 /*....................................................................*/
+void
+reportInfsAtOrigin(const int numElements, const double *values, const char *funcName){
+  int i;
+  char message[80];
+
+  for(i=0;i<numElements;i++){
+    if(isinf(values[i])){
+      sprintf(message, "You have a singularity at the origin in return %d of your %s() function.", i, funcName);
+      warning(message);
+    }
+  }
+}
+
+/*....................................................................*/
 double
 geterf(const double x0, const double x1) {
   /* table lookup erf thingy */
@@ -236,8 +250,12 @@ The parameters visible to the user have now been strictly confined to members of
   /* See if we can deduce a global maximum for the grid point number density function. Set the starting value from the unnormalized number density at the origin of coordinates:
   */
   par->gridDensGlobalMax = 1.0;
-  for(i=0;i<DIM;i++) r[i] = par->minScale;//****0.0;
+  for(i=0;i<DIM;i++) r[i] = 0.0;
   par->gridDensGlobalMax = gridDensity(par, r);
+  if(isinf(par->gridDensGlobalMax)){
+    if(!silent) bail_out("There is a singularity at the origin of the gridDensity() function.");
+    exit(1);
+  }
 
   /* Test now any maxima the user has provided:
   */
@@ -712,7 +730,7 @@ Re the interaction between par->collPartIds and par->collPartNames: there are th
 		* If the user supplies both par->collPartIds and par->collPartNames, the values in par->collPartIds must (after subtraction of 1) be the indices of that collision partner in par->collPartNames, as well of course as matching the value the user has supplied in the moldatfiles.
   */
   if(numUserSetCPNames>0){
-    if(numUserSetCPNames <= par->numDensities){
+    if(numUserSetCPNames < par->numDensities){
       if(!silent) bail_out("There must be at least 1 value of par.collPartNames for each density() return.");
       exit(1);
     }
@@ -799,6 +817,7 @@ invSqrt(float x){
 }
 
 void checkGridDensities(configInfo *par, struct grid *gp){
+  /* This checks that none of the density samples is too small. */
   int i;
   static _Bool warningAlreadyIssued=0;
   char errStr[80];

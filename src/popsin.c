@@ -63,43 +63,25 @@ popsin(configInfo *par, struct grid **gp, molData **md, int *popsdone){
     fread(&dummy, sizeof(double),   1,fp);
   }
 
-  *gp=malloc(sizeof(struct grid)*par->ncell);
-
   for(i=0;i<par->ncell;i++){
-    (*gp)[i].v1 = NULL;
-    (*gp)[i].v2 = NULL;
-    (*gp)[i].v3 = NULL;
-    (*gp)[i].dens = NULL;
-    (*gp)[i].abun = NULL;
-    (*gp)[i].dir = NULL;
-    (*gp)[i].neigh = NULL;
-    (*gp)[i].w = NULL;
-    (*gp)[i].ds = NULL;
     fread(&(*gp)[i].id, sizeof (*gp)[i].id, 1, fp);
     fread(&(*gp)[i].x, sizeof (*gp)[i].x, 1, fp);
     fread(&(*gp)[i].vel, sizeof (*gp)[i].vel, 1, fp);
     fread(&(*gp)[i].sink, sizeof (*gp)[i].sink, 1, fp);
-    (*gp)[i].mol=malloc(par->nSpecies*sizeof(struct populations));
     for(j=0;j<par->nSpecies;j++)
       fread(&(*gp)[i].mol[j].nmol, sizeof(double), 1, fp);
     fread(&(*gp)[i].dopb_turb, sizeof (*gp)[i].dopb_turb, 1, fp);
     for(j=0;j<par->nSpecies;j++){
       (*gp)[i].mol[j].pops=malloc(sizeof(double)*(*md)[j].nlev);
       for(k=0;k<(*md)[j].nlev;k++) fread(&(*gp)[i].mol[j].pops[k], sizeof(double), 1, fp);
-      (*gp)[i].mol[j].cont = NULL;
       for(k=0;k<(*md)[j].nline;k++) fread(&dummy, sizeof(double), 1, fp);
       for(k=0;k<(*md)[j].nline;k++) fread(&dummy, sizeof(double), 1, fp);
       fread(&(*gp)[i].mol[j].dopb,sizeof(double), 1, fp);
       fread(&(*gp)[i].mol[j].binv,sizeof(double), 1, fp);
-      (*gp)[i].mol[j].partner=NULL;
     }
     fread(&dummy, sizeof(double), 1, fp);
     fread(&dummy, sizeof(double), 1, fp);
     fread(&dummy, sizeof(double), 1, fp);
-
-    (*gp)[i].B[0] = 0.0;
-    (*gp)[i].B[1] = 0.0;
-    (*gp)[i].B[2] = 0.0;
   }
   fclose(fp);
 

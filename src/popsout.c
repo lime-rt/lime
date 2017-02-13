@@ -109,7 +109,7 @@ binpopsout(configInfo *par, struct grid *gp, molData *md){
     }
     fwrite(&gp[i].dens[0], sizeof(double), 1, fp);
     fwrite(&gp[i].t[0],    sizeof(double), 1, fp);
-    fwrite(&gp[i].abun[0], sizeof(double), 1, fp);
+    fwrite(&gp[i].mol[0].abun, sizeof(double), 1, fp);
   }
 
   fclose(fp);

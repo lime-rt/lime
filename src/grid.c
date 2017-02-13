@@ -14,27 +14,35 @@ TODO:
 #include "gridio.h"
 
 /*....................................................................*/
-void mallocAndSetDefaultGrid(struct grid **gp, const unsigned int numPoints){
-  unsigned int i;
+void mallocAndSetDefaultGrid(struct grid **gp, const size_t numPoints, const size_t numSpecies){
+  size_t i,j;
 
-  *gp = malloc(sizeof(struct grid)*numPoints);
+  *gp = malloc(sizeof(**gp)*numPoints);
   for(i=0;i<numPoints; i++){
     (*gp)[i].v1 = NULL;
     (*gp)[i].v2 = NULL;
     (*gp)[i].v3 = NULL;
-    (*gp)[i].mol = NULL;
     (*gp)[i].dir = NULL;
     (*gp)[i].neigh = NULL;
     (*gp)[i].w = NULL;
     (*gp)[i].ds = NULL;
     (*gp)[i].dens=NULL;
-    (*gp)[i].abun=NULL;
-    (*gp)[i].t[0]=-1;
-    (*gp)[i].t[1]=-1;
-    (*gp)[i].B[0]=-1;
-    (*gp)[i].B[1]=-1;
-    (*gp)[i].B[2]=-1;
+    (*gp)[i].t[0]=-1.0;
+    (*gp)[i].t[1]=-1.0;
+    (*gp)[i].B[0]=0.0;
+    (*gp)[i].B[1]=0.0;
+    (*gp)[i].B[2]=0.0;
     (*gp)[i].conv=0;
+
+    if(numSpecies > 0){
+      (*gp)[i].mol = malloc(sizeof(*(*gp)[i].mol)*numSpecies);
+      for(j=0;j<numSpecies;j++){
+        (*gp)[i].mol[j].pops    = NULL;
+        (*gp)[i].mol[j].partner = NULL;
+        (*gp)[i].mol[j].cont    = NULL;
+      }
+    }else
+      (*gp)[i].mol = NULL;
   }
 }
 
@@ -67,15 +75,15 @@ void calcGridMolDoppler(configInfo *par, molData *md, struct grid *gp){
 }
 
 /*....................................................................*/
-void calcGridMolDensities(configInfo *par, struct grid *gp){
+void calcGridMolDensities(configInfo *par, struct grid **gp){
   int id,ispec,i;
 
   for(id=0;id<par->ncell;id++){
     for(ispec=0;ispec<par->nSpecies;ispec++){
-      gp[id].mol[ispec].nmol = 0.0;
+      (*gp)[id].mol[ispec].nmol = 0.0;
       for(i=0;i<par->numDensities;i++)
-        gp[id].mol[ispec].nmol += gp[id].abun[ispec]*gp[id].dens[i]\
-                                  *par->nMolWeights[i];
+        (*gp)[id].mol[ispec].nmol += (*gp)[id].mol[ispec].abun*(*gp)[id].dens[i]\
+                                    *par->nMolWeights[i];
     }
   }
 }
@@ -625,7 +633,7 @@ write_VTK_unstructured_Points(configInfo *par, struct grid *g){
   fprintf(fp,"LOOKUP_TABLE default\n");
   if(par->nSpecies>0){
     for(i=0;i<par->ncell;i++){
-      fprintf(fp, "%e\n", g[i].abun[0]*g[i].dens[0]);
+      fprintf(fp, "%e\n", g[i].mol[0].abun*g[i].dens[0]);
     }
   }else{
     for(i=0;i<par->ncell;i++){
@@ -1006,7 +1014,6 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
   char **collPartNames;
   char message[80];
   treeType tree;
-  _Bool notWarned;
 
   par->dataFlags = 0;
   if(par->gridInFile!=NULL){
@@ -1100,13 +1107,7 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
   if(!allBitsSet(par->dataFlags, DS_mask_density)){
     dummyPointer = malloc(sizeof(*dummyPointer)*par->numDensities);
     density(0.0,0.0,0.0,dummyPointer);
-    notWarned = 1;
-    for(i=0;i<par->numDensities;i++){
-      if(isinf(dummyPointer[i]) && notWarned){
-        if(!silent) warning("You have a singularity at the origin in your density() function.");
-        notWarned = 0;
-      }
-    }
+    if(!silent) reportInfsAtOrigin(par->numDensities, dummyPointer, "density");
     free(dummyPointer);
   }
 
@@ -1116,15 +1117,29 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
       if(!silent) warning("You have a singularity at the origin in your temperature() function.");
   }
 
+  par->useAbun = 1; /* This will remain so if the abu values have been read from file. */
   if(!allBitsSet(par->dataFlags, DS_mask_abundance) && par->nLineImages>0){
     dummyPointer = malloc(sizeof(*dummyPointer)*par->nSpecies);
     abundance(0.0,0.0,0.0,dummyPointer);
-    notWarned = 1;
-    for(i=0;i<par->nSpecies;i++){
-      if(isinf(dummyPointer[i]) && notWarned){
-        if(!silent) warning("You have a singularity at the origin in your abundance() function.");
-        notWarned = 0;
+    if(dummyPointer[0]<0.0){ /* This is used to flag that the user has supplied no abundance() function. */
+      molNumDensity(0.0,0.0,0.0,dummyPointer);
+      if(dummyPointer[0]<0.0){ /* This is used to flag that the user has supplied no molNumDensity() function. */
+        if(!silent) bail_out("You must provide either an abundance() or a molNumDensity() function.");
+        exit(1);
       }
+
+      if(!silent) reportInfsAtOrigin(par->nSpecies, dummyPointer, "molNumDensity");
+
+      par->useAbun = 0;
+    }else{
+      if(!silent) reportInfsAtOrigin(par->nSpecies, dummyPointer, "abundance");
+
+      molNumDensity(0.0,0.0,0.0,dummyPointer);
+      if(dummyPointer[0]>=0.0){
+        if(!silent) warning("abundance() function takes precendence, molNumDensity() ignored.");
+      }
+
+      par->useAbun = 1;
     }
     free(dummyPointer);
   }
@@ -1144,7 +1159,7 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
   /* Generate the grid point locations.
   */
   if(!anyBitSet(par->dataFlags, DS_mask_x)){ /* This should only happen if we did not read a file. Generate the grid point locations. */
-    mallocAndSetDefaultGrid(gp, (unsigned int)par->ncell);
+    mallocAndSetDefaultGrid(gp, (size_t)par->ncell, (size_t)par->nSpecies);
 
     rinc.randGen = gsl_rng_alloc(ranNumGenType);	/* Random number generator */
 #ifdef TEST
@@ -1285,7 +1300,7 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
     par->dataFlags |= DS_mask_density;
   }
 
-  checkGridDensities(par, *gp);
+  checkGridDensities(par, *gp); /* Check that none of the density samples is too small. */
 
   if(!allBitsSet(par->dataFlags, DS_mask_temperatures)){
     for(i=0;i<par->pIntensity;i++)
@@ -1298,14 +1313,32 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
     par->dataFlags |= DS_mask_temperatures;
   }
 
-  if(!allBitsSet(par->dataFlags, DS_mask_abundance) && par->nLineImages>0){
-    for(i=0;i<par->ncell; i++)
-      (*gp)[i].abun = malloc(sizeof(double)*par->nSpecies);
-    for(i=0;i<par->pIntensity;i++)
-      abundance((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],(*gp)[i].abun);
-    for(i=par->pIntensity;i<par->ncell;i++){
-      for(si=0;si<par->nSpecies;si++)
-        (*gp)[i].abun[si]=0;
+  if(par->nLineImages>0){
+    if(!allBitsSet(par->dataFlags, DS_mask_abundance)){
+      /* Means we didn't read abun values from file, we have to calculate them via the user-supplied fuction. */
+      dummyPointer = malloc(sizeof(*dummyPointer)*par->nSpecies);
+      if(par->useAbun){
+        for(i=0;i<par->pIntensity;i++){
+          abundance((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],dummyPointer);
+          for(si=0;si<par->nSpecies;si++)
+            (*gp)[i].mol[si].abun = dummyPointer[si];
+        }
+        for(i=par->pIntensity;i<par->ncell;i++){
+          for(si=0;si<par->nSpecies;si++)
+            (*gp)[i].mol[si].abun = 0.0;
+        }
+      }else{
+        for(i=0;i<par->pIntensity;i++){
+          molNumDensity((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],dummyPointer);
+          for(si=0;si<par->nSpecies;si++)
+            (*gp)[i].mol[si].nmol = dummyPointer[si];
+        }
+        for(i=par->pIntensity;i<par->ncell;i++){
+          for(si=0;si<par->nSpecies;si++)
+            (*gp)[i].mol[si].nmol = 0.0;
+        }
+      }
+      free(dummyPointer);
     }
 
     par->dataFlags |= DS_mask_abundance;

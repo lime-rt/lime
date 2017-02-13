@@ -24,7 +24,7 @@ typedef struct {
   char **moldatfile,**collPartNames;
   char *gridInFile,**gridOutFiles;
   int nSolveIters;
-  double (*gridDensMaxLoc)[DIM], *gridDensMaxValues;
+  double (*gridDensMaxLoc)[DIM],*gridDensMaxValues;
   _Bool resetRNG;
 } inputPars;
 

@@ -154,7 +154,7 @@ typedef struct {
   int sampling,lte_only,init_lte,antialias,polarization,nThreads,numDims;
   int nLineImages,nContImages;
   char **moldatfile,**collPartNames;
-  _Bool writeGridAtStage[NUM_GRID_STAGES],resetRNG,doInterpolateVels;
+  _Bool writeGridAtStage[NUM_GRID_STAGES],resetRNG,doInterpolateVels,useAbun;
   char *gridInFile,**gridOutFiles;
   int dataFlags,nSolveIters;
   double (*gridDensMaxLoc)[DIM],*gridDensMaxValues;
@@ -198,7 +198,7 @@ struct continuumLine{
 
 struct populations {
   double *pops,*specNumDens;
-  double dopb, binv, nmol;
+  double dopb,binv,nmol,abun;
   struct rates *partner;
   struct continuumLine *cont;
 };
@@ -215,7 +215,7 @@ struct grid {
   int sink;
   int nphot;
   int conv;
-  double *dens,t[2],*abun, dopb_turb;
+  double *dens,t[2],dopb_turb;
   double *ds;
   struct populations *mol;
   struct continuumLine cont;
@@ -295,6 +295,7 @@ extern int silent;
 void density(double,double,double,double *);
 void temperature(double,double,double,double *);
 void abundance(double,double,double,double *);
+void molNumDensity(double,double,double,double *);
 void doppler(double,double,double, double *);
 void velocity(double,double,double,double *);
 void magfield(double,double,double,double *);
@@ -315,7 +316,7 @@ void	calcFastExpRange(const int, const int, int*, int*, int*);
 void	calcGridCollRates(configInfo*, molData*, struct grid*);
 void	calcGridContDustOpacity(configInfo*, const double, double*, double*, const int, struct grid*);
 void	calcGridLinesDustOpacity(configInfo*, molData*, double*, double*, const int, struct grid*);
-void	calcGridMolDensities(configInfo*, struct grid*);
+void	calcGridMolDensities(configInfo*, struct grid**);
 void	calcGridMolDoppler(configInfo*, molData*, struct grid*);
 void	calcGridMolSpecNumDens(configInfo*, molData*, struct grid*);
 void	calcInterpCoeffs(configInfo*, struct grid*);
@@ -362,7 +363,7 @@ void	levelPops(molData*, configInfo*, struct grid*, int*, double*, double*, cons
 void	lineBlend(molData*, configInfo*, struct blendInfo*);
 void	LTE(configInfo*, struct grid*, molData*);
 void	lteOnePoint(molData*, const int, const double, double*);
-void	mallocAndSetDefaultGrid(struct grid**, const unsigned int);
+void	mallocAndSetDefaultGrid(struct grid**, const size_t, const size_t);
 void	molInit(configInfo*, molData*);
 void	openSocket(char*);
 void	parseInput(inputPars, image*, const int, configInfo*, imageInfo**, molData**);
@@ -382,6 +383,7 @@ void	readOrBuildGrid(configInfo*, struct grid**);
 void	readUserInput(inputPars*, imageInfo**, int*, int*);
 unsigned long reorderGrid(const unsigned long, struct grid*);
 void	report(int, configInfo*, struct grid*);
+void	reportInfsAtOrigin(const int, const double*, const char*);
 void	setUpConfig(configInfo*, imageInfo**, molData**);
 void	setUpDensityAux(configInfo*, int*, const int);
 void	smooth(configInfo*, struct grid*);
