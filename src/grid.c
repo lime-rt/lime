@@ -623,8 +623,14 @@ write_VTK_unstructured_Points(configInfo *par, struct grid *g){
   }
   fprintf(fp,"SCALARS Mol_density float 1\n");
   fprintf(fp,"LOOKUP_TABLE default\n");
-  for(i=0;i<par->ncell;i++){
-    fprintf(fp, "%e\n", g[i].abun[0]*g[i].dens[0]);
+  if(par->nSpecies>0){
+    for(i=0;i<par->ncell;i++){
+      fprintf(fp, "%e\n", g[i].abun[0]*g[i].dens[0]);
+    }
+  }else{
+    for(i=0;i<par->ncell;i++){
+      fprintf(fp, "%e\n", 0.0);
+    }
   }
   fprintf(fp,"SCALARS Gas_temperature float 1\n");
   fprintf(fp,"LOOKUP_TABLE default\n");
