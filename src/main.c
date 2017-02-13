@@ -98,6 +98,12 @@ initParImg(inputPars *par, image **img)
     par->moldatfile[id]=NULL;
   }
 
+  /* Allocate initial space for (non-LAMDA) collision partner names */
+  par->collPartNames=malloc(sizeof(char *)*MAX_N_COLL_PART);
+  for(i=0;i<MAX_N_COLL_PART;i++){
+    par->collPartNames[i]=NULL;
+  }
+
   /* Allocate initial space for output fits images */
   (*img)=malloc(sizeof(**img)*MAX_NIMAGES);
   for(i=0;i<MAX_NIMAGES;i++){
@@ -292,13 +298,7 @@ int main() {
   run(par, img, nImages);
 
   free(img);
-  free(par.collPartIds);
-  free(par.nMolWeights);
-  free(par.dustWeights);
-  free(par.moldatfile);
-  free(par.gridOutFiles);
-  free(par.gridDensMaxValues);
-  free(par.gridDensMaxLoc);
+  freeInputPars(par);
 
   return 0;
 }

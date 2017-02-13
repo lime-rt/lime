@@ -623,8 +623,14 @@ write_VTK_unstructured_Points(configInfo *par, struct grid *g){
   }
   fprintf(fp,"SCALARS Mol_density float 1\n");
   fprintf(fp,"LOOKUP_TABLE default\n");
-  for(i=0;i<par->ncell;i++){
-    fprintf(fp, "%e\n", g[i].abun[0]*g[i].dens[0]);
+  if(par->nSpecies>0){
+    for(i=0;i<par->ncell;i++){
+      fprintf(fp, "%e\n", g[i].abun[0]*g[i].dens[0]);
+    }
+  }else{
+    for(i=0;i<par->ncell;i++){
+      fprintf(fp, "%e\n", 0.0);
+    }
   }
   fprintf(fp,"SCALARS Gas_temperature float 1\n");
   fprintf(fp,"LOOKUP_TABLE default\n");
@@ -991,7 +997,7 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
   int i,j,k,di,si,levelI=0,status=0,numCollPartRead;
   double theta,semiradius,z,dummyScalar;
   double *outRandDensities=NULL,*dummyPointer=NULL,x[DIM];
-  double (*outRandLocations)[DIM]=NULL,dummyTemp[2],dummyVel[DIM];
+  double (*outRandLocations)[DIM]=NULL,dummyTemp[]={-1.0,-1.0},dummyVel[DIM];
   treeRandConstType rinc;
   treeRandVarType rinv;
   struct cell *dc=NULL; /* Not used at present. */

@@ -185,6 +185,8 @@ The parameters visible to the user have now been strictly confined to members of
   for(i=0;i<MAX_N_COLL_PART;i++) par->nMolWeights[i] = inpar.nMolWeights[i];
   par->dustWeights  = malloc(sizeof(double)*MAX_N_COLL_PART);
   for(i=0;i<MAX_N_COLL_PART;i++) par->dustWeights[i] = inpar.dustWeights[i];
+  par->collPartNames = malloc(sizeof(char*)*MAX_N_COLL_PART);
+  for(i=0;i<MAX_N_COLL_PART;i++) copyInparStr(inpar.collPartNames[i], &(par->collPartNames[i]));
 
   /* Copy over the grid-density-maximum data and find out how many were set:
   */
@@ -604,11 +606,33 @@ Eventually I hope readOrBuildGrid() will be unilaterally called within LIME; if 
 
 void checkUserDensWeights(configInfo *par){
   /*
-This deals with three user-settable vectors: par->collPartIds, par->nMolWeights and par->dustWeights. We have to see if these (optional) parameters were set, do some basic checks on them, and make sure they have the same numbers of elements as the number of density values, which by this time should be stored in par->numDensities.
+This deals with four user-settable vectors: par->collPartIds, par->nMolWeights, par->dustWeights and par->collPartNames. We have to see if these (optional) parameters were set, do some basic checks on them, and make sure they match the number of density values, which by this time should be stored in par->numDensities.
+
+	* par->collPartIds: this list acts as a link between the N density function returns (I'm using here N as shorthand for par->numDensities) and the M collision partner ID integers found in the moldatfiles. This allows us to associate density functions with the collision partner transition rates provided in the moldatfiles.
+
+	* par->collPartNames: essentially this has only cosmetic importance since it has no effect on the functioning of LIME, only on the names of the collision partners which are printed to stdout. It's main purpose is to reassure the user who has provided transition rates for a non-LAMDA collision species in their moldatfile that they are actually getting these values and not some mysterious reversion to LAMDA.
+
+	The user can specify either, none, or both of these two parameters, with the following effects:
+
+		Ids	Names	Effect
+		----------------------
+		0	0	LAMDA coll parts are assumed and the association between the density functions and the moldatfiles is essentially guessed.
+
+		0	1	par->collPartIds is constructed to contain integers in a sequence from 1 to N. Naturally the user should write matching collision partner ID integers in their moldatfiles.
+
+		1	0	LAMDA coll parts are assumed.
+
+		1	1	User will get what they ask for. Elements of par->collPartIds are taken (after subtracting 1) to be indices to par->collPartNames; thus in this situation par->collPartNames may have a different order to the density functions, or have more values than par->numDensities. Any extra values are ignored however, and par->collPartNames must contain a value for each par->collPartIds element.
+		----------------------
+
+	* par->nMolWeights: this list gives the weights to be applied to the N density values when calculating molecular densities from abundances.
+
+	* par->dustWeights: ditto for the calculation of dust opacity.
   */
-  int i,j,numUserSetCPIds,numUserSetNMWs,numUserSetDWs;
+  int i,j,numUserSetCPIds,numUserSetNMWs,numUserSetDWs,numUserSetCPNames;
   int *uniqueCPIds=NULL;
   double sum;
+  char message[80];
 
   /* Get the number of par->collPartIds set by the user:
   */
@@ -670,7 +694,47 @@ This deals with three user-settable vectors: par->collPartIds, par->nMolWeights 
     }
   }
 
-  /* Check if we have either 0 par->collPartIds or the same number as the number of density values.
+  /* Get the number of par->collPartNames set by the user:
+  */
+  i = 0;
+  while(i<MAX_N_COLL_PART && par->collPartNames[i]!=NULL) i++;
+  numUserSetCPNames = i;
+
+  /*
+Re the interaction between par->collPartIds and par->collPartNames: there are three possible scenarios as follows.
+	- User wishes to use only collision partners from the set in the LAMDA database, in which case there is no need to set par->collPartNames. Note that the integer ID values for the collision partners in the standard LAMDA moldatfiles begin at 1.
+
+	- User wishes to use some non-LAMDA collision partners: it is perfectly possible to replace the values in a moldatfile for any LAMDA species with values calculated for another; LIME has no internal knowledge of whether a collision partner is LAMDA or not, it just uses the transition rates you give it. The only use it makes of collision partner names is in the the initial greeting message it prints. If the user wishes to have the correct name(s) printed, this can be transmitted to LIME via the par->collPartNames parameter.
+
+	For added convenience, it is allowed in this case that the user can supply just par->collPartNames and not par->collPartIds.
+		* If this is done, the number of elements of par->collPartNames is required to be the same as the number of density values. A list of par->collPartIds of the same length will be constructed, the elements being {1,2,3...} etc. These ID integers must match the ones supplied by the user in their moldatfiles.
+
+		* If the user supplies both par->collPartIds and par->collPartNames, the values in par->collPartIds must (after subtraction of 1) be the indices of that collision partner in par->collPartNames, as well of course as matching the value the user has supplied in the moldatfiles.
+  */
+  if(numUserSetCPNames>0){
+    if(numUserSetCPNames <= par->numDensities){
+      if(!silent) bail_out("There must be at least 1 value of par.collPartNames for each density() return.");
+      exit(1);
+    }
+
+    if(numUserSetCPIds<=0){
+      for(i=0;i<par->numDensities;i++)
+        par->collPartIds[i] = i+1;
+      numUserSetCPIds = par->numDensities;
+    }else{
+      for(i=0;i<numUserSetCPIds;i++){
+        if(par->collPartIds[i]<1 || par->collPartIds[i]>numUserSetCPNames){
+          if(!silent){
+            sprintf(message, "par.collPartIds[%d] value %d is out of range (<1 or >%d)", i, par->collPartIds[i], numUserSetCPNames);
+            bail_out(message);
+          }
+          exit(1);
+        }
+      }
+    }
+  }
+
+  /* Check that we have either 0 par->collPartIds or the same number as the number of density values. If not, the par->collPartIds values the user set will be thrown away, the pointer will be reallocated, and new values will be written to it in setUpDensityAux(), taken from the values in the moldatfiles.
   */
   if(numUserSetCPIds != par->numDensities){
     free(par->collPartIds);

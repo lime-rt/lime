@@ -86,7 +86,7 @@
 #define FAST_EXP_MAX_TAYLOR     3
 #define FAST_EXP_NUM_BITS       8
 #define NUM_GRID_STAGES         4
-#define MAX_N_COLL_PART         7
+#define MAX_N_COLL_PART         20
 #define N_SMOOTH_ITERS          20
 #define TYPICAL_ISM_DENS        1000.0
 #define STR_LEN_0               80
@@ -153,16 +153,17 @@ typedef struct {
   char *dust;
   int sampling,lte_only,init_lte,antialias,polarization,nThreads,numDims;
   int nLineImages,nContImages;
-  char **moldatfile;
+  char **moldatfile,**collPartNames;
   _Bool writeGridAtStage[NUM_GRID_STAGES],resetRNG,doInterpolateVels;
   char *gridInFile,**gridOutFiles;
   int dataFlags,nSolveIters;
-  double (*gridDensMaxLoc)[DIM], *gridDensMaxValues;
+  double (*gridDensMaxLoc)[DIM],*gridDensMaxValues;
 } configInfo;
 
 struct cpData {
   double *down,*temp;
   int collPartId,ntemp,ntrans,*lcl,*lcu,densityIndex;
+  char *name;
 };
 
 /* Molecular data: shared attributes */
@@ -338,6 +339,7 @@ void	freeConfigInfo(configInfo par);
 void	freeGrid(const unsigned int, const unsigned short, struct grid*);
 void	freeGridPointData(const int, gridPointData*);
 void	freeImgInfo(const int, imageInfo*);
+void	freeInputPars(inputPars par);
 void	freeMolData(const int, molData*);
 void	freeMolsWithBlends(struct molWithBlends*, const int);
 void	freePopulation(const unsigned short, struct populations*);
@@ -402,7 +404,7 @@ void	write_VTK_unstructured_Points(configInfo*, struct grid*);
 void	bail_out(char*);
 void	casaStyleProgressBar(const int, int);
 void	collpartmesg(char*, int);
-void	collpartmesg2(char*, int);
+void	collpartmesg2(char*);
 void	collpartmesg3(int, int);
 void	goodnight(int, char*);
 void	greetings(void);
