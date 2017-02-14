@@ -12,31 +12,36 @@
 
 
 void __attribute__((weak))
-    density(double x, double y, double z, double *density){
-      if(!silent) bail_out("Density is not defined in model.c but is needed by LIME!");
+    density(double x, double y, double z, double *dummy){
+      if(!silent) bail_out("Gas number density is not defined in model.c but is needed by LIME!");
       exit(1);
     }
 
 void __attribute__((weak))
-    temperature(double x, double y, double z, double *temperature){
+    temperature(double x, double y, double z, double *dummy){
       if(!silent) bail_out("Temperature is not defined in model.c but is needed by LIME!");
       exit(1);
     }
 
+/* One of the following two must be defined by the user: */
 void __attribute__((weak))
-    abundance(double x, double y, double z, double *abundance){
-      if(!silent) bail_out("Abundance is not defined in model.c but is needed by LIME!");
-      exit(1);
+    abundance(double x, double y, double z, double *dummy){
+      dummy[0] = -1.0;
     }
 
 void __attribute__((weak))
-    doppler(double x, double y, double z, double *doppler){
+    molNumDensity(double x, double y, double z, double *dummy){
+      dummy[0] = -1.0;
+    }
+
+void __attribute__((weak))
+    doppler(double x, double y, double z, double *dummy){
       if(!silent) bail_out("Doppler velocity is not defined in model.c but is needed by LIME!");
       exit(1);
     }
 
 void __attribute__((weak))
-    velocity(double x, double y, double z, double *vel){
+    velocity(double x, double y, double z, double *dummy){
       if(!silent) bail_out("Velocity field is not defined in model.c but is needed by LIME!");
       exit(1);
     }

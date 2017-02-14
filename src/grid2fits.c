@@ -8,7 +8,7 @@
 TODOS (some day):
 	- Change the type of g[i].id to unsigned int.
 	- Change the type of g[i].numNeigh to unsigned short.
-	- Change g[i].t, g[i].dopb and g[i].abun to float.
+	- Change g[i].t, g[i].dopb and g[i].mol[si].abun to float.
 	- Vector columns in defineGridExtColumns()?
 */
 
@@ -563,7 +563,7 @@ Ok we have a bit of a tricky situation here in that the number of columns we wri
       }
 
       for(i_ui=0;i_ui<totalNumGridPoints;i_ui++)
-        abunm[i_ui] = (float)gp[i_ui].abun[i_us];
+        abunm[i_ui] = (float)gp[i_ui].mol[i_us].abun;
       fits_write_col(fptr, colDataTypes[colI-1], colI, firstRow, firstElem, (LONGLONG)totalNumGridPoints, abunm, &status);
       processFitsError(status);
     }
@@ -990,7 +990,7 @@ If a COLLPARn keywords are found in the GRID extension header then collPartNames
     return; /* I.e. with dataFlags left unchanged. */
   }
 
-  mallocAndSetDefaultGrid(gp, (unsigned int)numGridCells);
+  mallocAndSetDefaultGrid(gp, (size_t)numGridCells, 0);
 
   /* Read the columns.
   */
@@ -1152,10 +1152,6 @@ If a COLLPARn keywords are found in the GRID extension header then collPartNames
   */
   gridInfoRead->nSpecies = (unsigned short)countColsBasePlusInt(fptr, "ABUNMOL");
   if(gridInfoRead->nSpecies > 0){
-    for(i_LL=0;i_LL<numGridCells;i_LL++) {
-      (*gp)[i_LL].abun = malloc(sizeof(double)*gridInfoRead->nSpecies);
-    }
-
     /* Read the ABUNMOL columns:
     */
     abunm = malloc(sizeof(*abunm)*numGridCells);
@@ -1168,7 +1164,7 @@ If a COLLPARn keywords are found in the GRID extension header then collPartNames
       processFitsError(status);
 
       for(i_LL=0;i_LL<numGridCells;i_LL++) {
-        (*gp)[i_LL].abun[i_us] = (double)abunm[i_LL];
+        (*gp)[i_LL].mol[i_us].abun = (double)abunm[i_LL];
       }
     }
     free(abunm);

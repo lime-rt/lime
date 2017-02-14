@@ -166,7 +166,7 @@ run(inputPars inpars, image *inimg, const int nImages){
   struct grid *gp=NULL;
   char message[80];
   int nEntries=0;
-  double *lamtab=NULL, *kaptab=NULL;
+  double *lamtab=NULL,*kaptab=NULL;
   char *img_filename_root;
 
   /*Set locale to avoid trouble when reading files*/
@@ -188,10 +188,11 @@ run(inputPars inpars, image *inimg, const int nImages){
   }
 
   if(par.doPregrid){
-    mallocAndSetDefaultGrid(&gp, (unsigned int)par.ncell);
+    mallocAndSetDefaultGrid(&gp, (size_t)par.ncell, (size_t)par.nSpecies);
     predefinedGrid(&par,gp); /* Sets par.numDensities */
     checkUserDensWeights(&par); /* Needs par.numDensities */
   }else if(par.restart){
+    mallocAndSetDefaultGrid(&gp, (size_t)par.ncell, (size_t)par.nSpecies);
     popsin(&par,&gp,&md,&popsdone);
   }else{
     checkUserDensWeights(&par); /* Needs par.numDensities */
@@ -224,23 +225,13 @@ run(inputPars inpars, image *inimg, const int nImages){
   if(par.nLineImages>0){
     molInit(&par, md);
 
-    if(!popsdone && !allBitsSet(par.dataFlags, DS_mask_populations)){
-      for(gi=0;gi<par.ncell;gi++){
-        gp[gi].mol = malloc(sizeof(*(gp[gi].mol))*par.nSpecies);
-        for(si=0;si<par.nSpecies;si++){
-          gp[gi].mol[si].pops    = NULL;
-          gp[gi].mol[si].partner = NULL;
-          gp[gi].mol[si].cont    = NULL;
-        }
-      }
-    }
-
     for(gi=0;gi<par.ncell;gi++){
       for(si=0;si<par.nSpecies;si++)
         gp[gi].mol[si].specNumDens = malloc(sizeof(double)*md[si].nlev);
     }
     calcGridMolDoppler(&par, md, gp);
-    calcGridMolDensities(&par,gp);
+    if(par.useAbun)
+      calcGridMolDensities(&par,&gp);
 
     if(!popsdone && !allBitsSet(par.dataFlags, DS_mask_populations))
       levelPops(md, &par, gp, &popsdone, lamtab, kaptab, nEntries);

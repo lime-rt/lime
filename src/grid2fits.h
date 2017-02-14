@@ -35,7 +35,7 @@ fitsfile *openFITSFileForWrite(char*);
 void	writeKeywordsToFits(lime_fptr*, struct keywordType*, const int);
 void	writeGridExtToFits(fitsfile*, struct gridInfoType, struct grid*, unsigned int*, char**, const int);
 void	writeLinksExtToFits(fitsfile*, struct gridInfoType, struct linkType*);
-void	writeNnIndicesExtToFits(fitsfile*, struct gridInfoType, struct linkType**);//, struct linkType*);
+void	writeNnIndicesExtToFits(fitsfile*, struct gridInfoType, struct linkType**);
 void	writePopsExtToFits(fitsfile*, struct gridInfoType, const unsigned short, struct grid*);
 int	countDensityColsFITS(char *inFileName);
 

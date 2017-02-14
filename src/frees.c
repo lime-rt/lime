@@ -66,7 +66,6 @@ freeGrid(const unsigned int numPoints, const unsigned short numSpecies\
       free(gp[i_u].neigh);
       free(gp[i_u].w);
       free(gp[i_u].dens);
-      free(gp[i_u].abun);
       free(gp[i_u].ds);
       freePopulation(numSpecies, gp[i_u].mol);
     }
@@ -171,8 +170,6 @@ freeSomeGridFields(const unsigned int numPoints, const unsigned short numSpecies
     for(i_u=0;i_u<numPoints;i_u++){
       free(gp[i_u].w);
       gp[i_u].w    = NULL;
-      free(gp[i_u].abun);
-      gp[i_u].abun = NULL;
       free(gp[i_u].ds);
       gp[i_u].ds   = NULL;
 
