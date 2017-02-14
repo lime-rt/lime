@@ -11,100 +11,31 @@ TODO:
 
 #include "lime.h"
 
-char *collpartnames[] = {"H2","p-H2","o-H2","electrons","H","He","H+"}; /* definition from LAMDA */
-
 /*....................................................................*/
-void molInit(configInfo *par, molData *md){
-  int *allUniqueCollPartIds=NULL;
-  int numUniqueCollPartsFound,i,j,k,jStart,numActiveCollParts;
-  char partstr[90];
+void readDummyCollPart(FILE *fp, const int strLen){
+  char string[strLen];
+  int ntrans, ntemp, itemp, itrans, idummy, dummyLcu, dummyLcl;
+  double dummyTemp, dummyDown;
 
-  readMolData(par, md, &allUniqueCollPartIds, &numUniqueCollPartsFound);
-  setUpDensityAux(par, allUniqueCollPartIds, numUniqueCollPartsFound);
-  free(allUniqueCollPartIds);
-  if(!par->lte_only){
-    assignMolCollPartsToDensities(par, md);
+  fgets(string, strLen, fp);
+  fscanf(fp,"%d\n", &ntrans);
+  fgets(string, strLen, fp);
+  fscanf(fp,"%d\n", &ntemp);
+  fgets(string, strLen, fp);
 
-    /* Print out collision partner information.
-    */
-    for(i=0;i<par->nSpecies;i++){
-      if(par->collPartNames[0]==NULL){
-        /* Interpret collPartId-1 as an index to the list collpartnames. */
-        for(j=0;j<md[i].npart;j++){
-          k = md[i].part[j].collPartId-1;
-          if(md[i].part[j].densityIndex>=0)
-            copyInparStr(collpartnames[k], &(md[i].part[j].name));
-        }
+  for(itemp=0;itemp<ntemp;itemp++)
+    fscanf(fp, "%lf", &dummyTemp);
 
-      }else{
-        /* Interpret collPartId-1 as an index to par->collPartNames. */
-        for(j=0;j<md[i].npart;j++){
-          k = md[i].part[j].collPartId-1;
-          if(md[i].part[j].densityIndex>=0)
-            copyInparStr(par->collPartNames[k], &(md[i].part[j].name));
-        }
-      }
+  fscanf(fp,"\n");
+  fgets(string, strLen, fp);
 
-      jStart = 0;
-      while(md[i].part[jStart].densityIndex<0) jStart++;
-
-      if(jStart<md[i].npart){
-        numActiveCollParts = 1;
-        strcpy(partstr, md[i].part[jStart].name);
-        for(j=jStart+1;j<md[i].npart;j++){
-          if(md[i].part[j].densityIndex<0)
-        continue;
-
-          k = md[i].part[j].collPartId-1;
-          strcat( partstr, ", ");
-          strcat( partstr, collpartnames[k]);
-          numActiveCollParts++;
-        }
-
-        if(!silent) {
-          collpartmesg(md[i].molName, numActiveCollParts);
-          collpartmesg2(partstr);
-          collpartmesg3(par->numDensities, 0);//**************** was the 2nd arg used in lime-1.5??
-        }
-      }else{
-        if(!silent) {
-          collpartmesg(md[i].molName, 0);
-          collpartmesg3(par->numDensities, 0);//**************** was the 2nd arg used in lime-1.5??
-        }
-      }
-    } /* end loop over molecule index i */
-  }
-
-  calcMolCMBs(par, md);
-}
-
-/*....................................................................*/
-void calcMolCMBs(configInfo *par, molData *md){
-  int si, iline;
-
-  for(si=0;si<par->nSpecies;si++){
-    md[si].cmb	     = malloc(sizeof(double)*md[si].nline);
-    for(iline=0;iline<md[si].nline;iline++){
-      if(par->tcmb>0.)
-        md[si].cmb[iline] = planckfunc(md[si].freq[iline],par->tcmb);
-      else
-        md[si].cmb[iline]=0.;
+  for(itrans=0;itrans<ntrans;itrans++){
+    fscanf(fp, "%d %d %d", &idummy, &dummyLcu, &dummyLcl);
+    for(itemp=0;itemp<ntemp;itemp++){
+      fscanf(fp, "%lf", &dummyDown);
     }
+    fscanf(fp,"\n");
   }
-}
-
-/*....................................................................*/
-double planckfunc(const double freq, const double temp){
-  double bb=10.,wn;
-  if(temp<eps) bb = 0.0;
-  else {
-    wn=freq/CLIGHT;
-    if (HPLANCK*freq>100.*KBOLTZ*temp) 
-      bb=2.*HPLANCK*wn*wn*freq*exp(-HPLANCK*freq/KBOLTZ/temp);
-    else 
-      bb=2.*HPLANCK*wn*wn*freq/(exp(HPLANCK*freq/KBOLTZ/temp)-1);
-  }
-  return bb;
 }
 
 /*....................................................................*/
@@ -307,137 +238,6 @@ void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds\
 }
 
 /*....................................................................*/
-void setUpDensityAux(configInfo *par, int *allUniqueCollPartIds, const int numUniqueCollParts){
-  /*
-The present function, which needs to be called only if we have to calculate the energy level populations at the grid points, deals with the user-settable vectors par->collPartIds and par->nMolWeights. The former of these is used to associate density values with collision-partner species, and the latter is used in converting, for each radiating species, its abundance to a number density, stored respectively in the grid struct attributes abun and nmol. The function deals specifically with the case in which the user has either not set par->collPartIds or par->nMolWeights at all (which they may choose to do), or has set them incorrectly. In either case the respective parameter will have been freed and set to NULL in checkUserDensWeights(). The function tries its best to guess likely values for the parameters, in line with the algorithm used in the code before par->collPartIds and par->nMolWeights were introduced.
-  */
-  int i;
-
-  if(par->collPartIds==NULL){
-    /*
-To preserve backward compatibility I am going to try to make the same guesses as were made before par->collPartIds was introduced, but this is made tricky by the fact that the switch block in the previous code did not cover all possibilities. I'm going to add some warnings too. We want users to be able to run their old model.c files for as long as possible, but at the same time urge them to make use of the new facility for specifying par->collPartIds.
-    */
-    if(par->numDensities > numUniqueCollParts){
-      if(!silent) bail_out("Too many density profiles defined.");
-      exit(1);
-    }
-
-    if(numUniqueCollParts==1){
-      if(allUniqueCollPartIds[0]==CP_H2 || allUniqueCollPartIds[0]==CP_p_H2 || allUniqueCollPartIds[0]==CP_o_H2){
-        par->collPartIds = malloc(sizeof(int)*par->numDensities); /* par->numDensities must ==1 at this point. */
-        par->collPartIds[0] = allUniqueCollPartIds[0];
-      }else{
-        if(!silent) bail_out("No H2 collision partner, and user didn't set par.collPartIds.");
-        exit(1);
-      }
-
-    }else if(numUniqueCollParts==2){
-      if((allUniqueCollPartIds[0]==CP_p_H2 && allUniqueCollPartIds[1]==CP_o_H2)\
-      || (allUniqueCollPartIds[1]==CP_p_H2 && allUniqueCollPartIds[0]==CP_o_H2)){
-        par->collPartIds = malloc(sizeof(int)*par->numDensities);
-        for(i=0;i<par->numDensities;i++) /* At this point par->numDensities can be only ==1 (previously signalled via 'flag') or ==2. */
-          par->collPartIds[i] = allUniqueCollPartIds[i];
-
-        if(par->numDensities==1 && !silent) warning("Calculating molecular density with respect to first collision partner only.");
-
-      }else{
-        if(!silent) bail_out("No H2 collision partners, and user didn't set par.collPartIds.");
-        exit(1);
-      }
-
-    }else if(numUniqueCollParts==par->numDensities){ /* At this point, numUniqueCollParts must be >2. */
-      par->collPartIds = malloc(sizeof(int)*par->numDensities);
-      for(i=0;i<par->numDensities;i++)
-        par->collPartIds[i] = allUniqueCollPartIds[i];
-
-      if(!silent) warning("Calculating molecular density with respect to first two collision partners only.");
-//*** Huh? What if they both ==3? Don't think this warning here is valid.
-
-    }else{ /* numUniqueCollParts>2 && par->numDensities<numUniqueCollParts */
-      if(!silent) bail_out("More than 2 collision partners, but number of density returns doesn't match.");
-      exit(1);
-    }
-
-    if(!silent) {
-      warning("User didn't set par.collPartIds, I'm having to guess them. Guessed:");
-#ifdef NO_NCURSES
-      for(i=0;i<par->numDensities;i++){
-        printf("  Collision partner %d assigned code %d (=%s)\n", i, par->collPartIds[i], collpartnames[par->collPartIds[i]-1]);
-      }
-      printf("\n");
-#endif
-    }
-
-    if(par->nMolWeights==NULL){
-      /*
-The same backward-compatible guesses are made here as for par->collPartIds in the foregoing section of code. I've omitted warnings and errors because they have already been issued during the treatment of par->collPartIds.
-      */
-      if(numUniqueCollParts==1){
-        if(allUniqueCollPartIds[0]==CP_H2 || allUniqueCollPartIds[0]==CP_p_H2 || allUniqueCollPartIds[0]==CP_o_H2){
-          par->nMolWeights = malloc(sizeof(double)*par->numDensities);
-          par->nMolWeights[0] = 1.0;
-        }
-
-      }else if(numUniqueCollParts==2){
-        if((allUniqueCollPartIds[0]==CP_p_H2 && allUniqueCollPartIds[1]==CP_o_H2)\
-        || (allUniqueCollPartIds[1]==CP_p_H2 && allUniqueCollPartIds[0]==CP_o_H2)){
-          par->nMolWeights = malloc(sizeof(double)*par->numDensities);
-          for(i=0;i<par->numDensities;i++) /* At this point par->numDensities can be only ==1 (previously signalled via 'flag') or ==2. */
-            par->nMolWeights[i] = 1.0;
-        }
-
-      }else if(numUniqueCollParts==par->numDensities){ /* At this point, numUniqueCollParts must be >2. */
-        par->nMolWeights = malloc(sizeof(double)*par->numDensities);
-        for(i=0;i<par->numDensities;i++)
-          par->nMolWeights[i] = 0.0;
-        par->nMolWeights[0] = 1.0;
-        par->nMolWeights[1] = 1.0;
-      }
-
-    }else{
-      if(!silent){
-        warning("Your choices for par.nMolWeights have been let stand, but it");
-        warning("is risky to set them without also setting par.collPartIds.");
-      }
-    }
-
-  }else if(par->nMolWeights==NULL){ /* We get here only if the user has not supplied these values (or not supplied the right number of them) in their model.c. */
-    if(par->numDensities==1){
-      if(par->collPartIds[0]==CP_H2 || par->collPartIds[0]==CP_p_H2 || par->collPartIds[0]==CP_o_H2){
-        par->nMolWeights = malloc(sizeof(double)*par->numDensities);
-        par->nMolWeights[0] = 1.0;
-      }else{
-        if(!silent) bail_out("No H2 collision partner, and user didn't set par.nMolWeights.");
-        exit(1);
-      }
-
-    }else if(par->numDensities==2){
-      if((par->collPartIds[0]==CP_p_H2 && par->collPartIds[1]==CP_o_H2)\
-      || (par->collPartIds[1]==CP_p_H2 && par->collPartIds[0]==CP_o_H2)){
-        par->nMolWeights = malloc(sizeof(double)*par->numDensities);
-        for(i=0;i<par->numDensities;i++){
-          par->nMolWeights[i] = 1.0;
-        }
-
-      }else{
-        if(!silent) bail_out("No H2 collision partners, and user didn't set par.nMolWeights.");
-        exit(1);
-      }
-
-    }else{ /* par->numDensities>2 */
-      par->nMolWeights = malloc(sizeof(double)*par->numDensities);
-      for(i=0;i<par->numDensities;i++){
-        par->nMolWeights[i] = 0.0;
-      }
-      par->nMolWeights[0] = 1.0;
-      par->nMolWeights[1] = 1.0;
-    }
-
-    if(!silent) warning("User didn't set par.nMolWeights, having to guess them.");
-  }
-}
-
-/*....................................................................*/
 void assignMolCollPartsToDensities(configInfo *par, molData *md){
   /*
 If we have reached this point, par->collPartIds (and par->nMolWeights) should have been malloc'd and filled with sensible values. Here we set up indices which allow us to associate a density function with each collision partner of each radiating molecule. This information is made use of in stateq.c.
@@ -461,29 +261,69 @@ If we have reached this point, par->collPartIds (and par->nMolWeights) should ha
 }
 
 /*....................................................................*/
-void readDummyCollPart(FILE *fp, const int strLen){
-  char string[strLen];
-  int ntrans, ntemp, itemp, itrans, idummy, dummyLcu, dummyLcl;
-  double dummyTemp, dummyDown;
+void calcMolCMBs(configInfo *par, molData *md){
+  int si, iline;
 
-  fgets(string, strLen, fp);
-  fscanf(fp,"%d\n", &ntrans);
-  fgets(string, strLen, fp);
-  fscanf(fp,"%d\n", &ntemp);
-  fgets(string, strLen, fp);
-
-  for(itemp=0;itemp<ntemp;itemp++)
-    fscanf(fp, "%lf", &dummyTemp);
-
-  fscanf(fp,"\n");
-  fgets(string, strLen, fp);
-
-  for(itrans=0;itrans<ntrans;itrans++){
-    fscanf(fp, "%d %d %d", &idummy, &dummyLcu, &dummyLcl);
-    for(itemp=0;itemp<ntemp;itemp++){
-      fscanf(fp, "%lf", &dummyDown);
+  for(si=0;si<par->nSpecies;si++){
+    md[si].cmb	     = malloc(sizeof(double)*md[si].nline);
+    for(iline=0;iline<md[si].nline;iline++){
+      if(par->tcmb>0.)
+        md[si].cmb[iline] = planckfunc(md[si].freq[iline],par->tcmb);
+      else
+        md[si].cmb[iline]=0.;
     }
-    fscanf(fp,"\n");
   }
+}
+
+/*....................................................................*/
+void molInit(configInfo *par, molData *md){
+  int *allUniqueCollPartIds=NULL;
+  int numUniqueCollPartsFound,i,j,jStart,numActiveCollParts;
+  char partstr[90];
+
+  readMolData(par, md, &allUniqueCollPartIds, &numUniqueCollPartsFound);
+  setUpDensityAux(par, allUniqueCollPartIds, numUniqueCollPartsFound);
+  free(allUniqueCollPartIds);
+  if(!par->lte_only){
+    assignMolCollPartsToDensities(par, md);
+
+    /* Print out collision partner information.
+    */
+    for(i=0;i<par->nSpecies;i++){
+      for(j=0;j<md[i].npart;j++){
+        if(md[i].part[j].densityIndex>=0)
+          copyInparStr(par->collPartNames[md[i].part[j].densityIndex], &(md[i].part[j].name));
+      }
+
+      jStart = 0;
+      while(md[i].part[jStart].densityIndex<0) jStart++;
+
+      if(jStart<md[i].npart){
+        numActiveCollParts = 1;
+        strcpy(partstr, md[i].part[jStart].name);
+        for(j=jStart+1;j<md[i].npart;j++){
+          if(md[i].part[j].densityIndex<0)
+        continue;
+
+          strcat( partstr, ", ");
+          strcat( partstr, md[i].part[j].name);
+          numActiveCollParts++;
+        }
+
+        if(!silent) {
+          collpartmesg(md[i].molName, numActiveCollParts);
+          collpartmesg2(partstr);
+          collpartmesg3(par->numDensities, 0);//**************** was the 2nd arg used in lime-1.5??
+        }
+      }else{
+        if(!silent) {
+          collpartmesg(md[i].molName, 0);
+          collpartmesg3(par->numDensities, 0);//**************** was the 2nd arg used in lime-1.5??
+        }
+      }
+    } /* end loop over molecule index i */
+  }
+
+  calcMolCMBs(par, md);
 }
 

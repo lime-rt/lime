@@ -13,18 +13,13 @@
 /* input parameters */
 typedef struct {
   double radius,minScale,tcmb,*nMolWeights,*dustWeights;
+  double (*gridDensMaxLoc)[DIM],*gridDensMaxValues,*collPartMolWeights;
   int sinkPoints,pIntensity,blend,*collPartIds,traceRayAlgorithm,samplingAlgorithm;
-  char *outputfile,*binoutputfile;
-//  char *inputfile; unused at present.
-  char *gridfile;
-  char *pregrid;
-  char *restart;
-  char *dust;
   int sampling,lte_only,init_lte,antialias,polarization,nThreads;
-  char **moldatfile,**collPartNames;
-  char *gridInFile,**gridOutFiles;
   int nSolveIters;
-  double (*gridDensMaxLoc)[DIM],*gridDensMaxValues;
+  char *outputfile,*binoutputfile,*gridfile,*pregrid,*restart,*dust;
+  char *gridInFile,**gridOutFiles;
+  char **moldatfile,**collPartNames;
   _Bool resetRNG;
 } inputPars;
 

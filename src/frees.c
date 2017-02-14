@@ -17,7 +17,7 @@ freeConfigInfo(configInfo par){
   free(par.dustWeights);
   free(par.collPartIds);
   if(par.collPartNames!= NULL){
-    for(i=0;i<MAX_N_COLL_PART;i++)
+    for(i=0;i<par.numDensities;i++)
       free(par.collPartNames[i]);
     free(par.collPartNames);
   }

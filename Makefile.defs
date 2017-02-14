@@ -8,6 +8,7 @@
 
 CORESOURCES = \
 	src/aux.c\
+	src/collparts.c\
 	src/fastexp.c\
 	src/frees.c\
 	src/getclosest.c\
@@ -42,6 +43,7 @@ STDSOURCES = \
 
 COREINCLUDES = \
 	src/dims.h\
+	src/collparts.h\
 	src/grid2fits.h\
 	src/gridio.h\
 	src/inpars.h\
