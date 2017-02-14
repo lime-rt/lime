@@ -356,7 +356,6 @@ void	getVelocities(configInfo *, struct grid *);
 void	getVelocities_pregrid(configInfo *, struct grid *);
 void	gridPopsInit(configInfo*, molData*, struct grid*);
 void	input(inputPars*, image*);
-void	insertUnitStrInFilename(char*, configInfo*, imageInfo*, const int, const int);
 double	interpolateKappa(const double, double*, double*, const int, gsl_spline*, gsl_interp_accel*);
 float	invSqrt(float);
 void	levelPops(molData*, configInfo*, struct grid*, int*, double*, double*, const int);
@@ -394,9 +393,7 @@ void	stateq(int, struct grid*, molData*, const int, configInfo*, struct blendInf
 void	statistics(int, molData*, struct grid*, int*, double*, double*, int*);
 void	stokesangles(double*, double (*rotMat)[3], double*);
 double	taylor(const int, const float);
-void	write2Dfits(int, int, configInfo*, imageInfo*);
-void	write3Dfits(int, int, configInfo*, imageInfo*);
-void	writeFits(const int, const int, configInfo*, imageInfo*);
+void	writeFitsAllUnits(const int, configInfo*, imageInfo*);
 void	writeGridIfRequired(configInfo*, struct grid*, molData*, const int);
 void	write_VTK_unstructured_Points(configInfo*, struct grid*);
 

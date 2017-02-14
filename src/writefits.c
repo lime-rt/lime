@@ -9,85 +9,6 @@
 
 #include "lime.h"
 
-void writeFits(const int i, const int unit_index, configInfo *par, imageInfo *img){
-  int unitI = img[i].imgunits[unit_index];
-
-  if(unitI<5){
-    if(img[i].doline==1 || (img[i].doline==0 && par->polarization))
-      write3Dfits(i,unit_index,par,img);
-    else
-      write2Dfits(i,unit_index,par,img);
-  }else if(unitI==5)
-    write2Dfits(i,unit_index,par,img);
-  else{
-    if(!silent) bail_out("Image unit number invalid");
-    exit(0);
-  }
-}
-
-char *removeFilenameExtension(char* inStr, char extensionChar, char pathSeparator) {
-    char *outStr, *lastDotInFilename, *lastPathSeparatorInFilename;
-
-    if (inStr == NULL)
-        return NULL;
-
-    outStr = malloc(strlen(inStr) + 1);
-    if(!outStr){
-        if(!silent) bail_out("Error allocating memory for filename extension removal");
-        exit(0);
-    }
-    strcpy(outStr, inStr);
-    /* Find last occurrences of extension character and path separator character */
-    lastDotInFilename = strrchr(outStr, extensionChar);
-    lastPathSeparatorInFilename = (pathSeparator == 0) ? NULL : strrchr(outStr, pathSeparator);
-
-    /* Truncate filename at occurrence of last extension character assuming it comes after the last path separator character */
-    if (lastDotInFilename != NULL) {
-        if (lastPathSeparatorInFilename != NULL) {
-            if (lastPathSeparatorInFilename < lastDotInFilename) {
-                *lastDotInFilename = '\0';
-            }
-        } else {
-            *lastDotInFilename = '\0';
-        }
-    }
-    return outStr;
-}
-
-void insertUnitStrInFilename(char *img_filename_root, configInfo *par, imageInfo *img, const int im, const int unit_index){
-  char *temp_filename, *temp_extensionless_filename, message[STR_LEN_0];
-  static char* unit_names[] = {"Kelvin", "Jansky-per-px", "SI", "LSun-per-px", "Tau", "#Rays"};
-  char *ext;
-
-  /* Check if unit index falls outside range of possible unit names */
-  if(unit_index < 0 || unit_index > sizeof(unit_names)/sizeof(*unit_names) - 1){
-    sprintf(message, "Image unit index '%d' does not have a corresponding unit name", unit_index);
-    if(!silent) bail_out(message);
-    exit(0);
-  }
-
-  copyInparStr(img_filename_root, &(temp_filename));
-  /* Extract filename extension */
-  ext = strrchr(img_filename_root, '.');
-  if (!ext) {
-    /* Set to blank string if no filename extension was extracted */
-    ext = "";
-  } else {
-    /* Remove extension from temporary filename */
-      temp_extensionless_filename = removeFilenameExtension(temp_filename, '.', '/');
-      strcpy(temp_filename, temp_extensionless_filename);
-      free(temp_extensionless_filename);
-  }
-  /* Append unit name to temporary filename */
-  strcat(temp_filename, "_");
-  strcat(temp_filename, unit_names[img[im].imgunits[unit_index]]);
-  strcat(temp_filename, ext);
-
-  /* Update image filename from temporary filename */
-  copyInparStr(temp_filename, &(img[im].filename));
-  free(temp_filename);
-}
-
 void 
 write3Dfits(int im, int unit_index, configInfo *par, imageInfo *img){
   double bscale,bzero,epoch,lonpole,equinox,restfreq;
@@ -344,5 +265,99 @@ write2Dfits(int im, int unit_index, configInfo *par, imageInfo *img){
   free(row);
 
   if(!silent) printDone(13);
+}
+
+void writeFits(const int i, const int unit_index, configInfo *par, imageInfo *img){
+  int unitI = img[i].imgunits[unit_index];
+
+  if(unitI<5){
+    if(img[i].doline==1 || (img[i].doline==0 && par->polarization))
+      write3Dfits(i,unit_index,par,img);
+    else
+      write2Dfits(i,unit_index,par,img);
+  }else if(unitI==5)
+    write2Dfits(i,unit_index,par,img);
+  else{
+    if(!silent) bail_out("Image unit number invalid");
+    exit(0);
+  }
+}
+
+char *removeFilenameExtension(char* inStr, char extensionChar, char pathSeparator) {
+    char *outStr, *lastDotInFilename, *lastPathSeparatorInFilename;
+
+    if (inStr == NULL)
+        return NULL;
+
+    outStr = malloc(strlen(inStr) + 1);
+    if(!outStr){
+        if(!silent) bail_out("Error allocating memory for filename extension removal");
+        exit(0);
+    }
+    strcpy(outStr, inStr);
+    /* Find last occurrences of extension character and path separator character */
+    lastDotInFilename = strrchr(outStr, extensionChar);
+    lastPathSeparatorInFilename = (pathSeparator == 0) ? NULL : strrchr(outStr, pathSeparator);
+
+    /* Truncate filename at occurrence of last extension character assuming it comes after the last path separator character */
+    if (lastDotInFilename != NULL) {
+        if (lastPathSeparatorInFilename != NULL) {
+            if (lastPathSeparatorInFilename < lastDotInFilename) {
+                *lastDotInFilename = '\0';
+            }
+        } else {
+            *lastDotInFilename = '\0';
+        }
+    }
+    return outStr;
+}
+
+void insertUnitStrInFilename(char *img_filename_root, configInfo *par, imageInfo *img, const int im, const int unit_index){
+  char *temp_filename, *temp_extensionless_filename, message[STR_LEN_0];
+  static char* unit_names[] = {"Kelvin", "Jansky-per-px", "SI", "LSun-per-px", "Tau", "#Rays"};
+  char *ext;
+
+  /* Check if unit index falls outside range of possible unit names */
+  if(unit_index < 0 || unit_index > sizeof(unit_names)/sizeof(*unit_names) - 1){
+    sprintf(message, "Image unit index '%d' does not have a corresponding unit name", unit_index);
+    if(!silent) bail_out(message);
+    exit(0);
+  }
+
+  copyInparStr(img_filename_root, &(temp_filename));
+  /* Extract filename extension */
+  ext = strrchr(img_filename_root, '.');
+  if (!ext) {
+    /* Set to blank string if no filename extension was extracted */
+    ext = "";
+  } else {
+    /* Remove extension from temporary filename */
+      temp_extensionless_filename = removeFilenameExtension(temp_filename, '.', '/');
+      strcpy(temp_filename, temp_extensionless_filename);
+      free(temp_extensionless_filename);
+  }
+  /* Append unit name to temporary filename */
+  strcat(temp_filename, "_");
+  strcat(temp_filename, unit_names[img[im].imgunits[unit_index]]);
+  strcat(temp_filename, ext);
+
+  /* Update image filename from temporary filename */
+  copyInparStr(temp_filename, &(img[im].filename));
+  free(temp_filename);
+}
+
+void writeFitsAllUnits(const int i, configInfo *par, imageInfo *img){
+  int j;
+  char *img_filename_root;
+
+  if(img[i].numunits == 1){
+    writeFits(i,0,par,img);
+  }else{
+    copyInparStr(img[i].filename, &(img_filename_root));
+    for(j=0;j<img[i].numunits;j++) {
+      insertUnitStrInFilename(img_filename_root, par, img, i, j);
+      writeFits(i,j,par,img);
+    }
+  }
 }
 
