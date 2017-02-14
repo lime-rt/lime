@@ -157,7 +157,7 @@ run(inputPars inpars, image *inimg, const int nImages){
      programs. In this case, inpars and img must be specified by the
      external program.
   */
-  int i,j,gi,si;
+  int i,gi,si;
   int initime=time(0);
   int popsdone=0;
   molData *md=NULL;
@@ -167,7 +167,6 @@ run(inputPars inpars, image *inimg, const int nImages){
   char message[80];
   int nEntries=0;
   double *lamtab=NULL,*kaptab=NULL;
-  char *img_filename_root;
 
   /*Set locale to avoid trouble when reading files*/
   setlocale(LC_ALL, "C");
@@ -208,16 +207,7 @@ run(inputPars inpars, image *inimg, const int nImages){
     for(i=0;i<par.nImages;i++){
       if(!img[i].doline){
         raytrace(i, &par, gp, md, img, lamtab, kaptab, nEntries);
-        if(img[i].numunits == 1){
-          writeFits(i,0,&par,img);
-        }
-        else{
-          copyInparStr(img[i].filename, &(img_filename_root));
-          for(j=0;j<img[i].numunits;j++) {
-            insertUnitStrInFilename(img_filename_root, &par, img, i, j);
-            writeFits(i,j,&par,img);
-          }
-        }
+        writeFitsAllUnits(i, &par, img);
       }
     }
   }
@@ -250,16 +240,7 @@ run(inputPars inpars, image *inimg, const int nImages){
     for(i=0;i<par.nImages;i++){
       if(img[i].doline){
         raytrace(i, &par, gp, md, img, lamtab, kaptab, nEntries);
-        if(img[i].numunits == 1){
-          writeFits(i,0,&par,img);
-        }
-        else{
-          copyInparStr(img[i].filename, &(img_filename_root));
-          for(j=0;j<img[i].numunits;j++) {
-            insertUnitStrInFilename(img_filename_root, &par, img, i, j);
-            writeFits(i,j,&par,img);
-          }
-        }
+        writeFitsAllUnits(i, &par, img);
       }
     }
   }
