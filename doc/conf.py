@@ -48,7 +48,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'LIME'
-copyright = u'2016-2014 Christian Brinch, 2015-2017 The LIME development team'
+copyright = u'2006-2014 Christian Brinch, 2015-2017 The LIME development team'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
