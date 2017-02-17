@@ -37,9 +37,14 @@ void mallocAndSetDefaultGrid(struct grid **gp, const size_t numPoints, const siz
     if(numSpecies > 0){
       (*gp)[i].mol = malloc(sizeof(*(*gp)[i].mol)*numSpecies);
       for(j=0;j<numSpecies;j++){
-        (*gp)[i].mol[j].pops    = NULL;
-        (*gp)[i].mol[j].partner = NULL;
-        (*gp)[i].mol[j].cont    = NULL;
+        (*gp)[i].mol[j].pops        = NULL;
+        (*gp)[i].mol[j].specNumDens = NULL;
+        (*gp)[i].mol[j].partner     = NULL;
+        (*gp)[i].mol[j].cont        = NULL;
+        (*gp)[i].mol[j].dopb = 0.0;
+        (*gp)[i].mol[j].binv = 0.0;
+        (*gp)[i].mol[j].nmol = 0.0;
+        (*gp)[i].mol[j].abun = 0.0;
       }
     }else
       (*gp)[i].mol = NULL;
@@ -165,52 +170,90 @@ double interpolateKappa(const double freq, double *lamtab, double *kaptab\
 }
 
 /*....................................................................*/
+void calcDustData(configInfo *par, double *dens, double *freqs\
+  , const double gtd, double *kappatab, const int numLines, const double ts[]\
+  , double *knus, double *dusts){
+
+  double t,gasMassDensityAMUs,dustToGas;
+  int di,iline;
+
+  /* Check if input model supplies a dust temperature. Otherwise use the kinetic temperature. */
+  if(ts[1]<=0.0) { /* Flags that the user has not set it. */
+    t = ts[0];
+  } else {
+    t = ts[1];
+  }
+
+  if(par->dustWeights==NULL){ /* This is set up in checkUserDensWeights() to flag to use the pre<1.6 default. */
+    dustToGas = AMU*2.4*dens[0]/gtd;
+  }else{
+    gasMassDensityAMUs = 0.0;
+    for(di=0;di<par->numDensities;di++)
+      gasMassDensityAMUs += dens[di]*par->collPartMolWeights[di];
+
+    dustToGas = AMU*gasMassDensityAMUs/gtd;
+  }
+
+  for(iline=0;iline<numLines;iline++){
+    knus[iline] = kappatab[iline]*dustToGas;
+    dusts[iline] = planckfunc(freqs[iline],t);
+  }
+}
+
+/*....................................................................*/
 void calcGridContDustOpacity(configInfo *par, const double freq\
   , double *lamtab, double *kaptab, const int nEntries, struct grid *gp){
 
-  double kappa,densityForDust,gtd;
-  int id,di;
+  int id;
+  double gtd;
   gsl_spline *spline = NULL;
   gsl_interp_accel *acc = NULL;
+  double *kappatab = NULL;
+  double *knus=NULL, *dusts=NULL;
+  double *freqs=NULL;
+
+  kappatab = malloc(sizeof(*kappatab)*1);
+  knus     = malloc(sizeof(*knus)    *1);
+  dusts    = malloc(sizeof(*dusts)   *1);
+  freqs    = malloc(sizeof(*freqs)   *1);
+
+  freqs[0] = freq;
 
   if(par->dust == NULL)
-    kappa = 0.;
+    kappatab[0] = 0.;
   else{
     acc = gsl_interp_accel_alloc();
     spline = gsl_spline_alloc(gsl_interp_cspline,nEntries);
     gsl_spline_init(spline,lamtab,kaptab,nEntries);
-    kappa = interpolateKappa(freq, lamtab, kaptab, nEntries, spline, acc);
+    kappatab[0] = interpolateKappa(freq, lamtab, kaptab, nEntries, spline, acc);
   }
 
   for(id=0;id<par->ncell;id++){
-    densityForDust = 0.0;
-    for(di=0;di<par->numDensities;di++)
-      densityForDust += gp[id].dens[di]*par->dustWeights[di];
-
     gasIIdust(gp[id].x[0],gp[id].x[1],gp[id].x[2],&gtd);
-    gp[id].cont.knu = kappa*2.4*AMU*densityForDust/gtd;
-    /* Check if input model supplies a dust temperature. Otherwise use the kinetic temperature. */
-    if(gp[id].t[1]<=0.0) { /* Flags that the user has not set it. */
-      gp[id].cont.dust = planckfunc(freq,gp[id].t[0]);
-    } else {
-      gp[id].cont.dust = planckfunc(freq,gp[id].t[1]);
-    }
+    calcDustData(par, gp[id].dens, freqs, gtd, kappatab, 1, gp[id].t, knus, dusts);
+    gp[id].cont.knu = knus[0];
+    gp[id].cont.dust = dusts[0];
   }
 
   if(par->dust != NULL){
     gsl_spline_free(spline);
     gsl_interp_accel_free(acc);
   }
+  free(knus);
+  free(dusts);
+  free(freqs);
+  free(kappatab);
 }
 
 /*....................................................................*/
 void calcGridLinesDustOpacity(configInfo *par, molData *md, double *lamtab\
   , double *kaptab, const int nEntries, struct grid *gp){
 
-  int iline,id,si,di;
-  double *kappatab,gtd,densityForDust,dustToGas,t;
+  int iline,id,si;
+  double *kappatab,gtd;
   gsl_spline *spline = NULL;
   gsl_interp_accel *acc = NULL;
+  double *knus=NULL, *dusts=NULL;
 
   if(par->dust != NULL){
     acc = gsl_interp_accel_alloc();
@@ -227,6 +270,8 @@ void calcGridLinesDustOpacity(configInfo *par, molData *md, double *lamtab\
 
   for(si=0;si<par->nSpecies;si++){
     kappatab = malloc(sizeof(*kappatab)*md[si].nline);
+    knus     = malloc(sizeof(*knus)    *md[si].nline);
+    dusts    = malloc(sizeof(*dusts)   *md[si].nline);
 
     if(par->dust == NULL){
       for(iline=0;iline<md[si].nline;iline++)
@@ -238,24 +283,17 @@ void calcGridLinesDustOpacity(configInfo *par, molData *md, double *lamtab\
     }
 
     for(id=0;id<par->ncell;id++){
-      densityForDust = 0.0;
-      for(di=0;di<par->numDensities;di++)
-        densityForDust += gp[id].dens[di]*par->dustWeights[di];
-
       gasIIdust(gp[id].x[0],gp[id].x[1],gp[id].x[2],&gtd);
-      dustToGas = 2.4*AMU*densityForDust/gtd;
+      calcDustData(par, gp[id].dens, md[si].freq, gtd, kappatab, md[si].nline, gp[id].t, knus, dusts);
       for(iline=0;iline<md[si].nline;iline++){
-        gp[id].mol[si].cont[iline].knu = kappatab[iline]*dustToGas;
-        /* Check if input model supplies a dust temperature. Otherwise use the kinetic temperature. */
-        if(gp[id].t[1]<=0.0){ /* Flags that the user has not set it. */
-          t = gp[id].t[0];
-        }else
-          t = gp[id].t[1];
-        gp[id].mol[si].cont[iline].dust = planckfunc(md[si].freq[iline],t);
+        gp[id].mol[si].cont[iline].knu  = knus[iline];
+        gp[id].mol[si].cont[iline].dust = dusts[iline];
       }
     }
 
     free(kappatab);
+    free(knus);
+    free(dusts);
   }
 
   if(par->dust != NULL){

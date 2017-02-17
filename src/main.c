@@ -67,6 +67,8 @@ initParImg(inputPars *par, image **img)
   for(i=0;i<MAX_N_COLL_PART;i++) par->nMolWeights[i] = -1.0;
   par->dustWeights  = malloc(sizeof(double)*MAX_N_COLL_PART);
   for(i=0;i<MAX_N_COLL_PART;i++) par->dustWeights[i] = -1.0;
+  par->collPartMolWeights = malloc(sizeof(double)*MAX_N_COLL_PART);
+  for(i=0;i<MAX_N_COLL_PART;i++) par->collPartMolWeights[i] = -1.0;
 
   par->gridDensMaxValues = malloc(sizeof(*(par->gridDensMaxValues))*MAX_N_HIGH);
   par->gridDensMaxLoc    = malloc(sizeof(*(par->gridDensMaxLoc))*MAX_N_HIGH);

@@ -100,15 +100,6 @@
 #define N_VEL_SEG_PER_HALF      1
 #define NUM_VEL_COEFFS          (1+2*N_VEL_SEG_PER_HALF) /* This is the number of velocity samples per edge (not including the grid vertices at each end of the edge). Currently this is elsewhere hard-wired at 3, the macro just being used in the file I/O modules. Note that we want an odd number of velocity samples per edge if we want to have the ability to do 2nd-order interpolation of velocity within Delaunay tetrahedra. */
 
-/* Collision partner ID numbers from LAMDA */
-#define CP_H2			1
-#define CP_p_H2			2
-#define CP_o_H2			3
-#define CP_e			4
-#define CP_H			5
-#define CP_He			6
-#define CP_Hplus		7
-
 /* Bit locations for the grid data-stage mask, that records the information which is present in the grid struct: */
 #define DS_bit_x             0	/* id, x, sink */
 #define DS_bit_neighbours    1	/* neigh, dir, ds, numNeigh */
@@ -139,25 +130,22 @@
 #define DS_mask_all          (DS_mask_populations | DS_mask_magfield)
 #define DS_mask_all_but_mag  DS_mask_all & ~(1<<DS_bit_magfield)
 
+#include "collparts.h"
 #include "inpars.h"
 
 typedef struct {
   double radius,minScale,tcmb,*nMolWeights,*dustWeights;
   double radiusSqu,minScaleSqu,taylorCutoff,gridDensGlobalMax;
+  double (*gridDensMaxLoc)[DIM],*gridDensMaxValues,*collPartMolWeights;
   int sinkPoints,pIntensity,blend,*collPartIds,traceRayAlgorithm,samplingAlgorithm;
   int ncell,nImages,nSpecies,numDensities,doPregrid,numGridDensMaxima;
-  char *outputfile,*binoutputfile;
-  char *gridfile;
-  char *pregrid;
-  char *restart;
-  char *dust;
   int sampling,lte_only,init_lte,antialias,polarization,nThreads,numDims;
   int nLineImages,nContImages;
+  int dataFlags,nSolveIters;
+  char *outputfile,*binoutputfile,*gridfile,*pregrid,*restart,*dust;
+  char *gridInFile,**gridOutFiles;
   char **moldatfile,**collPartNames;
   _Bool writeGridAtStage[NUM_GRID_STAGES],resetRNG,doInterpolateVels,useAbun;
-  char *gridInFile,**gridOutFiles;
-  int dataFlags,nSolveIters;
-  double (*gridDensMaxLoc)[DIM],*gridDensMaxValues;
 } configInfo;
 
 struct cpData {
@@ -310,7 +298,6 @@ _Bool	anyBitSet(const int flags, const int mask);
 _Bool	bitIsSet(const int flags, const int bitI);
 _Bool	onlyBitsSet(const int flags, const int mask);
 
-void	assignMolCollPartsToDensities(configInfo*, molData*);
 void	binpopsout(configInfo*, struct grid*, molData*);
 void	calcFastExpRange(const int, const int, int*, int*, int*);
 void	calcGridCollRates(configInfo*, molData*, struct grid*);
@@ -321,7 +308,6 @@ void	calcGridMolDoppler(configInfo*, molData*, struct grid*);
 void	calcGridMolSpecNumDens(configInfo*, molData*, struct grid*);
 void	calcInterpCoeffs(configInfo*, struct grid*);
 void	calcInterpCoeffs_lin(configInfo*, struct grid*);
-void	calcMolCMBs(configInfo*, molData*);
 void	calcSourceFn(double, const configInfo*, double*, double*);
 void	calcTableEntries(const int, const int);
 void	checkGridDensities(configInfo*, struct grid*);
@@ -356,7 +342,6 @@ void	getVelocities(configInfo *, struct grid *);
 void	getVelocities_pregrid(configInfo *, struct grid *);
 void	gridPopsInit(configInfo*, molData*, struct grid*);
 void	input(inputPars*, image*);
-double	interpolateKappa(const double, double*, double*, const int, gsl_spline*, gsl_interp_accel*);
 float	invSqrt(float);
 void	levelPops(molData*, configInfo*, struct grid*, int*, double*, double*, const int);
 void	lineBlend(molData*, configInfo*, struct blendInfo*);
@@ -375,9 +360,7 @@ void	predefinedGrid(configInfo*, struct grid*);
 void	processFitsError(int);
 double	ratranInput(char*, char*, double, double, double);
 void	raytrace(int, configInfo*, struct grid*, molData*, imageInfo*, double*, double*, const int);
-void	readDummyCollPart(FILE*, const int);
 void	readDustFile(char*, double**, double**, int*);
-void	readMolData(configInfo*, molData*, int**, int*);
 void	readOrBuildGrid(configInfo*, struct grid**);
 void	readUserInput(inputPars*, imageInfo**, int*, int*);
 unsigned long reorderGrid(const unsigned long, struct grid*);
