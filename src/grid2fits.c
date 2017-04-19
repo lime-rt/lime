@@ -990,7 +990,11 @@ If a COLLPARn keywords are found in the GRID extension header then collPartNames
     return; /* I.e. with dataFlags left unchanged. */
   }
 
-  mallocAndSetDefaultGrid(gp, (size_t)numGridCells, 0);
+  /* Count the numbers of ABUNMOL columns here so that, if appropriate, we can malloc 'gp' molecular data array
+     with this call to mallocAndSetDefaultGrid (only happens if nSpecies > 0)
+  */
+  gridInfoRead->nSpecies = (unsigned short)countColsBasePlusInt(fptr, "ABUNMOL");
+  mallocAndSetDefaultGrid(gp, (size_t)numGridCells, gridInfoRead->nSpecies);
 
   /* Read the columns.
   */
@@ -1148,9 +1152,6 @@ If a COLLPARn keywords are found in the GRID extension header then collPartNames
     (*dataFlags) |= (1 << DS_bit_density);
   }
 
-  /* Count the numbers of ABUNMOLm columns:
-  */
-  gridInfoRead->nSpecies = (unsigned short)countColsBasePlusInt(fptr, "ABUNMOL");
   if(gridInfoRead->nSpecies > 0){
     /* Read the ABUNMOL columns:
     */
