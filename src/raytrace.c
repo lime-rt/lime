@@ -13,6 +13,11 @@ TODO:
 #include "lime.h"
 #include "raythrucells.h"
 
+struct baryVelBuffType {
+  int numVertices,numEdges,(*edgeVertexIndices)[2];
+  double **vertexVels,**edgeVels,*entryCellBary,*midCellBary,*exitCellBary,*shapeFns;
+};
+
 /*....................................................................*/
 void
 calcLineAmpSample(const double x[3], const double dx[3], const double ds\
@@ -251,7 +256,8 @@ Note that the algorithm employed here is similar to that employed in the functio
 }
 
 /*....................................................................*/
-void doBaryInterp(const intersectType intcpt, struct grid *gp\
+void
+doBaryInterp(const intersectType intcpt, struct grid *gp\
   , double xCmpntsRay[3], unsigned long gis[3]\
   , molData *md, const int numMols, gridInterp *gip){
   /*
@@ -310,7 +316,8 @@ For a readable definition of barycentric coordinates, see the wikipedia article 
 }
 
 /*....................................................................*/
-void doSegmentInterp(gridInterp gips[3], const int iA, molData *md\
+void
+doSegmentInterp(gridInterp gips[3], const int iA, molData *md\
   , const int numMols, const double oneOnNumSegments, const int si){
 
   const double fracA = (si + 0.5)*oneOnNumSegments, fracB = 1.0 - fracA;
@@ -341,47 +348,59 @@ void doSegmentInterp(gridInterp gips[3], const int iA, molData *md\
 
 /*....................................................................*/
 void
-calc2ndOrderShapeFunctions(const int numVertices, const double barys[numVertices]\
-  , const int edgeVertexIndices[][2], double *shapeFns){
-
-  const int numEdges = numVertices*(numVertices-1)/2;
+calc2ndOrderShapeFunctions(struct baryVelBuffType *ptrToBuff, const int rayNum){
   int vi,ei;
+  char message[STR_LEN_0];
+  double *barys=NULL;
 
-  for(vi=0;vi<numVertices;vi++)
-    shapeFns[vi] = barys[vi]*(2.0*barys[vi] - 1.0);
+  if(rayNum==0)
+    barys = (*ptrToBuff).entryCellBary;
+  else if(rayNum==1)
+    barys = (*ptrToBuff).exitCellBary;
+  else if(rayNum==2)
+    barys = (*ptrToBuff).midCellBary;
+  else{
+    if(!silent){
+      sprintf(message, "Bad ray number %d", rayNum);
+      bail_out(message);
+    }
+    exit(1);
+  }
 
-  for(ei=0;ei<numEdges;ei++){
-    shapeFns[vi] = 4.0*barys[edgeVertexIndices[ei][0]]*barys[edgeVertexIndices[ei][1]];
+  for(vi=0;vi<(*ptrToBuff).numVertices;vi++)
+    (*ptrToBuff).shapeFns[vi] = barys[vi]*(2.0*barys[vi] - 1.0);
+
+  for(ei=0;ei<(*ptrToBuff).numEdges;ei++){
+    (*ptrToBuff).shapeFns[vi] = 4.0*barys[(*ptrToBuff).edgeVertexIndices[ei][0]]\
+                                   *barys[(*ptrToBuff).edgeVertexIndices[ei][1]];
     vi++;
   }
 }
 
 /*....................................................................*/
-void doBaryInterpVel(const int numDims, const double *shapeFns\
-  , const double vertexVels[][numDims], const double edgeVels[][numDims], double vels[numDims]){
-
-  const int numVertices = numDims+1;
-  const int numEdges = numVertices*(numVertices-1)/2;
+void
+doBaryInterpVel(const int numDims, struct baryVelBuffType *ptrToBuff\
+, double vels[numDims]){
   int di,vi,ei;
 
   for(di=0;di<numDims;di++)
     vels[di] = 0.0;
 
-  for(vi=0;vi<numVertices;vi++)
+  for(vi=0;vi<(*ptrToBuff).numVertices;vi++)
     for(di=0;di<numDims;di++)
-      vels[di] += vertexVels[vi][di]*shapeFns[vi];
+      vels[di] += (*ptrToBuff).vertexVels[vi][di]*(*ptrToBuff).shapeFns[vi];
 
-  for(ei=0;ei<numEdges;ei++){
+  for(ei=0;ei<(*ptrToBuff).numEdges;ei++){
     for(di=0;di<numDims;di++)
-      vels[di] += edgeVels[ei][di]*shapeFns[vi];
+      vels[di] += (*ptrToBuff).edgeVels[ei][di]*(*ptrToBuff).shapeFns[vi];
     vi++;
   }
 }
 
 /*....................................................................*/
-void doBaryInterpsVel(const int numDims, const double vertexVels[][numDims], const double edgeVels[][numDims]\
-  , const int edgeVertexIndices[][2], const double entryLoc[]\
-  , const double exitLoc[], _Bool doRay[3], double rayVels[3][numDims]){
+void
+doBaryInterpsVel(const int numDims, struct baryVelBuffType *ptrToBuff\
+  , _Bool doRay[3], double rayVels[3][numDims]){
   /*
 In this function we take (vector) velocities at 4 locations describing a tetrahedral Delaunay cell, plus 6 additional velocity values at the half-way points along each of the 6 edges of the cell, plus entry and exit (barycentric) locations of a ray passing through the cell, and return an interpolated value of the velocities at the entry and exit points, as well as at a point half-way between them.
 
@@ -400,32 +419,19 @@ In the present case, N==4, so there are 6 half-edge points.
 The remaining difference between the present function and doBaryInterp() is that here we only interpolate velocity.
   */
 
-  const int numVertices=numDims+1;
-  const int numEdges = numVertices*(numVertices-1)/2;
-  double shapeFns[numVertices+numEdges],midLoc[numVertices];
   int i;
 
-  if(doRay[0]){
-    calc2ndOrderShapeFunctions(numVertices, entryLoc, edgeVertexIndices, shapeFns);
-    doBaryInterpVel(numDims, shapeFns, vertexVels, edgeVels, rayVels[0]);
-  }
-
-  if(doRay[1]){
-    calc2ndOrderShapeFunctions(numVertices, exitLoc, edgeVertexIndices, shapeFns);
-    doBaryInterpVel(numDims, shapeFns, vertexVels, edgeVels, rayVels[1]);
-  }
-
-  if(doRay[2]){
-    for(i=0;i<numVertices;i++)
-      midLoc[i] = 0.5*(entryLoc[i] + exitLoc[i]);
-
-    calc2ndOrderShapeFunctions(numVertices, midLoc, edgeVertexIndices, shapeFns);
-    doBaryInterpVel(numDims, shapeFns, vertexVels, edgeVels, rayVels[2]);
+  for(i=0;i<3;i++){
+    if(doRay[i]){
+      calc2ndOrderShapeFunctions(ptrToBuff, i);
+      doBaryInterpVel(numDims, ptrToBuff, rayVels[i]);
+    }
   }
 }
 
 /*....................................................................*/
-void doSegmentInterpVector(const int numDims, const double rayVels[3][numDims]\
+void
+doSegmentInterpVector(const int numDims, const double rayVels[3][numDims]\
   , const double x, double vel[numDims]){
   /*
 This function is supplied with values of velocity at the beginning, end and midpoint of the line segment which represents the passage of a ray through a cell (stored in that order in the input array 'rayVels'); what it does is perform a 2nd-order (i.e. quadratic) interpolation to obtain an estimate of the velocity at the given displacement along the line segment (returned in the array 'vel').
@@ -484,8 +490,8 @@ void
 traceray_smooth(rayData ray, const int im\
   , configInfo *par, struct grid *gp, double *vertexCoords, molData *md\
   , imageInfo *img, struct simplex *dc, const unsigned long numCells\
-  , const double epsilon, gridInterp gips[3], const int numSegments\
-  , const double oneOnNumSegments){
+  , const double epsilon, gridInterp gips[3], struct baryVelBuffType *ptrToBuff\
+  , const int numSegments, const double oneOnNumSegments){
   /*
 For a given image pixel position, this function evaluates the intensity of the total light emitted/absorbed along that line of sight through the (possibly rotated) model. The calculation is performed for several frequencies, one per channel of the output image.
 
@@ -495,8 +501,8 @@ This version of traceray implements a new algorithm in which the population valu
 
 A note about the object 'gips': this is an array with 3 elements, each one a struct of type 'gridInterp'. This struct is meant to store as many of the grid-point quantities (interpolated from the appropriate values at actual grid locations) as are necessary for solving the radiative transfer equations along the ray path. The first 2 entries give the values for the entry and exit points to a Delaunay cell, but which is which can change, and is indicated via the variables entryI and exitI (this is a convenience to avoid copying the values, since the values for the exit point of one cell are obviously just those for entry point of the next). The third entry stores values interpolated along the ray path within a cell.
   */
-  const int numFaces = DIM+1,nVertPerFace=3,numVertices=DIM+1,numRayInterpSamp=3;
-  int ichan,stokesId,di,status,lenChainPtrs=0,entryI,exitI,vi,vvi,ci,ei,fi,i0,i1;
+  const int numFaces = DIM+1,nVertPerFace=3,numRayInterpSamp=3;
+  int ichan,stokesId,di,status,lenChainPtrs=0,entryI,exitI,vi,vvi,ci,ei,fi;//,i0,i1;
   int si,molI,lineI,k,i;
   double xp,yp,zp,x[DIM],dir[DIM],projVelRay,vel[DIM],projVelOffset,projVel2ndDeriv;
   double xCmpntsRay[nVertPerFace],ds,snu_pol[3],dtau,contJnu,contAlpha;
@@ -505,10 +511,6 @@ A note about the object 'gips': this is an array with 3 elements, each one a str
   intersectType entryIntcptFirstCell, *cellExitIntcpts=NULL;
   unsigned long *chainOfCellIds=NULL,dci,dci0,dci1;
   unsigned long gis[2][nVertPerFace],gi,gi0,gi1,trialGi;
-
-  const int numEdges = numVertices*(numVertices-1)/2;
-  double vertexVels[numVertices][DIM],edgeVels[numEdges][DIM],entryCellBary[numVertices],exitCellBary[numVertices];
-  int edgeVertexIndices[numEdges][2];
   double rayVels[numRayInterpSamp][DIM],projRayVels[numRayInterpSamp];
   _Bool doRay[numRayInterpSamp],matchFound,neighNotFound;
   struct interCellKeyType{
@@ -548,16 +550,6 @@ A note about the object 'gips': this is an array with 3 elements, each one a str
   }
 
   if(img[im].doline && img[im].doInterpolateVels){
-    /* Populate the edge indices key for the cells: (****NOTE this could be done externally because it is always the same.) */
-    ei = 0;
-    for(i0=0;i0<numVertices-1;i0++){
-      for(i1=i0+1;i1<numVertices;i1++){
-        edgeVertexIndices[ei][0] = i0;
-        edgeVertexIndices[ei][1] = i1;
-        ei++;
-      }
-    }
-
     /*
 There is a problem when we want to copy cell-centric barycentric coords (BCs) for the entry face of all but the first cell in the chain when all we have to work with is the exit intercept (which includes face-centric BCs). This occurs because the order of the BCs in the exit cell corresponds to the order of the vertices in the cell it exits from, but we need the order for the cell entered. Thus we construct here an array of length lenChainPtrs-1 which gives a key to the exited-face vertices from the entered-face ones, and also stores the opposite-face vertex of the entered cell.
     */
@@ -580,7 +572,7 @@ There is a problem when we want to copy cell-centric barycentric coords (BCs) fo
       */
       interCellKey[ci].fiEnteredCell = -1; /* This flags that no opposite vertex was found - indicates a bug somewhere. */
       vvi = 0;
-      for(vi=0;vi<numVertices;vi++){
+      for(vi=0;vi<(*ptrToBuff).numVertices;vi++){
         trialGi = dc[dci1].vertx[vi];
         matchFound = 0; /* default. */
         for(fi=0;fi<nVertPerFace;fi++){
@@ -657,14 +649,14 @@ Calculate the values (via 2nd-order interpolation) of the systemic velocity for 
 
 First lot of setups: copying over the 4 vertex and the 6 mid-edge velocities.
       */
-      for(vi=0;vi<numVertices;vi++){
+      for(vi=0;vi<(*ptrToBuff).numVertices;vi++){
         gi = dc[dci].vertx[vi];
         for(di=0;di<DIM;di++)
-          vertexVels[vi][di] = gp[gi].vel[di];
+          (*ptrToBuff).vertexVels[vi][di] = gp[gi].vel[di];
       }
-      for(ei=0;ei<numEdges;ei++){
-        gi0 = dc[dci].vertx[edgeVertexIndices[ei][0]];
-        gi1 = dc[dci].vertx[edgeVertexIndices[ei][1]];
+      for(ei=0;ei<(*ptrToBuff).numEdges;ei++){
+        gi0 = dc[dci].vertx[(*ptrToBuff).edgeVertexIndices[ei][0]];
+        gi1 = dc[dci].vertx[(*ptrToBuff).edgeVertexIndices[ei][1]];
         /* Find index of gi0 neighbours which points to gi1: */
         neighNotFound = 1; /* default */
         for(k=0;k<gp[gi0].numNeigh;k++){
@@ -678,7 +670,7 @@ First lot of setups: copying over the 4 vertex and the 6 mid-edge velocities.
           exit(1);
         }
         for(di=0;di<DIM;di++)
-          edgeVels[ei][di] = gp[gi0].v2[3*k+di]; /* v2 is currently the mid-edge velocity. This is not very robust: should change it to allow a variable (but odd) number of velocity samples per edge, then pick the N_VEL_SEG_PER_HALFth. */
+          (*ptrToBuff).edgeVels[ei][di] = gp[gi0].v2[3*k+di]; /* v2 is currently the mid-edge velocity. This is not very robust: should change it to allow a variable (but odd) number of velocity samples per edge, then pick the N_VEL_SEG_PER_HALFth. */
       }
 
       /*
@@ -688,11 +680,11 @@ However! While this works fine all the time for the exit intercepts, and for cel
       */
       if(ci==0){
         vvi = 0;
-        for(vi=0;vi<numVertices;vi++){
+        for(vi=0;vi<(*ptrToBuff).numVertices;vi++){
           if(vi==entryIntcptFirstCell.fi){
-            entryCellBary[vi] = 0.0;
+            (*ptrToBuff).entryCellBary[vi] = 0.0;
           }else{
-            entryCellBary[vi] = entryIntcptFirstCell.bary[vvi];
+            (*ptrToBuff).entryCellBary[vi] = entryIntcptFirstCell.bary[vvi];
             vvi++;
           }
         }
@@ -703,11 +695,11 @@ However! While this works fine all the time for the exit intercepts, and for cel
 
       }else{
         vvi = 0;
-        for(vi=0;vi<numVertices;vi++){
+        for(vi=0;vi<(*ptrToBuff).numVertices;vi++){
           if(vi==interCellKey[ci-1].fiEnteredCell){
-            entryCellBary[vi] = 0.0;
+            (*ptrToBuff).entryCellBary[vi] = 0.0;
           }else{
-            entryCellBary[vi] = cellExitIntcpts[ci-1].bary[interCellKey[ci-1].exitedFaceIs[vvi]];
+            (*ptrToBuff).entryCellBary[vi] = cellExitIntcpts[ci-1].bary[interCellKey[ci-1].exitedFaceIs[vvi]];
             vvi++;
           }
         }
@@ -721,16 +713,18 @@ However! While this works fine all the time for the exit intercepts, and for cel
       }
 
       vvi = 0;
-      for(vi=0;vi<numVertices;vi++){
+      for(vi=0;vi<(*ptrToBuff).numVertices;vi++){
         if(vi==cellExitIntcpts[ci].fi){
-          exitCellBary[vi] = 0.0;
+          (*ptrToBuff).exitCellBary[vi] = 0.0;
         }else{
-          exitCellBary[vi] = cellExitIntcpts[ci].bary[vvi];
+          (*ptrToBuff).exitCellBary[vi] = cellExitIntcpts[ci].bary[vvi];
           vvi++;
         }
+
+        (*ptrToBuff).midCellBary[vi] = 0.5*((*ptrToBuff).entryCellBary[vi] + (*ptrToBuff).exitCellBary[vi]);
       }
 
-      doBaryInterpsVel(DIM, vertexVels, edgeVels, edgeVertexIndices, entryCellBary, exitCellBary, doRay, rayVels);
+      doBaryInterpsVel(DIM, ptrToBuff, doRay, rayVels);
 
       for(i=0;i<numRayInterpSamp;i++)
         projRayVels[i] = dotProduct3D(dir, rayVels[i]);
@@ -1104,7 +1098,7 @@ Note that the argument 'md', and the grid element '.mol', are only accessed for 
   */
   const int maxNumRaysPerPixel=20; /**** Arbitrary - could make this a global, or an argument. Set it to zero to indicate there is no maximum. */
   const double cutoff = par->minScale*1.0e-7;
-  const int numFaces=1+DIM, numInterpPoints=3, numSegments=5, minNumRaysForAverage=2;
+  const int numFaces=1+DIM,numInterpPoints=3,numSegments=5,minNumRaysForAverage=2;
   const double oneOnNFaces=1.0/(double)numFaces, oneOnNumSegments = 1.0/(double)numSegments;
   const double epsilon = 1.0e-6; // Needs thinking about. Double precision is much smaller than this.
   const int nStepsThruCell=10;
@@ -1113,7 +1107,7 @@ Note that the argument 'md', and the grid element '.mol', are only accessed for 
   double pixelSize,oneOnNumActiveRaysMinus1,imgCentreXPixels,imgCentreYPixels,minfreq,absDeltaFreq,x,xs[2],sum,oneOnNumRays;
   unsigned int totalNumImagePixels,ppi,numPixelsForInterp;
   int ichan,numCircleRays,numActiveRaysInternal,numActiveRays,lastChan;
-  int gi,molI,lineI,i,di,xi,yi,ri,vi;
+  int gi,molI,lineI,i,di,xi,yi,ri,vi,ei,i0,i1;
   int cmbMolI,cmbLineI;
   rayData *rays;
   struct cell *dc=NULL;
@@ -1122,6 +1116,7 @@ Note that the argument 'md', and the grid element '.mol', are only accessed for 
   double local_cmb,cmbFreq,circleSpacing,scale,angle,rSqu;
   double *vertexCoords=NULL;
   gsl_error_handler_t *defaultErrorHandler=NULL;
+  struct baryVelBuffType velBuff,*ptrToBuff=NULL;
 
   pixelSize = img[im].distance*img[im].imgres;
   totalNumImagePixels = img[im].pxls*img[im].pxls;
@@ -1267,6 +1262,40 @@ How to calculate this distance? Well if we have N points randomly but evenly dis
     cells = convertCellType(DIM, numCells, dc, gp);
     free(dc);
 
+    if(img[im].doline && img[im].doInterpolateVels){
+      /* Set up the buffer we will use to store various quantities when doing barycentric interpolation of velocities:
+      */
+      velBuff.numVertices = DIM+1;
+      velBuff.numEdges = velBuff.numVertices*(velBuff.numVertices-1)/2;
+
+      velBuff.entryCellBary = malloc(sizeof(*velBuff.entryCellBary)*velBuff.numVertices);
+      velBuff.midCellBary   = malloc(sizeof(*velBuff.midCellBary)  *velBuff.numVertices);
+      velBuff.exitCellBary  = malloc(sizeof(*velBuff.exitCellBary) *velBuff.numVertices);
+      velBuff.vertexVels    = malloc(sizeof(*velBuff.vertexVels)   *velBuff.numVertices);
+      for(i=0;i<velBuff.numVertices;i++)
+        velBuff.vertexVels[i] = malloc(sizeof(**velBuff.vertexVels)*DIM);
+
+      velBuff.edgeVertexIndices = malloc(sizeof(*velBuff.edgeVertexIndices)*velBuff.numEdges);
+      velBuff.edgeVels          = malloc(sizeof(*velBuff.edgeVels)         *velBuff.numEdges);
+      for(i=0;i<velBuff.numEdges;i++)
+        velBuff.edgeVels[i] = malloc(sizeof(**velBuff.edgeVels)*DIM);
+
+      velBuff.shapeFns = malloc(sizeof(*velBuff.shapeFns)*(velBuff.numVertices+velBuff.numEdges));
+
+      /* Populate the edge indices key for the cells:
+      */
+      ei = 0;
+      for(i0=0;i0<velBuff.numVertices-1;i0++){
+        for(i1=i0+1;i1<velBuff.numVertices;i1++){
+          velBuff.edgeVertexIndices[ei][0] = i0;
+          velBuff.edgeVertexIndices[ei][1] = i1;
+          ei++;
+        }
+      }
+
+      ptrToBuff = &velBuff;
+    }
+
   }else if(par->traceRayAlgorithm!=0){
     if(!silent) bail_out("Unrecognized value of par.traceRayAlgorithm");
     exit(1);
@@ -1318,7 +1347,7 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
 
       else if(par->traceRayAlgorithm==1)
         traceray_smooth(rays[ri], im, par, gp, vertexCoords, md, img\
-          , cells, numCells, epsilon, gips\
+          , cells, numCells, epsilon, gips, ptrToBuff\
           , numSegments, oneOnNumSegments);
 
       if (threadI == 0){ /* i.e., is master thread */
@@ -1334,6 +1363,24 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
 
   gsl_set_error_handler(defaultErrorHandler);
 
+  if(par->traceRayAlgorithm==1){
+    free(cells);
+    free(vertexCoords);
+    if(img[im].doline && img[im].doInterpolateVels){
+      free(velBuff.shapeFns);
+      for(i=0;i<velBuff.numEdges;i++)
+        free(velBuff.edgeVels);
+      free(velBuff.edgeVels);
+      free(velBuff.edgeVertexIndices);
+      for(i=0;i<velBuff.numVertices;i++)
+        free(velBuff.vertexVels);
+      free(velBuff.vertexVels);
+      free(velBuff.exitCellBary);
+      free(velBuff.midCellBary);
+      free(velBuff.entryCellBary);
+    }
+  }
+
   /* We take, in formal terms, all the 'active' or accepted rays on the model-radius circle to be outside the model; thus we set their intensity and tau to zero.
   */
   for(ri=numActiveRaysInternal;ri<numActiveRays;ri++){
@@ -1341,11 +1388,6 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
       rays[ri].intensity[ichan] = 0.0;
       rays[ri].tau[      ichan] = 0.0;
     }
-  }
-
-  if(par->traceRayAlgorithm==1){
-    free(cells);
-    free(vertexCoords);
   }
 
   /* For pixels with more than a cutoff number of rays, just average those rays into the pixel:
