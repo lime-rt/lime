@@ -107,7 +107,7 @@ parseInput(const inputPars inpar, image *inimg, const int nImages, configInfo *p
 The parameters visible to the user have now been strictly confined to members of the structs 'inputPars' and 'image', both of which are defined in inpars.h. There are however further internally-set values which is is convenient to bundle together with the user-set ones. At present we have a fairly clunky arrangement in which the user-set values are copied member-by-member from the user-dedicated structs to the generic internal structs 'configInfo' and 'imageInfo'. This is done in the present function, along with some checks and other initialization.
   */
 
-  int i,j,id,status=0;
+  int i,j,id,status=0,numGirDatFiles;
   double BB[3],normBSquared,dens[MAX_N_COLL_PART],r[DIM];
   double dummyVel[DIM];
   FILE *fp;
@@ -185,6 +185,21 @@ The parameters visible to the user have now been strictly confined to members of
   while(par->nSpecies<MAX_NSPECIES && inpar.moldatfile[par->nSpecies]!=NULL && strlen(inpar.moldatfile[par->nSpecies])>0)
     par->nSpecies++;
 
+  numGirDatFiles=0;
+  while(numGirDatFiles<MAX_NSPECIES && inpar.girdatfile[numGirDatFiles]!=NULL && strlen(inpar.girdatfile[numGirDatFiles])>0)
+    numGirDatFiles++;
+
+  if(numGirDatFiles<=0)
+    par->girdatfile = NULL;
+  else if(numGirDatFiles!=par->nSpecies){
+    if(!silent) bail_out("Number of girdatfiles different from number of species.");
+  }else{
+    par->girdatfile=malloc(sizeof(char *)*par->nSpecies);
+    for(id=0;id<par->nSpecies;id++){
+      copyInparStr(inpar.girdatfile[id], &(par->girdatfile[id]));
+    }
+  }
+
   /* Copy over the moldatfiles.
   */
   if(par->nSpecies <= 0){
@@ -192,10 +207,8 @@ The parameters visible to the user have now been strictly confined to members of
 
   } else {
     par->moldatfile=malloc(sizeof(char *)*par->nSpecies);
-    par->girdatfile=malloc(sizeof(char *)*par->nSpecies);
     for(id=0;id<par->nSpecies;id++){
       copyInparStr(inpar.moldatfile[id], &(par->moldatfile[id]));
-      copyInparStr(inpar.girdatfile[id], &(par->girdatfile[id]));
     }
 
     /* Check if files exist. */
