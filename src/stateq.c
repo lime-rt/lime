@@ -64,7 +64,7 @@ getFixedMatrix(molData *md, int ispec, struct grid *gp, int id, struct collPartM
 
 /*....................................................................*/
 void
-getMatrix(int id, gsl_matrix *matrix, molData *md, struct grid *gp, int ispec, gridPointData *mp, struct collPartMatrixType *collPartMat){
+getMatrix(int id, gsl_matrix *matrix, molData *md, struct grid *gp, int ispec, gridPointData *mp, struct collPartMatrixType *collPartMat, configInfo *par){
   int k,l,li,ipart,di;
   double *girtot;
 
@@ -87,10 +87,12 @@ getMatrix(int id, gsl_matrix *matrix, molData *md, struct grid *gp, int ispec, g
     gsl_matrix_set(matrix, l, k, gsl_matrix_get(matrix, l, k)-md[ispec].beinstu[li]*mp[ispec].jbar[li]-md[ispec].aeinst[li]);
   }
 
-  for(k=0;k<md[ispec].nlev;k++){
-    girtot[k] = 0;
-    for(l=0;l<md[ispec].nlev;l++)
-      girtot[k] += md[ispec].gir[k*md[ispec].nlev+l];
+  if(par->girdatfile!=NULL){
+    for(k=0;k<md[ispec].nlev;k++){
+      girtot[k] = 0;
+      for(l=0;l<md[ispec].nlev;l++)
+        girtot[k] += md[ispec].gir[k*md[ispec].nlev+l];
+    }
   }
 
   for(k=0;k<md[ispec].nlev;k++){
@@ -99,6 +101,7 @@ getMatrix(int id, gsl_matrix *matrix, molData *md, struct grid *gp, int ispec, g
       if(di>=0)
         gsl_matrix_set(matrix,k,k,gsl_matrix_get(matrix,k,k)+gp[id].dens[di]*collPartMat[ipart].ctot[k]);
     }
+    if(par->girdatfile!=NULL)
     gsl_matrix_set(matrix,k,k,gsl_matrix_get(matrix,k,k)+girtot[k]);
     for(l=0;l<md[ispec].nlev;l++){
       if(k!=l){
@@ -107,6 +110,7 @@ getMatrix(int id, gsl_matrix *matrix, molData *md, struct grid *gp, int ispec, g
           if(di>=0)
             gsl_matrix_set(matrix,k,l,gsl_matrix_get(matrix,k,l)-gp[id].dens[di]*gsl_matrix_get(collPartMat[ipart].colli,l,k));
         }
+        if(par->girdatfile!=NULL)
         gsl_matrix_set(matrix,k,l,gsl_matrix_get(matrix,k,l)-md[ispec].gir[l*md[ispec].nlev+k]);
       }
     }
@@ -151,7 +155,7 @@ stateq(int id, struct grid *gp, molData *md, const int ispec, configInfo *par\
   while((diff>TOL && iter<MAXITER) || iter<5){
     getjbar(id,md,gp,ispec,par,blends,nextMolWithBlend,mp,halfFirstDs);
 
-    getMatrix(id,matrix,md,gp,ispec,mp,collPartMat);
+    getMatrix(id,matrix,md,gp,ispec,mp,collPartMat,par);
     for(s=0;s<md[ispec].nlev;s++){
       for(t=0;t<md[ispec].nlev-1;t++){
         gsl_matrix_set(reduc,t,s,gsl_matrix_get(matrix,t,s));
