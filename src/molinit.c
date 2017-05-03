@@ -217,9 +217,10 @@ void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds\
             fscanf(fp,"\n");
           }
         } /* End if(par->lte_only) */
-
         k++;
-      } /* End if CP found in par->collPartIds. */
+      }else{ /* read and discard to keep the file reading in sync */
+        readDummyCollPart(fp, sizeI);
+      }/* End if CP found in par->collPartIds. */
     } /* End loop over collision partners this molecule. */
     numPartsAcceptedThisMol = k;
 
