@@ -125,7 +125,7 @@ input(inputPars *par, image *img){
   */
 //  img[i].unit                   = 0;
   img[i].units                  = "0 1 2";
-  img[i].filename               = "image0";        // Output filename
+  img[i].filename               = "image0.fits";   // Output filename
 }
 
 /******************************************************************************/
