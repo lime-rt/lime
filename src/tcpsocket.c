@@ -23,6 +23,7 @@ openSocket(char *moldatfile){
   char *get;
   char *s,*t;
   char buf[2];
+  char message[80];
   char *host = "home.strw.leidenuniv.nl";
   char *ip="132.229.214.164";
   char *page = "~moldata/datafiles/";
@@ -91,7 +92,10 @@ openSocket(char *moldatfile){
 
   memset(buf, 0, sizeof(buf));
   if((fp=fopen(moldatfile, "w"))==NULL) {
-    if(!silent) bail_out("Failed to write moldata!");
+    if(!silent){
+      sprintf(message, "Failed to write moldat file %s.", moldatfile);
+      bail_out(message);
+    }
     exit(1);
   }
 
@@ -105,5 +109,17 @@ openSocket(char *moldatfile){
   free(t);
   free(remote);
   close(sock);
+  fclose(fp);
+
+  /* Rough sanity check:
+  */
+  if((fp=fopen(moldatfile, "r"))==NULL) {
+    if(!silent){
+      sprintf(message, "Error opening moldat file %s.", moldatfile);
+      bail_out(message);
+    }
+    exit(1);
+  }
+  checkFirstLineMolDat(fp, moldatfile);
   fclose(fp);
 }
