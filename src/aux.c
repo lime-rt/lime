@@ -130,8 +130,11 @@ The parameters visible to the user have now been strictly confined to members of
     /* Check if files exist. */
     for(id=0;id<par->nSpecies;id++){
       if((fp=fopen(par->moldatfile[id], "r"))==NULL) {
+        sprintf(message, "Moldat file %s not found locally - fetching it from LAMDA", par->moldatfile[id]);
+        printMessage(message);
         openSocket(par->moldatfile[id]);
       } else {
+        checkFirstLineMolDat(fp, par->moldatfile[id]);
         fclose(fp);
       }
     }

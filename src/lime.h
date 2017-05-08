@@ -43,7 +43,7 @@
 
 #include "dims.h"
 
-#define VERSION	"1.7.2"
+#define VERSION	"1.7.3"
 #define DEFAULT_NTHREADS 1
 #ifndef NTHREADS /* Value passed from the LIME script */
 #define NTHREADS DEFAULT_NTHREADS
@@ -319,6 +319,7 @@ void	calcInterpCoeffs_lin(configInfo*, struct grid*);
 void	calcMolCMBs(configInfo*, molData*);
 void	calcSourceFn(double, const configInfo*, double*, double*);
 void	calcTableEntries(const int, const int);
+void	checkFirstLineMolDat(FILE *fp, char *moldatfile);
 void	checkGridDensities(configInfo*, struct grid*);
 void	checkUserDensWeights(configInfo*);
 void	delaunay(const int, struct grid*, const unsigned long, const _Bool, const _Bool, struct cell**, unsigned long*);

@@ -56,6 +56,24 @@ double planckfunc(const double freq, const double temp){
 }
 
 /*....................................................................*/
+void
+checkFirstLineMolDat(FILE *fp, char *moldatfile){
+  const int sizeI=200;
+  char string[sizeI],message[80];
+  char *expectedLine="!MOLECULE";
+
+  fgets(string, sizeI, fp);
+
+  if(strncmp(string, expectedLine, strlen(expectedLine))!=0){
+    if(!silent){
+      sprintf(message, "Bad format first line of moldat file %s.", moldatfile);
+      bail_out(message);
+    }
+    exit(1);
+  }
+}
+
+/*....................................................................*/
 void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *numCollPartsFound){
   /* NOTE! allUniqueCollPartIds is malloc'd in the present function, but not freed. The calling program must free it elsewhere.
   */
@@ -63,7 +81,7 @@ void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *
   double dummy;
   _Bool cpFound,previousCpFound;
   const int sizeI=200;
-  char string[sizeI], partstr[90];
+  char string[sizeI],partstr[90];
   FILE *fp;
 
   *allUniqueCollPartIds = malloc(sizeof(**allUniqueCollPartIds)*MAX_N_COLL_PART);
@@ -226,8 +244,9 @@ void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *
             fscanf(fp,"\n");
           }
         } /* End if(par->lte_only) */
-
         k++;
+      }else{ /* read and discard to keep the file reading in sync */
+        readDummyCollPart(fp, sizeI);
       } /* End if CP found in par->collPartIds. */
     } /* End loop over collision partners this molecule. */
     numPartsAcceptedThisMol = k;
