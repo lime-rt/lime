@@ -102,7 +102,7 @@ getMatrix(int id, gsl_matrix *matrix, molData *md, struct grid *gp, int ispec, g
         gsl_matrix_set(matrix,k,k,gsl_matrix_get(matrix,k,k)+gp[id].dens[di]*collPartMat[ipart].ctot[k]);
     }
     if(par->girdatfile!=NULL)
-    gsl_matrix_set(matrix,k,k,gsl_matrix_get(matrix,k,k)+girtot[k]);
+      gsl_matrix_set(matrix,k,k,gsl_matrix_get(matrix,k,k)+girtot[k]);
     for(l=0;l<md[ispec].nlev;l++){
       if(k!=l){
         for(ipart=0;ipart<md[ispec].npart;ipart++){
@@ -111,7 +111,7 @@ getMatrix(int id, gsl_matrix *matrix, molData *md, struct grid *gp, int ispec, g
             gsl_matrix_set(matrix,k,l,gsl_matrix_get(matrix,k,l)-gp[id].dens[di]*gsl_matrix_get(collPartMat[ipart].colli,l,k));
         }
         if(par->girdatfile!=NULL)
-        gsl_matrix_set(matrix,k,l,gsl_matrix_get(matrix,k,l)-md[ispec].gir[l*md[ispec].nlev+k]);
+          gsl_matrix_set(matrix,k,l,gsl_matrix_get(matrix,k,l)-md[ispec].gir[l*md[ispec].nlev+k]);
       }
     }
     gsl_matrix_set(matrix, md[ispec].nlev, k, 1.);
