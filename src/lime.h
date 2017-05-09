@@ -43,7 +43,7 @@
 
 #include "dims.h"
 
-#define VERSION	"1.7.2"
+#define VERSION	"1.7.3"
 #define DEFAULT_NTHREADS 1
 #ifndef NTHREADS /* Value passed from the LIME script */
 #define NTHREADS DEFAULT_NTHREADS
@@ -144,7 +144,7 @@ typedef struct {
   int dataFlags,nSolveIters;
   char *outputfile,*binoutputfile,*gridfile,*pregrid,*restart,*dust;
   char *gridInFile,**gridOutFiles;
-  char **moldatfile,**collPartNames;
+  char **girdatfile,**moldatfile,**collPartNames;
   _Bool writeGridAtStage[NUM_GRID_STAGES],resetRNG,doInterpolateVels,useAbun;
 } configInfo;
 
@@ -158,7 +158,7 @@ struct cpData {
 typedef struct {
   int nlev,nline,npart;
   int *lal,*lau;
-  double *aeinst,*freq,*beinstu,*beinstl,*eterm,*gstat;
+  double *aeinst,*freq,*beinstu,*beinstl,*eterm,*gstat,*gir;
   double *cmb,amass;
   struct cpData *part;
   char molName[80];
@@ -310,6 +310,7 @@ void	calcInterpCoeffs(configInfo*, struct grid*);
 void	calcInterpCoeffs_lin(configInfo*, struct grid*);
 void	calcSourceFn(double, const configInfo*, double*, double*);
 void	calcTableEntries(const int, const int);
+void	checkFirstLineMolDat(FILE *fp, char *moldatfile);
 void	checkGridDensities(configInfo*, struct grid*);
 void	checkUserDensWeights(configInfo*);
 void    copyInparStr(const char*, char**);

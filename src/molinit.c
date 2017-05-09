@@ -39,8 +39,25 @@ void readDummyCollPart(FILE *fp, const int strLen){
 }
 
 /*....................................................................*/
-void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds\
-  , int *numUniqueCollPartsFound){
+void
+checkFirstLineMolDat(FILE *fp, char *moldatfile){
+  const int sizeI=200;
+  char string[sizeI],message[80];
+  char *expectedLine="!MOLECULE";
+
+  fgets(string, sizeI, fp);
+
+  if(strncmp(string, expectedLine, strlen(expectedLine))!=0){
+    if(!silent){
+      sprintf(message, "Bad format first line of moldat file %s.", moldatfile);
+      bail_out(message);
+    }
+    exit(1);
+  }
+}
+
+/*....................................................................*/
+void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *numUniqueCollPartsFound){
   /* NOTE! allUniqueCollPartIds is malloc'd in the present function, but not freed. The calling program must free it elsewhere.
   */
   int i,j,k,ilev,idummy,iline,numPartsAcceptedThisMol,ipart,collPartId,itemp,itrans;
@@ -217,8 +234,9 @@ void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds\
             fscanf(fp,"\n");
           }
         } /* End if(par->lte_only) */
-
         k++;
+      }else{ /* read and discard to keep the file reading in sync */
+        readDummyCollPart(fp, sizeI);
       } /* End if CP found in par->collPartIds. */
     } /* End loop over collision partners this molecule. */
     numPartsAcceptedThisMol = k;
@@ -274,6 +292,28 @@ void calcMolCMBs(configInfo *par, molData *md){
     }
   }
 }
+/*....................................................................*/
+void setUpGir(configInfo *par, molData *md){
+  int i,ilev,jlev;
+  double dummy;
+  FILE *fp;
+
+  for(i=0;i<par->nSpecies;i++){
+    md[i].gir = malloc(sizeof(double)*md[i].nlev*md[i].nlev);
+    /* Read the pumping rate coefficients onto gir array */
+    for(ilev=0;ilev<md[i].nlev;ilev++){
+      for(jlev=0;jlev<md[i].nlev;jlev++){
+        md[i].gir[ilev*md[i].nlev+jlev] = 0.;
+      }
+    }
+    if((fp=fopen(par->girdatfile[i], "r")) != NULL){
+      while (fscanf(fp, "%d %d %lf", &ilev, &jlev, &dummy) != EOF) {
+        md[i].gir[(ilev-1)*md[i].nlev+jlev-1] = dummy;
+      }
+      fclose(fp);
+    }
+  }
+}
 
 /*....................................................................*/
 void molInit(configInfo *par, molData *md){
@@ -284,6 +324,9 @@ void molInit(configInfo *par, molData *md){
   readMolData(par, md, &allUniqueCollPartIds, &numUniqueCollPartsFound);
   setUpDensityAux(par, allUniqueCollPartIds, numUniqueCollPartsFound);
   free(allUniqueCollPartIds);
+  if(par->girdatfile!=NULL){
+    setUpGir(par, md);
+  }
   if(!par->lte_only){
     assignMolCollPartsToDensities(par, md);
 

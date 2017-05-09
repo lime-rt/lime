@@ -16,6 +16,7 @@ typedef struct {
   double (*gridDensMaxLoc)[DIM],*gridDensMaxValues,*collPartMolWeights;
   int sinkPoints,pIntensity,blend,*collPartIds,traceRayAlgorithm,samplingAlgorithm;
   int sampling,lte_only,init_lte,antialias,polarization,nThreads;
+  char **girdatfile;
   int nSolveIters;
   char *outputfile,*binoutputfile,*gridfile,*pregrid,*restart,*dust;
   char *gridInFile,**gridOutFiles;

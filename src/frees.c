@@ -33,6 +33,11 @@ freeConfigInfo(configInfo par){
       free(par.moldatfile[i]);
     free(par.moldatfile);
   }
+  if(par.girdatfile!= NULL){
+    for(i=0;i<par.nSpecies;i++)
+      free(par.girdatfile[i]);
+    free(par.girdatfile);
+  }
 
   free(par.gridOutFiles);
   free(par.gridDensMaxValues);
@@ -45,6 +50,7 @@ freeInputPars(inputPars par){
   free(par.nMolWeights);
   free(par.dustWeights);
   free(par.moldatfile);
+  free(par.girdatfile);
   free(par.collPartNames);
   free(par.gridOutFiles);
   free(par.gridDensMaxValues);
@@ -118,6 +124,7 @@ freeMolData(const int nSpecies, molData *mol){
       free(mol[i].lal);
       free(mol[i].lau);
       free(mol[i].aeinst);
+      free(mol[i].gir);
       free(mol[i].freq);
       free(mol[i].beinstu);
       free(mol[i].beinstl);

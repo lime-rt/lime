@@ -107,7 +107,7 @@ parseInput(const inputPars inpar, image *inimg, const int nImages, configInfo *p
 The parameters visible to the user have now been strictly confined to members of the structs 'inputPars' and 'image', both of which are defined in inpars.h. There are however further internally-set values which is is convenient to bundle together with the user-set ones. At present we have a fairly clunky arrangement in which the user-set values are copied member-by-member from the user-dedicated structs to the generic internal structs 'configInfo' and 'imageInfo'. This is done in the present function, along with some checks and other initialization.
   */
 
-  int i,j,id,status=0;
+  int i,j,id,status=0,numGirDatFiles;
   double BB[3],normBSquared,dens[MAX_N_COLL_PART],r[DIM];
   double dummyVel[DIM];
   FILE *fp;
@@ -185,6 +185,21 @@ The parameters visible to the user have now been strictly confined to members of
   while(par->nSpecies<MAX_NSPECIES && inpar.moldatfile[par->nSpecies]!=NULL && strlen(inpar.moldatfile[par->nSpecies])>0)
     par->nSpecies++;
 
+  numGirDatFiles=0;
+  while(numGirDatFiles<MAX_NSPECIES && inpar.girdatfile[numGirDatFiles]!=NULL && strlen(inpar.girdatfile[numGirDatFiles])>0)
+    numGirDatFiles++;
+
+  if(numGirDatFiles<=0)
+    par->girdatfile = NULL;
+  else if(numGirDatFiles!=par->nSpecies){
+    if(!silent) bail_out("Number of girdatfiles different from number of species.");
+  }else{
+    par->girdatfile=malloc(sizeof(char *)*par->nSpecies);
+    for(id=0;id<par->nSpecies;id++){
+      copyInparStr(inpar.girdatfile[id], &(par->girdatfile[id]));
+    }
+  }
+
   /* Copy over the moldatfiles.
   */
   if(par->nSpecies <= 0){
@@ -192,14 +207,18 @@ The parameters visible to the user have now been strictly confined to members of
 
   } else {
     par->moldatfile=malloc(sizeof(char *)*par->nSpecies);
-    for(id=0;id<par->nSpecies;id++)
+    for(id=0;id<par->nSpecies;id++){
       copyInparStr(inpar.moldatfile[id], &(par->moldatfile[id]));
+    }
 
     /* Check if files exist. */
     for(id=0;id<par->nSpecies;id++){
       if((fp=fopen(par->moldatfile[id], "r"))==NULL) {
+        sprintf(message, "Moldat file %s not found locally - fetching it from LAMDA", par->moldatfile[id]);
+        printMessage(message);
         openSocket(par->moldatfile[id]);
       } else {
+        checkFirstLineMolDat(fp, par->moldatfile[id]);
         fclose(fp);
       }
     }
@@ -628,6 +647,7 @@ Eventually I hope readOrBuildGrid() will be unilaterally called within LIME; if 
       (*md)[i].lal = NULL;
       (*md)[i].lau = NULL;
       (*md)[i].aeinst = NULL;
+      (*md)[i].gir = NULL;
       (*md)[i].freq = NULL;
       (*md)[i].beinstu = NULL;
       (*md)[i].beinstl = NULL;
