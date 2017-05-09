@@ -26,7 +26,7 @@ input(inputPars *par, image *img){
   par->moldatfile[0]            = "hco+@xpol.dat";
   par->antialias                = 4;
   par->sampling                 = 2; // log distr. for radius, directions distr. uniformly on a sphere.
-  par->nSolveIters              = 14;
+  par->nSolveIters              = 2;//14;
   par->resetRNG	                = 0;
 
   par->outputfile               = "populations.pop";
@@ -123,8 +123,8 @@ input(inputPars *par, image *img){
    * A single image unit can also be specified for each image using img[].unit as in previous LIME versions. Note that
    * only img[].units or img[].unit should be set for each image.
   */
-//  img[i].unit                   = 0;
-  img[i].units                  = "0 1 2";
+  img[i].unit                   = 0;
+//  img[i].units                  = "0 1 2";
   img[i].filename               = "image0.fits";   // Output filename
 }
 
