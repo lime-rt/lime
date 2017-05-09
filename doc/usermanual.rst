@@ -594,6 +594,17 @@ These last two parameters mostly replace the functionality of the older `par->ou
 
 .. _images:
 
+.. code:: c
+
+    (string) par->girdatfile[i] (optional)
+
+Path to the i’th data file containing the effective IR pumping rate
+coefficients that can be determined by the contribution of cascading
+rotational levels within vibration bands as in Bensch & Bergin 2004.
+This effect is relevant for cometary coma exposed to solar radiation.
+girdatfile is an array, so a different data file can be used for each radiating
+species.  If this parameter is not supplied the effect will be ignored.
+
 Images
 ~~~~~~
 
@@ -1314,6 +1325,7 @@ Appendix: Bibliography
 ----------------------
 
 -  Ade et al., A&A 576, A105 (2015)
+-  Bensch & Bergin, ApJ, 615, 531, 2004
 -  Brinch & Hogerheijde, A&A, 523, A25, 2010; see also
    http://www.nbi.dk/~brinch/lime.php
 -  Hogerheijde & van der Tak, A&A, 362,697, 2000
