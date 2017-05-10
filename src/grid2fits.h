@@ -5,38 +5,33 @@
  *  Copyright (C) 2006-2014 Christian Brinch
  *  Copyright (C) 2015-2017 The LIME development team
  *
+
+NOTE! This file is not stand-alone, in needs to be included in an environment which defines (on top of the usual types) the following data types:
+  fitsfile
+  struct gridInfoType
+  struct grid
+  struct keywordType
+  struct linkType
+
  */
 
 #ifndef GRID2FITS_H
 #define GRID2FITS_H
 
-#define lime_fptr	fitsfile
-
-struct keywordType{
-  int datatype; /* Accepted: TSTRING, TINT, TFLOAT, TDOUBLE */
-  char *keyname, *comment;
-  int intValue;
-  float floatValue;
-  double doubleValue;
-  char *charValue;
-};
-
-
-_Bool	checkPopsFitsExtExists(fitsfile*, const unsigned short);
+_Bool	checkPopsFITSExtExists(fitsfile*, const unsigned short);
 void	closeFITSFile(fitsfile*);
-void	initializeKeyword(struct keywordType*);
-void	readGridExtFromFits(fitsfile*, struct gridInfoType*, struct grid**, unsigned int**, char***, int*, int*);
-void	readKeywordsFromFits(lime_fptr*, struct keywordType*, const int);
-void	readLinksExtFromFits(fitsfile*, struct gridInfoType*, struct grid*, struct linkType**, int*);
-void	readNnIndicesExtFromFits(fitsfile*, struct linkType*, struct linkType***, struct gridInfoType*, int*);
-void	readPopsExtFromFits(fitsfile*, const unsigned short, struct grid*, struct gridInfoType*);
+void	readGridExtFromFITS(fitsfile*, struct gridInfoType*, struct grid**, unsigned int**, char***, int*, int*);
+void	readKeywordsFromFITS(fitsfile*, struct keywordType*, const int);
+void	readLinksExtFromFITS(fitsfile*, struct gridInfoType*, struct grid*, struct linkType**, int*);
+void	readNnIndicesExtFromFITS(fitsfile*, struct linkType*, struct linkType***, struct gridInfoType*, int*);
+void	readPopsExtFromFITS(fitsfile*, const unsigned short, struct grid*, struct gridInfoType*);
 fitsfile *openFITSFileForRead(char*);
 fitsfile *openFITSFileForWrite(char*);
-void	writeKeywordsToFits(lime_fptr*, struct keywordType*, const int);
-void	writeGridExtToFits(fitsfile*, struct gridInfoType, struct grid*, unsigned int*, char**, const int);
-void	writeLinksExtToFits(fitsfile*, struct gridInfoType, struct linkType*);
-void	writeNnIndicesExtToFits(fitsfile*, struct gridInfoType, struct linkType**);
-void	writePopsExtToFits(fitsfile*, struct gridInfoType, const unsigned short, struct grid*);
+void	writeKeywordsToFITS(fitsfile*, struct keywordType*, const int);
+void	writeGridExtToFITS(fitsfile*, struct gridInfoType, struct grid*, unsigned int*, char**, const int);
+void	writeLinksExtToFITS(fitsfile*, struct gridInfoType, struct linkType*);
+void	writeNnIndicesExtToFITS(fitsfile*, struct gridInfoType, struct linkType**);//, struct linkType*);
+void	writePopsExtToFITS(fitsfile*, struct gridInfoType, const unsigned short, struct grid*);
 int	countDensityColsFITS(char *inFileName);
 
 #endif /* GRID2FITS_H */

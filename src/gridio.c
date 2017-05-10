@@ -60,18 +60,31 @@ Since 'firstNearNeigh' has a single entry for each grid point, it can be stored 
 */
 
 /*....................................................................*/
+void
+initializeKeyword(struct keywordType *kwd){
+  (*kwd).datatype = 0;
+  (*kwd).keyname = NULL;
+  (*kwd).comment = NULL;
+  (*kwd).intValue = 0;
+  (*kwd).floatValue = 0.0;
+  (*kwd).doubleValue = 0.0;
+  (*kwd).charValue = NULL;
+}
+
+/*....................................................................*/
 lime_fptr *
-openFileForWrite(char *outFileName, const int fileFormatI){
+openFileForWrite(char *outFileName){
   lime_fptr *fptr=NULL;
 
-  if(fileFormatI==lime_FITS){
-    fptr = openFITSFileForWrite(outFileName);
-  }else{
+#if defined(lime_IO) && lime_IO==lime_HDF5
     return NULL;
-  }
+#else
+    fptr = openFITSFileForWrite(outFileName);
+#endif
 
   return fptr;
 }
+
 
 /*....................................................................*/
 void
@@ -228,21 +241,24 @@ We want to read in the intra-edge velocity samples which are currently still bei
 
 /*....................................................................*/
 void
-closeFile(lime_fptr *fptr, const int fileFormatI){
-  if(fileFormatI==lime_FITS)
-    closeFITSFile(fptr);
-  //**** error if not?
+closeFile(lime_fptr *fptr){
+#if defined(lime_IO) && lime_IO==lime_HDF5
+  if(!silent) bail_out("Unknown file type");
+  exit(1);
+#else
+  closeFITSFile(fptr);
+#endif
 }
 
 /*....................................................................*/
 void
-closeAndFree(lime_fptr *fptr, const int fileFormatI\
+closeAndFree(lime_fptr *fptr\
   , unsigned int *firstNearNeigh, struct linkType **nnLinks\
   , struct linkType *links, const unsigned int totalNumLinks){
 
   unsigned int i_ui;
 
-  closeFile(fptr, fileFormatI);
+  closeFile(fptr);
 
   free(firstNearNeigh);
   free(nnLinks);
@@ -255,90 +271,90 @@ closeAndFree(lime_fptr *fptr, const int fileFormatI\
 
 /*....................................................................*/
 int
-writeKeywords(lime_fptr *fptr, const int fileFormatI\
+writeKeywords(lime_fptr *fptr\
   , struct keywordType *kwds, const int numKeywords){
 
   int status=0;
 
-  if(fileFormatI==lime_FITS){
-    writeKeywordsToFits(fptr, kwds, numKeywords);
-  }else{
-    status = 1;
-  }
+#if defined(lime_IO) && lime_IO==lime_HDF5
+  status = 1;
+#else
+  writeKeywordsToFITS(fptr, kwds, numKeywords);
+#endif
 
   return status;
 }
 
 /*....................................................................*/
 int
-writeGridTable(lime_fptr *fptr, const int fileFormatI\
+writeGridTable(lime_fptr *fptr\
   , struct gridInfoType gridInfo, struct grid *gp, unsigned int *firstNearNeigh\
   , char **collPartNames, const int dataFlags){
 
   int status=0;
 
-  if(fileFormatI==lime_FITS){
-    writeGridExtToFits(fptr, gridInfo, gp, firstNearNeigh, collPartNames, dataFlags);
-  }else{
-    status = 1;
-  }
+#if defined(lime_IO) && lime_IO==lime_HDF5
+  status = 1;
+#else
+  writeGridExtToFITS(fptr, gridInfo, gp, firstNearNeigh, collPartNames, dataFlags);
+#endif
 
   return status;
 }
 
 /*....................................................................*/
 int
-writeNnIndicesTable(lime_fptr *fptr, const int fileFormatI\
+writeNnIndicesTable(lime_fptr *fptr\
   , struct gridInfoType gridInfo, struct linkType **nnLinks){\
 
   int status=0;
 
-  if(fileFormatI==lime_FITS){
-    writeNnIndicesExtToFits(fptr, gridInfo, nnLinks);
-  }else{
-    status = 1;
-  }
+#if defined(lime_IO) && lime_IO==lime_HDF5
+  status = 1;
+#else
+  writeNnIndicesExtToFITS(fptr, gridInfo, nnLinks);
+#endif
 
   return status;
 }
 
 /*....................................................................*/
 int
-writeLinksTable(lime_fptr *fptr, const int fileFormatI\
+writeLinksTable(lime_fptr *fptr\
   , struct gridInfoType gridInfo, struct linkType *links){
 
   int status=0;
 
-  if(fileFormatI==lime_FITS){
-    writeLinksExtToFits(fptr, gridInfo, links);
-  }else{
-    status = 1;
-  }
+#if defined(lime_IO) && lime_IO==lime_HDF5
+  status = 1;
+#else
+  writeLinksExtToFITS(fptr, gridInfo, links);
+#endif
 
   return status;
 }
 
 /*....................................................................*/
 int
-writePopsTable(lime_fptr *fptr, const int fileFormatI\
+writePopsTable(lime_fptr *fptr\
   , struct gridInfoType gridInfo, unsigned short speciesI\
   , struct grid *gp){
 
 
   int status=0;
 
-  if(fileFormatI==lime_FITS){
-    writePopsExtToFits(fptr, gridInfo, speciesI, gp);
-  }else{
-    status = 1;
-  }
+#if defined(lime_IO) && lime_IO==lime_HDF5
+  status = 1;
+#else
+  writePopsExtToFITS(fptr, gridInfo, speciesI, gp);
+#endif
 
   return status;
 }
 
 /*....................................................................*/
 int
-writeGrid(char *outFileName, const int fileFormatI, struct gridInfoType gridInfo\
+writeGrid(char *outFileName, struct gridInfoType gridInfo\
   , struct keywordType *primaryKwds, const int numKeywords, struct grid *gp, char **collPartNames, const int dataFlags){
 
   /*
@@ -379,88 +395,88 @@ This is designed to be a generic function to write the grid data (in any of its 
   constructLinkArrays(gridInfo, gp, &links, &gridInfo.nLinks\
     , &nnLinks, &firstNearNeigh, &gridInfo.nNNIndices, dataFlags);
 
-  fptr = openFileForWrite(outFileName, fileFormatI);
+  fptr = openFileForWrite(outFileName);
   if(fptr==NULL){
-    closeAndFree(fptr, fileFormatI, firstNearNeigh, nnLinks, links, gridInfo.nLinks);
+    closeAndFree(fptr, firstNearNeigh, nnLinks, links, gridInfo.nLinks);
     return 3;
   }
 
   /* Write header keywords:
   */
-  status = writeKeywords(fptr, fileFormatI, primaryKwds, numKeywords);
+  status = writeKeywords(fptr, primaryKwds, numKeywords);
   if(status){
-    closeAndFree(fptr, fileFormatI, firstNearNeigh, nnLinks, links, gridInfo.nLinks);
+    closeAndFree(fptr, firstNearNeigh, nnLinks, links, gridInfo.nLinks);
     return 4;
   }
 
-  status = writeGridTable(fptr, fileFormatI, gridInfo, gp, firstNearNeigh, collPartNames, dataFlags);
+  status = writeGridTable(fptr, gridInfo, gp, firstNearNeigh, collPartNames, dataFlags);
   if(status){
-    closeAndFree(fptr, fileFormatI, firstNearNeigh, nnLinks, links, gridInfo.nLinks);
+    closeAndFree(fptr, firstNearNeigh, nnLinks, links, gridInfo.nLinks);
     return 5;
   }
 
   if (links!=NULL && nnLinks!=NULL){
-    status = writeNnIndicesTable(fptr, fileFormatI, gridInfo, nnLinks);
+    status = writeNnIndicesTable(fptr, gridInfo, nnLinks);
     if(status){
-      closeAndFree(fptr, fileFormatI, firstNearNeigh, nnLinks, links, gridInfo.nLinks);
+      closeAndFree(fptr, firstNearNeigh, nnLinks, links, gridInfo.nLinks);
       return 6;
     }
 
-    status = writeLinksTable(fptr, fileFormatI, gridInfo, links);
+    status = writeLinksTable(fptr, gridInfo, links);
     if(status){
-      closeAndFree(fptr, fileFormatI, firstNearNeigh, nnLinks, links, gridInfo.nLinks);
+      closeAndFree(fptr, firstNearNeigh, nnLinks, links, gridInfo.nLinks);
       return 7;
     }
   }
 
   if (allBitsSet(dataFlags, DS_mask_populations)){
     for(i_us=0;i_us<gridInfo.nSpecies;i_us++){
-      status = writePopsTable(fptr, fileFormatI, gridInfo, i_us, gp);
+      status = writePopsTable(fptr, gridInfo, i_us, gp);
       if(status){
-        closeAndFree(fptr, fileFormatI, firstNearNeigh, nnLinks, links, gridInfo.nLinks);
+        closeAndFree(fptr, firstNearNeigh, nnLinks, links, gridInfo.nLinks);
         return 8;
       }
     }
   }
 
-  closeAndFree(fptr, fileFormatI, firstNearNeigh, nnLinks, links, gridInfo.nLinks);
+  closeAndFree(fptr, firstNearNeigh, nnLinks, links, gridInfo.nLinks);
   return 0;
 }
 
 
 /*....................................................................*/
 lime_fptr *
-openFileForRead(char *inFileName, const int fileFormatI){
+openFileForRead(char *inFileName){
   lime_fptr *fptr=NULL;
 
-  if(fileFormatI==lime_FITS){
-    fptr = openFITSFileForRead(inFileName);
-  }else{
-    return NULL;
-  }
+#if defined(lime_IO) && lime_IO==lime_HDF5
+  return NULL;
+#else
+  fptr = openFITSFileForRead(inFileName);
+#endif
 
   return fptr;
 }
 
 /*....................................................................*/
 int
-readKeywords(lime_fptr *fptr, const int fileFormatI\
+readKeywords(lime_fptr *fptr\
   , struct keywordType *kwds, const int numKeywords){
 
   int status=0;
 
-  if(fileFormatI==lime_FITS){
-    readKeywordsFromFits(fptr, kwds, numKeywords);
-  }else{
-    status = 1;
-  }
+#if defined(lime_IO) && lime_IO==lime_HDF5
+  status = 1;
+#else
+  readKeywordsFromFITS(fptr, kwds, numKeywords);
+#endif
 
   return status;
 }
 
 /*....................................................................*/
 int
-readGridTable(lime_fptr *fptr, const int fileFormatI\
+readGridTable(lime_fptr *fptr\
   , struct gridInfoType *gridInfoRead, struct grid **gp\
   , unsigned int **firstNearNeigh, char ***collPartNames\
   , int *numCollPartRead, int *dataFlags){
@@ -470,19 +486,19 @@ Individual routines called should set the appropriate bits of dataFlags; also ma
 
   int status=0;
 
-  if(fileFormatI==lime_FITS){
-    readGridExtFromFits(fptr, gridInfoRead, gp, firstNearNeigh\
-      , collPartNames, numCollPartRead, dataFlags);
-  }else{
-    status = 1;
-  }
+#if defined(lime_IO) && lime_IO==lime_HDF5
+  status = 1;
+#else
+  readGridExtFromFITS(fptr, gridInfoRead, gp, firstNearNeigh\
+    , collPartNames, numCollPartRead, dataFlags);
+#endif
 
   return status;
 }
 
 /*....................................................................*/
 int
-readLinksTable(lime_fptr *fptr, const int fileFormatI\
+readLinksTable(lime_fptr *fptr\
   , struct gridInfoType *gridInfoRead, struct grid *gp\
   , struct linkType **links, int *dataFlags){
   /*
@@ -491,18 +507,18 @@ Individual routines called should set the appropriate bits of dataFlags.
 
   int status=0;
 
-  if(fileFormatI==lime_FITS){
-    readLinksExtFromFits(fptr, gridInfoRead, gp, links, dataFlags);
-  }else{
-    status = 1;
-  }
+#if defined(lime_IO) && lime_IO==lime_HDF5
+  status = 1;
+#else
+  readLinksExtFromFITS(fptr, gridInfoRead, gp, links, dataFlags);
+#endif
 
   return status;
 }
 
 /*....................................................................*/
 int
-readNnIndicesTable(lime_fptr *fptr, const int fileFormatI, struct linkType *links\
+readNnIndicesTable(lime_fptr *fptr, struct linkType *links\
   , struct linkType ***nnLinks, struct gridInfoType *gridInfoRead, int *dataFlags){
   /*
 Individual routines called should set the appropriate bits of dataFlags.
@@ -510,11 +526,11 @@ Individual routines called should set the appropriate bits of dataFlags.
 
   int status=0;
 
-  if(fileFormatI==lime_FITS){
-    readNnIndicesExtFromFits(fptr, links, nnLinks, gridInfoRead, dataFlags);
-  }else{
-    status = 1;
-  }
+#if defined(lime_IO) && lime_IO==lime_HDF5
+  status = 1;
+#else
+  readNnIndicesExtFromFITS(fptr, links, nnLinks, gridInfoRead, dataFlags);
+#endif
 
   return status;
 }
@@ -617,30 +633,30 @@ There is a subtle point about ordering to grasp. The order of the .vels entries 
 
 /*....................................................................*/
 int
-checkPopsTableExists(lime_fptr *fptr, const int fileFormatI\
+checkPopsTableExists(lime_fptr *fptr\
   , const unsigned short speciesI, _Bool *blockFound){
   int status=0;
 
   *blockFound = 0;
 
-  if(fileFormatI==lime_FITS){
-    *blockFound = checkPopsFitsExtExists(fptr, speciesI);
-  }else{
-    status = 1;
-  }
+#if defined(lime_IO) && lime_IO==lime_HDF5
+  status = 1;
+#else
+  *blockFound = checkPopsFITSExtExists(fptr, speciesI);
+#endif
 
   return status;
 }
 
 /*....................................................................*/
 int
-getNumPopsTables(lime_fptr *fptr, const int fileFormatI, unsigned short *numTables){
+getNumPopsTables(lime_fptr *fptr, unsigned short *numTables){
   int status = 0;
   _Bool blockFound = 1;
 
   *numTables = 0;
   while(blockFound && !status){
-    status = checkPopsTableExists(fptr, fileFormatI, *numTables, &blockFound);
+    status = checkPopsTableExists(fptr, *numTables, &blockFound);
     (*numTables)++;
   }
 
@@ -651,7 +667,7 @@ getNumPopsTables(lime_fptr *fptr, const int fileFormatI, unsigned short *numTabl
 
 /*....................................................................*/
 int
-readPopsTable(lime_fptr *fptr, const int fileFormatI\
+readPopsTable(lime_fptr *fptr\
   , const unsigned short speciesI, struct grid *gp\
   , struct gridInfoType *gridInfoRead){
 
@@ -665,18 +681,18 @@ readPopsTable(lime_fptr *fptr, const int fileFormatI\
     gp[i_ui].mol[speciesI].partner = NULL;
   }
 
-  if(fileFormatI==lime_FITS){
-    readPopsExtFromFits(fptr, speciesI, gp, gridInfoRead);
-  }else{
-    status = 1;
-  }
+#if defined(lime_IO) && lime_IO==lime_HDF5
+  status = 1;
+#else
+  readPopsExtFromFITS(fptr, speciesI, gp, gridInfoRead);
+#endif
 
   return status;
 }
 
 /*....................................................................*/
 int
-readGrid(char *inFileName, const int fileFormatI\
+readGrid(char *inFileName\
   , struct gridInfoType *gridInfoRead, struct keywordType *primaryKwds\
   , const int numKeywords, struct grid **gp, char ***collPartNames, int *numCollPartRead\
   , int *dataFlags){
@@ -714,23 +730,23 @@ NOTE that gp should not be allocated before this routine is called.
   gridInfoRead->mols = NULL;
 
   /* Open the file and also return the data stage. */
-  fptr = openFileForRead(inFileName, fileFormatI);
+  fptr = openFileForRead(inFileName);
 
   /* Read header keywords:
   */
-  status = readKeywords(fptr, fileFormatI, primaryKwds, numKeywords);
+  status = readKeywords(fptr, primaryKwds, numKeywords);
   if(status){
-    closeAndFree(fptr, fileFormatI, firstNearNeigh, nnLinks, links, 0);
+    closeAndFree(fptr, firstNearNeigh, nnLinks, links, 0);
     return 1;
   }
 
   /* Read the values which should be in grid for every stage.
   */
-  status = readGridTable(fptr, fileFormatI, gridInfoRead, gp, &firstNearNeigh\
+  status = readGridTable(fptr, gridInfoRead, gp, &firstNearNeigh\
     , collPartNames, numCollPartRead, dataFlags); /* Sets appropriate bits of dataFlags; also mallocs gp and sets all its defaults. */
   totalNumGridPoints = gridInfoRead->nSinkPoints + gridInfoRead->nInternalPoints;
   if(status){
-    closeAndFree(fptr, fileFormatI, firstNearNeigh, nnLinks, links, 0);
+    closeAndFree(fptr, firstNearNeigh, nnLinks, links, 0);
     freeGrid(totalNumGridPoints, gridInfoRead->nSpecies, *gp);
     return 2;
   }
@@ -738,7 +754,7 @@ NOTE that gp should not be allocated before this routine is called.
   /* Some sanity checks:
   */
   if((*dataFlags)!=0 && gridInfoRead->nSinkPoints<=0 || gridInfoRead->nInternalPoints<=0 || gridInfoRead->nDims<=0){
-    closeAndFree(fptr, fileFormatI, firstNearNeigh, nnLinks, links, 0);
+    closeAndFree(fptr, firstNearNeigh, nnLinks, links, 0);
     freeGrid(totalNumGridPoints, gridInfoRead->nSpecies, *gp);
 
     if(gridInfoRead->nSinkPoints<=0)
@@ -758,7 +774,7 @@ NOTE that gp should not be allocated before this routine is called.
   */
   if((allBitsSet(*dataFlags, DS_mask_density)   && gridInfoRead->nDensities<=0)\
   || (allBitsSet(*dataFlags, DS_mask_abundance) && gridInfoRead->nSpecies<=0)){
-    closeAndFree(fptr, fileFormatI, firstNearNeigh, nnLinks, links, 0);
+    closeAndFree(fptr, firstNearNeigh, nnLinks, links, 0);
     freeGrid(totalNumGridPoints, gridInfoRead->nSpecies, *gp);
 
     if(gridInfoRead->nDensities<=0)
@@ -772,9 +788,9 @@ NOTE that gp should not be allocated before this routine is called.
     }
   }
 
-  status = readLinksTable(fptr, fileFormatI, gridInfoRead, *gp, &links, dataFlags); /* Sets appropriate bits of dataFlags. */
+  status = readLinksTable(fptr, gridInfoRead, *gp, &links, dataFlags); /* Sets appropriate bits of dataFlags. */
   if(status){
-    closeAndFree(fptr, fileFormatI, firstNearNeigh, nnLinks, links, gridInfoRead->nLinks);
+    closeAndFree(fptr, firstNearNeigh, nnLinks, links, gridInfoRead->nLinks);
     freeGrid(totalNumGridPoints, gridInfoRead->nSpecies, *gp);
     return 8;
   }
@@ -782,14 +798,14 @@ NOTE that gp should not be allocated before this routine is called.
   /* Sanity check:
   */
   if (allBitsSet(*dataFlags, DS_mask_ACOEFF) && gridInfoRead->nLinkVels<=0){
-    closeAndFree(fptr, fileFormatI, firstNearNeigh, nnLinks, links, gridInfoRead->nLinks);
+    closeAndFree(fptr, firstNearNeigh, nnLinks, links, gridInfoRead->nLinks);
     freeGrid(totalNumGridPoints, gridInfoRead->nSpecies, *gp);
     return 9;
   }
 
-  status = readNnIndicesTable(fptr, fileFormatI, links, &nnLinks, gridInfoRead, dataFlags); /* Sets appropriate bits of dataFlags. */
+  status = readNnIndicesTable(fptr, links, &nnLinks, gridInfoRead, dataFlags); /* Sets appropriate bits of dataFlags. */
   if(status){
-    closeAndFree(fptr, fileFormatI, firstNearNeigh, nnLinks, links, gridInfoRead->nLinks);
+    closeAndFree(fptr, firstNearNeigh, nnLinks, links, gridInfoRead->nLinks);
     freeGrid(totalNumGridPoints, gridInfoRead->nSpecies, *gp);
     return 10;
   }
@@ -803,9 +819,9 @@ NOTE that gp should not be allocated before this routine is called.
       loadLinkVelsIntoGrid(firstNearNeigh, nnLinks, *gridInfoRead, *gp);
   }
 
-  status = getNumPopsTables(fptr, fileFormatI, &numTables);
+  status = getNumPopsTables(fptr, &numTables);
   if(status){
-    closeAndFree(fptr, fileFormatI, firstNearNeigh, nnLinks, links, gridInfoRead->nLinks);
+    closeAndFree(fptr, firstNearNeigh, nnLinks, links, gridInfoRead->nLinks);
     freeGrid(totalNumGridPoints, gridInfoRead->nSpecies, *gp);
     return 11;
   }
@@ -813,7 +829,7 @@ NOTE that gp should not be allocated before this routine is called.
   /* Sanity check:
   */
   if(numTables>0 && numTables!=gridInfoRead->nSpecies){
-    closeAndFree(fptr, fileFormatI, firstNearNeigh, nnLinks, links, gridInfoRead->nLinks);
+    closeAndFree(fptr, firstNearNeigh, nnLinks, links, gridInfoRead->nLinks);
     freeGrid(totalNumGridPoints, gridInfoRead->nSpecies, *gp);
     return 12;
   }
@@ -830,9 +846,9 @@ NOTE that gp should not be allocated before this routine is called.
       gridInfoRead->mols[i_us].nLevels = -1;
       gridInfoRead->mols[i_us].nLines = -1;
 
-      status = readPopsTable(fptr, fileFormatI, i_us, *gp, gridInfoRead); /* Sets defaults for all the fields under grid.mol. */
+      status = readPopsTable(fptr, i_us, *gp, gridInfoRead); /* Sets defaults for all the fields under grid.mol. */
       if(status){
-        closeAndFree(fptr, fileFormatI, firstNearNeigh, nnLinks, links, gridInfoRead->nLinks);
+        closeAndFree(fptr, firstNearNeigh, nnLinks, links, gridInfoRead->nLinks);
         freeGrid(totalNumGridPoints, gridInfoRead->nSpecies, *gp);
         return 13;
       }
@@ -840,14 +856,14 @@ NOTE that gp should not be allocated before this routine is called.
       /* Sanity check:
       */
       if(gridInfoRead->mols[i_us].nLevels<=0){
-        closeAndFree(fptr, fileFormatI, firstNearNeigh, nnLinks, links, gridInfoRead->nLinks);
+        closeAndFree(fptr, firstNearNeigh, nnLinks, links, gridInfoRead->nLinks);
         freeGrid(totalNumGridPoints, gridInfoRead->nSpecies, *gp);
         return 14;
       }
     }
   }
 
-  closeAndFree(fptr, fileFormatI, firstNearNeigh, nnLinks, links, gridInfoRead->nLinks);
+  closeAndFree(fptr, firstNearNeigh, nnLinks, links, gridInfoRead->nLinks);
   return 0;
 }
 

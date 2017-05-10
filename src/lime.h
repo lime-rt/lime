@@ -377,7 +377,7 @@ void	statistics(int, molData*, struct grid*, int*, double*, double*, int*);
 void	stokesangles(double*, double (*rotMat)[3], double*);
 double	taylor(const int, const float);
 void	writeFitsAllUnits(const int, configInfo*, imageInfo*);
-void	writeGridIfRequired(configInfo*, struct grid*, molData*, const int);
+void	writeGridIfRequired(configInfo*, struct grid*, molData*);
 void	write_VTK_unstructured_Points(configInfo*, struct grid*);
 
 

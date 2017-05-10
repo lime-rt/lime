@@ -235,7 +235,7 @@ run(inputPars inpars, image *inimg, const int nImages){
   /*
   report(1,&par,gp);
   */
-  writeGridIfRequired(&par, gp, md, lime_FITS);
+  writeGridIfRequired(&par, gp, md);
   freeSomeGridFields((unsigned int)par.ncell, (unsigned short)par.nSpecies, gp);
 
   /* Now make the line images.   */

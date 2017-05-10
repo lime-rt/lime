@@ -11,6 +11,15 @@
 #define GRIDIO_H
 
 #define lime_FITS	1
+#define lime_HDF5	2
+
+#define lime_IO		lime_FITS /* Ultimately this will be set either at compile- or run-time. */
+
+#define lime_CHAR	0
+#define lime_INT	1
+#define lime_FLOAT	2
+#define lime_DOUBLE	3
+#define lime_BOOL	4
 
 struct linkType {
   unsigned int id, gis[2];
@@ -28,10 +37,28 @@ struct gridInfoType{
   struct molInfoType *mols;
 };
 
+struct keywordType{
+  int datatype; /* Codes given above. */
+  char *keyname, *comment;
+  char *charValue;
+  int intValue;
+  float floatValue;
+  double doubleValue;
+  _Bool boolValue;
+};
+
+//#include "grid2hdf5.h"
 #include "grid2fits.h"
 
-int	readGrid(char*, const int, struct gridInfoType*, struct keywordType*, const int, struct grid**, char***, int*, int*);
-int	writeGrid(char*, const int, struct gridInfoType, struct keywordType*, const int, struct grid*, char**, const int);
+#if defined(lime_IO) && lime_IO==lime_HDF5
+  #define lime_fptr	hid_t
+#else
+  #define lime_fptr	fitsfile
+#endif
+
+void	initializeKeyword(struct keywordType *kwd);
+int	readGrid(char*, struct gridInfoType*, struct keywordType*, const int, struct grid**, char***, int*, int*);
+int	writeGrid(char*, struct gridInfoType, struct keywordType*, const int, struct grid*, char**, const int);
 int	countDensityCols(char*, const int, int*);
 
 #endif /* GRIDIO_H */

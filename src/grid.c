@@ -967,7 +967,7 @@ void randomsViaRejection(configInfo *par, const unsigned int desiredNumPoints, g
 }
 
 /*....................................................................*/
-void writeGridIfRequired(configInfo *par, struct grid *gp, molData *md, const int fileFormatI){
+void writeGridIfRequired(configInfo *par, struct grid *gp, molData *md){
   int status = 0;
   char **collPartNames=NULL; /*** this is a placeholder until we start reading these. */
   char message[80];
@@ -1020,7 +1020,7 @@ void writeGridIfRequired(configInfo *par, struct grid *gp, molData *md, const in
     primaryKwds[0].doubleValue = par->radius;
     primaryKwds[0].comment = "[m] Model radius.";
 
-    status = writeGrid(par->gridOutFiles[dataStageI-1], fileFormatI\
+    status = writeGrid(par->gridOutFiles[dataStageI-1]\
       , gridInfo, primaryKwds, 1, gp, collPartNames, par->dataFlags);
 
     free(primaryKwds);
@@ -1063,7 +1063,7 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
     desiredKwds[0].keyname = "RADIUS  ";
     /* Currently not doing anything with the read keyword. */
 
-    status = readGrid(par->gridInFile, lime_FITS, &gridInfoRead, desiredKwds\
+    status = readGrid(par->gridInFile, &gridInfoRead, desiredKwds\
       , numDesiredKwds, gp, &collPartNames, &numCollPartRead, &(par->dataFlags));
 
     if(status){
@@ -1305,7 +1305,7 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
   }
 
   if(onlyBitsSet(par->dataFlags, DS_mask_1)) /* Only happens if (i) we read no file and have constructed this data within LIME, or (ii) we read a file at dataStageI==1. */
-    writeGridIfRequired(par, *gp, NULL, lime_FITS);
+    writeGridIfRequired(par, *gp, NULL);
 
   if(!allBitsSet(par->dataFlags, DS_mask_neighbours)){
     unsigned long nExtraSinks;
@@ -1323,7 +1323,7 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
   distCalc(par, *gp); /* Mallocs and sets .dir & .ds, sets .nphot. We don't store these values so we have to calculate them whether we read a file or not. */
 
   if(onlyBitsSet(par->dataFlags, DS_mask_2)) /* Only happens if (i) we read no file and have constructed this data within LIME, or (ii) we read a file at dataStageI==2. */
-    writeGridIfRequired(par, *gp, NULL, lime_FITS);
+    writeGridIfRequired(par, *gp, NULL);
 
   if(!allBitsSet(par->dataFlags, DS_mask_density)){
     for(i=0;i<par->ncell; i++)
@@ -1431,7 +1431,7 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
   }
 
   if(onlyBitsSet(par->dataFlags & DS_mask_all_but_mag, DS_mask_3)) /* Only happens if (i) we read no file and have constructed this data within LIME, or (ii) we read a file at dataStageI==3. */
-    writeGridIfRequired(par, *gp, NULL, lime_FITS);
+    writeGridIfRequired(par, *gp, NULL);
 
   dumpGrid(par,*gp);
   free(dc);
