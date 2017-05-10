@@ -99,18 +99,6 @@ openFITSFileForWrite(char *outFileName){
 
 /*....................................................................*/
 void
-initializeKeyword(struct keywordType *kwd){
-  (*kwd).datatype = 0;
-  (*kwd).keyname = NULL;
-  (*kwd).comment = NULL;
-  (*kwd).intValue = 0;
-  (*kwd).floatValue = 0.0;
-  (*kwd).doubleValue = 0.0;
-  (*kwd).charValue = NULL;
-}
-
-/*....................................................................*/
-void
 closeFITSFile(fitsfile *fptr){
   int status=0;
 
@@ -120,7 +108,7 @@ closeFITSFile(fitsfile *fptr){
 
 /*....................................................................*/
 void
-writeKeywordsToFits(lime_fptr *fptr, struct keywordType *kwds\
+writeKeywordsToFITS(lime_fptr *fptr, struct keywordType *kwds\
   , const int numKeywords){
 
   int i, status;
@@ -129,13 +117,13 @@ writeKeywordsToFits(lime_fptr *fptr, struct keywordType *kwds\
   for(i=0;i<numKeywords;i++){
     status = 0;
 
-    if(     kwds[i].datatype==TSTRING)
+    if(     kwds[i].datatype==lime_CHAR)
       fits_write_key(fptr, TSTRING, kwds[i].keyname, kwds[i].charValue, kwds[i].comment, &status);
-    else if(kwds[i].datatype==TINT)
+    else if(kwds[i].datatype==lime_INT)
       fits_write_key(fptr, TINT, kwds[i].keyname, &kwds[i].intValue, kwds[i].comment, &status);
-    else if(kwds[i].datatype==TFLOAT)
+    else if(kwds[i].datatype==lime_FLOAT)
       fits_write_key(fptr, TFLOAT, kwds[i].keyname, &kwds[i].floatValue, kwds[i].comment, &status);
-    else if(kwds[i].datatype==TDOUBLE)
+    else if(kwds[i].datatype==lime_DOUBLE)
       fits_write_key(fptr, TDOUBLE, kwds[i].keyname, &kwds[i].doubleValue, kwds[i].comment, &status);
     else{
       if(!silent){
@@ -403,7 +391,7 @@ getColIndex(char **allColNames, const int maxNumCols, char *colName){
 
 /*....................................................................*/
 void
-writeGridExtToFits(fitsfile *fptr, struct gridInfoType gridInfo\
+writeGridExtToFITS(fitsfile *fptr, struct gridInfoType gridInfo\
   , struct grid *gp, unsigned int *firstNearNeigh\
   , char **collPartNames, const int dataFlags){
   /*
@@ -651,7 +639,7 @@ Ok we have a bit of a tricky situation here in that the number of columns we wri
 
 /*....................................................................*/
 void
-writeNnIndicesExtToFits(fitsfile *fptr, struct gridInfoType gridInfo\
+writeNnIndicesExtToFITS(fitsfile *fptr, struct gridInfoType gridInfo\
   , struct linkType **nnLinks){
   /*
 See the comment at the beginning of module gridio.c for a description of how the NN_INDICES extension relates to the grid struct.
@@ -698,7 +686,7 @@ Note that data types in all capitals are defined in fitsio.h.
 
 /*....................................................................*/
 void
-writeLinksExtToFits(fitsfile *fptr, struct gridInfoType gridInfo\
+writeLinksExtToFITS(fitsfile *fptr, struct gridInfoType gridInfo\
   , struct linkType *links){
   /*
 See the comment at the beginning of module gridio.c for a description of how the LINKS extension relates to the grid struct.
@@ -816,7 +804,7 @@ Notes:
 
 /*....................................................................*/
 void
-writePopsExtToFits(fitsfile *fptr, struct gridInfoType gridInfo\
+writePopsExtToFITS(fitsfile *fptr, struct gridInfoType gridInfo\
   , const unsigned short speciesI, struct grid *gp){
   /*
 	Extension name: LEVEL_POPS_m (1 per molecular species)
@@ -925,7 +913,7 @@ countKeywords(fitsfile *fptr, char *baseName){
 
 /*....................................................................*/
 void
-readKeywordsFromFits(lime_fptr *fptr, struct keywordType *kwds\
+readKeywordsFromFITS(lime_fptr *fptr, struct keywordType *kwds\
   , const int numKeywords){
 
   int i, status;
@@ -934,13 +922,13 @@ readKeywordsFromFits(lime_fptr *fptr, struct keywordType *kwds\
   for(i=0;i<numKeywords;i++){
     status = 0;
 
-    if(     kwds[i].datatype==TSTRING)
+    if(     kwds[i].datatype==lime_CHAR)
       fits_read_key(fptr, TSTRING, kwds[i].keyname, kwds[i].charValue, kwds[i].comment, &status);
-    else if(kwds[i].datatype==TINT)
+    else if(kwds[i].datatype==lime_INT)
       fits_read_key(fptr, TINT, kwds[i].keyname, &kwds[i].intValue, kwds[i].comment, &status);
-    else if(kwds[i].datatype==TFLOAT)
+    else if(kwds[i].datatype==lime_FLOAT)
       fits_read_key(fptr, TFLOAT, kwds[i].keyname, &kwds[i].floatValue, kwds[i].comment, &status);
-    else if(kwds[i].datatype==TDOUBLE)
+    else if(kwds[i].datatype==lime_DOUBLE)
       fits_read_key(fptr, TDOUBLE, kwds[i].keyname, &kwds[i].doubleValue, kwds[i].comment, &status);
     else{
       if(!silent){
@@ -955,7 +943,7 @@ readKeywordsFromFits(lime_fptr *fptr, struct keywordType *kwds\
 
 /*....................................................................*/
 void
-readGridExtFromFits(fitsfile *fptr, struct gridInfoType *gridInfoRead\
+readGridExtFromFITS(fitsfile *fptr, struct gridInfoType *gridInfoRead\
   , struct grid **gp, unsigned int **firstNearNeigh, char ***collPartNames\
   , int *numCollPartRead, int *dataFlags){
   /*
@@ -1275,7 +1263,7 @@ If a COLLPARn keywords are found in the GRID extension header then collPartNames
 
 /*....................................................................*/
 void
-readLinksExtFromFits(fitsfile *fptr, struct gridInfoType *gridInfoRead\
+readLinksExtFromFITS(fitsfile *fptr, struct gridInfoType *gridInfoRead\
   , struct grid *gp, struct linkType **links, int *dataFlags){
   /*
 See the comment at the beginning of gridio.c for a description of how the LINKS extension relates to the grid struct.
@@ -1434,7 +1422,7 @@ The present function mallocs the pointer *links.
 
 /*....................................................................*/
 void
-readNnIndicesExtFromFits(fitsfile *fptr, struct linkType *links\
+readNnIndicesExtFromFITS(fitsfile *fptr, struct linkType *links\
   , struct linkType ***nnLinks, struct gridInfoType *gridInfoRead, int *dataFlags){
   /*
 See the comment at the beginning of gridio.c for a description of how the NN_INDICES extension relates to the grid struct.
@@ -1500,7 +1488,7 @@ The function mallocs the pointer *nnLinks.
 
 /*....................................................................*/
 _Bool
-checkPopsFitsExtExists(fitsfile *fptr, const unsigned short speciesI){
+checkPopsFITSExtExists(fitsfile *fptr, const unsigned short speciesI){
   const unsigned short maxNumSpecies = 9;
   char message[80];
   char extname[13];
@@ -1531,7 +1519,7 @@ checkPopsFitsExtExists(fitsfile *fptr, const unsigned short speciesI){
 
 /*....................................................................*/
 void
-readPopsExtFromFits(fitsfile *fptr, const unsigned short speciesI\
+readPopsExtFromFITS(fitsfile *fptr, const unsigned short speciesI\
   , struct grid *gp, struct gridInfoType *gridInfoRead){
   /*
 See the comment at the beginning of the present module for a description of how the LEVEL_POPS_m extensions relate to the grid struct.
