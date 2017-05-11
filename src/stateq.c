@@ -168,7 +168,7 @@ stateq(int id, struct grid *gp, molData *md, const int ispec, configInfo *par\
       oopop[t]=opop[t];
       opop[t]=gp[id].mol[ispec].pops[t];
 
-#pragma omp critical
+      /* Removed pragma omp critical; no two threads have the same cell id. */
       {
         gp[id].mol[ispec].pops[t]=gsl_vector_get(newpop,t);
       }
