@@ -878,7 +878,7 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
         double *halfFirstDs;	// and included them in private() I guess.
         mp=malloc(sizeof(gridPointData)*par->nSpecies);
 
-#pragma omp for schedule(dynamic)
+#pragma omp for
         for(id=0;id<par->pIntensity;id++){
 #pragma omp atomic
           ++nVerticesDone;
