@@ -89,6 +89,7 @@ initParImg(inputPars *par, image **img)
   par->nSolveIters=17;
   par->traceRayAlgorithm=0;
   par->resetRNG=0;
+  par->doSolveRTE=0;
 
   par->gridOutFiles = malloc(sizeof(char *)*NUM_GRID_STAGES);
   for(i=0;i<NUM_GRID_STAGES;i++)
@@ -123,11 +124,6 @@ initParImg(inputPars *par, image **img)
   nImages=0;
   while((*img)[nImages].filename!=NULL && nImages<MAX_NIMAGES)
     nImages++;
-
-  if(nImages==0) {
-    if(!silent) bail_out("No images defined (or you haven't set the 1st filename).");
-    exit(1);
-  }
 
   /* Set img defaults. */
   for(i=0;i<nImages;i++) {
@@ -216,7 +212,7 @@ run(inputPars inpars, image *inimg, const int nImages){
     }
   }
 
-  if(par.nLineImages>0){
+  if(par.nLineImages>0 || par.doSolveRTE){
     molInit(&par, md);
 
     for(gi=0;gi<par.ncell;gi++){
@@ -248,8 +244,11 @@ run(inputPars inpars, image *inimg, const int nImages){
       }
     }
   }
-  
-  if(!silent) goodnight(initime,img[0].filename);
+
+  if(!silent){
+    if(par.nImages>0) reportOutput(img[0].filename);
+    goodnight(initime);
+  }
 
   freeGrid((unsigned int)par.ncell, (unsigned short)par.nSpecies, gp);
   freeMolData(par.nSpecies, md);

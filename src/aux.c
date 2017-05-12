@@ -154,6 +154,7 @@ The parameters visible to the user have now been strictly confined to members of
   par->nSolveIters  = inpar.nSolveIters;
   par->traceRayAlgorithm = inpar.traceRayAlgorithm;
   par->resetRNG     = inpar.resetRNG;
+  par->doSolveRTE   = inpar.doSolveRTE;
 
   /* Somewhat more carefully copy over the strings:
   */
@@ -327,26 +328,28 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
 
   /* Copy over user-set image values to the generic struct:
   */
-  *img = malloc(sizeof(**img)*nImages);
-  for(i=0;i<nImages;i++){
-    (*img)[i].nchan      = inimg[i].nchan;
-    (*img)[i].trans      = inimg[i].trans;
-    (*img)[i].molI       = inimg[i].molI;
-    (*img)[i].velres     = inimg[i].velres;
-    (*img)[i].imgres     = inimg[i].imgres;
-    (*img)[i].pxls       = inimg[i].pxls;
-    copyInparStr(inimg[i].units, &((*img)[i].units));
-    (*img)[i].freq       = inimg[i].freq;
-    (*img)[i].bandwidth  = inimg[i].bandwidth;
-    copyInparStr(inimg[i].filename, &((*img)[i].filename));
-    (*img)[i].source_vel = inimg[i].source_vel;
-    (*img)[i].theta      = inimg[i].theta;
-    (*img)[i].phi        = inimg[i].phi;
-    (*img)[i].incl       = inimg[i].incl;
-    (*img)[i].posang     = inimg[i].posang;
-    (*img)[i].azimuth    = inimg[i].azimuth;
-    (*img)[i].distance   = inimg[i].distance;
-    (*img)[i].doInterpolateVels = inimg[i].doInterpolateVels;
+  if(nImages>0){
+    *img = malloc(sizeof(**img)*nImages);
+    for(i=0;i<nImages;i++){
+      (*img)[i].nchan      = inimg[i].nchan;
+      (*img)[i].trans      = inimg[i].trans;
+      (*img)[i].molI       = inimg[i].molI;
+      (*img)[i].velres     = inimg[i].velres;
+      (*img)[i].imgres     = inimg[i].imgres;
+      (*img)[i].pxls       = inimg[i].pxls;
+      copyInparStr(inimg[i].units, &((*img)[i].units));
+      (*img)[i].freq       = inimg[i].freq;
+      (*img)[i].bandwidth  = inimg[i].bandwidth;
+      copyInparStr(inimg[i].filename, &((*img)[i].filename));
+      (*img)[i].source_vel = inimg[i].source_vel;
+      (*img)[i].theta      = inimg[i].theta;
+      (*img)[i].phi        = inimg[i].phi;
+      (*img)[i].incl       = inimg[i].incl;
+      (*img)[i].posang     = inimg[i].posang;
+      (*img)[i].azimuth    = inimg[i].azimuth;
+      (*img)[i].distance   = inimg[i].distance;
+      (*img)[i].doInterpolateVels = inimg[i].doInterpolateVels;
+    }
   }
 
   /* Allocate pixel space and parse image information.

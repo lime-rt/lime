@@ -21,7 +21,7 @@ typedef struct {
   char *outputfile,*binoutputfile,*gridfile,*pregrid,*restart,*dust;
   char *gridInFile,**gridOutFiles;
   char **moldatfile,**collPartNames;
-  _Bool resetRNG;
+  _Bool resetRNG,doSolveRTE;
 } inputPars;
 
 /* Image information */
