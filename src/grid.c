@@ -1015,7 +1015,7 @@ void writeGridIfRequired(configInfo *par, struct grid *gp, molData *md){
     }
 
     initializeKeyword(&primaryKwds[0]);
-    primaryKwds[0].datatype = TDOUBLE;
+    primaryKwds[0].datatype = lime_DOUBLE;
     primaryKwds[0].keyname = "RADIUS  ";
     primaryKwds[0].doubleValue = par->radius;
     primaryKwds[0].comment = "[m] Model radius.";
@@ -1059,7 +1059,7 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
     struct keywordType *desiredKwds=malloc(sizeof(struct keywordType)*numDesiredKwds);
 
     initializeKeyword(&desiredKwds[0]);
-    desiredKwds[0].datatype = TDOUBLE;
+    desiredKwds[0].datatype = lime_DOUBLE;
     desiredKwds[0].keyname = "RADIUS  ";
     /* Currently not doing anything with the read keyword. */
 
