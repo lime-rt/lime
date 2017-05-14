@@ -56,6 +56,10 @@ getFixedMatrix(molData *md, int ispec, struct grid *gp, int id, gsl_matrix *coll
   }
   free(ctot);
 
+  /* For some reason collision matrix as constructed above is transposed.
+  Someone who is not this lazy could fix the loops instead of using gsl_matrix_transpose. */
+  gsl_matrix_transpose(colli);
+
   double *girtot = malloc(sizeof(double)*md[ispec].nlev);
   if(par->girdatfile!=NULL){
     for(k=0;k<md[ispec].nlev;k++){
@@ -74,9 +78,6 @@ getFixedMatrix(molData *md, int ispec, struct grid *gp, int id, gsl_matrix *coll
     }
   }
   free(girtot);
-
-  /* Someone who is not this lazy could fix the loops instead of using transpose. */
-  gsl_matrix_transpose(colli);
 }
 
 /*....................................................................*/
