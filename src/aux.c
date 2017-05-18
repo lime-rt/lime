@@ -659,19 +659,6 @@ Eventually I hope readOrBuildGrid() will be unilaterally called within LIME; if 
 }
 
 /*....................................................................*/
-float
-invSqrt(float x){
-  /* The magic Quake(TM) fast inverse square root algorithm   */
-  /* Can _only_ be used on 32-bit machine architectures       */
-  float xhalf = 0.5f*x;
-  int i = *(int*)&x;
-  i = 0x5f3759df - (i>>1);
-  x = *(float*)&i;
-  x = x*(1.5f - xhalf*x*x);
-  return x;
-}
-
-/*....................................................................*/
 void checkGridDensities(configInfo *par, struct grid *gp){
   /* This checks that none of the density samples is too small. */
   int i;
@@ -891,7 +878,7 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
         double *halfFirstDs;	// and included them in private() I guess.
         mp=malloc(sizeof(gridPointData)*par->nSpecies);
 
-#pragma omp for schedule(dynamic)
+#pragma omp for
         for(id=0;id<par->pIntensity;id++){
 #pragma omp atomic
           ++nVerticesDone;
