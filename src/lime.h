@@ -342,7 +342,6 @@ void	getVelocities(configInfo *, struct grid *);
 void	getVelocities_pregrid(configInfo *, struct grid *);
 void	gridPopsInit(configInfo*, molData*, struct grid*);
 void	input(inputPars*, image*);
-float	invSqrt(float);
 void	levelPops(molData*, configInfo*, struct grid*, int*, double*, double*, const int);
 void	lineBlend(molData*, configInfo*, struct blendInfo*);
 void	LTE(configInfo*, struct grid*, molData*);
