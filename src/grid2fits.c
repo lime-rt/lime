@@ -127,7 +127,7 @@ writeKeywordsToFITS(lime_fptr *fptr, struct keywordType *kwds\
       fits_write_key(fptr, TDOUBLE, kwds[i].keyname, &kwds[i].doubleValue, kwds[i].comment, &status);
     else{
       if(!silent){
-        sprintf(message, "Keyword %d dataype %d is not currently accepted.", i, kwds[i].datatype);
+        sprintf(message, "Keyword %d datatype %d is not currently accepted.", i, kwds[i].datatype);
         bail_out(message);
       }
       exit(1);
@@ -932,7 +932,7 @@ readKeywordsFromFITS(lime_fptr *fptr, struct keywordType *kwds\
       fits_read_key(fptr, TDOUBLE, kwds[i].keyname, &kwds[i].doubleValue, kwds[i].comment, &status);
     else{
       if(!silent){
-        sprintf(message, "Keyword %d dataype %d is not currently accepted.", i, kwds[i].datatype);
+        sprintf(message, "Keyword %d datatype %d is not currently accepted.", i, kwds[i].datatype);
         bail_out(message);
       }
       exit(1);

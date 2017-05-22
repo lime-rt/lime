@@ -145,7 +145,7 @@ typedef struct {
   char *outputfile,*binoutputfile,*gridfile,*pregrid,*restart,*dust;
   char *gridInFile,**gridOutFiles;
   char **girdatfile,**moldatfile,**collPartNames;
-  _Bool writeGridAtStage[NUM_GRID_STAGES],resetRNG,doInterpolateVels,useAbun;
+  _Bool writeGridAtStage[NUM_GRID_STAGES],resetRNG,doInterpolateVels,useAbun,doSolveRTE;
 } configInfo;
 
 struct cpData {
@@ -387,13 +387,14 @@ void	casaStyleProgressBar(const int, int);
 void	collpartmesg(char*, int);
 void	collpartmesg2(char*);
 void	collpartmesg3(int, int);
-void	goodnight(int, char*);
+void	goodnight(int);
 void	greetings(void);
 void	greetings_parallel(int);
 void	printDone(int);
 void	printMessage(char *);
 void	progressbar(double, int);
 void	progressbar2(configInfo*, int, int, double, double, double);
+void	reportOutput(char*);
 void	quotemass(double);
 void	screenInfo(void);
 void	warning(char*);

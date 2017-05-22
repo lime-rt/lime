@@ -370,7 +370,7 @@ unit). This is currently under development.
 
     (string) par->moldatfile[i] (optional)
 
-Path to the i’th molecular data file. This must be be provided if any line images are specified. It is not read if only continuum images are required.
+Path to the i’th molecular data file. This must be be provided if any line images are specified (or if par->doSolveRTE is set). It is not read if only continuum images are required.
 
 Molecular data files contain the
 energy states, Einstein coefficients, and collisional rates which are
@@ -573,6 +573,14 @@ If this is set non-zero, LIME will use the same random number seeds at the start
 
 The default value is 0.
 
+.. code:: c
+
+    (integer) par->doSolveRTE (optional)
+
+It is now possible to run LIME in two sessions: the first to solve the RTE and save the results to file, the second to read the file and create raytraced images from it. For a session of the first type you should set the number of images you specify via the :ref:`img <images>` parameter to zero, and give a value for one of the elements of :ref:`par->gridOutFiles <grid-io>`; for one of the second type you set :ref:`par->gridInFile <grid-io>` to the name of the file you just wrote, and include >0 image specifications in :ref:`img <images>`. There is a problem however for sessions of the first type: if you eventually want full-spectrum cubes then you will need some way to tell LIME to solve the RTE. In the past LIME has figured out if you want this from the presence of spectrum-type images in your :ref:`img <images>` list. To replace this capability we have added the present parameter. Thus, for first-stage sessions (supposing you choose to run LIME in that way rather than in the previous single-pass style) when you know that you will eventually want spectral cubes, you should set the present parameter. For all other cases it may be ignored.
+
+The default value is 0.
+
 .. _grid-io:
 
 .. code:: c
@@ -592,8 +600,6 @@ This file should conform to the format described in the header of src/grid2fits.
 
 These last two parameters mostly replace the functionality of the older `par->outputfile`, `par->binoutputfile`, `par->pregrid`, `par->restart` parameters. These may be abolished in a future version of LIME. Note that `par->gridfile` is still however of use.
 
-.. _images:
-
 .. code:: c
 
     (string) par->girdatfile[i] (optional)
@@ -604,6 +610,8 @@ rotational levels within vibration bands as in Bensch & Bergin 2004.
 This effect is relevant for cometary coma exposed to solar radiation.
 girdatfile is an array, so a different data file can be used for each radiating
 species.  If this parameter is not supplied the effect will be ignored.
+
+.. _images:
 
 Images
 ~~~~~~

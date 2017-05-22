@@ -708,7 +708,7 @@ NOTE that gp should not be allocated before this routine is called.
   lime_fptr *fptr;
   int status=0;
   unsigned short i_us, numTables;
-  unsigned int *firstNearNeigh=NULL, totalNumGridPoints, i_ui;
+  unsigned int *firstNearNeigh=NULL, totalNumGridPoints;
   struct linkType *links=NULL, **nnLinks=NULL;
   char message[80];
 
@@ -836,9 +836,6 @@ NOTE that gp should not be allocated before this routine is called.
 
   if(numTables>0){
     (*dataFlags) |= (1 << DS_bit_populations);
-
-    for(i_ui=0;i_ui<totalNumGridPoints;i_ui++)
-      (*gp)[i_ui].mol = malloc(sizeof(struct populations)*gridInfoRead->nSpecies);
 
     gridInfoRead->mols = malloc(sizeof(struct molInfoType)*gridInfoRead->nSpecies);
     for(i_us=0;i_us<gridInfoRead->nSpecies;i_us++){

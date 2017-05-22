@@ -1015,7 +1015,7 @@ void writeGridIfRequired(configInfo *par, struct grid *gp, molData *md){
     }
 
     initializeKeyword(&primaryKwds[0]);
-    primaryKwds[0].datatype = TDOUBLE;
+    primaryKwds[0].datatype = lime_DOUBLE;
     primaryKwds[0].keyname = "RADIUS  ";
     primaryKwds[0].doubleValue = par->radius;
     primaryKwds[0].comment = "[m] Model radius.";
@@ -1052,6 +1052,7 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
   char **collPartNames;
   char message[80];
   treeType tree;
+  const _Bool doMolCalcs = par->doSolveRTE || par->nLineImages>0;
 
   par->dataFlags = 0;
   if(par->gridInFile!=NULL){
@@ -1059,7 +1060,7 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
     struct keywordType *desiredKwds=malloc(sizeof(struct keywordType)*numDesiredKwds);
 
     initializeKeyword(&desiredKwds[0]);
-    desiredKwds[0].datatype = TDOUBLE;
+    desiredKwds[0].datatype = lime_DOUBLE;
     desiredKwds[0].keyname = "RADIUS  ";
     /* Currently not doing anything with the read keyword. */
 
@@ -1155,8 +1156,8 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
       if(!silent) warning("You have a singularity at the origin in your temperature() function.");
   }
 
-  par->useAbun = 1; /* This will remain so if the abu values have been read from file. */
-  if(!allBitsSet(par->dataFlags, DS_mask_abundance) && par->nLineImages>0){
+  par->useAbun = 1; /* This will remain so if the abun values have been read from file. */
+  if(!allBitsSet(par->dataFlags, DS_mask_abundance) && doMolCalcs){
     dummyPointer = malloc(sizeof(*dummyPointer)*par->nSpecies);
     abundance(0.0,0.0,0.0,dummyPointer);
     if(dummyPointer[0]<0.0){ /* This is used to flag that the user has supplied no abundance() function. */
@@ -1182,13 +1183,13 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
     free(dummyPointer);
   }
 
-  if(!allBitsSet(par->dataFlags, DS_mask_turb_doppler) && par->nLineImages>0){
+  if(!allBitsSet(par->dataFlags, DS_mask_turb_doppler) && doMolCalcs){
     doppler(0.0,0.0,0.0,&dummyScalar);	
     if(isinf(dummyScalar))
       if(!silent) warning("You have a singularity at the origin in your doppler() function.");
   }
 
-  if(!allBitsSet(par->dataFlags, DS_mask_velocity) && par->nLineImages>0){
+  if(!allBitsSet(par->dataFlags, DS_mask_velocity) && doMolCalcs){
     velocity(0.0,0.0,0.0,dummyVel);
     if(isinf(dummyVel[0])||isinf(dummyVel[1])||isinf(dummyVel[2]))
       if(!silent) warning("You have a singularity at the origin in your velocity() function.");
@@ -1351,7 +1352,7 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
     par->dataFlags |= DS_mask_temperatures;
   }
 
-  if(par->nLineImages>0){
+  if(doMolCalcs){
     if(!allBitsSet(par->dataFlags, DS_mask_abundance)){
       /* Means we didn't read abun values from file, we have to calculate them via the user-supplied fuction. */
       dummyPointer = malloc(sizeof(*dummyPointer)*par->nSpecies);
@@ -1382,7 +1383,7 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
     par->dataFlags |= DS_mask_abundance;
   }
 
-  if(!allBitsSet(par->dataFlags, DS_mask_turb_doppler) && par->nLineImages>0){
+  if(!allBitsSet(par->dataFlags, DS_mask_turb_doppler) && doMolCalcs){
     for(i=0;i<par->pIntensity;i++)
       doppler((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],&(*gp)[i].dopb_turb);	
     for(i=par->pIntensity;i<par->ncell;i++)
@@ -1391,7 +1392,7 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
     par->dataFlags |= DS_mask_turb_doppler;
   }
 
-  if(!allBitsSet(par->dataFlags, DS_mask_velocity) && par->nLineImages>0){
+  if(!allBitsSet(par->dataFlags, DS_mask_velocity) && doMolCalcs){
     for(i=0;i<par->pIntensity;i++)
       velocity((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],(*gp)[i].vel);
 
