@@ -943,8 +943,9 @@ readKeywordsFromFITS(lime_fptr *fptr, struct keywordType *kwds\
 
 /*....................................................................*/
 void
-readGridExtFromFITS(fitsfile *fptr, struct gridInfoType *gridInfoRead\
-  , struct grid **gp, unsigned int **firstNearNeigh, char ***collPartNames\
+readGridExtFromFITS(fitsfile *fptr, const int numSpecies\
+  , struct gridInfoType *gridInfoRead, struct grid **gp\
+  , unsigned int **firstNearNeigh, char ***collPartNames\
   , int *numCollPartRead, int *dataFlags){
   /*
 The present function mallocs 'gp' and sets defaults for all the simple or first-level struct elements.
@@ -982,7 +983,17 @@ If a COLLPARn keywords are found in the GRID extension header then collPartNames
      with this call to mallocAndSetDefaultGrid (only happens if nSpecies > 0)
   */
   gridInfoRead->nSpecies = (unsigned short)countColsBasePlusInt(fptr, "ABUNMOL");
-  mallocAndSetDefaultGrid(gp, (size_t)numGridCells, gridInfoRead->nSpecies);
+  if(gridInfoRead->nSpecies>0 && numSpecies>0 && (int)gridInfoRead->nSpecies!=numSpecies){
+    if(!silent){
+      sprintf(message, "Grid file had %d species but you have provided moldata files for %d."\
+        , (int)gridInfoRead->nSpecies, numSpecies);
+      bail_out(message);
+    }
+    exit(1);
+/**** should compare name to name - at some later time after we have read these from the moldata files? */
+  }
+
+  mallocAndSetDefaultGrid(gp, (size_t)numGridCells, numSpecies);
 
   /* Read the columns.
   */

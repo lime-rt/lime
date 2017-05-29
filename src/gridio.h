@@ -57,7 +57,7 @@ struct keywordType{
 #endif
 
 void	initializeKeyword(struct keywordType *kwd);
-int	readGrid(char*, struct gridInfoType*, struct keywordType*, const int, struct grid**, char***, int*, int*);
+int	readGrid(char*, struct gridInfoType*, const int, struct keywordType*, const int, struct grid**, char***, int*, int*);
 int	writeGrid(char*, struct gridInfoType, struct keywordType*, const int, struct grid*, char**, const int);
 int	countDensityCols(char*, const int, int*);
 

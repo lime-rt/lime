@@ -476,7 +476,7 @@ readKeywords(lime_fptr *fptr\
 
 /*....................................................................*/
 int
-readGridTable(lime_fptr *fptr\
+readGridTable(lime_fptr *fptr, const int numSpecies\
   , struct gridInfoType *gridInfoRead, struct grid **gp\
   , unsigned int **firstNearNeigh, char ***collPartNames\
   , int *numCollPartRead, int *dataFlags){
@@ -489,7 +489,7 @@ Individual routines called should set the appropriate bits of dataFlags; also ma
 #if defined(lime_IO) && lime_IO==lime_HDF5
   status = 1;
 #else
-  readGridExtFromFITS(fptr, gridInfoRead, gp, firstNearNeigh\
+  readGridExtFromFITS(fptr, numSpecies, gridInfoRead, gp, firstNearNeigh\
     , collPartNames, numCollPartRead, dataFlags);
 #endif
 
@@ -692,8 +692,8 @@ readPopsTable(lime_fptr *fptr\
 
 /*....................................................................*/
 int
-readGrid(char *inFileName\
-  , struct gridInfoType *gridInfoRead, struct keywordType *primaryKwds\
+readGrid(char *inFileName, struct gridInfoType *gridInfoRead\
+  , const int numSpecies, struct keywordType *primaryKwds\
   , const int numKeywords, struct grid **gp, char ***collPartNames, int *numCollPartRead\
   , int *dataFlags){
 
@@ -742,7 +742,7 @@ NOTE that gp should not be allocated before this routine is called.
 
   /* Read the values which should be in grid for every stage.
   */
-  status = readGridTable(fptr, gridInfoRead, gp, &firstNearNeigh\
+  status = readGridTable(fptr, numSpecies, gridInfoRead, gp, &firstNearNeigh\
     , collPartNames, numCollPartRead, dataFlags); /* Sets appropriate bits of dataFlags; also mallocs gp and sets all its defaults. */
   totalNumGridPoints = gridInfoRead->nSinkPoints + gridInfoRead->nInternalPoints;
   if(status){

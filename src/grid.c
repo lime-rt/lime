@@ -1064,7 +1064,7 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
     desiredKwds[0].keyname = "RADIUS  ";
     /* Currently not doing anything with the read keyword. */
 
-    status = readGrid(par->gridInFile, &gridInfoRead, desiredKwds\
+    status = readGrid(par->gridInFile, &gridInfoRead, par->nSpecies, desiredKwds\
       , numDesiredKwds, gp, &collPartNames, &numCollPartRead, &(par->dataFlags));
 
     if(status){
@@ -1115,15 +1115,6 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
         bail_out(message);
       }
       exit(1);
-    }
-    if(gridInfoRead.nSpecies>0 && par->nSpecies>0 && (int)gridInfoRead.nSpecies!=par->nSpecies){
-      if(!silent){
-        sprintf(message, "Grid file had %d species but you have provided moldata files for %d."\
-          , (int)gridInfoRead.nSpecies, par->nSpecies);
-        bail_out(message);
-      }
-      exit(1);
-/**** should compare name to name - at some later time after we have read these from the moldata files? */
     }
     if(gridInfoRead.nDensities>0 && par->numDensities>0 && (int)gridInfoRead.nDensities!=par->numDensities){
       if(!silent){
