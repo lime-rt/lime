@@ -63,23 +63,43 @@ Since 'firstNearNeigh' has a single entry for each grid point, it can be stored 
 void
 initializeKeyword(struct keywordType *kwd){
   (*kwd).datatype = 0;
-  (*kwd).keyname = NULL;
-  (*kwd).comment = NULL;
+  (*kwd).keyname = malloc(sizeof(char)*STRLEN_KNAME);
+  (*kwd).comment = malloc(sizeof(char)*STRLEN_KCOMM);
   (*kwd).intValue = 0;
   (*kwd).floatValue = 0.0;
   (*kwd).doubleValue = 0.0;
-  (*kwd).charValue = NULL;
+  (*kwd).charValue = malloc(sizeof(char)*STRLEN_KCHAR);
 }
 
 /*....................................................................*/
-lime_fptr *
+void
+freeKeyword(struct keywordType kwd){
+  free(kwd.keyname);
+  free(kwd.comment);
+  free(kwd.charValue);
+}
+
+/*....................................................................*/
+void
+freeKeywords(struct keywordType *kwds, const int numKwds){
+  int i;
+
+  if(kwds!=NULL){
+    for(i=0;i<numKwds;i++)
+      freeKeyword(kwds[i]);
+    free(kwds);
+  }
+}
+
+/*....................................................................*/
+lime_fptr
 openFileForWrite(char *outFileName){
-  lime_fptr *fptr=NULL;
+  lime_fptr fptr=lime_init;
 
 #if defined(lime_IO) && lime_IO==lime_HDF5
-    return NULL;
+  return NULL;
 #else
-    fptr = openFITSFileForWrite(outFileName);
+  fptr = openFITSFileForWrite(outFileName);
 #endif
 
   return fptr;
@@ -241,7 +261,7 @@ We want to read in the intra-edge velocity samples which are currently still bei
 
 /*....................................................................*/
 void
-closeFile(lime_fptr *fptr){
+closeFile(lime_fptr fptr){
 #if defined(lime_IO) && lime_IO==lime_HDF5
   if(!silent) bail_out("Unknown file type");
   exit(1);
@@ -252,7 +272,7 @@ closeFile(lime_fptr *fptr){
 
 /*....................................................................*/
 void
-closeAndFree(lime_fptr *fptr\
+closeAndFree(lime_fptr fptr\
   , unsigned int *firstNearNeigh, struct linkType **nnLinks\
   , struct linkType *links, const unsigned int totalNumLinks){
 
@@ -271,7 +291,7 @@ closeAndFree(lime_fptr *fptr\
 
 /*....................................................................*/
 int
-writeKeywords(lime_fptr *fptr\
+writeKeywords(lime_fptr fptr\
   , struct keywordType *kwds, const int numKeywords){
 
   int status=0;
@@ -287,7 +307,7 @@ writeKeywords(lime_fptr *fptr\
 
 /*....................................................................*/
 int
-writeGridTable(lime_fptr *fptr\
+writeGridTable(lime_fptr fptr\
   , struct gridInfoType gridInfo, struct grid *gp, unsigned int *firstNearNeigh\
   , char **collPartNames, const int dataFlags){
 
@@ -304,7 +324,7 @@ writeGridTable(lime_fptr *fptr\
 
 /*....................................................................*/
 int
-writeNnIndicesTable(lime_fptr *fptr\
+writeNnIndicesTable(lime_fptr fptr\
   , struct gridInfoType gridInfo, struct linkType **nnLinks){\
 
   int status=0;
@@ -320,7 +340,7 @@ writeNnIndicesTable(lime_fptr *fptr\
 
 /*....................................................................*/
 int
-writeLinksTable(lime_fptr *fptr\
+writeLinksTable(lime_fptr fptr\
   , struct gridInfoType gridInfo, struct linkType *links){
 
   int status=0;
@@ -336,7 +356,7 @@ writeLinksTable(lime_fptr *fptr\
 
 /*....................................................................*/
 int
-writePopsTable(lime_fptr *fptr\
+writePopsTable(lime_fptr fptr\
   , struct gridInfoType gridInfo, unsigned short speciesI\
   , struct grid *gp){
 
@@ -372,7 +392,7 @@ This is designed to be a generic function to write the grid data (in any of its 
 	---------------------------------------------------------------
   */
 
-  lime_fptr *fptr=NULL;
+  lime_fptr fptr=lime_init;
   int status = 0;
   unsigned short i_us;
   char message[80];
@@ -396,7 +416,7 @@ This is designed to be a generic function to write the grid data (in any of its 
     , &nnLinks, &firstNearNeigh, &gridInfo.nNNIndices, dataFlags);
 
   fptr = openFileForWrite(outFileName);
-  if(fptr==NULL){
+  if(fptr _FAILED_TO_OPEN){
     closeAndFree(fptr, firstNearNeigh, nnLinks, links, gridInfo.nLinks);
     return 3;
   }
@@ -445,9 +465,9 @@ This is designed to be a generic function to write the grid data (in any of its 
 
 
 /*....................................................................*/
-lime_fptr *
+lime_fptr
 openFileForRead(char *inFileName){
-  lime_fptr *fptr=NULL;
+  lime_fptr fptr=lime_init;
 
 #if defined(lime_IO) && lime_IO==lime_HDF5
   return NULL;
@@ -460,7 +480,7 @@ openFileForRead(char *inFileName){
 
 /*....................................................................*/
 int
-readKeywords(lime_fptr *fptr\
+readKeywords(lime_fptr fptr\
   , struct keywordType *kwds, const int numKeywords){
 
   int status=0;
@@ -476,7 +496,7 @@ readKeywords(lime_fptr *fptr\
 
 /*....................................................................*/
 int
-readGridTable(lime_fptr *fptr, const int numSpecies\
+readGridTable(lime_fptr fptr, const int numSpecies\
   , struct gridInfoType *gridInfoRead, struct grid **gp\
   , unsigned int **firstNearNeigh, char ***collPartNames\
   , int *numCollPartRead, int *dataFlags){
@@ -498,7 +518,7 @@ Individual routines called should set the appropriate bits of dataFlags; also ma
 
 /*....................................................................*/
 int
-readLinksTable(lime_fptr *fptr\
+readLinksTable(lime_fptr fptr\
   , struct gridInfoType *gridInfoRead, struct grid *gp\
   , struct linkType **links, int *dataFlags){
   /*
@@ -518,7 +538,7 @@ Individual routines called should set the appropriate bits of dataFlags.
 
 /*....................................................................*/
 int
-readNnIndicesTable(lime_fptr *fptr, struct linkType *links\
+readNnIndicesTable(lime_fptr fptr, struct linkType *links\
   , struct linkType ***nnLinks, struct gridInfoType *gridInfoRead, int *dataFlags){
   /*
 Individual routines called should set the appropriate bits of dataFlags.
@@ -633,7 +653,7 @@ There is a subtle point about ordering to grasp. The order of the .vels entries 
 
 /*....................................................................*/
 int
-checkPopsTableExists(lime_fptr *fptr\
+checkPopsTableExists(lime_fptr fptr\
   , const unsigned short speciesI, _Bool *blockFound){
   int status=0;
 
@@ -650,7 +670,7 @@ checkPopsTableExists(lime_fptr *fptr\
 
 /*....................................................................*/
 int
-getNumPopsTables(lime_fptr *fptr, unsigned short *numTables){
+getNumPopsTables(lime_fptr fptr, unsigned short *numTables){
   int status = 0;
   _Bool blockFound = 1;
 
@@ -667,7 +687,7 @@ getNumPopsTables(lime_fptr *fptr, unsigned short *numTables){
 
 /*....................................................................*/
 int
-readPopsTable(lime_fptr *fptr\
+readPopsTable(lime_fptr fptr\
   , const unsigned short speciesI, struct grid *gp\
   , struct gridInfoType *gridInfoRead){
 
@@ -705,7 +725,7 @@ Some sanity checks are performed here and also in the deeper functions, but any 
 NOTE that gp should not be allocated before this routine is called.
   */
 
-  lime_fptr *fptr;
+  lime_fptr fptr=lime_init;
   int status=0;
   unsigned short i_us, numTables;
   unsigned int *firstNearNeigh=NULL, totalNumGridPoints;
@@ -866,14 +886,14 @@ NOTE that gp should not be allocated before this routine is called.
 
 /*....................................................................*/
 int
-countDensityCols(char *inFileName, const int fileFormatI, int *numDensities){
+countDensityCols(char *inFileName, int *numDensities){
   int status=0;
 
-  if(fileFormatI==lime_FITS){
-    *numDensities = countDensityColsFITS(inFileName);
-  }else{
-    status = 1;
-  }
+#if defined(lime_IO) && lime_IO==lime_HDF5
+  status = 1;
+#else
+  *numDensities = countDensityColsFITS(inFileName);
+#endif
 
   return status;
 }

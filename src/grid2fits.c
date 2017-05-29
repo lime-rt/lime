@@ -108,7 +108,7 @@ closeFITSFile(fitsfile *fptr){
 
 /*....................................................................*/
 void
-writeKeywordsToFITS(lime_fptr *fptr, struct keywordType *kwds\
+writeKeywordsToFITS(fitsfile *fptr, struct keywordType *kwds\
   , const int numKeywords){
 
   int i, status;
@@ -913,7 +913,7 @@ countKeywords(fitsfile *fptr, char *baseName){
 
 /*....................................................................*/
 void
-readKeywordsFromFITS(lime_fptr *fptr, struct keywordType *kwds\
+readKeywordsFromFITS(fitsfile *fptr, struct keywordType *kwds\
   , const int numKeywords){
 
   int i, status;
@@ -977,20 +977,6 @@ If a COLLPARn keywords are found in the GRID extension header then collPartNames
   if(numGridCells<=0){
     if(!silent) warning("No rows found in grid dataset.");
     return; /* I.e. with dataFlags left unchanged. */
-  }
-
-  /* Count the numbers of ABUNMOL columns here so that, if appropriate, we can malloc 'gp' molecular data array
-     with this call to mallocAndSetDefaultGrid (only happens if nSpecies > 0)
-  */
-  gridInfoRead->nSpecies = (unsigned short)countColsBasePlusInt(fptr, "ABUNMOL");
-  if(gridInfoRead->nSpecies>0 && numSpecies>0 && (int)gridInfoRead->nSpecies!=numSpecies){
-    if(!silent){
-      sprintf(message, "Grid file had %d species but you have provided moldata files for %d."\
-        , (int)gridInfoRead->nSpecies, numSpecies);
-      bail_out(message);
-    }
-    exit(1);
-/**** should compare name to name - at some later time after we have read these from the moldata files? */
   }
 
   mallocAndSetDefaultGrid(gp, (size_t)numGridCells, numSpecies);
@@ -1151,7 +1137,20 @@ If a COLLPARn keywords are found in the GRID extension header then collPartNames
     (*dataFlags) |= (1 << DS_bit_density);
   }
 
+  /* Count the numbers of ABUNMOL columns:
+  */
+  gridInfoRead->nSpecies = (unsigned short)countColsBasePlusInt(fptr, "ABUNMOL");
   if(gridInfoRead->nSpecies > 0){
+    if((int)gridInfoRead->nSpecies!=numSpecies){
+      if(!silent){
+        sprintf(message, "Grid file had %d species but you have provided moldata files for %d."\
+          , (int)gridInfoRead->nSpecies, numSpecies);
+        bail_out(message);
+      }
+      exit(1);
+/**** should compare name to name - at some later time after we have read these from the moldata files? */
+    }
+
     /* Read the ABUNMOL columns:
     */
     abunm = malloc(sizeof(*abunm)*numGridCells);
@@ -1263,6 +1262,7 @@ If a COLLPARn keywords are found in the GRID extension header then collPartNames
     *collPartNames = NULL;
   }else{
     *collPartNames = malloc(sizeof(**collPartNames)*(*numCollPartRead));
+    status = 0;
     for(i=0;i<(*numCollPartRead);i++){
       sprintf(genericKwd, "COLLPAR%d", i+1);
       (*collPartNames)[i] = malloc(sizeof(char)*100);
@@ -1606,7 +1606,7 @@ long naxes[2];
   /* Read kwds:
   */
   fits_read_key(fptr, TSTRING, "MOL_NAME", molNameRead, NULL, &status);
-  gridInfoRead->mols[speciesI].molName = molNameRead;//*****??
+  gridInfoRead->mols[speciesI].molName = molNameRead;
   processFitsError(status);
 }
 

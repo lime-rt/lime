@@ -969,7 +969,6 @@ void randomsViaRejection(configInfo *par, const unsigned int desiredNumPoints, g
 /*....................................................................*/
 void writeGridIfRequired(configInfo *par, struct grid *gp, molData *md){
   int status = 0;
-  char **collPartNames=NULL; /*** this is a placeholder until we start reading these. */
   char message[80];
   int dataStageI=0;
 
@@ -1021,7 +1020,7 @@ void writeGridIfRequired(configInfo *par, struct grid *gp, molData *md){
     primaryKwds[0].comment = "[m] Model radius.";
 
     status = writeGrid(par->gridOutFiles[dataStageI-1]\
-      , gridInfo, primaryKwds, 1, gp, collPartNames, par->dataFlags);
+      , gridInfo, primaryKwds, 1, gp, par->collPartNames, par->dataFlags);
 
     free(primaryKwds);
     free(gridInfo.mols);
@@ -1032,8 +1031,6 @@ void writeGridIfRequired(configInfo *par, struct grid *gp, molData *md){
       exit(1);
     }
   }
-
-  free(collPartNames);
 }
 
 /*....................................................................*/

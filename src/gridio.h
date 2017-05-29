@@ -39,27 +39,24 @@ struct gridInfoType{
 
 struct keywordType{
   int datatype; /* Codes given above. */
-  char *keyname, *comment;
-  char *charValue;
+  char *keyname,*comment,*charValue;
   int intValue;
   float floatValue;
   double doubleValue;
   _Bool boolValue;
 };
 
-//#include "grid2hdf5.h"
-#include "grid2fits.h"
-
 #if defined(lime_IO) && lime_IO==lime_HDF5
-  #define lime_fptr	hid_t
+  bale_out("No HDF5 capability yet.");
 #else
-  #define lime_fptr	fitsfile
+  #include "grid2fits.h"
 #endif
 
 void	initializeKeyword(struct keywordType *kwd);
+void	freeKeywords(struct keywordType*, const int);
 int	readGrid(char*, struct gridInfoType*, const int, struct keywordType*, const int, struct grid**, char***, int*, int*);
 int	writeGrid(char*, struct gridInfoType, struct keywordType*, const int, struct grid*, char**, const int);
-int	countDensityCols(char*, const int, int*);
+int	countDensityCols(char*, int*);
 
 #endif /* GRIDIO_H */
 
