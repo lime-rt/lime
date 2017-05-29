@@ -13,7 +13,8 @@
 #define lime_FITS	1
 #define lime_HDF5	2
 
-#define lime_IO		lime_FITS /* Ultimately this will be set either at compile- or run-time. */
+//#define lime_IO		lime_FITS /* Ultimately this will be set either at compile- or run-time. */
+#define lime_IO		lime_HDF5 /* Ultimately this will be set either at compile- or run-time. */
 
 #define lime_CHAR	0
 #define lime_INT	1
@@ -47,12 +48,12 @@ struct keywordType{
 };
 
 #if defined(lime_IO) && lime_IO==lime_HDF5
-  bale_out("No HDF5 capability yet.");
+  #include "grid2hdf5.h"
 #else
   #include "grid2fits.h"
 #endif
 
-void	initializeKeyword(struct keywordType *kwd);
+void	initializeKeyword(struct keywordType*);
 void	freeKeywords(struct keywordType*, const int);
 int	readGrid(char*, struct gridInfoType*, const int, struct keywordType*, const int, struct grid**, char***, int*, int*);
 int	writeGrid(char*, struct gridInfoType, struct keywordType*, const int, struct grid*, char**, const int);

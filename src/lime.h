@@ -20,6 +20,7 @@
 #include <gsl/gsl_spline.h>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_linalg.h>
+#include <hdf5.h>
 
 #ifdef OLD_QHULL
 #include <qhull/qhull_a.h>

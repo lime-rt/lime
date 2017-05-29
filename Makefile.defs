@@ -13,6 +13,7 @@ CORESOURCES = \
 	src/frees.c\
 	src/getclosest.c\
 	src/grid2fits.c\
+	src/grid2hdf5.c\
 	src/grid.c\
 	src/gridio.c\
 	src/LTEsolution.c\
@@ -45,6 +46,7 @@ COREINCLUDES = \
 	src/dims.h\
 	src/collparts.h\
 	src/grid2fits.h\
+	src/grid2hdf5.h\
 	src/gridio.h\
 	src/inpars.h\
 	src/lime.h\

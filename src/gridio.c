@@ -97,7 +97,7 @@ openFileForWrite(char *outFileName){
   lime_fptr fptr=lime_init;
 
 #if defined(lime_IO) && lime_IO==lime_HDF5
-  return NULL;
+  fptr = openHDF5FileForWrite(outFileName);
 #else
   fptr = openFITSFileForWrite(outFileName);
 #endif
@@ -263,8 +263,7 @@ We want to read in the intra-edge velocity samples which are currently still bei
 void
 closeFile(lime_fptr fptr){
 #if defined(lime_IO) && lime_IO==lime_HDF5
-  if(!silent) bail_out("Unknown file type");
-  exit(1);
+  closeHDF5File(fptr);
 #else
   closeFITSFile(fptr);
 #endif
@@ -297,7 +296,7 @@ writeKeywords(lime_fptr fptr\
   int status=0;
 
 #if defined(lime_IO) && lime_IO==lime_HDF5
-  status = 1;
+  writeKeywordsToHDF5(fptr, kwds, numKeywords);
 #else
   writeKeywordsToFITS(fptr, kwds, numKeywords);
 #endif
@@ -314,7 +313,7 @@ writeGridTable(lime_fptr fptr\
   int status=0;
 
 #if defined(lime_IO) && lime_IO==lime_HDF5
-  status = 1;
+  writeGridExtToHDF5(fptr, gridInfo, gp, firstNearNeigh, collPartNames, dataFlags);
 #else
   writeGridExtToFITS(fptr, gridInfo, gp, firstNearNeigh, collPartNames, dataFlags);
 #endif
@@ -330,7 +329,7 @@ writeNnIndicesTable(lime_fptr fptr\
   int status=0;
 
 #if defined(lime_IO) && lime_IO==lime_HDF5
-  status = 1;
+  writeNnIndicesExtToHDF5(fptr, gridInfo, nnLinks);
 #else
   writeNnIndicesExtToFITS(fptr, gridInfo, nnLinks);
 #endif
@@ -346,7 +345,7 @@ writeLinksTable(lime_fptr fptr\
   int status=0;
 
 #if defined(lime_IO) && lime_IO==lime_HDF5
-  status = 1;
+  writeLinksExtToHDF5(fptr, gridInfo, links);
 #else
   writeLinksExtToFITS(fptr, gridInfo, links);
 #endif
@@ -364,7 +363,7 @@ writePopsTable(lime_fptr fptr\
   int status=0;
 
 #if defined(lime_IO) && lime_IO==lime_HDF5
-  status = 1;
+  writePopsGroupToHDF5(fptr, gridInfo, speciesI, gp);
 #else
   writePopsExtToFITS(fptr, gridInfo, speciesI, gp);
 #endif
@@ -470,7 +469,7 @@ openFileForRead(char *inFileName){
   lime_fptr fptr=lime_init;
 
 #if defined(lime_IO) && lime_IO==lime_HDF5
-  return NULL;
+  fptr = openHDF5FileForRead(inFileName);
 #else
   fptr = openFITSFileForRead(inFileName);
 #endif
@@ -486,7 +485,7 @@ readKeywords(lime_fptr fptr\
   int status=0;
 
 #if defined(lime_IO) && lime_IO==lime_HDF5
-  status = 1;
+  readKeywordsFromHDF5(fptr, kwds, numKeywords);
 #else
   readKeywordsFromFITS(fptr, kwds, numKeywords);
 #endif
@@ -507,7 +506,8 @@ Individual routines called should set the appropriate bits of dataFlags; also ma
   int status=0;
 
 #if defined(lime_IO) && lime_IO==lime_HDF5
-  status = 1;
+  readGridExtFromHDF5(fptr, numSpecies, gridInfoRead, gp, firstNearNeigh\
+    , collPartNames, numCollPartRead, dataFlags);
 #else
   readGridExtFromFITS(fptr, numSpecies, gridInfoRead, gp, firstNearNeigh\
     , collPartNames, numCollPartRead, dataFlags);
@@ -528,7 +528,7 @@ Individual routines called should set the appropriate bits of dataFlags.
   int status=0;
 
 #if defined(lime_IO) && lime_IO==lime_HDF5
-  status = 1;
+  readLinksExtFromHDF5(fptr, gridInfoRead, gp, links, dataFlags);
 #else
   readLinksExtFromFITS(fptr, gridInfoRead, gp, links, dataFlags);
 #endif
@@ -547,7 +547,7 @@ Individual routines called should set the appropriate bits of dataFlags.
   int status=0;
 
 #if defined(lime_IO) && lime_IO==lime_HDF5
-  status = 1;
+  readNnIndicesExtFromHDF5(fptr, links, nnLinks, gridInfoRead, dataFlags);
 #else
   readNnIndicesExtFromFITS(fptr, links, nnLinks, gridInfoRead, dataFlags);
 #endif
@@ -660,7 +660,7 @@ checkPopsTableExists(lime_fptr fptr\
   *blockFound = 0;
 
 #if defined(lime_IO) && lime_IO==lime_HDF5
-  status = 1;
+  *blockFound = checkPopsHDF5GroupExists(fptr, speciesI);
 #else
   *blockFound = checkPopsFITSExtExists(fptr, speciesI);
 #endif
@@ -702,9 +702,9 @@ readPopsTable(lime_fptr fptr\
   }
 
 #if defined(lime_IO) && lime_IO==lime_HDF5
-  status = 1;
+  readPopsGroupFromHDF5(fptr, speciesI, gp, gridInfoRead);
 #else
-  readPopsExtFromFITS(fptr, speciesI, gp, gridInfoRead);
+  readPopsExtFromFITS(  fptr, speciesI, gp, gridInfoRead);
 #endif
 
   return status;
@@ -890,7 +890,7 @@ countDensityCols(char *inFileName, int *numDensities){
   int status=0;
 
 #if defined(lime_IO) && lime_IO==lime_HDF5
-  status = 1;
+  *numDensities = countDensityColsHDF5(inFileName);
 #else
   *numDensities = countDensityColsFITS(inFileName);
 #endif
