@@ -786,7 +786,7 @@ Ok we have a bit of a tricky situation here in that the number of columns we wri
   i++;
   kwds[i].datatype = lime_CHAR;
   sprintf(kwds[i].keyname, "EXTNAME");
-  sprintf(kwds[i].charValue, extname);
+  strcpy(kwds[i].charValue, extname);
 
   i++;
   kwds[i].datatype = lime_INT;
@@ -883,7 +883,7 @@ Note that data types in all capitals are defined in fitsio.h.
   initializeKeyword(&kwds[i]);
   kwds[i].datatype = lime_CHAR;
   sprintf(kwds[i].keyname, "EXTNAME");
-  sprintf(kwds[i].charValue, extname);
+  strcpy(kwds[i].charValue, extname);
 
   i++;
   initializeKeyword(&kwds[i]);
@@ -1024,7 +1024,7 @@ Notes:
   initializeKeyword(&kwds[i]);
   kwds[i].datatype = lime_CHAR;
   sprintf(kwds[i].keyname, "EXTNAME");
-  sprintf(kwds[i].charValue, extname);
+  strcpy(kwds[i].charValue, extname);
 
   i++;
   initializeKeyword(&kwds[i]);
@@ -2033,7 +2033,7 @@ The function mallocs gp[yi].mol[speciesI].pops for each grid point yi and specie
   if((hsize_t)totalNumGridPoints != spaceDims[1]){
     if(!silent){
       sprintf(message, "Expected %ld grid points but extension %s has %d"\
-        , (long)totalNumGridPoints, groupName, spaceDims[1]);
+        , (long)totalNumGridPoints, groupName, (int)spaceDims[1]);
       bail_out(message);
     }
     exit(1);

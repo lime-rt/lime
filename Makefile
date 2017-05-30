@@ -62,12 +62,12 @@ CC	= gcc -fopenmp
 MODELS  = model.c # Overwritten in usual practice by the value passed in by the 'lime' script.
 MODELO 	= ${srcdir}/model.o
 
-CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing
+CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing -DH5_NO_DEPRECATED_SYMBOLS
 LDFLAGS = -lhdf5_hl -lhdf5 -lz -lgsl -lgslcblas -l${QHULL} -lcfitsio -lncurses -lm 
 
 ifeq (${DOTEST},yes)
   CCFLAGS += -DTEST
-  CC += -g -Wunused -Wno-unused-result
+  CC += -g -Wunused -Wno-unused-result -Wformat -Wformat-security
 endif
 
 SRCS = ${CORESOURCES} ${STDSOURCES}
