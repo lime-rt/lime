@@ -13,8 +13,12 @@
 #define lime_FITS	1
 #define lime_HDF5	2
 
-//#define lime_IO		lime_FITS /* Ultimately this will be set either at compile- or run-time. */
-#define lime_IO		lime_HDF5 /* Ultimately this will be set either at compile- or run-time. */
+#ifdef USEHDF5
+#include <hdf5.h>
+#define lime_IO		lime_HDF5
+#else
+#define lime_IO		lime_FITS
+#endif
 
 #define lime_CHAR	0
 #define lime_INT	1

@@ -26,7 +26,7 @@ Note that all extensions are binary table except where indicated. The letter in 
 
 for a key to these.
 
-Where column names contain a lower-case letter, this is a placeholder for a digit as explained in the repective comment.
+Where column names contain a lower-case letter, this is a placeholder for a digit as explained in the respective comment.
 
 0	0) The primary HDU
 

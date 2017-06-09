@@ -11,7 +11,69 @@
 #include "gridio.h"
 
 /*
-The present module contains routines for transferring the LIME grid point data to or from an HDF5 format file.
+The present module contains routines for transferring the LIME grid point data to or from an HDF5 format file. The purpose of the present comment block is to describe the HDF5 file format. Note that the amount and type of information stored depends on the 'data stage' of the grid struct, as described in the header remarks to module gridio.c.
+
+In the description below, the data stage bit associated with the presence of a particular extension, column or keyword is given on the leftmost place of each line. When the file is read, all the objects associated with a bit must be present for the bit to be set.
+
+Note that all extensions are binary table except where indicated. The letter in the second row for column descriptions indicates the HDF5 data type according to the following key:
+
+	A	H5T_NATIVE_CHAR
+	I	H5T_NATIVE_SHORT
+	U	H5T_NATIVE_USHORT
+	V	H5T_NATIVE_UINT
+	E	H5T_NATIVE_FLOAT
+	D	H5T_NATIVE_DOUBLE
+
+Where column names contain a lower-case letter, this is a placeholder for a digit as explained in the respective comment.
+
+0    The file.
+         Attributes:
+0            RADIUS             D	# The model radius in metres.
+
+0        Group 'GRID'
+             Attributes:
+0                COLLPARn       A	# 1 for each nth collision partner.
+
+0            Group 'columns'
+                 Number of elements in each of the datasets = number of grid points.
+
+                 Datasets:
+0                    ID         V
+0                    Xj         D	# Cartesian components of the point location, 1 col per jth dimension.
+0                    IS_SINK    I	# =True iff the point lies on the edge of the model.
+1                    NUMNEIGH   U
+1                    FIRST_NN   V	# See explanation in section 3 below.
+2                    VELj       D	# 1 col per jth dimension.
+3                    DENSITYn   D	# 1 per nth collision partner.
+4                    ABUNMOLm   E	# 1 per mth molecular species.
+5                    TURBDPLR   E	# Given Gaussian lineshape exp(-v^2/[B^2 + 2*k*T/m]), this is B.
+6                    TEMPKNTC   E	# From t[0].
+6                    TEMPDUST   E	# From t[1].
+
+1        Group 'NN_INDICES' (see explanation in the header to gridio.c)
+1            Group 'columns'
+                 Number of elements in each of the datasets = number of grid points * average number of Delaunay links per point.
+
+                 Datasets:
+1                    LINK_I     V
+
+1        Group 'LINKS' (see explanation in the header to gridio.c)
+1            Group 'columns'
+                 Number of elements in each of the datasets = number of Delaunay links.
+
+                 Datasets:
+1                    GRID_I_1   V
+1                    GRID_I_2   V
+7                    V_p_j      D	# 1 per pth velocity sample per jth dimension.
+
+8        Group 'LEVEL_POPS_m' (1 per mth molecular species)
+             Attributes:
+8                MOL_NAME       A
+8            Dataset 'array'    E
+             dimensions = [(number of energy levels this species),(number of grid cells)].
+
+
+Note that at present the data in the 'partner' element of grid.mol is *NOT* being stored.
 */
 
 /*....................................................................*/
@@ -147,7 +209,7 @@ NOTES:
 
   const unsigned short maxNumDims=9, maxNumSpecies=9, maxNumDensities=9;
   unsigned short i_us;
-  int colI,i,colToWriteI;//,status=0;
+  int colI,i,colToWriteI;
   char message[80];
   char **unitAllCols=NULL;
   int *dataTypeAllCols=NULL;
@@ -218,7 +280,7 @@ NOTES:
     (*allColNumbers)[colI] = colToWriteI;
   }
   unitAllCols[colI] = "\0";
-  dataTypeAllCols[colI] = H5T_NATIVE_CHAR;//TLOGICAL;
+  dataTypeAllCols[colI] = H5T_NATIVE_CHAR;//H5T_NATIVE_HBOOL?;
 
   colI++;
   sprintf((*allColNames)[colI], "NUMNEIGH");

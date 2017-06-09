@@ -589,14 +589,14 @@ The default value is 0.
 
 Up to 4 file names can be provided to this parameter, which allows LIME to write the entire grid information to file at each of four defined stages of completeness. Broadly speaking these stages are (i) grid points chosen, (ii) Delaunay tetrahedra calculated, (iii) user-provided functions sampled, (iv) populations solved. Any of these files can be read in again via the `par->gridInFile` parameter: LIME will calculate the stage from the information present in the file.
 
-The only file format available at present is FITS, but it is also planned to write an HDF5 backend.
+The default file format is FITS, but HDF5 is now also available. This can be accessed by adding `USEHDF5="yes"` to the `make` command.
 
 
 .. code:: c
 
     (string) par->gridInFile (optional)
 
-This file should conform to the format described in the header of src/grid2fits.c. (Files written by LIME to one of the recognized four `par->gridOutFiles` stages automatically conform to this format.) LIME will not recalculate any information it finds in the file. The user may, for example, perform several iterations of population solution, store this information by providing a file name to `par->gridOutFiles[3]` (remember C counts from zero!), then read it back in again via `par->gridInFile` without going through the gridding stage again. This allows solution to be decoupled from raytracing.
+This file should conform to the format described in the header of src/grid2fits.c for FITS files or src/grid2hdf5.c for HDF5 files. (Files written by LIME to one of the recognized four `par->gridOutFiles` stages automatically conform to this format.) LIME will not recalculate any information it finds in the file. The user may, for example, perform several iterations of population solution, store this information by providing a file name to `par->gridOutFiles[3]` (remember that C counts from zero!), then read it back in again via `par->gridInFile` without going through the gridding stage again. This allows solution to be decoupled from raytracing.
 
 These last two parameters mostly replace the functionality of the older `par->outputfile`, `par->binoutputfile`, `par->pregrid`, `par->restart` parameters. These may be abolished in a future version of LIME. Note that `par->gridfile` is still however of use.
 

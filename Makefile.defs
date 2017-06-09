@@ -13,7 +13,6 @@ CORESOURCES = \
 	src/frees.c\
 	src/getclosest.c\
 	src/grid2fits.c\
-	src/grid2hdf5.c\
 	src/grid.c\
 	src/gridio.c\
 	src/LTEsolution.c\
@@ -42,14 +41,19 @@ STDSOURCES = \
 	src/defaults.c\
 	src/main.c\
 
+HDF5SOURCES = \
+	src/grid2hdf5.c
+
 COREINCLUDES = \
 	src/dims.h\
 	src/collparts.h\
 	src/grid2fits.h\
-	src/grid2hdf5.h\
 	src/gridio.h\
 	src/inpars.h\
 	src/lime.h\
 	src/raythrucells.h\
 	src/tree_random.h\
+
+HDF5INCLUDES = \
+	src/grid2hdf5.h
 

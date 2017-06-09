@@ -62,8 +62,8 @@ CC	= gcc -fopenmp
 MODELS  = model.c # Overwritten in usual practice by the value passed in by the 'lime' script.
 MODELO 	= ${srcdir}/model.o
 
-CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing -DH5_NO_DEPRECATED_SYMBOLS
-LDFLAGS = -lhdf5_hl -lhdf5 -lz -lgsl -lgslcblas -l${QHULL} -lcfitsio -lncurses -lm 
+CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing
+LDFLAGS = -lgsl -lgslcblas -l${QHULL} -lcfitsio -lncurses -lm 
 
 ifeq (${DOTEST},yes)
   CCFLAGS += -DTEST
@@ -72,6 +72,15 @@ endif
 
 SRCS = ${CORESOURCES} ${STDSOURCES}
 INCS = ${COREINCLUDES}
+
+ifeq (${USEHDF5},yes)
+  CPPFLAGS += -DUSEHDF5
+  CCFLAGS += -DH5_NO_DEPRECATED_SYMBOLS
+  LDFLAGS += -lhdf5_hl -lhdf5 -lz
+  SRCS += ${HDF5SOURCES}
+  INCS += ${HDF5INCLUDES}
+endif
+
 OBJS = $(SRCS:.c=.o)
 
 .PHONY: all doc docclean clean distclean
