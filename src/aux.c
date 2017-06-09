@@ -255,8 +255,7 @@ The parameters visible to the user have now been strictly confined to members of
   if(!(par->doPregrid || par->restart)){ /* These switches cause par->numDensities to be set in routines they call. */
     par->numDensities = 0; /* default. */
     if(par->gridInFile!=NULL){
-      status = countDensityCols(par->gridInFile, lime_FITS, &(par->numDensities));
-//*** some time fix up these macros: change lime_FITS for GRID_FILE_TYPE, defined in lime.h.
+      status = countDensityCols(par->gridInFile, &(par->numDensities));
       if (status){
         if(!silent){
           printf(message, "countDensityCols() status return %d", status);

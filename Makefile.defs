@@ -41,6 +41,9 @@ STDSOURCES = \
 	src/defaults.c\
 	src/main.c\
 
+HDF5SOURCES = \
+	src/grid2hdf5.c
+
 COREINCLUDES = \
 	src/dims.h\
 	src/collparts.h\
@@ -50,4 +53,7 @@ COREINCLUDES = \
 	src/lime.h\
 	src/raythrucells.h\
 	src/tree_random.h\
+
+HDF5INCLUDES = \
+	src/grid2hdf5.h
 

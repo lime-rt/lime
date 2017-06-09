@@ -63,23 +63,43 @@ Since 'firstNearNeigh' has a single entry for each grid point, it can be stored 
 void
 initializeKeyword(struct keywordType *kwd){
   (*kwd).datatype = 0;
-  (*kwd).keyname = NULL;
-  (*kwd).comment = NULL;
+  (*kwd).keyname = malloc(sizeof(char)*STRLEN_KNAME);
+  (*kwd).comment = malloc(sizeof(char)*STRLEN_KCOMM);
   (*kwd).intValue = 0;
   (*kwd).floatValue = 0.0;
   (*kwd).doubleValue = 0.0;
-  (*kwd).charValue = NULL;
+  (*kwd).charValue = malloc(sizeof(char)*STRLEN_KCHAR);
 }
 
 /*....................................................................*/
-lime_fptr *
+void
+freeKeyword(struct keywordType kwd){
+  free(kwd.keyname);
+  free(kwd.comment);
+  free(kwd.charValue);
+}
+
+/*....................................................................*/
+void
+freeKeywords(struct keywordType *kwds, const int numKwds){
+  int i;
+
+  if(kwds!=NULL){
+    for(i=0;i<numKwds;i++)
+      freeKeyword(kwds[i]);
+    free(kwds);
+  }
+}
+
+/*....................................................................*/
+lime_fptr
 openFileForWrite(char *outFileName){
-  lime_fptr *fptr=NULL;
+  lime_fptr fptr=lime_init;
 
 #if defined(lime_IO) && lime_IO==lime_HDF5
-    return NULL;
+  fptr = openHDF5FileForWrite(outFileName);
 #else
-    fptr = openFITSFileForWrite(outFileName);
+  fptr = openFITSFileForWrite(outFileName);
 #endif
 
   return fptr;
@@ -241,10 +261,9 @@ We want to read in the intra-edge velocity samples which are currently still bei
 
 /*....................................................................*/
 void
-closeFile(lime_fptr *fptr){
+closeFile(lime_fptr fptr){
 #if defined(lime_IO) && lime_IO==lime_HDF5
-  if(!silent) bail_out("Unknown file type");
-  exit(1);
+  closeHDF5File(fptr);
 #else
   closeFITSFile(fptr);
 #endif
@@ -252,7 +271,7 @@ closeFile(lime_fptr *fptr){
 
 /*....................................................................*/
 void
-closeAndFree(lime_fptr *fptr\
+closeAndFree(lime_fptr fptr\
   , unsigned int *firstNearNeigh, struct linkType **nnLinks\
   , struct linkType *links, const unsigned int totalNumLinks){
 
@@ -271,13 +290,13 @@ closeAndFree(lime_fptr *fptr\
 
 /*....................................................................*/
 int
-writeKeywords(lime_fptr *fptr\
+writeKeywords(lime_fptr fptr\
   , struct keywordType *kwds, const int numKeywords){
 
   int status=0;
 
 #if defined(lime_IO) && lime_IO==lime_HDF5
-  status = 1;
+  writeKeywordsToHDF5(fptr, kwds, numKeywords);
 #else
   writeKeywordsToFITS(fptr, kwds, numKeywords);
 #endif
@@ -287,14 +306,14 @@ writeKeywords(lime_fptr *fptr\
 
 /*....................................................................*/
 int
-writeGridTable(lime_fptr *fptr\
+writeGridTable(lime_fptr fptr\
   , struct gridInfoType gridInfo, struct grid *gp, unsigned int *firstNearNeigh\
   , char **collPartNames, const int dataFlags){
 
   int status=0;
 
 #if defined(lime_IO) && lime_IO==lime_HDF5
-  status = 1;
+  writeGridExtToHDF5(fptr, gridInfo, gp, firstNearNeigh, collPartNames, dataFlags);
 #else
   writeGridExtToFITS(fptr, gridInfo, gp, firstNearNeigh, collPartNames, dataFlags);
 #endif
@@ -304,13 +323,13 @@ writeGridTable(lime_fptr *fptr\
 
 /*....................................................................*/
 int
-writeNnIndicesTable(lime_fptr *fptr\
+writeNnIndicesTable(lime_fptr fptr\
   , struct gridInfoType gridInfo, struct linkType **nnLinks){\
 
   int status=0;
 
 #if defined(lime_IO) && lime_IO==lime_HDF5
-  status = 1;
+  writeNnIndicesExtToHDF5(fptr, gridInfo, nnLinks);
 #else
   writeNnIndicesExtToFITS(fptr, gridInfo, nnLinks);
 #endif
@@ -320,13 +339,13 @@ writeNnIndicesTable(lime_fptr *fptr\
 
 /*....................................................................*/
 int
-writeLinksTable(lime_fptr *fptr\
+writeLinksTable(lime_fptr fptr\
   , struct gridInfoType gridInfo, struct linkType *links){
 
   int status=0;
 
 #if defined(lime_IO) && lime_IO==lime_HDF5
-  status = 1;
+  writeLinksExtToHDF5(fptr, gridInfo, links);
 #else
   writeLinksExtToFITS(fptr, gridInfo, links);
 #endif
@@ -336,7 +355,7 @@ writeLinksTable(lime_fptr *fptr\
 
 /*....................................................................*/
 int
-writePopsTable(lime_fptr *fptr\
+writePopsTable(lime_fptr fptr\
   , struct gridInfoType gridInfo, unsigned short speciesI\
   , struct grid *gp){
 
@@ -344,7 +363,7 @@ writePopsTable(lime_fptr *fptr\
   int status=0;
 
 #if defined(lime_IO) && lime_IO==lime_HDF5
-  status = 1;
+  writePopsGroupToHDF5(fptr, gridInfo, speciesI, gp);
 #else
   writePopsExtToFITS(fptr, gridInfo, speciesI, gp);
 #endif
@@ -372,7 +391,7 @@ This is designed to be a generic function to write the grid data (in any of its 
 	---------------------------------------------------------------
   */
 
-  lime_fptr *fptr=NULL;
+  lime_fptr fptr=lime_init;
   int status = 0;
   unsigned short i_us;
   char message[80];
@@ -396,7 +415,7 @@ This is designed to be a generic function to write the grid data (in any of its 
     , &nnLinks, &firstNearNeigh, &gridInfo.nNNIndices, dataFlags);
 
   fptr = openFileForWrite(outFileName);
-  if(fptr==NULL){
+  if(fptr _FAILED_TO_OPEN){
     closeAndFree(fptr, firstNearNeigh, nnLinks, links, gridInfo.nLinks);
     return 3;
   }
@@ -445,12 +464,12 @@ This is designed to be a generic function to write the grid data (in any of its 
 
 
 /*....................................................................*/
-lime_fptr *
+lime_fptr
 openFileForRead(char *inFileName){
-  lime_fptr *fptr=NULL;
+  lime_fptr fptr=lime_init;
 
 #if defined(lime_IO) && lime_IO==lime_HDF5
-  return NULL;
+  fptr = openHDF5FileForRead(inFileName);
 #else
   fptr = openFITSFileForRead(inFileName);
 #endif
@@ -460,13 +479,13 @@ openFileForRead(char *inFileName){
 
 /*....................................................................*/
 int
-readKeywords(lime_fptr *fptr\
+readKeywords(lime_fptr fptr\
   , struct keywordType *kwds, const int numKeywords){
 
   int status=0;
 
 #if defined(lime_IO) && lime_IO==lime_HDF5
-  status = 1;
+  readKeywordsFromHDF5(fptr, kwds, numKeywords);
 #else
   readKeywordsFromFITS(fptr, kwds, numKeywords);
 #endif
@@ -476,7 +495,7 @@ readKeywords(lime_fptr *fptr\
 
 /*....................................................................*/
 int
-readGridTable(lime_fptr *fptr, const int numSpecies\
+readGridTable(lime_fptr fptr, const int numSpecies\
   , struct gridInfoType *gridInfoRead, struct grid **gp\
   , unsigned int **firstNearNeigh, char ***collPartNames\
   , int *numCollPartRead, int *dataFlags){
@@ -487,7 +506,8 @@ Individual routines called should set the appropriate bits of dataFlags; also ma
   int status=0;
 
 #if defined(lime_IO) && lime_IO==lime_HDF5
-  status = 1;
+  readGridExtFromHDF5(fptr, numSpecies, gridInfoRead, gp, firstNearNeigh\
+    , collPartNames, numCollPartRead, dataFlags);
 #else
   readGridExtFromFITS(fptr, numSpecies, gridInfoRead, gp, firstNearNeigh\
     , collPartNames, numCollPartRead, dataFlags);
@@ -498,7 +518,7 @@ Individual routines called should set the appropriate bits of dataFlags; also ma
 
 /*....................................................................*/
 int
-readLinksTable(lime_fptr *fptr\
+readLinksTable(lime_fptr fptr\
   , struct gridInfoType *gridInfoRead, struct grid *gp\
   , struct linkType **links, int *dataFlags){
   /*
@@ -508,7 +528,7 @@ Individual routines called should set the appropriate bits of dataFlags.
   int status=0;
 
 #if defined(lime_IO) && lime_IO==lime_HDF5
-  status = 1;
+  readLinksExtFromHDF5(fptr, gridInfoRead, gp, links, dataFlags);
 #else
   readLinksExtFromFITS(fptr, gridInfoRead, gp, links, dataFlags);
 #endif
@@ -518,7 +538,7 @@ Individual routines called should set the appropriate bits of dataFlags.
 
 /*....................................................................*/
 int
-readNnIndicesTable(lime_fptr *fptr, struct linkType *links\
+readNnIndicesTable(lime_fptr fptr, struct linkType *links\
   , struct linkType ***nnLinks, struct gridInfoType *gridInfoRead, int *dataFlags){
   /*
 Individual routines called should set the appropriate bits of dataFlags.
@@ -527,7 +547,7 @@ Individual routines called should set the appropriate bits of dataFlags.
   int status=0;
 
 #if defined(lime_IO) && lime_IO==lime_HDF5
-  status = 1;
+  readNnIndicesExtFromHDF5(fptr, links, nnLinks, gridInfoRead, dataFlags);
 #else
   readNnIndicesExtFromFITS(fptr, links, nnLinks, gridInfoRead, dataFlags);
 #endif
@@ -633,14 +653,14 @@ There is a subtle point about ordering to grasp. The order of the .vels entries 
 
 /*....................................................................*/
 int
-checkPopsTableExists(lime_fptr *fptr\
+checkPopsTableExists(lime_fptr fptr\
   , const unsigned short speciesI, _Bool *blockFound){
   int status=0;
 
   *blockFound = 0;
 
 #if defined(lime_IO) && lime_IO==lime_HDF5
-  status = 1;
+  *blockFound = checkPopsHDF5GroupExists(fptr, speciesI);
 #else
   *blockFound = checkPopsFITSExtExists(fptr, speciesI);
 #endif
@@ -650,7 +670,7 @@ checkPopsTableExists(lime_fptr *fptr\
 
 /*....................................................................*/
 int
-getNumPopsTables(lime_fptr *fptr, unsigned short *numTables){
+getNumPopsTables(lime_fptr fptr, unsigned short *numTables){
   int status = 0;
   _Bool blockFound = 1;
 
@@ -667,7 +687,7 @@ getNumPopsTables(lime_fptr *fptr, unsigned short *numTables){
 
 /*....................................................................*/
 int
-readPopsTable(lime_fptr *fptr\
+readPopsTable(lime_fptr fptr\
   , const unsigned short speciesI, struct grid *gp\
   , struct gridInfoType *gridInfoRead){
 
@@ -682,9 +702,9 @@ readPopsTable(lime_fptr *fptr\
   }
 
 #if defined(lime_IO) && lime_IO==lime_HDF5
-  status = 1;
+  readPopsGroupFromHDF5(fptr, speciesI, gp, gridInfoRead);
 #else
-  readPopsExtFromFITS(fptr, speciesI, gp, gridInfoRead);
+  readPopsExtFromFITS(  fptr, speciesI, gp, gridInfoRead);
 #endif
 
   return status;
@@ -705,7 +725,7 @@ Some sanity checks are performed here and also in the deeper functions, but any 
 NOTE that gp should not be allocated before this routine is called.
   */
 
-  lime_fptr *fptr;
+  lime_fptr fptr=lime_init;
   int status=0;
   unsigned short i_us, numTables;
   unsigned int *firstNearNeigh=NULL, totalNumGridPoints;
@@ -866,14 +886,14 @@ NOTE that gp should not be allocated before this routine is called.
 
 /*....................................................................*/
 int
-countDensityCols(char *inFileName, const int fileFormatI, int *numDensities){
+countDensityCols(char *inFileName, int *numDensities){
   int status=0;
 
-  if(fileFormatI==lime_FITS){
-    *numDensities = countDensityColsFITS(inFileName);
-  }else{
-    status = 1;
-  }
+#if defined(lime_IO) && lime_IO==lime_HDF5
+  *numDensities = countDensityColsHDF5(inFileName);
+#else
+  *numDensities = countDensityColsFITS(inFileName);
+#endif
 
   return status;
 }

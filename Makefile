@@ -67,11 +67,20 @@ LDFLAGS = -lgsl -lgslcblas -l${QHULL} -lcfitsio -lncurses -lm
 
 ifeq (${DOTEST},yes)
   CCFLAGS += -DTEST
-  CC += -g -Wunused -Wno-unused-result
+  CC += -g -Wunused -Wno-unused-result -Wformat -Wformat-security
 endif
 
 SRCS = ${CORESOURCES} ${STDSOURCES}
 INCS = ${COREINCLUDES}
+
+ifeq (${USEHDF5},yes)
+  CPPFLAGS += -DUSEHDF5
+  CCFLAGS += -DH5_NO_DEPRECATED_SYMBOLS
+  LDFLAGS += -lhdf5_hl -lhdf5 -lz
+  SRCS += ${HDF5SOURCES}
+  INCS += ${HDF5INCLUDES}
+endif
+
 OBJS = $(SRCS:.c=.o)
 
 .PHONY: all doc docclean clean distclean

@@ -18,6 +18,14 @@ NOTE! This file is not stand-alone, in needs to be included in an environment wh
 #ifndef GRID2FITS_H
 #define GRID2FITS_H
 
+/* The following are required to be defined for any file format: */
+#define STRLEN_KNAME	9
+#define STRLEN_KCOMM	48
+#define STRLEN_KCHAR	21
+#define lime_fptr	fitsfile*
+#define lime_init	NULL
+#define _FAILED_TO_OPEN	==NULL
+
 _Bool	checkPopsFITSExtExists(fitsfile*, const unsigned short);
 void	closeFITSFile(fitsfile*);
 void	readGridExtFromFITS(fitsfile*, const int, struct gridInfoType*, struct grid**, unsigned int**, char***, int*, int*);
