@@ -85,7 +85,7 @@
 #define N_RAN_PER_SEGMENT       3
 #define FAST_EXP_MAX_TAYLOR     3
 #define FAST_EXP_NUM_BITS       8
-#define NUM_GRID_STAGES         4
+#define NUM_GRID_STAGES         5
 #define MAX_N_COLL_PART         20
 #define N_SMOOTH_ITERS          20
 #define TYPICAL_ISM_DENS        1000.0
@@ -124,9 +124,10 @@
 
 #define DS_mask_1            DS_mask_x
 #define DS_mask_2            DS_mask_neighbours
-#define DS_mask_3            (DS_mask_2|DS_mask_density|DS_mask_abundance|DS_mask_turb_doppler|DS_mask_temperatures|DS_mask_ACOEFF)
-#define DS_mask_populations  (1<<DS_bit_populations | DS_mask_3)
-#define DS_mask_4            DS_mask_populations
+#define DS_mask_3            (DS_mask_2|DS_mask_density|DS_mask_temperatures)
+#define DS_mask_4            (DS_mask_2|DS_mask_density|DS_mask_temperatures|DS_mask_abundance|DS_mask_turb_doppler|DS_mask_ACOEFF)
+#define DS_mask_populations  (1<<DS_bit_populations | DS_mask_4)
+#define DS_mask_5            DS_mask_populations
 #define DS_mask_all          (DS_mask_populations | DS_mask_magfield)
 #define DS_mask_all_but_mag  DS_mask_all & ~(1<<DS_bit_magfield)
 
@@ -140,12 +141,12 @@ typedef struct {
   int sinkPoints,pIntensity,blend,*collPartIds,traceRayAlgorithm,samplingAlgorithm;
   int ncell,nImages,nSpecies,numDensities,doPregrid,numGridDensMaxima;
   int sampling,lte_only,init_lte,antialias,polarization,nThreads,numDims;
-  int nLineImages,nContImages;
-  int dataFlags,nSolveIters;
+  int nLineImages,nContImages,dataFlags,nSolveIters,nSolveItersDone;
   char *outputfile,*binoutputfile,*gridfile,*pregrid,*restart,*dust;
   char *gridInFile,**gridOutFiles;
   char **girdatfile,**moldatfile,**collPartNames;
-  _Bool writeGridAtStage[NUM_GRID_STAGES],resetRNG,doInterpolateVels,useAbun,doSolveRTE;
+  _Bool writeGridAtStage[NUM_GRID_STAGES];
+  _Bool resetRNG,doInterpolateVels,useAbun,doSolveRTE,doMolCalcs;
 } configInfo;
 
 struct cpData {
@@ -280,15 +281,15 @@ struct cell {
 extern int silent;
 
 /* User-specifiable functions */
-void density(double,double,double,double *);
-void temperature(double,double,double,double *);
-void abundance(double,double,double,double *);
-void molNumDensity(double,double,double,double *);
-void doppler(double,double,double, double *);
-void velocity(double,double,double,double *);
-void magfield(double,double,double,double *);
-void gasIIdust(double,double,double,double *);
-double gridDensity(configInfo*, double*);
+void	density(double,double,double,double *);
+void	temperature(double,double,double,double *);
+void	abundance(double,double,double,double *);
+void	molNumDensity(double,double,double,double *);
+void	doppler(double,double,double, double *);
+void	velocity(double,double,double,double *);
+void	magfield(double,double,double,double *);
+void	gasIIdust(double,double,double,double *);
+double	gridDensity(configInfo*, double*);
 
 /* More functions */
 void	run(inputPars, image*, const int);
@@ -313,26 +314,26 @@ void	calcTableEntries(const int, const int);
 void	checkFirstLineMolDat(FILE *fp, char *moldatfile);
 void	checkGridDensities(configInfo*, struct grid*);
 void	checkUserDensWeights(configInfo*);
-void    copyInparStr(const char*, char**);
+void	copyInparStr(const char*, char**);
 void	delaunay(const int, struct grid*, const unsigned long, const _Bool, const _Bool, struct cell**, unsigned long*);
 void	distCalc(configInfo*, struct grid*);
 double	dotProduct3D(const double*, const double*);
 int	factorial(const int);
 double	FastExp(const float);
-void    fillErfTable();
+void	fillErfTable();
 void	fit_d1fi(double, double, double*);
 void	fit_fi(double, double, double*);
 void	fit_rr(double, double, double*);
-void	freeConfigInfo(configInfo par);
+void	freeConfigInfo(configInfo*);
 void	freeGrid(const unsigned int, const unsigned short, struct grid*);
 void	freeGridPointData(const int, gridPointData*);
 void	freeImgInfo(const int, imageInfo*);
-void	freeInputPars(inputPars par);
+void	freeInputPars(inputPars*);
 void	freeMolData(const int, molData*);
 void	freeMolsWithBlends(struct molWithBlends*, const int);
 void	freePopulation(const unsigned short, struct populations*);
 void	freeSomeGridFields(const unsigned int, const unsigned short, struct grid*);
-double  gaussline(const double, const double);
+double	gaussline(const double, const double);
 void	getArea(configInfo*, struct grid*, const gsl_rng*);
 void	getclosest(double, double, double, long*, long*, double*, double*, double*);
 double	geterf(const double, const double);
@@ -368,15 +369,15 @@ void	reportInfsAtOrigin(const int, const double*, const char*);
 void	setUpConfig(configInfo*, imageInfo**, molData**);
 void	setUpDensityAux(configInfo*, int*, const int);
 void	smooth(configInfo*, struct grid*);
-void    sourceFunc_line(const molData*, const double, const struct populations*, const int, double*, double*);
-void    sourceFunc_cont(const struct continuumLine, double*, double*);
+void	sourceFunc_line(const molData*, const double, const struct populations*, const int, double*, double*);
+void	sourceFunc_cont(const struct continuumLine, double*, double*);
 void	sourceFunc_pol(double*, const struct continuumLine, double (*rotMat)[3], double*, double*);
 void	stateq(int, struct grid*, molData*, const int, configInfo*, struct blendInfo, int, gridPointData*, double*, _Bool*);
 void	statistics(int, molData*, struct grid*, int*, double*, double*, int*);
 void	stokesangles(double*, double (*rotMat)[3], double*);
 double	taylor(const int, const float);
 void	writeFitsAllUnits(const int, configInfo*, imageInfo*);
-void	writeGridIfRequired(configInfo*, struct grid*, molData*);
+void	writeGridIfRequired(configInfo*, struct grid*, molData*, const int);
 void	write_VTK_unstructured_Points(configInfo*, struct grid*);
 
 

@@ -88,10 +88,11 @@ input(inputPars *par, image *img){
   par->gridOutFiles[1] = "grid_2.ds";
   par->gridOutFiles[2] = "grid_3.ds";
   par->gridOutFiles[3] = "grid_4.ds";
+  par->gridOutFiles[4] = "grid_5.ds";
   */
 
   /* You can also optionally read in a FITS file stored via the previous parameters, or prepared externally. See the header of grid2fits.c for information about the correct file format. LIME can cope with almost any sensible subset of the recognized columns; it will use the file values if they are present, then calculate the missing ones.
-  par->gridInFile = "grid_4.ds";
+  par->gridInFile = "grid_5.ds";
   */
 
   /*
@@ -124,7 +125,6 @@ input(inputPars *par, image *img){
    * only img[].units or img[].unit should be set for each image.
   */
   img[i].unit                   = 0;
-//  img[i].units                  = "0 1 2";
   img[i].filename               = "image0.fits";   // Output filename
 }
 

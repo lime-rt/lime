@@ -25,23 +25,23 @@ Writing the grid file:
 ----------------------
 To make things simpler, four stages have been defined at which the user may write the grid data to file. These are described in the following table:
 
-	Data mask bits set:	    stage 0	    stage 1	    stage 2	    stage 3	    stage 4
-	.....................................................................................................
-	DS_bit_x             		0		1		1		1		1
-	DS_bit_neighbours    		0		0		1		1		1
-	DS_bit_velocity      		0		0		0		1		1
-	DS_bit_density       		0		0		0		1		1
-	DS_bit_abundance     		0		0		0		1		1
-	DS_bit_turb_doppler  		0		0		0		1		1
-	DS_bit_temperatures  		0		0		0		1		1
-	DS_bit_magfield  		0		0		0		x		x
-	DS_bit_ACOEFF        		0		0		0		1		1
-	DS_bit_populations   		0		0		0		0		1
-	.....................................................................................................
+	Data mask bits set:	    stage 0	    stage 1	    stage 2	    stage 3	    stage 4	    stage 5
+	.....................................................................................................................
+	DS_bit_x             		0		1		1		1		1		1
+	DS_bit_neighbours    		0		0		1		1		1		1
+	DS_bit_velocity      		0		0		0		0		1		1
+	DS_bit_density       		0		0		0		1		1		1
+	DS_bit_abundance     		0		0		0		0		1		1
+	DS_bit_turb_doppler  		0		0		0		0		1		1
+	DS_bit_temperatures  		0		0		0		1		1		1
+	DS_bit_magfield  		0		0		0		x		x		x
+	DS_bit_ACOEFF        		0		0		0		0		1		1
+	DS_bit_populations   		0		0		0		0		0		1
+	.....................................................................................................................
 
 Notes:
   - dataStageI==0 has been included for completeness/robustness but the user may not write a file with nothing in it.
-  - LIME may run to completion without ever reaching stage 4 - if all the images required were continuum ones, for example.
+  - Stage 3 is as far as LIME gets when only continuum images/calculations are required.
 
 A note about the vectors 'links', 'nnLinks' and 'firstNearNeigh':
 -----------------------------------------------------------------
@@ -88,6 +88,18 @@ freeKeywords(struct keywordType *kwds, const int numKwds){
     for(i=0;i<numKwds;i++)
       freeKeyword(kwds[i]);
     free(kwds);
+  }
+}
+
+/*....................................................................*/
+void
+freeGridInfo(struct gridInfoType gridInfo){
+  unsigned short i_us;
+
+  if(gridInfo.mols!=NULL){
+    for(i_us=0;i_us<gridInfo.nSpecies;i_us++)
+      free(gridInfo.mols[i_us].molName);
+    free(gridInfo.mols);
   }
 }
 
@@ -495,7 +507,7 @@ readKeywords(lime_fptr fptr\
 
 /*....................................................................*/
 int
-readGridTable(lime_fptr fptr, const int numSpecies\
+readGridTable(lime_fptr fptr\
   , struct gridInfoType *gridInfoRead, struct grid **gp\
   , unsigned int **firstNearNeigh, char ***collPartNames\
   , int *numCollPartRead, int *dataFlags){
@@ -506,10 +518,10 @@ Individual routines called should set the appropriate bits of dataFlags; also ma
   int status=0;
 
 #if defined(lime_IO) && lime_IO==lime_HDF5
-  readGridExtFromHDF5(fptr, numSpecies, gridInfoRead, gp, firstNearNeigh\
+  readGridExtFromHDF5(fptr, gridInfoRead, gp, firstNearNeigh\
     , collPartNames, numCollPartRead, dataFlags);
 #else
-  readGridExtFromFITS(fptr, numSpecies, gridInfoRead, gp, firstNearNeigh\
+  readGridExtFromFITS(fptr, gridInfoRead, gp, firstNearNeigh\
     , collPartNames, numCollPartRead, dataFlags);
 #endif
 
@@ -713,7 +725,7 @@ readPopsTable(lime_fptr fptr\
 /*....................................................................*/
 int
 readGrid(char *inFileName, struct gridInfoType *gridInfoRead\
-  , const int numSpecies, struct keywordType *primaryKwds\
+  , struct keywordType *primaryKwds\
   , const int numKeywords, struct grid **gp, char ***collPartNames, int *numCollPartRead\
   , int *dataFlags){
 
@@ -722,7 +734,9 @@ This is designed to be a generic function to read the grid data from file. It is
 
 Some sanity checks are performed here and also in the deeper functions, but any check of the validity of the state of completeness of the grid data (as encoded in the returned argument dataFlags) is left to the calling routine.
 
-NOTE that gp should not be allocated before this routine is called.
+NOTE that gp should not be allocated before this routine is called, but it must be freed by the calling routine after use.
+
+NOTE that collPartNames and its components must be freed after use.
   */
 
   lime_fptr fptr=lime_init;
@@ -762,7 +776,7 @@ NOTE that gp should not be allocated before this routine is called.
 
   /* Read the values which should be in grid for every stage.
   */
-  status = readGridTable(fptr, numSpecies, gridInfoRead, gp, &firstNearNeigh\
+  status = readGridTable(fptr, gridInfoRead, gp, &firstNearNeigh\
     , collPartNames, numCollPartRead, dataFlags); /* Sets appropriate bits of dataFlags; also mallocs gp and sets all its defaults. */
   totalNumGridPoints = gridInfoRead->nSinkPoints + gridInfoRead->nInternalPoints;
   if(status){

@@ -32,7 +32,7 @@ _getColIndex(char **allColNames, const int maxNumCols, char *colName);
 _Bool	checkPopsHDF5GroupExists(hid_t file, const unsigned short);
 int	countDensityColsHDF5(char *inFileName);
 void	closeHDF5File(hid_t file);
-void	readGridExtFromHDF5(hid_t file, const int, struct gridInfoType*, struct grid**, unsigned int**, char***, int*, int*);
+void	readGridExtFromHDF5(hid_t file, struct gridInfoType*, struct grid**, unsigned int**, char***, int*, int*);
 void	readKeywordsFromHDF5(hid_t parent, struct keywordType *kwds, const int numKeywords);
 void	readLinksExtFromHDF5(hid_t file, struct gridInfoType*, struct grid*, struct linkType**, int*);
 void	readNnIndicesExtFromHDF5(hid_t file, struct linkType*, struct linkType***, struct gridInfoType*, int*);

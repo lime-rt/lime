@@ -223,15 +223,26 @@ run(inputPars inpars, image *inimg, const int nImages){
     if(par.useAbun)
       calcGridMolDensities(&par,&gp);
 
-    if(!popsdone && !allBitsSet(par.dataFlags, DS_mask_populations))
+    if(!popsdone && ((par.lte_only && !allBitsSet(par.dataFlags, DS_mask_populations))\
+                     || par.nSolveIters>par.nSolveItersDone))
       levelPops(md, &par, gp, &popsdone, lamtab, kaptab, nEntries);
 
     calcGridMolSpecNumDens(&par,md,gp);
+
+    par.nSolveItersDone = par.nSolveIters;
   }
   /*
   report(1,&par,gp);
   */
-  writeGridIfRequired(&par, gp, md);
+  if(onlyBitsSet(par.dataFlags & DS_mask_all_but_mag, DS_mask_3))
+    writeGridIfRequired(&par, gp, NULL, 3);
+  else if(onlyBitsSet(par.dataFlags & DS_mask_all_but_mag, DS_mask_5)){
+    writeGridIfRequired(&par, gp, md, 5);
+  }else if(!silent){
+    sprintf(message, "Data flags %x match neither mask 3 (cont.) or 5 (line).", par.dataFlags);
+    warning(message);
+  }
+
   freeSomeGridFields((unsigned int)par.ncell, (unsigned short)par.nSpecies, gp);
 
   /* Now make the line images.   */
@@ -253,7 +264,7 @@ run(inputPars inpars, image *inimg, const int nImages){
   freeGrid((unsigned int)par.ncell, (unsigned short)par.nSpecies, gp);
   freeMolData(par.nSpecies, md);
   freeImgInfo(par.nImages, img);
-  freeConfigInfo(par);
+  freeConfigInfo(&par);
 
   if(par.dust != NULL){
     free(kaptab);
@@ -273,7 +284,7 @@ int main() {
   run(par, img, nImages);
 
   free(img);
-  freeInputPars(par);
+  freeInputPars(&par);
 
   return 0;
 }

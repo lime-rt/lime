@@ -356,6 +356,7 @@ Required elements of structs:
 
 Elements of structs are set as follows:
 	struct grid *gp:
+		.sink
 		.numNeigh
 		.neigh (this is malloc'd too large and at present not realloc'd.)
 
@@ -967,32 +968,15 @@ void randomsViaRejection(configInfo *par, const unsigned int desiredNumPoints, g
 }
 
 /*....................................................................*/
-void writeGridIfRequired(configInfo *par, struct grid *gp, molData *md){
-  int status = 0;
+void writeGridIfRequired(configInfo *par, struct grid *gp, molData *md, const int dataStageI){
+  const int numKwds=2;
+  int i,status = 0;
   char message[80];
-  int dataStageI=0;
-
-  /* Work out the data stage:
-  */
-  if(!allBitsSet(par->dataFlags, DS_mask_1)){
-    if(!silent) warning("Trying to write at data stage 0.");
-    return;
-  }
-
-  if(      allBitsSet(par->dataFlags, DS_mask_4)){
-    dataStageI = 4;
-  }else if(allBitsSet(par->dataFlags, DS_mask_3)){
-    dataStageI = 3;
-  }else if(allBitsSet(par->dataFlags, DS_mask_2)){
-    dataStageI = 2;
-  }else{
-    dataStageI = 1;
-  }
 
   if(par->writeGridAtStage[dataStageI-1]){
     struct gridInfoType gridInfo;
     unsigned short i_us;
-    struct keywordType *primaryKwds=malloc(sizeof(struct keywordType)*1);
+    struct keywordType *primaryKwds=malloc(sizeof(struct keywordType)*numKwds);
 
     gridInfo.nInternalPoints = par->pIntensity;
     gridInfo.nSinkPoints     = par->sinkPoints;
@@ -1013,14 +997,22 @@ void writeGridIfRequired(configInfo *par, struct grid *gp, molData *md){
       }
     }
 
-    initializeKeyword(&primaryKwds[0]);
-    primaryKwds[0].datatype = lime_DOUBLE;
-    primaryKwds[0].keyname = "RADIUS  ";
-    primaryKwds[0].doubleValue = par->radius;
-    primaryKwds[0].comment = "[m] Model radius.";
+    i = 0;
+    initializeKeyword(&primaryKwds[i]);
+    primaryKwds[i].datatype = lime_DOUBLE;
+    primaryKwds[i].keyname = "RADIUS  ";
+    primaryKwds[i].doubleValue = par->radius;
+    primaryKwds[i].comment = "[m] Model radius.";
+
+    i = 1;
+    initializeKeyword(&primaryKwds[i]);
+    primaryKwds[i].datatype = lime_INT;
+    primaryKwds[i].keyname = "NSOLITER";
+    primaryKwds[i].intValue = par->nSolveItersDone;
+    primaryKwds[i].comment = "Number of RTE iterations performed.";
 
     status = writeGrid(par->gridOutFiles[dataStageI-1]\
-      , gridInfo, primaryKwds, 1, gp, par->collPartNames, par->dataFlags);
+      , gridInfo, primaryKwds, numKwds, gp, par->collPartNames, par->dataFlags);
 
     free(primaryKwds);
     free(gridInfo.mols);
@@ -1035,9 +1027,84 @@ void writeGridIfRequired(configInfo *par, struct grid *gp, molData *md){
 
 /*....................................................................*/
 void
+sanityCheckOfRead(const int status, configInfo *par, struct gridInfoType gridInfoRead){
+  char message[STR_LEN_0];
+
+  if(status){
+    if(!silent){
+      sprintf(message, "Read of grid file failed with status return %d", status);
+      bail_out(message);
+    }
+exit(1);
+  }
+
+  /* Test that dataFlags obeys the rules. */
+  /* No other bit may be set if DS_bit_x is not: */
+  if(anyBitSet(par->dataFlags, (DS_mask_all & ~(1 << DS_bit_x))) && !bitIsSet(par->dataFlags, DS_bit_x)){
+    if(!silent) bail_out("You may not read a grid file without X, ID or IS_SINK data.");
+exit(1);
+  }
+
+  /* DS_bit_ACOEFF may not be set if either DS_bit_neighbours or DS_bit_velocity is not: */
+  if(bitIsSet(par->dataFlags, DS_bit_ACOEFF)\
+  && !(bitIsSet(par->dataFlags, DS_bit_neighbours) && bitIsSet(par->dataFlags, DS_bit_velocity))){
+    if(!silent) bail_out("You may not read a grid file with ACOEFF but no VEL or neighbour data.");
+exit(1);
+  }
+
+  /* DS_bit_populations may not be set unless all the others (except DS_bit_magfield) are set as well: */
+  if(bitIsSet(par->dataFlags, DS_bit_populations)\
+  && !allBitsSet(par->dataFlags & DS_mask_all_but_mag, DS_mask_populations)){
+    if(!silent) bail_out("You may not read a grid file with pop data unless all other data is present.");
+exit(1);
+  }
+
+  /* Test gridInfoRead values against par values and overwrite the latter, with a warning, if necessary.
+  */
+  if(gridInfoRead.nSinkPoints>0 && par->sinkPoints>0){
+    if((int)gridInfoRead.nSinkPoints!=par->sinkPoints){
+      if(!silent) warning("par->sinkPoints will be overwritten");
+      par->sinkPoints = (int)gridInfoRead.nSinkPoints;
+    }
+    if((int)gridInfoRead.nInternalPoints!=par->pIntensity){
+      if(!silent) warning("par->pIntensity will be overwritten");
+      par->pIntensity = (int)gridInfoRead.nInternalPoints;
+    }
+    par->ncell = par->sinkPoints + par->pIntensity;
+  }
+  if(gridInfoRead.nDims!=DIM){ /* At present this situation is already detected and handled inside readGridExtFromFits(), but it may not be in future. The test here has no present functionality but saves trouble later if we change grid.x from an array to a pointer. */
+    if(!silent){
+      sprintf(message, "Grid file had %d dimensions but there should be %d.", (int)gridInfoRead.nDims, DIM);
+      bail_out(message);
+    }
+exit(1);
+  }
+  if(gridInfoRead.nSpecies > 0){
+    if((int)gridInfoRead.nSpecies!=par->nSpecies){
+      if(!silent){
+        sprintf(message, "Grid file had %d species but you have provided moldata files for %d."\
+          , (int)gridInfoRead.nSpecies, par->nSpecies);
+        bail_out(message);
+      }
+exit(1);
+/**** should compare name to name - at some later time after we have read these from the moldata files? */
+    }
+  }
+  if(gridInfoRead.nDensities>0 && par->numDensities>0 && (int)gridInfoRead.nDensities!=par->numDensities){
+    if(!silent){
+      sprintf(message, "Grid file had %d densities but you have provided %d."\
+        , (int)gridInfoRead.nDensities, par->numDensities);
+      bail_out(message);
+    }
+exit(1);
+  }
+}
+
+/*....................................................................*/
+void
 readOrBuildGrid(configInfo *par, struct grid **gp){
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
-  int i,j,k,di,si,levelI=0,status=0,numCollPartRead;
+  int i,j,k,di,si,levelI=0,status=0,numCollPartRead=0;
   double theta,semiradius,z,dummyScalar;
   double *outRandDensities=NULL,*dummyPointer=NULL,x[DIM];
   double (*outRandLocations)[DIM]=NULL,dummyTemp[]={-1.0,-1.0},dummyVel[DIM];
@@ -1046,81 +1113,34 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
   struct cell *dc=NULL; /* Not used at present. */
   unsigned long numCells;
   struct gridInfoType gridInfoRead;
-  char **collPartNames;
-  char message[80];
+  char **collPartNames=NULL;
   treeType tree;
-  const _Bool doMolCalcs = par->doSolveRTE || par->nLineImages>0;
 
   par->dataFlags = 0;
   if(par->gridInFile!=NULL){
-    const int numDesiredKwds=1;
+    const int numDesiredKwds=2;
     struct keywordType *desiredKwds=malloc(sizeof(struct keywordType)*numDesiredKwds);
 
-    initializeKeyword(&desiredKwds[0]);
-    desiredKwds[0].datatype = lime_DOUBLE;
-    desiredKwds[0].keyname = "RADIUS  ";
+    i = 0;
+    initializeKeyword(&desiredKwds[i]);
+    desiredKwds[i].datatype = lime_DOUBLE;
+    sprintf(desiredKwds[i].keyname, "RADIUS  ");
     /* Currently not doing anything with the read keyword. */
 
-    status = readGrid(par->gridInFile, &gridInfoRead, par->nSpecies, desiredKwds\
+    i = 1;
+    initializeKeyword(&desiredKwds[i]);
+    desiredKwds[i].datatype = lime_INT;
+    sprintf(desiredKwds[i].keyname, "NSOLITER");
+
+    status = readGrid(par->gridInFile, &gridInfoRead, desiredKwds\
       , numDesiredKwds, gp, &collPartNames, &numCollPartRead, &(par->dataFlags));
 
-    if(status){
-      if(!silent){
-        sprintf(message, "Read of grid file failed with status return %d", status);
-        bail_out(message);
-      }
-      exit(1);
-    }
+    sanityCheckOfRead(status, par, gridInfoRead);
 
-    /* Test that dataFlags obeys the rules. */
-    /* No other bit may be set if DS_bit_x is not: */
-    if(anyBitSet(par->dataFlags, (DS_mask_all & ~(1 << DS_bit_x))) && !bitIsSet(par->dataFlags, DS_bit_x)){
-      if(!silent) bail_out("You may not read a grid file without X, ID or IS_SINK data.");
-      exit(1);
-    }
+    par->nSolveItersDone = desiredKwds[1].intValue;
 
-    /* DS_bit_ACOEFF may not be set if either DS_bit_neighbours or DS_bit_velocity is not: */
-    if(bitIsSet(par->dataFlags, DS_bit_ACOEFF)\
-    && !(bitIsSet(par->dataFlags, DS_bit_neighbours) && bitIsSet(par->dataFlags, DS_bit_velocity))){
-      if(!silent) bail_out("You may not read a grid file with ACOEFF but no VEL or neighbour data.");
-      exit(1);
-    }
-
-    /* DS_bit_populations may not be set unless all the others (except DS_bit_magfield) are set as well: */
-    if(bitIsSet(par->dataFlags, DS_bit_populations)\
-    && !allBitsSet(par->dataFlags & DS_mask_all_but_mag, DS_mask_populations)){
-      if(!silent) bail_out("You may not read a grid file with pop data unless all other data is present.");
-      exit(1);
-    }
-
-    /* Test gridInfoRead values against par values and overwrite the latter, with a warning, if necessary.
-    */
-    if(gridInfoRead.nSinkPoints>0 && par->sinkPoints>0){
-      if((int)gridInfoRead.nSinkPoints!=par->sinkPoints){
-        if(!silent) warning("par->sinkPoints will be overwritten");
-        par->sinkPoints = (int)gridInfoRead.nSinkPoints;
-      }
-      if((int)gridInfoRead.nInternalPoints!=par->pIntensity){
-        if(!silent) warning("par->pIntensity will be overwritten");
-        par->pIntensity = (int)gridInfoRead.nInternalPoints;
-      }
-      par->ncell = par->sinkPoints + par->pIntensity;
-    }
-    if(gridInfoRead.nDims!=DIM){ /* At present this situation is already detected and handled inside readGridExtFromFits(), but it may not be in future. The test here has no present functionality but saves trouble later if we change grid.x from an array to a pointer. */
-      if(!silent){
-        sprintf(message, "Grid file had %d dimensions but there should be %d.", (int)gridInfoRead.nDims, DIM);
-        bail_out(message);
-      }
-      exit(1);
-    }
-    if(gridInfoRead.nDensities>0 && par->numDensities>0 && (int)gridInfoRead.nDensities!=par->numDensities){
-      if(!silent){
-        sprintf(message, "Grid file had %d densities but you have provided %d."\
-          , (int)gridInfoRead.nDensities, par->numDensities);
-        bail_out(message);
-      }
-      exit(1);
-    }
+    freeKeywords(desiredKwds, numDesiredKwds);
+    freeGridInfo(gridInfoRead);
 
 /*
 **** Ideally we should also have a test on nACoeffs.
@@ -1129,7 +1149,10 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
 */
   } /* End of read grid file. Whether and what we subsequently calculate will depend on the value of par->dataStageI returned. */
 
-  /* Check for the existence of any mandatory functions we have not supplied grid values for. (Test for singularities at the origin at the same time.)
+  /*
+Check for the existence of any mandatory functions we have not supplied grid values for. (Test for singularities at the origin at the same time.)
+
+Note that we need density and temperature values whether par->doMolCalcs or not.
   */
   if(!allBitsSet(par->dataFlags, DS_mask_density)){
     dummyPointer = malloc(sizeof(*dummyPointer)*par->numDensities);
@@ -1145,7 +1168,7 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
   }
 
   par->useAbun = 1; /* This will remain so if the abun values have been read from file. */
-  if(!allBitsSet(par->dataFlags, DS_mask_abundance) && doMolCalcs){
+  if(!allBitsSet(par->dataFlags, DS_mask_abundance) && par->doMolCalcs){
     dummyPointer = malloc(sizeof(*dummyPointer)*par->nSpecies);
     abundance(0.0,0.0,0.0,dummyPointer);
     if(dummyPointer[0]<0.0){ /* This is used to flag that the user has supplied no abundance() function. */
@@ -1171,13 +1194,13 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
     free(dummyPointer);
   }
 
-  if(!allBitsSet(par->dataFlags, DS_mask_turb_doppler) && doMolCalcs){
+  if(!allBitsSet(par->dataFlags, DS_mask_turb_doppler) && par->doMolCalcs){
     doppler(0.0,0.0,0.0,&dummyScalar);	
     if(isinf(dummyScalar))
       if(!silent) warning("You have a singularity at the origin in your doppler() function.");
   }
 
-  if(!allBitsSet(par->dataFlags, DS_mask_velocity) && doMolCalcs){
+  if(!allBitsSet(par->dataFlags, DS_mask_velocity) && par->doMolCalcs){
     velocity(0.0,0.0,0.0,dummyVel);
     if(isinf(dummyVel[0])||isinf(dummyVel[1])||isinf(dummyVel[2]))
       if(!silent) warning("You have a singularity at the origin in your velocity() function.");
@@ -1294,7 +1317,7 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
   }
 
   if(onlyBitsSet(par->dataFlags, DS_mask_1)) /* Only happens if (i) we read no file and have constructed this data within LIME, or (ii) we read a file at dataStageI==1. */
-    writeGridIfRequired(par, *gp, NULL);
+    writeGridIfRequired(par, *gp, NULL, 1);
 
   if(!allBitsSet(par->dataFlags, DS_mask_neighbours)){
     unsigned long nExtraSinks;
@@ -1312,7 +1335,7 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
   distCalc(par, *gp); /* Mallocs and sets .dir & .ds, sets .nphot. We don't store these values so we have to calculate them whether we read a file or not. */
 
   if(onlyBitsSet(par->dataFlags, DS_mask_2)) /* Only happens if (i) we read no file and have constructed this data within LIME, or (ii) we read a file at dataStageI==2. */
-    writeGridIfRequired(par, *gp, NULL);
+    writeGridIfRequired(par, *gp, NULL, 2);
 
   if(!allBitsSet(par->dataFlags, DS_mask_density)){
     for(i=0;i<par->ncell; i++)
@@ -1340,7 +1363,10 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
     par->dataFlags |= DS_mask_temperatures;
   }
 
-  if(doMolCalcs){
+  if(onlyBitsSet(par->dataFlags, DS_mask_3)) /* Only happens if (i) we read no file and have constructed this data within LIME, or (ii) we read a file at dataStageI==3. */
+    writeGridIfRequired(par, *gp, NULL, 3); /* Sufficient information for a continuum image. */
+
+  if(par->doMolCalcs){
     if(!allBitsSet(par->dataFlags, DS_mask_abundance)){
       /* Means we didn't read abun values from file, we have to calculate them via the user-supplied fuction. */
       dummyPointer = malloc(sizeof(*dummyPointer)*par->nSpecies);
@@ -1366,30 +1392,36 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
         }
       }
       free(dummyPointer);
+
+      par->dataFlags |= DS_mask_abundance;
     }
 
-    par->dataFlags |= DS_mask_abundance;
-  }
+    if(!allBitsSet(par->dataFlags, DS_mask_turb_doppler)){
+      for(i=0;i<par->pIntensity;i++)
+        doppler((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],&(*gp)[i].dopb_turb);	
+      for(i=par->pIntensity;i<par->ncell;i++)
+        (*gp)[i].dopb_turb=0.;
 
-  if(!allBitsSet(par->dataFlags, DS_mask_turb_doppler) && doMolCalcs){
-    for(i=0;i<par->pIntensity;i++)
-      doppler((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],&(*gp)[i].dopb_turb);	
-    for(i=par->pIntensity;i<par->ncell;i++)
-      (*gp)[i].dopb_turb=0.;
+      par->dataFlags |= DS_mask_turb_doppler;
+    }
 
-    par->dataFlags |= DS_mask_turb_doppler;
-  }
+    if(!allBitsSet(par->dataFlags, DS_mask_velocity)){
+      for(i=0;i<par->pIntensity;i++)
+        velocity((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],(*gp)[i].vel);
 
-  if(!allBitsSet(par->dataFlags, DS_mask_velocity) && doMolCalcs){
-    for(i=0;i<par->pIntensity;i++)
-      velocity((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],(*gp)[i].vel);
+      /* Set velocity values also for sink points (otherwise Delaunay ray-tracing has problems) */
+      for(i=par->pIntensity;i<par->ncell;i++)
+        velocity((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],(*gp)[i].vel);
 
-    /* Set velocity values also for sink points (otherwise Delaunay ray-tracing has problems) */
-    for(i=par->pIntensity;i<par->ncell;i++)
-      velocity((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],(*gp)[i].vel);
+      par->dataFlags |= DS_mask_velocity;
+    }
 
-    par->dataFlags |= DS_mask_velocity;
-  }
+    if(!allBitsSet(par->dataFlags, DS_mask_ACOEFF)){
+      getVelocities(par,*gp); /* Mallocs and sets .v1, .v2, .v3 */
+
+      par->dataFlags |= DS_mask_ACOEFF;
+    }
+  } /* End if(par->doMolCalcs) */
 
   if(!allBitsSet(par->dataFlags, DS_mask_magfield)){
     if(par->polarization){
@@ -1419,11 +1451,17 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
     par->dataFlags |= DS_mask_ACOEFF;
   }
 
-  if(onlyBitsSet(par->dataFlags & DS_mask_all_but_mag, DS_mask_3)) /* Only happens if (i) we read no file and have constructed this data within LIME, or (ii) we read a file at dataStageI==3. */
-    writeGridIfRequired(par, *gp, NULL);
+  if(onlyBitsSet(par->dataFlags & DS_mask_all_but_mag, DS_mask_4)) /* Only happens if (i) we read no file and have constructed this data within LIME, or (ii) we read a file at dataStageI==4. */
+    writeGridIfRequired(par, *gp, NULL, 4);
 
   dumpGrid(par,*gp);
   free(dc);
+
+  if(collPartNames != NULL){
+    for(i=0;i<numCollPartRead;i++)
+      free(collPartNames[i]);
+    free(collPartNames);
+  }
 }
 
 

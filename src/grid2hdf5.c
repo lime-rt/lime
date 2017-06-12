@@ -1328,14 +1328,16 @@ readKeywordsFromHDF5(hid_t parent, struct keywordType *kwds\
 
 /*....................................................................*/
 void
-readGridExtFromHDF5(hid_t file, const int numSpecies\
+readGridExtFromHDF5(hid_t file\
   , struct gridInfoType *gridInfoRead, struct grid **gp\
   , unsigned int **firstNearNeigh, char ***collPartNames\
   , int *numCollPartRead, int *dataFlags){
   /*
 The present function mallocs 'gp' and sets defaults for all the simple or first-level struct elements.
 
-If a COLLPARn keywords are found in the GRID extension header then collPartNames is malloc'd to the number of these.
+If COLLPARn attributes are found in the GRID group then collPartNames is malloc'd to the number of these which have 'n' values forming a consecutive sequence increasing from 1.
+
+Note that the calling routine needs to free gp, firstNearNeigh and collPartNames after use.
   */
 
   hid_t hduGroup,dataGroup,dset,space,attr,atype,atype_mem;
@@ -1394,7 +1396,10 @@ If a COLLPARn keywords are found in the GRID extension header then collPartNames
     return; /* I.e. with dataFlags left unchanged. */
   }
 
-  mallocAndSetDefaultGrid(gp, (size_t)numGridCells, numSpecies);
+  /* Count the numbers of ABUNMOL columns:
+  */
+  gridInfoRead->nSpecies = (unsigned short)countDataSetNamePlusInt(dataGroup, "ABUNMOL");
+  mallocAndSetDefaultGrid(gp, (size_t)numGridCells, gridInfoRead->nSpecies);
 
   /* Read the columns.
   */
@@ -1560,20 +1565,7 @@ If a COLLPARn keywords are found in the GRID extension header then collPartNames
     (*dataFlags) |= (1 << DS_bit_density);
   }
 
-  /* Count the numbers of ABUNMOL columns:
-  */
-  gridInfoRead->nSpecies = (unsigned short)countDataSetNamePlusInt(dataGroup, "ABUNMOL");
   if(gridInfoRead->nSpecies > 0){
-    if((int)gridInfoRead->nSpecies!=numSpecies){
-      if(!silent){
-        sprintf(message, "Grid file had %d species but you have provided moldata files for %d."\
-          , (int)gridInfoRead->nSpecies, numSpecies);
-        bail_out(message);
-      }
-      exit(1);
-/**** should compare name to name - at some later time after we have read these from the moldata files? */
-    }
-
     /* Read the ABUNMOL columns:
     */
     abunm = malloc(sizeof(*abunm)*numGridCells);
@@ -2152,7 +2144,9 @@ The function mallocs gp[yi].mol[speciesI].pops for each grid point yi and specie
   atype = H5Aget_type(attr);
   atype_mem = H5Tget_native_type(atype, H5T_DIR_ASCEND);
   status = H5Aread(attr, atype_mem, molNameRead);
-  gridInfoRead->mols[speciesI].molName = molNameRead;
+
+  gridInfoRead->mols[speciesI].molName = malloc(sizeof(char)*(STR_LEN_0+1));
+  sprintf(gridInfoRead->mols[speciesI].molName, "%s", molNameRead);
 
 //*** check status?
   status = H5Tclose(atype_mem);

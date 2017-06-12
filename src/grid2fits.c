@@ -732,7 +732,8 @@ Notes:
   int dataTypes[numCols];
 
   tempColNames = malloc(sizeof(*tempColNames)*numCols);
-  for(i=0;i<numCols;i++) tempColNames[i]=malloc(sizeof(char)*numColNameChars);
+  for(i=0;i<numCols;i++)
+    tempColNames[i]=malloc(sizeof(char)*numColNameChars);
 
   colI = 0;
   sprintf(tempColNames[colI], "GRID_I_1");
@@ -943,14 +944,16 @@ readKeywordsFromFITS(fitsfile *fptr, struct keywordType *kwds\
 
 /*....................................................................*/
 void
-readGridExtFromFITS(fitsfile *fptr, const int numSpecies\
+readGridExtFromFITS(fitsfile *fptr\
   , struct gridInfoType *gridInfoRead, struct grid **gp\
   , unsigned int **firstNearNeigh, char ***collPartNames\
   , int *numCollPartRead, int *dataFlags){
   /*
 The present function mallocs 'gp' and sets defaults for all the simple or first-level struct elements.
 
-If a COLLPARn keywords are found in the GRID extension header then collPartNames is malloc'd to the number of these.
+If COLLPARn keywords are found in the GRID extension header then collPartNames is malloc'd to the number of these which have 'n' values forming a consecutive sequence increasing from 1.
+
+Note that the calling routine needs to free gp, firstNearNeigh and collPartNames after use.
   */
 
   LONGLONG numGridCells, firstRow=1, firstElem=1, i_LL;
@@ -979,7 +982,10 @@ If a COLLPARn keywords are found in the GRID extension header then collPartNames
     return; /* I.e. with dataFlags left unchanged. */
   }
 
-  mallocAndSetDefaultGrid(gp, (size_t)numGridCells, numSpecies);
+  /* Count the numbers of ABUNMOL columns to get the number of species:
+  */
+  gridInfoRead->nSpecies = (unsigned short)countColsBasePlusInt(fptr, "ABUNMOL");
+  mallocAndSetDefaultGrid(gp, (size_t)numGridCells, gridInfoRead->nSpecies);
 
   /* Read the columns.
   */
@@ -1137,20 +1143,7 @@ If a COLLPARn keywords are found in the GRID extension header then collPartNames
     (*dataFlags) |= (1 << DS_bit_density);
   }
 
-  /* Count the numbers of ABUNMOL columns:
-  */
-  gridInfoRead->nSpecies = (unsigned short)countColsBasePlusInt(fptr, "ABUNMOL");
   if(gridInfoRead->nSpecies > 0){
-    if((int)gridInfoRead->nSpecies!=numSpecies){
-      if(!silent){
-        sprintf(message, "Grid file had %d species but you have provided moldata files for %d."\
-          , (int)gridInfoRead->nSpecies, numSpecies);
-        bail_out(message);
-      }
-      exit(1);
-/**** should compare name to name - at some later time after we have read these from the moldata files? */
-    }
-
     /* Read the ABUNMOL columns:
     */
     abunm = malloc(sizeof(*abunm)*numGridCells);
@@ -1606,8 +1599,10 @@ long naxes[2];
   /* Read kwds:
   */
   fits_read_key(fptr, TSTRING, "MOL_NAME", molNameRead, NULL, &status);
-  gridInfoRead->mols[speciesI].molName = molNameRead;
   processFitsError(status);
+
+  gridInfoRead->mols[speciesI].molName = malloc(sizeof(char)*(STR_LEN_0+1));
+  sprintf(gridInfoRead->mols[speciesI].molName, "%s", molNameRead);
 }
 
 /*....................................................................*/

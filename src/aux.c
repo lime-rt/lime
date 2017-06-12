@@ -14,7 +14,7 @@ TODO:
 #include <gsl/gsl_statistics.h>
 #include <float.h>
 
-#include "gridio.h" //**** should not need this - fix up these gridio macros!
+#include "gridio.h" /* For countDensityCols() */
 
 
 /*....................................................................*/
@@ -175,6 +175,7 @@ The parameters visible to the user have now been strictly confined to members of
   par->radiusSqu = inpar.radius*inpar.radius;
   par->minScaleSqu=inpar.minScale*inpar.minScale;
   par->doPregrid = (inpar.pregrid==NULL)?0:1;
+  par->nSolveItersDone = 0; /* This can be set to some non-zero value if the user reads in a grid file at dataStageI==5. */
 
   for(i=0;i<NUM_GRID_STAGES;i++)
     par->writeGridAtStage[i] = 0;
@@ -194,6 +195,7 @@ The parameters visible to the user have now been strictly confined to members of
     par->girdatfile = NULL;
   else if(numGirDatFiles!=par->nSpecies){
     if(!silent) bail_out("Number of girdatfiles different from number of species.");
+    exit(1);
   }else{
     par->girdatfile=malloc(sizeof(char *)*par->nSpecies);
     for(id=0;id<par->nSpecies;id++){
@@ -214,9 +216,11 @@ The parameters visible to the user have now been strictly confined to members of
 
     /* Check if files exist. */
     for(id=0;id<par->nSpecies;id++){
-      if((fp=fopen(par->moldatfile[id], "r"))==NULL) {
-        sprintf(message, "Moldat file %s not found locally - fetching it from LAMDA", par->moldatfile[id]);
-        printMessage(message);
+      if((fp=fopen(par->moldatfile[id], "r"))==NULL){
+        if(!silent){
+          sprintf(message, "Moldat file %s not found locally - fetching it from LAMDA", par->moldatfile[id]);
+          printMessage(message);
+        }
         openSocket(par->moldatfile[id]);
       } else {
         checkFirstLineMolDat(fp, par->moldatfile[id]);
@@ -448,11 +452,6 @@ The presence of one of these combinations at least is checked here, although the
         exit(1);
       }
 
-      if(par->moldatfile==NULL){
-        if(!silent) bail_out("You must point par->moldatfile to a data file for a line image.");
-        exit(1);
-      }
-
       /* Check that we have keywords which allow us to calculate the image frequency (if necessary) after reading in the moldata file:
       */
       if((*img)[i].trans>-1){ /* => user has set trans, possibly also freq. */
@@ -624,6 +623,17 @@ LIME provides two different schemes of {R_1, R_2, R_3}: {PA, phi, theta} and {PA
 
     if((*img)[i].doInterpolateVels)
       par->doInterpolateVels = 1;
+  }
+
+  par->doMolCalcs = par->doSolveRTE || par->nLineImages>0;
+  if(par->doMolCalcs && par->moldatfile==NULL){
+    if(!silent) bail_out("You must point par->moldatfile to a data file if you want the RTE solved.");
+    exit(1);
+  }
+
+  if(par->nSpecies>0 && !par->doMolCalcs){
+    if(!silent) bail_out("If you want only continuum calculations you must supply zero moldatfiles.");
+    exit(1);
   }
 
   /*
@@ -856,7 +866,7 @@ This is done to allow proper handling of errors which may arise in the LU solver
 While this is off however, other gsl_* etc calls will not exit if they encounter a problem. We may need to pay some attention to trapping their errors.
     */
 
-    nItersDone=0;
+    nItersDone = par->nSolveItersDone;
     while(nItersDone < par->nSolveIters){ /* Not a 'for' loop because we will probably later want to add a convergence criterion. */
       if(!silent) progressbar2(par, 0, nItersDone, 0, result1, result2);
 
@@ -949,7 +959,7 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
       }
 
       gsl_sort(median, 1, c);
-      if(nItersDone>1){
+      if(nItersDone>par->nSolveItersDone+1){
         result1=median[0];
         result2 =gsl_stats_median_from_sorted_data(median, 1, c);
       }
@@ -984,6 +994,7 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
   *popsdone=1;
 }
 
+/*....................................................................*/
 _Bool allBitsSet(const int flags, const int mask){
   /* Returns true only if all the masked bits of flags are set. */
 
@@ -993,6 +1004,7 @@ _Bool allBitsSet(const int flags, const int mask){
     return 1;
 }
 
+/*....................................................................*/
 _Bool anyBitSet(const int flags, const int mask){
   /* Returns true if any of the masked bits of flags are set. */
 
@@ -1002,6 +1014,7 @@ _Bool anyBitSet(const int flags, const int mask){
     return 0;
 }
 
+/*....................................................................*/
 _Bool bitIsSet(const int flags, const int bitI){
   /* Returns true if the designated bit of flags is set. */
 
@@ -1011,6 +1024,7 @@ _Bool bitIsSet(const int flags, const int bitI){
     return 0;
 }
 
+/*....................................................................*/
 _Bool onlyBitsSet(const int flags, const int mask){
   /* Returns true if flags has no bits set apart from those which are true in mask. */
 

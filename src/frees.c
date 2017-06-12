@@ -10,51 +10,57 @@
 #include "lime.h"
 
 void
-freeConfigInfo(configInfo par){
+freeConfigInfo(configInfo *par){
   int i;
 
-  free(par.nMolWeights);
-  free(par.dustWeights);
-  free(par.collPartIds);
-  if(par.collPartNames!= NULL){
-    for(i=0;i<par.numDensities;i++)
-      free(par.collPartNames[i]);
-    free(par.collPartNames);
-  }
+  free(par->nMolWeights);
+  free(par->dustWeights);
+  free(par->collPartMolWeights);
+  free(par->collPartIds);
+  free(par->outputfile);
+  free(par->binoutputfile);
+  free(par->gridfile);
+  free(par->pregrid);
+  free(par->restart);
+  free(par->dust);
+  free(par->gridDensMaxValues);
+  free(par->gridDensMaxLoc);
+  free(par->gridInFile);
 
-  free(par.outputfile);
-  free(par.binoutputfile);
-  free(par.gridfile);
-  free(par.pregrid);
-  free(par.restart);
-  free(par.dust);
-  if(par.moldatfile!= NULL){
-    for(i=0;i<par.nSpecies;i++)
-      free(par.moldatfile[i]);
-    free(par.moldatfile);
+  if(par->collPartNames!= NULL){
+    for(i=0;i<par->numDensities;i++)
+      free(par->collPartNames[i]);
+    free(par->collPartNames);
   }
-  if(par.girdatfile!= NULL){
-    for(i=0;i<par.nSpecies;i++)
-      free(par.girdatfile[i]);
-    free(par.girdatfile);
+  if(par->moldatfile!= NULL){
+    for(i=0;i<par->nSpecies;i++)
+      free(par->moldatfile[i]);
+    free(par->moldatfile);
   }
-
-  free(par.gridOutFiles);
-  free(par.gridDensMaxValues);
-  free(par.gridDensMaxLoc);
+  if(par->girdatfile!= NULL){
+    for(i=0;i<par->nSpecies;i++)
+      free(par->girdatfile[i]);
+    free(par->girdatfile);
+  }
+  if(par->gridOutFiles!= NULL){
+    for(i=0;i<NUM_GRID_STAGES;i++)
+      free(par->gridOutFiles[i]);
+    free(par->gridOutFiles);
+  }
 }
 
 void
-freeInputPars(inputPars par){
-  free(par.collPartIds);
-  free(par.nMolWeights);
-  free(par.dustWeights);
-  free(par.moldatfile);
-  free(par.girdatfile);
-  free(par.collPartNames);
-  free(par.gridOutFiles);
-  free(par.gridDensMaxValues);
-  free(par.gridDensMaxLoc);
+freeInputPars(inputPars *par){
+  free(par->collPartIds);
+  free(par->nMolWeights);
+  free(par->dustWeights);
+  free(par->collPartMolWeights);
+  free(par->moldatfile);
+  free(par->girdatfile);
+  free(par->collPartNames);
+  free(par->gridOutFiles);
+  free(par->gridDensMaxValues);
+  free(par->gridDensMaxLoc);
 }
 
 void
@@ -118,6 +124,7 @@ freeMolData(const int nSpecies, molData *mol){
           free(mol[i].part[j].temp);
           free(mol[i].part[j].lcl);
           free(mol[i].part[j].lcu);
+          free(mol[i].part[j].name);
         }
         free(mol[i].part);
       }
