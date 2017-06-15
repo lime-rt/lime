@@ -690,7 +690,7 @@ width of a velocity channel). This number is given in m/s. See the :ref:`note be
 
     (double) img[i]->bandwidth (semi optional)
 
-With of the spectral axis in Hz. See the :ref:`note below <img-semi>` for additional
+Width of the spectral axis in Hz. See the :ref:`note below <img-semi>` for additional
 information.
 
 .. code:: c
@@ -903,7 +903,7 @@ with components for the x, y, and z axis.
       velocity[2] = f(x,y,z);
     }
 
-In LIME 1.7 the previous 'spline' estimation (which was actually a polynomial interpolation) of velocities along the links betwene grid points has been replaced by a simpler system in which the velocity is sampled at (currently 3) equally-spaced intervals along each link, as well as at the grid cells. These link values are stored and used to estimate the average line amplitude per link via an error-function lookup. Ideally we would not need to call the velocity function again, but would be able to restrict calls of it (as is the case with all the other functions) purely to the gridding section. However it is found that linear interpolation of velocity within Delaunay cells at the raytracing is insufficient to produce accurate images; thus velocity is still called during the raytracing. In the near future we will try a 2nd-order in-cell interpolation, and if that proves adequate, we will have succeeded in relegating velocity calls to the gridding section alone.
+In LIME 1.7 the previous 'spline' estimation (which was actually a polynomial interpolation) of velocities along the links between grid points has been replaced by a simpler system in which the velocity is sampled at (currently 3) equally-spaced intervals along each link, as well as at the grid cells. These link values are stored and used to estimate the average line amplitude per link via an error-function lookup. Ideally we would not need to call the velocity function again, but would be able to restrict calls of it (as is the case with all the other functions) purely to the gridding section. However it is found that linear interpolation of velocity within Delaunay cells at the raytracing is insufficient to produce accurate images; thus velocity is still called during the raytracing. In the near future we will try a 2nd-order in-cell interpolation, and if that proves adequate, we will have succeeded in relegating velocity calls to the gridding section alone.
 
 
 Magnetic field
@@ -912,7 +912,7 @@ Magnetic field
 This is an optional function which contains a description of the magnetic
 field. The return type of this subroutine is a three component vector,
 with components for the x, y, and z axis. The magnetic field only has an
-effect for continuum polarization calulations, that is, if
+effect for continuum polarization calculations, that is, if
 `par->polarization` is set.
 
 .. code:: c
