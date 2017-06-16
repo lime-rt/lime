@@ -1000,22 +1000,22 @@ void writeGridIfRequired(configInfo *par, struct grid *gp, molData *md, const in
     i = 0;
     initializeKeyword(&primaryKwds[i]);
     primaryKwds[i].datatype = lime_DOUBLE;
-    primaryKwds[i].keyname = "RADIUS  ";
+    sprintf(primaryKwds[i].keyname, "RADIUS  ");
     primaryKwds[i].doubleValue = par->radius;
-    primaryKwds[i].comment = "[m] Model radius.";
+    sprintf(primaryKwds[i].comment, "[m] Model radius.");
 
     i = 1;
     initializeKeyword(&primaryKwds[i]);
     primaryKwds[i].datatype = lime_INT;
-    primaryKwds[i].keyname = "NSOLITER";
+    sprintf(primaryKwds[i].keyname, "NSOLITER");
     primaryKwds[i].intValue = par->nSolveItersDone;
-    primaryKwds[i].comment = "Number of RTE iterations performed.";
+    sprintf(primaryKwds[i].comment, "Number of RTE iterations performed.");
 
     status = writeGrid(par->gridOutFiles[dataStageI-1]\
       , gridInfo, primaryKwds, numKwds, gp, par->collPartNames, par->dataFlags);
 
-    free(primaryKwds);
-    free(gridInfo.mols);
+    freeKeywords(primaryKwds, numKwds);
+    freeGridInfo(&gridInfo);
 
     if(status){
       sprintf(message, "writeGrid at data stage %d returned with status %d", dataStageI, status);
@@ -1105,9 +1105,9 @@ void
 readOrBuildGrid(configInfo *par, struct grid **gp){
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
   int i,j,k,di,si,levelI=0,status=0,numCollPartRead=0;
-  double theta,semiradius,z,dummyScalar;
+  double theta,semiradius,z;//,dummyScalar;
   double *outRandDensities=NULL,*dummyPointer=NULL,x[DIM];
-  double (*outRandLocations)[DIM]=NULL,dummyTemp[]={-1.0,-1.0},dummyVel[DIM];
+  double (*outRandLocations)[DIM]=NULL;//,dummyTemp[]={-1.0,-1.0},dummyVel[DIM];
   treeRandConstType rinc;
   treeRandVarType rinv;
   struct cell *dc=NULL; /* Not used at present. */
@@ -1140,7 +1140,7 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
     par->nSolveItersDone = desiredKwds[1].intValue;
 
     freeKeywords(desiredKwds, numDesiredKwds);
-    freeGridInfo(gridInfoRead);
+    freeGridInfo(&gridInfoRead);
 
 /*
 **** Ideally we should also have a test on nACoeffs.
@@ -1149,64 +1149,68 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
 */
   } /* End of read grid file. Whether and what we subsequently calculate will depend on the value of par->dataStageI returned. */
 
-  /*
+  /* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 Check for the existence of any mandatory functions we have not supplied grid values for. (Test for singularities at the origin at the same time.)
 
 Note that we need density and temperature values whether par->doMolCalcs or not.
   */
   if(!allBitsSet(par->dataFlags, DS_mask_density)){
-    dummyPointer = malloc(sizeof(*dummyPointer)*par->numDensities);
-    density(0.0,0.0,0.0,dummyPointer);
-    if(!silent) reportInfsAtOrigin(par->numDensities, dummyPointer, "density");
-    free(dummyPointer);
+    if(bitIsSet(defaultFuncFlags, FUNC_BIT_density)){
+      if(!silent) bail_out("You need to supply a density() function.");
+exit(1);
+    }
   }
 
   if(!allBitsSet(par->dataFlags, DS_mask_temperatures)){
-    temperature(0.0,0.0,0.0,dummyTemp);
-    if(isinf(dummyTemp[0])||isinf(dummyTemp[1]))
-      if(!silent) warning("You have a singularity at the origin in your temperature() function.");
+    if(bitIsSet(defaultFuncFlags, FUNC_BIT_temperature)){
+      if(!silent) bail_out("You need to supply a temperature() function.");
+exit(1);
+    }
   }
 
   par->useAbun = 1; /* This will remain so if the abun values have been read from file. */
-  if(!allBitsSet(par->dataFlags, DS_mask_abundance) && par->doMolCalcs){
-    dummyPointer = malloc(sizeof(*dummyPointer)*par->nSpecies);
-    abundance(0.0,0.0,0.0,dummyPointer);
-    if(dummyPointer[0]<0.0){ /* This is used to flag that the user has supplied no abundance() function. */
-      molNumDensity(0.0,0.0,0.0,dummyPointer);
-      if(dummyPointer[0]<0.0){ /* This is used to flag that the user has supplied no molNumDensity() function. */
-        if(!silent) bail_out("You must provide either an abundance() or a molNumDensity() function.");
-        exit(1);
+  if(par->doMolCalcs){
+    if(!allBitsSet(par->dataFlags, DS_mask_abundance)){
+      if(bitIsSet(defaultFuncFlags, FUNC_BIT_abundance)){
+        if(bitIsSet(defaultFuncFlags, FUNC_BIT_molNumDensity)){
+          if(!silent) bail_out("You must provide either an abundance() or a molNumDensity() function.");
+exit(1);
+        }
+
+        par->useAbun = 0;
+
+      }else{
+        if(!bitIsSet(defaultFuncFlags, FUNC_BIT_molNumDensity)){
+          if(!silent) warning("abundance() function takes precendence, molNumDensity() ignored.");
+        }
+
+        par->useAbun = 1;
       }
-
-      if(!silent) reportInfsAtOrigin(par->nSpecies, dummyPointer, "molNumDensity");
-
-      par->useAbun = 0;
-    }else{
-      if(!silent) reportInfsAtOrigin(par->nSpecies, dummyPointer, "abundance");
-
-      molNumDensity(0.0,0.0,0.0,dummyPointer);
-      if(dummyPointer[0]>=0.0){
-        if(!silent) warning("abundance() function takes precendence, molNumDensity() ignored.");
-      }
-
-      par->useAbun = 1;
     }
-    free(dummyPointer);
-  }
 
-  if(!allBitsSet(par->dataFlags, DS_mask_turb_doppler) && par->doMolCalcs){
-    doppler(0.0,0.0,0.0,&dummyScalar);	
-    if(isinf(dummyScalar))
-      if(!silent) warning("You have a singularity at the origin in your doppler() function.");
-  }
+    if(!allBitsSet(par->dataFlags, DS_mask_turb_doppler)){
+      if(bitIsSet(defaultFuncFlags, FUNC_BIT_doppler)){
+        if(!silent) bail_out("You need to supply a doppler() function.");
+exit(1);
+      }
+    }
 
-  if(!allBitsSet(par->dataFlags, DS_mask_velocity) && par->doMolCalcs){
-    velocity(0.0,0.0,0.0,dummyVel);
-    if(isinf(dummyVel[0])||isinf(dummyVel[1])||isinf(dummyVel[2]))
-      if(!silent) warning("You have a singularity at the origin in your velocity() function.");
-  }
+    if(!allBitsSet(par->dataFlags, DS_mask_velocity)){
+      if(bitIsSet(defaultFuncFlags, FUNC_BIT_velocity)){
+        if(!silent) bail_out("You need to supply a velocity() function.");
+exit(1);
+      }
+    }
 
-  /* Generate the grid point locations.
+    if(!allBitsSet(par->dataFlags, DS_mask_ACOEFF)){
+      if(bitIsSet(defaultFuncFlags, FUNC_BIT_velocity)){
+        if(!silent) warning("There were no edge velocities in the file, and you haven't supplied a velocity() function.");
+      }
+    }
+  } /* End if par->doMolCalcs */
+
+  /* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+Generate the grid point locations.
   */
   if(!anyBitSet(par->dataFlags, DS_mask_x)){ /* This should only happen if we did not read a file. Generate the grid point locations. */
     mallocAndSetDefaultGrid(gp, (size_t)par->ncell, (size_t)par->nSpecies);
@@ -1267,7 +1271,7 @@ Note that we need density and temperature values whether par->doMolCalcs or not.
 
     } else {
       if(!silent) bail_out("Unrecognized sampling algorithm.");
-      exit(1);
+exit(1);
     }
 
     for(k=0;k<par->pIntensity;k++){
@@ -1319,6 +1323,9 @@ Note that we need density and temperature values whether par->doMolCalcs or not.
   if(onlyBitsSet(par->dataFlags, DS_mask_1)) /* Only happens if (i) we read no file and have constructed this data within LIME, or (ii) we read a file at dataStageI==1. */
     writeGridIfRequired(par, *gp, NULL, 1);
 
+  /* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+Generate the remaining values if needed.
+  */
   if(!allBitsSet(par->dataFlags, DS_mask_neighbours)){
     unsigned long nExtraSinks;
 
@@ -1417,9 +1424,11 @@ Note that we need density and temperature values whether par->doMolCalcs or not.
     }
 
     if(!allBitsSet(par->dataFlags, DS_mask_ACOEFF)){
-      getVelocities(par,*gp); /* Mallocs and sets .v1, .v2, .v3 */
+      if(!bitIsSet(defaultFuncFlags, FUNC_BIT_velocity)){
+        getVelocities(par,*gp); /* Mallocs and sets .v1, .v2, .v3, which are only used within photon(), which is only called if par->doMolCalcs. This also sets par->edgeVelsAvailable. */
 
-      par->dataFlags |= DS_mask_ACOEFF;
+        par->dataFlags |= DS_mask_ACOEFF;
+      }
     }
   } /* End if(par->doMolCalcs) */
 
@@ -1443,12 +1452,6 @@ Note that we need density and temperature values whether par->doMolCalcs or not.
       (*gp)[i].B[1]=0.0;
       (*gp)[i].B[2]=0.0;
     }
-  }
-
-  if(!allBitsSet(par->dataFlags, DS_mask_ACOEFF)){
-    getVelocities(par,*gp); /* Mallocs and sets .v1, .v2, .v3 */
-
-    par->dataFlags |= DS_mask_ACOEFF;
   }
 
   if(onlyBitsSet(par->dataFlags & DS_mask_all_but_mag, DS_mask_4)) /* Only happens if (i) we read no file and have constructed this data within LIME, or (ii) we read a file at dataStageI==4. */

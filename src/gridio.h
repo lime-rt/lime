@@ -58,7 +58,7 @@ struct keywordType{
 #endif
 
 void	initializeKeyword(struct keywordType*);
-void	freeGridInfo(struct gridInfoType gridInfo);
+void	freeGridInfo(struct gridInfoType*);
 void	freeKeywords(struct keywordType*, const int);
 int	readGrid(char*, struct gridInfoType*, struct keywordType*, const int, struct grid**, char***, int*, int*);
 int	writeGrid(char*, struct gridInfoType, struct keywordType*, const int, struct grid*, char**, const int);

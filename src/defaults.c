@@ -12,38 +12,52 @@
 
 
 void __attribute__((weak))
-    density(double x, double y, double z, double *dummy){
-      if(!silent) bail_out("Gas number density is not defined in model.c but is needed by LIME!");
-      exit(1);
+    density(double x, double y, double z, double *density){
+//      if(!silent) bail_out("Gas number density is not defined in model.c but is needed by LIME!");
+//      exit(1);
+      density[0] = 0.0;
+      defaultFuncFlags |= (1 << FUNC_BIT_density);
     }
 
 void __attribute__((weak))
-    temperature(double x, double y, double z, double *dummy){
-      if(!silent) bail_out("Temperature is not defined in model.c but is needed by LIME!");
-      exit(1);
+    temperature(double x, double y, double z, double *temperature){
+//      if(!silent) bail_out("Temperature is not defined in model.c but is needed by LIME!");
+//      exit(1);
+      temperature[0] = 0.0;
+      temperature[1] = 0.0;
+      defaultFuncFlags |= (1 << FUNC_BIT_temperature);
     }
 
 /* One of the following two must be defined by the user: */
 void __attribute__((weak))
     abundance(double x, double y, double z, double *dummy){
       dummy[0] = -1.0;
+      defaultFuncFlags |= (1 << FUNC_BIT_abundance);
     }
 
 void __attribute__((weak))
     molNumDensity(double x, double y, double z, double *dummy){
       dummy[0] = -1.0;
+      defaultFuncFlags |= (1 << FUNC_BIT_molNumDensity);
     }
 
 void __attribute__((weak))
     doppler(double x, double y, double z, double *dummy){
-      if(!silent) bail_out("Doppler velocity is not defined in model.c but is needed by LIME!");
-      exit(1);
+//      if(!silent) bail_out("Doppler velocity is not defined in model.c but is needed by LIME!");
+//      exit(1);
+      *dummy = 0.0;
+      defaultFuncFlags |= (1 << FUNC_BIT_doppler);
     }
 
 void __attribute__((weak))
-    velocity(double x, double y, double z, double *dummy){
-      if(!silent) bail_out("Velocity field is not defined in model.c but is needed by LIME!");
-      exit(1);
+    velocity(double x, double y, double z, double *vel){
+//      if(!silent) bail_out("Velocity field is not defined in model.c but is needed by LIME!");
+//      exit(1);
+      vel[0] = 0.0;
+      vel[1] = 0.0;
+      vel[2] = 0.0;
+//*** probably not good to hard-wire DIM to 3 in this way.
+      defaultFuncFlags |= (1 << FUNC_BIT_velocity);
     }
 
 void __attribute__((weak))
@@ -51,11 +65,13 @@ void __attribute__((weak))
       B[0]=0.0;
       B[1]=0.0;
       B[2]=0.0;
+      defaultFuncFlags |= (1 << FUNC_BIT_magfield);
     }
 
 void __attribute__((weak))
     gasIIdust(double x, double y, double z, double *gas2dust){
       *gas2dust=100.;
+      defaultFuncFlags |= (1 << FUNC_BIT_gasIIdust);
     }
 
 double __attribute__((weak))
@@ -78,6 +94,8 @@ Notes:
       density(r[0],r[1],r[2],val);
       for (i=0;i<par->numDensities;i++) totalDensity += val[i];
       fracDensity = pow(totalDensity,DENSITY_POWER)/par->gridDensGlobalMax;
+
+      defaultFuncFlags |= (1 << FUNC_BIT_gridDensity);
 
       return fracDensity;
     }

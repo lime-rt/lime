@@ -186,7 +186,7 @@ Note that the algorithm employed here is similar to that employed in the functio
         ray.tau[stokesId]+=dtau; //**** But this will be the same for I, Q or U.
       }
     } else {
-      if(!par->doPregrid && img[im].doline){
+      if(img[im].doline && par->useVelFuncInRaytrace){
         for(i=0;i<nSteps;i++){
           d = i*ds*oneOnNSteps;
           velocity(x[0]+(dx[0]*d),x[1]+(dx[1]*d),x[2]+(dx[2]*d),vel);
@@ -222,7 +222,7 @@ Note that the algorithm employed here is similar to that employed in the functio
                 /* Line centre occurs when deltav = the recession velocity of the radiating material. Explanation of the signs of the 2nd and 3rd terms on the RHS: (i) A bulk source velocity (which is defined as >0 for the receding direction) should be added to the material velocity field; this is equivalent to subtracting it from deltav, as here. (ii) A positive value of lineRedShift means the line is red-shifted wrt to the frequency specified for the image. The effect is the same as if the line and image frequencies were the same, but the bulk recession velocity were higher. lineRedShift should thus be added to the recession velocity, which is equivalent to subtracting it from deltav, as here. */
 
                 /* Calculate an approximate average line-shape function at deltav within the Voronoi cell. */
-                if(!par->doPregrid)
+                if(par->useVelFuncInRaytrace) /* because only in this case do we have projVels. */
                   calcLineAmpSample(x,dx,ds,gp[posn].mol[molI].binv,projVels,nSteps,oneOnNSteps,deltav,&vfac);
                 else
                   vfac = gaussline(deltav-dotProduct3D(dx,gp[posn].vel),gp[posn].mol[molI].binv);

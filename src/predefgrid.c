@@ -24,14 +24,17 @@ predefinedGrid(configInfo *par, struct grid *gp){
   gsl_rng_set(ran,time(0));
 #endif
 
+  par->numDensities = 1;
+  for(i=0;i<par->ncell; i++)
+    gp[i].dens = malloc(sizeof(double)*par->numDensities);
+
   fp=fopen(par->pregrid,"r");
-  par->ncell=par->pIntensity+par->sinkPoints;
 
   for(i=0;i<par->pIntensity;i++){
     //    fscanf(fp,"%d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &gp[i].id, &gp[i].x[0], &gp[i].x[1], &gp[i].x[2],  &gp[i].dens[0], &gp[i].t[0], &abun, &gp[i].dopb_turb, &gp[i].vel[0], &gp[i].vel[1], &gp[i].vel[2]);
     //    fscanf(fp,"%d %lf %lf %lf %lf %lf %lf %lf\n", &gp[i].id, &gp[i].x[0], &gp[i].x[1], &gp[i].x[2],  &gp[i].dens[0], &gp[i].t[0], &abun, &gp[i].dopb_turb);
     int nRead = fscanf(fp,"%d %lf %lf %lf %lf %lf %lf %lf %lf\n", &gp[i].id, &gp[i].x[0], &gp[i].x[1], &gp[i].x[2],  &gp[i].dens[0], &gp[i].t[0], &gp[i].vel[0], &gp[i].vel[1], &gp[i].vel[2]);
-    if( nRead != 9 || gp[i].id < 0 || gp[i].id > par->ncell)
+    if( nRead != 9 || gp[i].id < 0 || gp[i].id > par->pIntensity)
       {
         if(!silent) bail_out("Reading Grid File error");
         exit(0);
@@ -92,7 +95,6 @@ predefinedGrid(configInfo *par, struct grid *gp){
   distCalc(par,gp);
   //  getArea(par,gp, ran);
   //  getMass(par,gp, ran);
-  getVelocities_pregrid(par,gp);
 
   par->dataFlags |= (1 << DS_bit_x);
   par->dataFlags |= (1 << DS_bit_neighbours);
@@ -109,7 +111,5 @@ predefinedGrid(configInfo *par, struct grid *gp){
   if(par->gridfile) write_VTK_unstructured_Points(par, gp);
   gsl_rng_free(ran);
   free(dc);
-
-  par->numDensities = 1;
 }
 

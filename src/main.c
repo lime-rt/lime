@@ -12,6 +12,7 @@
 #include "gridio.h"
 
 int silent = 0;
+int defaultFuncFlags = 0;
 
 /* Forward declaration of functions only used in this file */
 int initParImg(inputPars *par, image **img);
@@ -239,7 +240,7 @@ run(inputPars inpars, image *inimg, const int nImages){
   else if(onlyBitsSet(par.dataFlags & DS_mask_all_but_mag, DS_mask_5)){
     writeGridIfRequired(&par, gp, md, 5);
   }else if(!silent){
-    sprintf(message, "Data flags %x match neither mask 3 (cont.) or 5 (line).", par.dataFlags);
+    sprintf(message, "Data flags %x match neither mask 3 %x (cont.) or 5 %x (line).", par.dataFlags, DS_mask_3, DS_mask_5);
     warning(message);
   }
 

@@ -19,8 +19,6 @@ getVelocities(configInfo *par, struct grid *gp){
     gp[i].v2=malloc(3*gp[i].numNeigh*sizeof(double));
     gp[i].v3=malloc(3*gp[i].numNeigh*sizeof(double));
 
-    velocity(gp[i].x[0],gp[i].x[1],gp[i].x[2],gp[i].vel);
-    
     for(k=0;k<gp[i].numNeigh;k++){
       for(j=0;j<3;j++) x[j]=gp[i].x[j];		
       for(l=0;l<5;l++){
@@ -40,6 +38,8 @@ getVelocities(configInfo *par, struct grid *gp){
       }
     }
   }
+
+  par->edgeVelsAvailable = 1;
 }
 
 void

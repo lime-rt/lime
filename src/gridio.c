@@ -93,13 +93,13 @@ freeKeywords(struct keywordType *kwds, const int numKwds){
 
 /*....................................................................*/
 void
-freeGridInfo(struct gridInfoType gridInfo){
+freeGridInfo(struct gridInfoType *gridInfo){
   unsigned short i_us;
 
-  if(gridInfo.mols!=NULL){
-    for(i_us=0;i_us<gridInfo.nSpecies;i_us++)
-      free(gridInfo.mols[i_us].molName);
-    free(gridInfo.mols);
+  if(gridInfo->mols!=NULL){
+    for(i_us=0;i_us<gridInfo->nSpecies;i_us++)
+      free(gridInfo->mols[i_us].molName);
+    free(gridInfo->mols);
   }
 }
 

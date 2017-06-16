@@ -33,12 +33,23 @@ double planckfunc(const double freq, const double temp){
 
 /*....................................................................*/
 void
+reportInfAtOrigin(const double value, const char *funcName){
+  char message[STR_LEN_0];
+
+  if(isinf(value) && !silent){
+    sprintf(message, "You have a singularity at the origin of your %s() function.", funcName);
+    warning(message);
+  }
+}
+
+/*....................................................................*/
+void
 reportInfsAtOrigin(const int numElements, const double *values, const char *funcName){
   int i;
-  char message[80];
+  char message[STR_LEN_0];
 
   for(i=0;i<numElements;i++){
-    if(isinf(values[i])){
+    if(isinf(values[i]) && !silent){
       sprintf(message, "You have a singularity at the origin in return %d of your %s() function.", i, funcName);
       warning(message);
     }
@@ -109,7 +120,6 @@ The parameters visible to the user have now been strictly confined to members of
 
   int i,j,id,status=0,numGirDatFiles;
   double BB[3],normBSquared,dens[MAX_N_COLL_PART],r[DIM];
-  double dummyVel[DIM];
   FILE *fp;
   char message[80];
   _Bool doThetaPhi;
@@ -118,22 +128,39 @@ The parameters visible to the user have now been strictly confined to members of
   int row,col;
   char *pch_sep = " ,:_", *pch, *pch_end, *units_str;
 
+  double *dummyDens = malloc(sizeof(double)*1);
+  double *dummyAbun = malloc(sizeof(double)*1);
+  double *dummyNmol = malloc(sizeof(double)*1);
+  double dummyT[2],dummyTurbDop,dummyVel[DIM],dummyB[3],dummyG2d,dummyR[]={0.0,0.0,0.0},dummyNdens;
+
+  /* just to stop compiler warnings because this return value is currently unused. */
+  (void)dummyDens;
+  (void)dummyAbun;
+  (void)dummyNmol;
+  (void)dummyT;
+  (void)dummyTurbDop;
+  (void)dummyVel;
+  (void)dummyB;
+  (void)dummyG2d;
+  (void)dummyR;
+  (void)dummyNdens;
+
   /* Check that the mandatory parameters now have 'sensible' settings (i.e., that they have been set at all). Raise an exception if not. */
   if (inpar.radius<=0){
     if(!silent) bail_out("You must define the radius parameter.");
-    exit(1);
+exit(1);
   }
   if (inpar.minScale<=0){
     if(!silent) bail_out("You must define the minScale parameter.");
-    exit(1);
+exit(1);
   }
   if (inpar.pIntensity<=0){
     if(!silent) bail_out("You must define the pIntensity parameter.");
-    exit(1);
+exit(1);
   }
   if (inpar.sinkPoints<=0){
     if(!silent) bail_out("You must define the sinkPoints parameter.");
-    exit(1);
+exit(1);
   }
 
   /* Copy over user-set parameters to the configInfo versions. (This seems like duplicated effort but it is a good principle to separate the two structs, for several reasons, as follows. (i) We will usually want more config parameters than user-settable ones. The separation leaves it clearer which things the user needs to (or can) set. (ii) The separation allows checking and screening out of impossible combinations of parameters. (iii) We can adopt new names (for clarity) for config parameters without bothering the user with a changed interface.)
@@ -176,6 +203,7 @@ The parameters visible to the user have now been strictly confined to members of
   par->minScaleSqu=inpar.minScale*inpar.minScale;
   par->doPregrid = (inpar.pregrid==NULL)?0:1;
   par->nSolveItersDone = 0; /* This can be set to some non-zero value if the user reads in a grid file at dataStageI==5. */
+  par->useAbun = 1; /* Can be unset within readOrBuildGrid(). */
 
   for(i=0;i<NUM_GRID_STAGES;i++)
     par->writeGridAtStage[i] = 0;
@@ -195,7 +223,7 @@ The parameters visible to the user have now been strictly confined to members of
     par->girdatfile = NULL;
   else if(numGirDatFiles!=par->nSpecies){
     if(!silent) bail_out("Number of girdatfiles different from number of species.");
-    exit(1);
+exit(1);
   }else{
     par->girdatfile=malloc(sizeof(char *)*par->nSpecies);
     for(id=0;id<par->nSpecies;id++){
@@ -254,6 +282,63 @@ The parameters visible to the user have now been strictly confined to members of
   while(i<MAX_N_HIGH && par->gridDensMaxValues[i]>=0) i++;
   par->numGridDensMaxima = i;
 
+  /*
+Run through all the user functions and set flags in the global defaultFuncFlags for those which have defaulted. NOTE however that we will not check which of these functions the user has provided until readOrBuildGrid(), because this will depend on the appropriate data being present or not in any grid file we read in. There are two exceptions to this:
+
+	- The velocity() function, because this is not only called within readOrBuildGrid() to calculate velocities at the grid node positions and at sample locations along the edges between grids, but also potentially within raytrace() to calculate velocities along ray paths through cells. Therefore we perform an extra test for the presence of a user-supplied velocity function (corresponding to the first two test columns in the table below) at the end of the present function.
+
+	- The density() function, because we need to know the number of densities early on, in case we need to call the default gridDensity() function. Thus we test for this below.
+
+In general our need for these functions can be summarized in the following table:
+
+Does the user need to supply this function? 0=no 1=yes
+-----------------------------------------
+  par->nLineImages>0     - 1 1 x x x x x
+  par->traceRayAlgorithm - 0 1 x x x x x
+  par->doInterpolateVels - x 0 x x x x x
+  par->restart           - x x 0 1 0 1 0
+  par->doPregrid         - 0 x 0 0 1 1 0
+  Column is in grid file - x x 0 x x x 1
+-----------------------------------------
+              velocity() | 1 1 1 0 0 0 0
+                         |
+               density() | 0 0 1 0 0 0 0
+           temperature() | 0 0 1 0 0 0 0
+             abundance() | 0 0 1 0 0 0 0
+         molNumDensity() | 0 0 1 0 0 0 0
+               doppler() | 0 0 1 0 0 0 0
+                         |
+           gridDensity() | 0 0 1 0 0 0 0
+                         |
+              magfield() | 0 0 0 0 0 0 0
+             gasIIdust() | 0 0 0 0 0 0 0
+-----------------------------------------
+Notes:
+  - If no file values of abundance are given, the user must supply either abundance() or molNumDensity(). If they supply both, only their abundance() is used.
+  - The default gridDensity() calls density(), so this will also fail if the user has not supplied either grid locations (in which case gridDensity() is never called) or a density() function.
+  - All bets are off if some user-supplied functions call others.
+
+  */
+  density(      0.0,0.0,0.0, dummyDens);
+  if(!bitIsSet(defaultFuncFlags, FUNC_BIT_density)) reportInfsAtOrigin(1, dummyDens, "density");
+  temperature(  0.0,0.0,0.0, dummyT);
+  abundance(    0.0,0.0,0.0, dummyAbun);
+  molNumDensity(0.0,0.0,0.0, dummyNmol);
+  if(!bitIsSet(defaultFuncFlags, FUNC_BIT_molNumDensity)) reportInfsAtOrigin(1, dummyNmol, "molNumDensity");
+  doppler(      0.0,0.0,0.0, &dummyTurbDop);
+  velocity(     0.0,0.0,0.0, dummyVel);
+  if(!bitIsSet(defaultFuncFlags, FUNC_BIT_velocity)) reportInfsAtOrigin(3, dummyVel, "velocity");
+  magfield(     0.0,0.0,0.0, dummyB);
+  gasIIdust(    0.0,0.0,0.0, &dummyG2d);
+
+  free(dummyNmol);
+  free(dummyAbun);
+  free(dummyDens);
+
+  par->gridDensGlobalMax = 1.0; /* Dummy value, needed in case the default gridDensity() is called. */
+  par->numDensities = 0; /* Ditto. */
+  dummyNdens = gridDensity(par, dummyR);
+
   /* Calculate par->numDensities.
   */
   if(!(par->doPregrid || par->restart)){ /* These switches cause par->numDensities to be set in routines they call. */
@@ -265,11 +350,16 @@ The parameters visible to the user have now been strictly confined to members of
           printf(message, "countDensityCols() status return %d", status);
           bail_out(message);
         }
-        exit(1);
+exit(1);
       }
     }
 
     if(par->numDensities<=0){
+      if(bitIsSet(defaultFuncFlags, FUNC_BIT_density)){
+        if(!silent) bail_out("You need to provide a density() function.");
+exit(1);
+      }
+
       /* Find out how many density functions we have (which sets par->numDensities).
       */
       for(i=0;i<MAX_N_COLL_PART;i++) dens[i] = -1.0;
@@ -281,29 +371,38 @@ The parameters visible to the user have now been strictly confined to members of
 
       if(par->numDensities<=0){
         if(!silent) bail_out("No density values returned.");
-        exit(1);
+exit(1);
       }
     }
   }
 
-  /* See if we can deduce a global maximum for the grid point number density function. Set the starting value from the unnormalized number density at the origin of coordinates:
-  */
-  par->gridDensGlobalMax = 1.0;
-  for(i=0;i<DIM;i++) r[i] = 0.0;
-  par->gridDensGlobalMax = gridDensity(par, r);
-  if(isinf(par->gridDensGlobalMax)){
-    if(!silent) bail_out("There is a singularity at the origin of the gridDensity() function.");
-    exit(1);
-  }
+  if(!(par->doPregrid || par->restart || par->gridInFile!=NULL)){
+    /* In this case we will need to calculate grid point locations, thus we will need to call the function gridDensity(). The default one is ok, but this (i) needs the user to supply a density function, and (ii) requires par->gridDensGlobalMax etc to be calculated.
+    */
+    if(bitIsSet(defaultFuncFlags, FUNC_BIT_gridDensity)){
+      if(bitIsSet(defaultFuncFlags, FUNC_BIT_density)){
+        if(!silent) bail_out("You need to supply either a density() function or a gridDensity() function which doesn't call density().");
+exit(1);
+      }
 
-  /* Test now any maxima the user has provided:
-  */
-  for(i=0;i<par->numGridDensMaxima;i++)
-    if(par->gridDensMaxValues[i]>par->gridDensGlobalMax) par->gridDensGlobalMax = par->gridDensMaxValues[i];
+      /* See if we can deduce a global maximum for the grid point number density function. Set the starting value from the unnormalized number density at the origin of coordinates:
+      */
+      par->gridDensGlobalMax = 1.0;
+      for(i=0;i<DIM;i++) r[i] = 0.0;
+      par->gridDensGlobalMax = gridDensity(par, r);
+      if(isinf(par->gridDensGlobalMax)){
+        if(!silent) bail_out("There is a singularity at the origin of the gridDensity() function.");
+exit(1);
+      }else if(par->gridDensGlobalMax<=0.0){
+        if(!silent) bail_out("Zero values of the gridDensity() function are not permitted.");
+exit(1);
+      }
 
-  if (par->gridDensGlobalMax<=0.0){
-    if(!silent) bail_out("Cannot normalize the grid-point number density function.");
-    exit(1);
+      /* Test now any maxima the user has provided:
+      */
+      for(i=0;i<par->numGridDensMaxima;i++)
+        if(par->gridDensMaxValues[i]>par->gridDensGlobalMax) par->gridDensGlobalMax = par->gridDensMaxValues[i];
+    }
   }
 
   for(i=0;i<NUM_GRID_STAGES;i++){
@@ -385,7 +484,7 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
         if(*pch_end){
           sprintf(message, "Units string contains '%s' which could not be converted to an integer", pch_end);
           if(!silent) bail_out(message);
-          exit(0);
+exit(1);
         }
         pch = strtok(NULL, pch_sep);
       }
@@ -410,19 +509,19 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
 
       if((*img)[i].freq<0){
         if(!silent) bail_out("You must set image freq for a continuum image.");
-        exit(1);
+exit(1);
       }
 
       if(par->dust==NULL){
         if(!silent) bail_out("You must point par.dust to a dust opacity file for a continuum image.");
-        exit(1);
+exit(1);
       }else{
         if((fp=fopen(par->dust, "r"))==NULL){
           if(!silent){
             sprintf(message, "Couldn't open dust opacity data file %s", par->dust);
             bail_out(message);
           }
-          exit(1);
+exit(1);
         }
         fclose(fp);
       }
@@ -449,7 +548,7 @@ The presence of one of these combinations at least is checked here, although the
 
       }else if((*img)[i].nchan <= 0 || ((*img)[i].bandwidth <= 0 && (*img)[i].velres <= 0)) {
         if(!silent) bail_out("Insufficient info to calculate nchan, velres and bandwidth.");
-        exit(1);
+exit(1);
       }
 
       /* Check that we have keywords which allow us to calculate the image frequency (if necessary) after reading in the moldata file:
@@ -464,7 +563,7 @@ The presence of one of these combinations at least is checked here, although the
         }
       }else if((*img)[i].freq<0){ /* => user has set neither trans nor freq. */
         if(!silent) bail_out("You must set either freq or trans (plus optionally molI).");
-        exit(1);
+exit(1);
       }/* else => the user has set freq. */
 
       (*img)[i].doline=1;
@@ -628,12 +727,12 @@ LIME provides two different schemes of {R_1, R_2, R_3}: {PA, phi, theta} and {PA
   par->doMolCalcs = par->doSolveRTE || par->nLineImages>0;
   if(par->doMolCalcs && par->moldatfile==NULL){
     if(!silent) bail_out("You must point par->moldatfile to a data file if you want the RTE solved.");
-    exit(1);
+exit(1);
   }
 
   if(par->nSpecies>0 && !par->doMolCalcs){
     if(!silent) bail_out("If you want only continuum calculations you must supply zero moldatfiles.");
-    exit(1);
+exit(1);
   }
 
   /*
@@ -641,14 +740,24 @@ In readOrBuildGrid() we check to see if values of all five of the 'mandatory' bi
 
 Eventually I hope readOrBuildGrid() will be unilaterally called within LIME; if we ever reach that state, the following lines may be removed, because the proper place for all these tests will then be within that function. At present however LIME may still avoid calling readOrBuildGrid() in two different ways. Even if this occurs however we still may need to access the velocity function within raytrace(). Thus we have this separate test.
   */
+
+//*********************************** WHAT ABOUT RESTART???? Not just pregrid...
+
   if(par->nLineImages>0\
   && ((par->traceRayAlgorithm==0 && !par->doPregrid)\
   ||  (par->traceRayAlgorithm==1 && !par->doInterpolateVels))){
-    velocity(0.0,0.0,0.0,dummyVel);
-    if(isinf(dummyVel[0])||isinf(dummyVel[1])||isinf(dummyVel[2])){
-      if(!silent) warning("You have a singularity at the origin in your velocity() function.");
+    if(bitIsSet(defaultFuncFlags, FUNC_BIT_velocity)){
+      if(!silent) bail_out("You need to supply a velocity() function.");
+exit(1);
     }
   }
+
+  if(par->nLineImages>0 && par->traceRayAlgorithm==0 && !par->doPregrid)
+    par->useVelFuncInRaytrace = 1;
+  else
+    par->useVelFuncInRaytrace = 0;
+
+  par->edgeVelsAvailable=0; /* default value, we may set this elsewhere. */
 
   /* Allocate moldata array.
   */

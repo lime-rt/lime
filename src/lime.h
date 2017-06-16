@@ -131,22 +131,36 @@
 #define DS_mask_all          (DS_mask_populations | DS_mask_magfield)
 #define DS_mask_all_but_mag  DS_mask_all & ~(1<<DS_bit_magfield)
 
+#define FUNC_BIT_density       0
+#define FUNC_BIT_temperature   1
+#define FUNC_BIT_abundance     2
+#define FUNC_BIT_molNumDensity 3
+#define FUNC_BIT_doppler       4
+#define FUNC_BIT_velocity      5
+#define FUNC_BIT_magfield      6
+#define FUNC_BIT_gasIIdust     7
+#define FUNC_BIT_gridDensity   8
+
 #include "collparts.h"
 #include "inpars.h"
 
 typedef struct {
+  /* Elements also present in struct inpars: */
   double radius,minScale,tcmb,*nMolWeights,*dustWeights;
-  double radiusSqu,minScaleSqu,taylorCutoff,gridDensGlobalMax;
   double (*gridDensMaxLoc)[DIM],*gridDensMaxValues,*collPartMolWeights;
   int sinkPoints,pIntensity,blend,*collPartIds,traceRayAlgorithm,samplingAlgorithm;
-  int ncell,nImages,nSpecies,numDensities,doPregrid,numGridDensMaxima;
-  int sampling,lte_only,init_lte,antialias,polarization,nThreads,numDims;
-  int nLineImages,nContImages,dataFlags,nSolveIters,nSolveItersDone;
+  int sampling,lte_only,init_lte,antialias,polarization,nThreads,nSolveIters;
+  char **girdatfile,**moldatfile,**collPartNames;
   char *outputfile,*binoutputfile,*gridfile,*pregrid,*restart,*dust;
   char *gridInFile,**gridOutFiles;
-  char **girdatfile,**moldatfile,**collPartNames;
-  _Bool writeGridAtStage[NUM_GRID_STAGES];
-  _Bool resetRNG,doInterpolateVels,useAbun,doSolveRTE,doMolCalcs;
+  _Bool resetRNG,doSolveRTE;
+
+  /* New elements: */
+  double radiusSqu,minScaleSqu,taylorCutoff,gridDensGlobalMax;
+  int ncell,nImages,nSpecies,numDensities,doPregrid,numGridDensMaxima,numDims;
+  int nLineImages,nContImages,dataFlags,nSolveItersDone;
+  _Bool doInterpolateVels,useAbun,doMolCalcs;
+  _Bool writeGridAtStage[NUM_GRID_STAGES],useVelFuncInRaytrace,edgeVelsAvailable;
 } configInfo;
 
 struct cpData {
@@ -278,7 +292,7 @@ struct cell {
 };
 
 /* Some global variables */
-extern int silent;
+extern int silent,defaultFuncFlags;
 
 /* User-specifiable functions */
 void	density(double,double,double,double *);

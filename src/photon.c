@@ -246,7 +246,7 @@ photon(int id, struct grid *gp, molData *md, const gsl_rng *ran\
         halfFirstDs[iphot]=ds_out;
 
         for(molI=0;molI<par->nSpecies;molI++){
-          if(!par->doPregrid) {
+          if(par->edgeVelsAvailable) {
             calcLineAmpPWLin(gp,here,neighI,molI,deltav[molI],inidir,&vfac_in[molI],&vfac_out[molI]);
          } else
             calcLineAmpLin(gp,here,neighI,molI,deltav[molI],inidir,&vfac_in[molI],&vfac_out[molI]);
@@ -268,7 +268,7 @@ photon(int id, struct grid *gp, molData *md, const gsl_rng *ran\
 
       for(molI=0;molI<par->nSpecies;molI++){
         vfac_inprev[molI]=vfac_in[molI];
-        if(!par->doPregrid)
+        if(par->edgeVelsAvailable)
           calcLineAmpPWLin(gp,here,neighI,molI,deltav[molI],inidir,&vfac_in[molI],&vfac_out[molI]);
         else
           calcLineAmpLin(gp,here,neighI,molI,deltav[molI],inidir,&vfac_in[molI],&vfac_out[molI]);
@@ -298,7 +298,7 @@ photon(int id, struct grid *gp, molData *md, const gsl_rng *ran\
               lineJ = blends.mols[nextMolWithBlend].lines[nextLineWithBlend].blends[bi].lineJ;
               velProj = deltav[molI] - blends.mols[nextMolWithBlend].lines[nextLineWithBlend].blends[bi].deltaV;
 	      /*  */
-              if(!par->doPregrid)
+              if(par->edgeVelsAvailable)
                 calcLineAmpPWLin(gp,here,neighI,molJ,velProj,inidir,&vblend_in,&vblend_out);
               else
                 calcLineAmpLin(gp,here,neighI,molJ,velProj,inidir,&vblend_in,&vblend_out);
