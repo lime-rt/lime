@@ -91,8 +91,8 @@
 #define TYPICAL_ISM_DENS        1000.0
 #define STR_LEN_0               80
 #define DENSITY_POWER           0.2
-#define MAX_N_HIGH              10
 #define TREE_POWER              2.0
+#define MAX_N_HIGH              10
 #define ERF_TABLE_LIMIT         6.0             /* For x>6 erf(x)-1<double precision machine epsilon, so no need to store the values for larger x. */
 #define ERF_TABLE_SIZE          6145
 #define BIN_WIDTH               (ERF_TABLE_LIMIT/(ERF_TABLE_SIZE-1.))
@@ -293,6 +293,7 @@ struct cell {
 
 /* Some global variables */
 extern int silent,defaultFuncFlags;
+extern double defaultDensyPower;
 
 /* User-specifiable functions */
 void	density(double,double,double,double *);

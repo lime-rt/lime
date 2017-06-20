@@ -1102,19 +1102,39 @@ exit(1);
 
 /*....................................................................*/
 void
+treePrintMessage(const int status, const char message[TREE_STRLEN]){
+  char errStr[STR_LEN_0];
+
+  if(silent)
+return;
+
+  if(     status==TREE_MSG_MESSAGE)
+    printMessage((char*)message);
+  else if(status==TREE_MSG_WARN)
+    warning((char*)message);
+  else if(status==TREE_MSG_ERROR)
+    bail_out((char*)message);
+  else{
+    sprintf(errStr, "Message status %d not understood.\n", status);
+    bail_out(errStr);
+exit(1);
+  }
+}
+
+/*....................................................................*/
+void
 readOrBuildGrid(configInfo *par, struct grid **gp){
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
-  int i,j,k,di,si,levelI=0,status=0,numCollPartRead=0;
+  int i,j,k,di,si,status=0,numCollPartRead=0;
   double theta,semiradius,z;
   double *outRandDensities=NULL,*dummyPointer=NULL,x[DIM];
   double (*outRandLocations)[DIM]=NULL;
   treeRandConstType rinc;
-  treeRandVarType rinv;
+  gsl_rng *randGen;
   struct cell *dc=NULL; /* Not used at present. */
   unsigned long numCells;
   struct gridInfoType gridInfoRead;
   char **collPartNames=NULL;
-  treeType tree;
 
   par->dataFlags = 0;
   if(par->gridInFile!=NULL){
@@ -1215,59 +1235,55 @@ Generate the grid point locations.
   if(!anyBitSet(par->dataFlags, DS_mask_x)){ /* This should only happen if we did not read a file. Generate the grid point locations. */
     mallocAndSetDefaultGrid(gp, (size_t)par->ncell, (size_t)par->nSpecies);
 
-    rinc.randGen = gsl_rng_alloc(ranNumGenType);	/* Random number generator */
-#ifdef TEST
-    gsl_rng_set(rinc.randGen,342971);
-#else
-    gsl_rng_set(rinc.randGen,time(0));
-#endif  
-
     outRandDensities = malloc(sizeof(double   )*par->pIntensity); /* Not used at present; and in fact they are not useful outside this routine, because they are not the values of the physical density at that point, just what densityFunc3D() returns, which is not necessarily the same thing. */
     outRandLocations = malloc(sizeof(*outRandLocations)*par->pIntensity);
 
+    randGen = gsl_rng_alloc(ranNumGenType);	/* Random number generator */
+#ifdef TEST
+    gsl_rng_set(randGen,342971);
+#else
+    gsl_rng_set(randGen,time(0));
+#endif
+
     if(par->samplingAlgorithm==0){
-      randomsViaRejection(par, (unsigned int)par->pIntensity, rinc.randGen, outRandLocations);
+      randomsViaRejection(par, (unsigned int)par->pIntensity, randGen, outRandLocations);
 
     } else if(par->samplingAlgorithm==1){
+      setConstDefaults(&rinc);
+
+#ifdef TEST
+      rinc.randSeed = 342971;
+#else
+      rinc.randSeed = time(0);
+#endif
+
+      rinc.numDims = DIM;
       rinc.par = *par;
-      rinc.verbosity = 0;
-      rinc.numInRandoms      = TREE_N_RANDOMS;
-      rinc.maxRecursion      = TREE_MAX_RECURSION;
-      rinc.maxNumTrials      = TREE_MAX_N_TRIALS;
-      rinc.dither            = TREE_DITHER;
-      rinc.maxNumTrialsDbl = (double)rinc.maxNumTrials;
-      rinc.doShuffle = 1;
-      rinc.doQuasiRandom = 1;
-
-      for(di=0;di<DIM;di++){
-        rinv.fieldOrigin[di] = -par->radius;
-        rinv.fieldWidth[di] = 2.0*par->radius;
-      }
-      rinv.expectedDesNumPoints = (double)par->pIntensity;
       rinc.desiredNumPoints = (unsigned int)par->pIntensity;
+      for(di=0;di<DIM;di++){
+        rinc.wholeFieldOrigin[di] = -par->radius;
+        rinc.wholeFieldWidth[di] = 2.0*par->radius;
+      }
+      rinc.verbosity = 0;
+      rinc.monitorFunc = NULL;
 
-      rinv.numHighPoints = par->numGridDensMaxima;
-      if(par->numGridDensMaxima>0){
-        rinv.highPointLocations = malloc(sizeof(*(rinv.highPointLocations))*par->numGridDensMaxima);
-        rinv.highPointDensities = malloc(sizeof(double   )*par->numGridDensMaxima);
-        for(i=0;i<par->numGridDensMaxima;i++){
-          for(di=0;di<DIM;di++){
-            rinv.highPointLocations[i][di] = par->gridDensMaxLoc[i][di];
+      rinc.totalNumHighPoints = par->numGridDensMaxima;
+
+      if(rinc.totalNumHighPoints>0){
+        rinc.allHighPointLoc   = malloc(sizeof(*(rinc.allHighPointLoc  ))*rinc.totalNumHighPoints);
+        rinc.allHighPointDensy = malloc(sizeof(*(rinc.allHighPointDensy))*rinc.totalNumHighPoints);
+        for(i=0;i<rinc.totalNumHighPoints;i++){
+          for(di=0;di<rinc.numDims;di++){
+            rinc.allHighPointLoc[i][di] = par->gridDensMaxLoc[i][di];
           }
-          rinv.highPointDensities[i] = par->gridDensMaxValues[i];
+          rinc.allHighPointDensy[i] = par->gridDensMaxValues[i];
         }
       }else{
-        rinv.highPointLocations = NULL;
-        rinv.highPointDensities = NULL;
+        rinc.allHighPointLoc = NULL;
+        rinc.allHighPointDensy = NULL;
       }
 
-      initializeTree(&rinc, &rinv, gridDensity, &tree);
-      constructTheTree(&rinc, &rinv, levelI, gridDensity, &tree);
-      fillTheTree(&rinc, &tree, gridDensity, outRandLocations, outRandDensities);
-
-      free(tree.leaves);
-      freeRinv(rinv);
-      free(rinc.inRandLocations);
+      treeGenerateRandoms(&rinc, gridDensity, outRandLocations, outRandDensities);
 
     } else {
       if(!silent) bail_out("Unrecognized sampling algorithm.");
@@ -1288,10 +1304,10 @@ exit(1);
 
     /* Add surface sink particles */
     for(k=par->pIntensity;k<par->ncell;k++){
-      theta=gsl_rng_uniform(rinc.randGen)*2*PI;
+      theta=gsl_rng_uniform(randGen)*2*PI;
 
       if(DIM==3) {
-        z=2*gsl_rng_uniform(rinc.randGen)-1.;
+        z=2*gsl_rng_uniform(randGen)-1.;
         semiradius=sqrt(1.-z*z);
         x[2]=z;
       } else {
@@ -1310,7 +1326,7 @@ exit(1);
 
     free(outRandLocations);
     free(outRandDensities);
-    gsl_rng_free(rinc.randGen);
+    gsl_rng_free(randGen);
 
     if(par->samplingAlgorithm==0){
       smooth(par,*gp);

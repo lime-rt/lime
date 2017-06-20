@@ -85,7 +85,7 @@ Notes:
 
       density(r[0],r[1],r[2],val);
       for (i=0;i<par->numDensities;i++) totalDensity += val[i];
-      fracDensity = pow(totalDensity,DENSITY_POWER)/par->gridDensGlobalMax;
+      fracDensity = pow(totalDensity,defaultDensyPower)/par->gridDensGlobalMax;
 
       defaultFuncFlags |= (1 << FUNC_BIT_gridDensity);
 

@@ -742,9 +742,12 @@ exit(1);
       (*md)[i].cmb = NULL;
     }
   } /* otherwise leave it at NULL - we will not be using it. */
-}
 
-  char molName[80];
+  if(par->samplingAlgorithm==0)
+    defaultDensyPower = DENSITY_POWER;
+  else
+    defaultDensyPower = TREE_POWER;
+}
 
 /*....................................................................*/
 void checkGridDensities(configInfo *par, struct grid *gp){

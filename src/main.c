@@ -13,6 +13,7 @@
 
 int silent = 0;
 int defaultFuncFlags = 0;
+double defaultDensyPower = DENSITY_POWER;
 
 /* Forward declaration of functions only used in this file */
 int initParImg(inputPars *par, image **img);
