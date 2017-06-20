@@ -168,6 +168,8 @@ run(inputPars inpars, image *inimg, const int nImages){
   char message[80];
   int nEntries=0;
   double *lamtab=NULL,*kaptab=NULL;
+  int *allUniqueCollPartIds=NULL;
+  int numUniqueCollPartsFound;
 
   /*Set locale to avoid trouble when reading files*/
   setlocale(LC_ALL, "C");
@@ -213,16 +215,21 @@ run(inputPars inpars, image *inimg, const int nImages){
     }
   }
 
-  if(par.nLineImages>0 || par.doSolveRTE){
-    molInit(&par, md);
+  if(!popsdone)
+    readMolData(&par, md, &allUniqueCollPartIds, &numUniqueCollPartsFound);
+
+  if(par.doMolCalcs){
+    if(!popsdone){
+      molInit(&par, md, allUniqueCollPartIds, numUniqueCollPartsFound);
+      calcGridMolDoppler(&par, md, gp);
+    }
+    if(par.useAbun)
+      calcGridMolDensities(&par,&gp);
 
     for(gi=0;gi<par.ncell;gi++){
       for(si=0;si<par.nSpecies;si++)
         gp[gi].mol[si].specNumDens = malloc(sizeof(double)*md[si].nlev);
     }
-    calcGridMolDoppler(&par, md, gp);
-    if(par.useAbun)
-      calcGridMolDensities(&par,&gp);
 
     if(!popsdone && ((par.lte_only && !allBitsSet(par.dataFlags, DS_mask_populations))\
                      || par.nSolveIters>par.nSolveItersDone))
@@ -232,9 +239,9 @@ run(inputPars inpars, image *inimg, const int nImages){
 
     par.nSolveItersDone = par.nSolveIters;
   }
-  /*
-  report(1,&par,gp);
-  */
+
+  free(allUniqueCollPartIds);
+
   if(onlyBitsSet(par.dataFlags & DS_mask_all_but_mag, DS_mask_3))
     writeGridIfRequired(&par, gp, NULL, 3);
   else if(onlyBitsSet(par.dataFlags & DS_mask_all_but_mag, DS_mask_5)){

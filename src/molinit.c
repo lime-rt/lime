@@ -188,18 +188,10 @@ void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *
           (*numUniqueCollPartsFound)++;
         }
 
-        md[i].part[k].collPartId = collPartId;
-        md[i].part[k].densityIndex = -1; /* Default, signals that there is no density function for this CP. */
-        md[i].part[k].name = NULL; /* If it turns out to have a matching density function we will store the name. */
+        setCollPartsDefaults(&(md[i].part[k]));
 
         if(par->lte_only){
           readDummyCollPart(fp, sizeI);
-          md[i].part[k].ntemp  = -1;
-          md[i].part[k].ntrans = -1;
-          md[i].part[k].down  = NULL;
-          md[i].part[k].temp  = NULL;
-          md[i].part[k].lcl   = NULL;
-          md[i].part[k].lcu   = NULL;
 
         }else{ /* Add the CP data to md[i].part, we will need it to solve the population levels. */
           fgets(string, sizeI, fp);
@@ -316,14 +308,11 @@ void setUpGir(configInfo *par, molData *md){
 }
 
 /*....................................................................*/
-void molInit(configInfo *par, molData *md){
-  int *allUniqueCollPartIds=NULL;
-  int numUniqueCollPartsFound,i,j,jStart,numActiveCollParts;
+void molInit(configInfo *par, molData *md, int *allUniqueCollPartIds, const int numUniqueCollPartsFound){
+  int i,j,jStart,numActiveCollParts;
   char partstr[90];
 
-  readMolData(par, md, &allUniqueCollPartIds, &numUniqueCollPartsFound);
   setUpDensityAux(par, allUniqueCollPartIds, numUniqueCollPartsFound);
-  free(allUniqueCollPartIds);
   if(par->girdatfile!=NULL){
     setUpGir(par, md);
   }

@@ -13,16 +13,12 @@
 
 void __attribute__((weak))
     density(double x, double y, double z, double *density){
-//      if(!silent) bail_out("Gas number density is not defined in model.c but is needed by LIME!");
-//      exit(1);
       density[0] = 0.0;
       defaultFuncFlags |= (1 << FUNC_BIT_density);
     }
 
 void __attribute__((weak))
     temperature(double x, double y, double z, double *temperature){
-//      if(!silent) bail_out("Temperature is not defined in model.c but is needed by LIME!");
-//      exit(1);
       temperature[0] = 0.0;
       temperature[1] = 0.0;
       defaultFuncFlags |= (1 << FUNC_BIT_temperature);
@@ -43,16 +39,12 @@ void __attribute__((weak))
 
 void __attribute__((weak))
     doppler(double x, double y, double z, double *dummy){
-//      if(!silent) bail_out("Doppler velocity is not defined in model.c but is needed by LIME!");
-//      exit(1);
       *dummy = 0.0;
       defaultFuncFlags |= (1 << FUNC_BIT_doppler);
     }
 
 void __attribute__((weak))
     velocity(double x, double y, double z, double *vel){
-//      if(!silent) bail_out("Velocity field is not defined in model.c but is needed by LIME!");
-//      exit(1);
       vel[0] = 0.0;
       vel[1] = 0.0;
       vel[2] = 0.0;

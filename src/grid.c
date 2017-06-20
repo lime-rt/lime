@@ -991,7 +991,7 @@ void writeGridIfRequired(configInfo *par, struct grid *gp, molData *md, const in
     else{
       gridInfo.mols = malloc(sizeof(*(gridInfo.mols))*gridInfo.nSpecies);
       for(i_us=0;i_us<gridInfo.nSpecies;i_us++){ /* md should only ==NULL if gridInfo.nSpecies==0. */
-        gridInfo.mols[i_us].molName = md[i_us].molName; /* NOTE*** this just copies the pointer. Should be safe enough if we just want to read this value. */
+        copyInparStr(md[i_us].molName, &gridInfo.mols[i_us].molName);
         gridInfo.mols[i_us].nLevels = md[i_us].nlev;
         gridInfo.mols[i_us].nLines  = md[i_us].nline;
       }
@@ -1105,9 +1105,9 @@ void
 readOrBuildGrid(configInfo *par, struct grid **gp){
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
   int i,j,k,di,si,levelI=0,status=0,numCollPartRead=0;
-  double theta,semiradius,z;//,dummyScalar;
+  double theta,semiradius,z;
   double *outRandDensities=NULL,*dummyPointer=NULL,x[DIM];
-  double (*outRandLocations)[DIM]=NULL;//,dummyTemp[]={-1.0,-1.0},dummyVel[DIM];
+  double (*outRandLocations)[DIM]=NULL;
   treeRandConstType rinc;
   treeRandVarType rinv;
   struct cell *dc=NULL; /* Not used at present. */

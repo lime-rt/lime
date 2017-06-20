@@ -285,39 +285,9 @@ exit(1);
   /*
 Run through all the user functions and set flags in the global defaultFuncFlags for those which have defaulted. NOTE however that we will not check which of these functions the user has provided until readOrBuildGrid(), because this will depend on the appropriate data being present or not in any grid file we read in. There are two exceptions to this:
 
-	- The velocity() function, because this is not only called within readOrBuildGrid() to calculate velocities at the grid node positions and at sample locations along the edges between grids, but also potentially within raytrace() to calculate velocities along ray paths through cells. Therefore we perform an extra test for the presence of a user-supplied velocity function (corresponding to the first two test columns in the table below) at the end of the present function.
+	- The velocity() function, because this is not only called within readOrBuildGrid() to calculate velocities at the grid node positions and at sample locations along the edges between grids, but also potentially within raytrace() to calculate velocities along ray paths through cells. Therefore we perform extra tests for the presence of a user-supplied velocity function near the end of the present function.
 
 	- The density() function, because we need to know the number of densities early on, in case we need to call the default gridDensity() function. Thus we test for this below.
-
-In general our need for these functions can be summarized in the following table:
-
-Does the user need to supply this function? 0=no 1=yes
------------------------------------------
-  par->nLineImages>0     - 1 1 x x x x x
-  par->traceRayAlgorithm - 0 1 x x x x x
-  par->doInterpolateVels - x 0 x x x x x
-  par->restart           - x x 0 1 0 1 0
-  par->doPregrid         - 0 x 0 0 1 1 0
-  Column is in grid file - x x 0 x x x 1
------------------------------------------
-              velocity() | 1 1 1 0 0 0 0
-                         |
-               density() | 0 0 1 0 0 0 0
-           temperature() | 0 0 1 0 0 0 0
-             abundance() | 0 0 1 0 0 0 0
-         molNumDensity() | 0 0 1 0 0 0 0
-               doppler() | 0 0 1 0 0 0 0
-                         |
-           gridDensity() | 0 0 1 0 0 0 0
-                         |
-              magfield() | 0 0 0 0 0 0 0
-             gasIIdust() | 0 0 0 0 0 0 0
------------------------------------------
-Notes:
-  - If no file values of abundance are given, the user must supply either abundance() or molNumDensity(). If they supply both, only their abundance() is used.
-  - The default gridDensity() calls density(), so this will also fail if the user has not supplied either grid locations (in which case gridDensity() is never called) or a density() function.
-  - All bets are off if some user-supplied functions call others.
-
   */
   density(      0.0,0.0,0.0, dummyDens);
   if(!bitIsSet(defaultFuncFlags, FUNC_BIT_density)) reportInfsAtOrigin(1, dummyDens, "density");
@@ -715,14 +685,29 @@ LIME provides two different schemes of {R_1, R_2, R_3}: {PA, phi, theta} and {PA
   par->nContImages = 0;
   par->doInterpolateVels = 0;
   for(i=0;i<nImages;i++){
-    if((*img)[i].doline)
+    if((*img)[i].doline){
+      if(par->traceRayAlgorithm==1 && !(*img)[i].doInterpolateVels && bitIsSet(defaultFuncFlags, FUNC_BIT_velocity)){
+        if(!silent) bail_out("par->traceRayAlgorithm==1 && !img[i].doInterpolateVels requires you to supply a velocity function.");
+exit(1);
+      }
       par->nLineImages++;
-    else
+    }else
       par->nContImages++;
 
     if((*img)[i].doInterpolateVels)
       par->doInterpolateVels = 1;
   }
+
+  if(par->nLineImages>0 && par->traceRayAlgorithm==0 && !par->doPregrid){
+    if(bitIsSet(defaultFuncFlags, FUNC_BIT_velocity)){
+      par->useVelFuncInRaytrace = 0;
+      if(!silent) warning("No velocity function supplied - raytracing will have lower precision.");
+    }else
+      par->useVelFuncInRaytrace = 1;
+  }else
+    par->useVelFuncInRaytrace = 0;
+
+  par->edgeVelsAvailable=0; /* default value, this is set within getVelocities(). */
 
   par->doMolCalcs = par->doSolveRTE || par->nLineImages>0;
   if(par->doMolCalcs && par->moldatfile==NULL){
@@ -735,35 +720,15 @@ exit(1);
 exit(1);
   }
 
-  /*
-In readOrBuildGrid() we check to see if values of all five of the 'mandatory' bit of information (velocity, density, abundance, doppler and temperature) have been supplied by the user in par->gridInFile. If not, then the relevant values are obtained from user-supplied functions. If any of the necessary functions are not supplied, Lime will then fail with an error.
-
-Eventually I hope readOrBuildGrid() will be unilaterally called within LIME; if we ever reach that state, the following lines may be removed, because the proper place for all these tests will then be within that function. At present however LIME may still avoid calling readOrBuildGrid() in two different ways. Even if this occurs however we still may need to access the velocity function within raytrace(). Thus we have this separate test.
-  */
-
-//*********************************** WHAT ABOUT RESTART???? Not just pregrid...
-
-  if(par->nLineImages>0\
-  && ((par->traceRayAlgorithm==0 && !par->doPregrid)\
-  ||  (par->traceRayAlgorithm==1 && !par->doInterpolateVels))){
-    if(bitIsSet(defaultFuncFlags, FUNC_BIT_velocity)){
-      if(!silent) bail_out("You need to supply a velocity() function.");
-exit(1);
-    }
-  }
-
-  if(par->nLineImages>0 && par->traceRayAlgorithm==0 && !par->doPregrid)
-    par->useVelFuncInRaytrace = 1;
-  else
-    par->useVelFuncInRaytrace = 0;
-
-  par->edgeVelsAvailable=0; /* default value, we may set this elsewhere. */
-
   /* Allocate moldata array.
   */
   if(par->nSpecies>0){
     (*md)=malloc(sizeof(molData)*par->nSpecies);
     for( i=0; i<par->nSpecies; i++ ){
+      (*md)[i].nlev  = -1;
+      (*md)[i].nline = -1;
+      (*md)[i].npart = -1;
+      (*md)[i].amass = -1.0;
       (*md)[i].part = NULL;
       (*md)[i].lal = NULL;
       (*md)[i].lau = NULL;
@@ -778,6 +743,8 @@ exit(1);
     }
   } /* otherwise leave it at NULL - we will not be using it. */
 }
+
+  char molName[80];
 
 /*....................................................................*/
 void checkGridDensities(configInfo *par, struct grid *gp){

@@ -11,6 +11,19 @@ TODO:
 #include "lime.h"
 
 /*....................................................................*/
+void setCollPartsDefaults(struct cpData *part){
+  (*part).collPartId = -1;
+  (*part).densityIndex = -1; /* Signals that there is no density function for this CP. */
+  (*part).name = NULL; /* If it turns out to have a matching density function we will store the name. */
+  (*part).ntemp  = -1;
+  (*part).ntrans = -1;
+  (*part).down  = NULL;
+  (*part).temp  = NULL;
+  (*part).lcl   = NULL;
+  (*part).lcu   = NULL;
+}
+
+/*....................................................................*/
 void checkUserDensWeights(configInfo *par){
   /*
 This deals with five user-settable list parameters which relate to collision partners and their number densities: par->collPartIds, par->nMolWeights, par->dustWeights, par->collPartMolWeights and par->collPartNames. We have to see if these (optional) parameters were set, do some basic checks on them, and if they were set make sure they match the number of density values, which by this time should be stored in par->numDensities.
