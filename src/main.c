@@ -195,7 +195,7 @@ run(inputPars inpars, image *inimg, const int nImages){
     predefinedGrid(&par,gp); /* Sets par.numDensities */
     checkUserDensWeights(&par); /* Needs par.numDensities */
   }else if(par.restart){
-    mallocAndSetDefaultGrid(&gp, (size_t)par.ncell, (size_t)par.nSpecies);
+//    mallocAndSetDefaultGrid(&gp, (size_t)par.ncell, (size_t)par.nSpecies);
     popsin(&par,&gp,&md,&popsdone);
   }else{
     checkUserDensWeights(&par); /* Needs par.numDensities */

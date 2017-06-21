@@ -189,6 +189,7 @@ void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *
         }
 
         setCollPartsDefaults(&(md[i].part[k]));
+        md[i].part[k].collPartId = collPartId;
 
         if(par->lte_only){
           readDummyCollPart(fp, sizeI);

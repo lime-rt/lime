@@ -432,6 +432,8 @@ This is the file name of a binoutputfile that will be used to restart
 LIME. If this parameter is set, all other parameter statements will be ignored and can safely be left out of
 the model file. There is no default value.
 
+Note that this option is DEPRECATED and may disappear in a future version of LIME. You can get the same result in a much more robust and debugged form by using the :ref:`par->gridOutFiles <grid-io>` and :ref:`par->gridInFile <grid-io>` parameters. If we get rid of `par->restart` we will provide a utility to convert any such files you may have into hdf5 or fits format.
+
 .. code:: c
 
     (string) par->gridfile (optional)
@@ -451,6 +453,8 @@ If this option is used, LIME will not generate its own grid, but rather
 use the grid defined in this file. The file needs to contain all
 physical properties of the grid points, i.e., density, temperature,
 abundance, velocity etc. There is no default value.
+
+Note that this option is DEPRECATED and may disappear in a future version of LIME. You can get the same result in a much more robust and debugged form by using the :ref:`par->gridOutFiles <grid-io>` and :ref:`par->gridInFile <grid-io>` parameters. If we get rid of `par->pregrid` we will provide a utility to convert any such files you may have into hdf5 or fits format.
 
 .. code:: c
 
@@ -544,8 +548,6 @@ If none of the three density-linked parameters is provided, LIME will attempt to
 This parameter specifies the algorithm used by LIME to solve the radiative-transfer equations during ray-tracing. The default value of zero invokes the algorithm used in LIME<1.6; a value of 1 invokes a new algorithm which is much more time-consuming but which produces much smoother images, free from step-artifacts.
 
 .. note::
-
-   The new algorithm is not yet 'thread-safe', which means you should not run raytracing in parallel if `par->traceRayAlgorithm`=1. We'll work on this.
 
 Note also that there have been additional modifications to the raytracing algorithm which have significant effects on the output images since LIME-1.5. Image-plane interpolation is now employed in areas of the image where the grid point spacing is larger than the image pixel spacing. This leads both to a smoother image and a shorter processing time.
 

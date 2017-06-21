@@ -38,12 +38,13 @@ popsin(configInfo *par, struct grid **gp, molData **md, int *popsdone){
   *md=realloc(*md, sizeof(molData)*par->nSpecies);
 
   for(i=0;i<par->nSpecies;i++){
-    sprintf((*md)[i].molName, "unknown");
+    sprintf((*md)[i].molName, "unknown_%d", i+1);
     (*md)[i].amass = -1.0;
 
     (*md)[i].eterm = NULL;
     (*md)[i].gstat = NULL;
     (*md)[i].cmb = NULL;
+    (*md)[i].gir = NULL;
     fread(&(*md)[i].nlev,  sizeof(int),        1,fp);
     fread(&(*md)[i].nline, sizeof(int),        1,fp);
     fread(&(*md)[i].npart, sizeof(int),        1,fp);
@@ -69,6 +70,8 @@ popsin(configInfo *par, struct grid **gp, molData **md, int *popsdone){
     fread(&dummy, sizeof(double),   1,fp);
   }
 
+  mallocAndSetDefaultGrid(gp, (size_t)par->ncell, (size_t)par->nSpecies);
+
   for(i=0;i<par->ncell;i++){
     fread(&(*gp)[i].id, sizeof (*gp)[i].id, 1, fp);
     fread(&(*gp)[i].x, sizeof (*gp)[i].x, 1, fp);
@@ -90,6 +93,10 @@ popsin(configInfo *par, struct grid **gp, molData **md, int *popsdone){
     fread(&dummy, sizeof(double), 1, fp);
   }
   fclose(fp);
+
+/*
+2017-06-21 IMS: Note that we have a bit of an issue with knu and dust here. These values are stored in the par->restart file for the frequencies of all the spectral lines, but what we actually need in raytrace are the values of knu and dust appropriate to the nominal continuum frequency of the image, which will not always be the same as that of any of the spectral lines. Probably the best thing would be to write some sort of interpolation routine, read in the line-frequency knu and dust values (which we are presently discarding), then call the interpolation routine within raytrace() as an alternative to calcGridContDustOpacity(). If this was done, the necessity to supply a dust file to par->dust, as well as density and temperature functions as below, would be avoided. However this is a bit more hacking than I presently want to contemplate.
+*/
 
   delaunay(DIM, *gp, (unsigned long)par->ncell, 0, 1, &dc, &numCells);
 

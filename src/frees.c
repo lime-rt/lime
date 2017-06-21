@@ -114,32 +114,32 @@ freeImgInfo(const int nImages, imageInfo *img){
 }
 
 void
-freeMolData(const int nSpecies, molData *mol){
+freeMolData(const int nSpecies, molData *md){
   int i,j;
-  if(mol!= NULL){
+  if(md!= NULL){
     for(i=0;i<nSpecies;i++){
-      if(mol[i].part != NULL){
-        for(j=0; j<mol[i].npart; j++){
-          free(mol[i].part[j].down);
-          free(mol[i].part[j].temp);
-          free(mol[i].part[j].lcl);
-          free(mol[i].part[j].lcu);
-          free(mol[i].part[j].name);
+      if(md[i].part != NULL){
+        for(j=0; j<md[i].npart; j++){
+          free(md[i].part[j].down);
+          free(md[i].part[j].temp);
+          free(md[i].part[j].lcl);
+          free(md[i].part[j].lcu);
+          free(md[i].part[j].name);
         }
-        free(mol[i].part);
+        free(md[i].part);
       }
-      free(mol[i].lal);
-      free(mol[i].lau);
-      free(mol[i].aeinst);
-      free(mol[i].gir);
-      free(mol[i].freq);
-      free(mol[i].beinstu);
-      free(mol[i].beinstl);
-      free(mol[i].eterm);
-      free(mol[i].gstat);
-      free(mol[i].cmb);
+      free(md[i].lal);
+      free(md[i].lau);
+      free(md[i].aeinst);
+      free(md[i].gir);
+      free(md[i].freq);
+      free(md[i].beinstu);
+      free(md[i].beinstl);
+      free(md[i].eterm);
+      free(md[i].gstat);
+      free(md[i].cmb);
     }
-    free(mol);
+    free(md);
   }
 }
 

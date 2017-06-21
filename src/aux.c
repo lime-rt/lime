@@ -209,25 +209,30 @@ exit(1);
     par->writeGridAtStage[i] = 0;
   par->dataFlags = 0;
 
-  /* If the user has provided a list of moldatfile names, the corresponding elements of par->moldatfile will be non-NULL. Thus we can deduce the number of files (species) from the number of non-NULL elements.
-  */
-  par->nSpecies=0;
-  while(par->nSpecies<MAX_NSPECIES && inpar.moldatfile[par->nSpecies]!=NULL && strlen(inpar.moldatfile[par->nSpecies])>0)
+  if(!par->doPregrid && par->restart){
+    par->nSpecies=0; /* This will get set during popsin(). */
+    par->girdatfile = NULL;
+  }else{
+    /* If the user has provided a list of moldatfile names, the corresponding elements of par->moldatfile will be non-NULL. Thus we can deduce the number of files (species) from the number of non-NULL elements.
+    */
+    par->nSpecies=0;
+    while(par->nSpecies<MAX_NSPECIES && inpar.moldatfile[par->nSpecies]!=NULL && strlen(inpar.moldatfile[par->nSpecies])>0)
     par->nSpecies++;
 
-  numGirDatFiles=0;
-  while(numGirDatFiles<MAX_NSPECIES && inpar.girdatfile[numGirDatFiles]!=NULL && strlen(inpar.girdatfile[numGirDatFiles])>0)
-    numGirDatFiles++;
+    numGirDatFiles=0;
+    while(numGirDatFiles<MAX_NSPECIES && inpar.girdatfile[numGirDatFiles]!=NULL && strlen(inpar.girdatfile[numGirDatFiles])>0)
+      numGirDatFiles++;
 
-  if(numGirDatFiles<=0)
-    par->girdatfile = NULL;
-  else if(numGirDatFiles!=par->nSpecies){
-    if(!silent) bail_out("Number of girdatfiles different from number of species.");
+    if(numGirDatFiles<=0)
+      par->girdatfile = NULL;
+    else if(numGirDatFiles!=par->nSpecies){
+      if(!silent) bail_out("Number of girdatfiles different from number of species.");
 exit(1);
-  }else{
-    par->girdatfile=malloc(sizeof(char *)*par->nSpecies);
-    for(id=0;id<par->nSpecies;id++){
-      copyInparStr(inpar.girdatfile[id], &(par->girdatfile[id]));
+    }else{
+      par->girdatfile=malloc(sizeof(char *)*par->nSpecies);
+      for(id=0;id<par->nSpecies;id++){
+        copyInparStr(inpar.girdatfile[id], &(par->girdatfile[id]));
+      }
     }
   }
 
@@ -710,7 +715,7 @@ exit(1);
   par->edgeVelsAvailable=0; /* default value, this is set within getVelocities(). */
 
   par->doMolCalcs = par->doSolveRTE || par->nLineImages>0;
-  if(par->doMolCalcs && par->moldatfile==NULL){
+  if(par->doMolCalcs && par->moldatfile==NULL && (par->doPregrid || !par->restart)){
     if(!silent) bail_out("You must point par->moldatfile to a data file if you want the RTE solved.");
 exit(1);
   }
