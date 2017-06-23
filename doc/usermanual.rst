@@ -22,7 +22,7 @@ code was not designed.
 The LIME code
 ~~~~~~~~~~~~~
 
-LIME (Line Modeling Engine) is an excitation and radiation transfer
+LIME (Line Modelling Engine) is an excitation and radiation transfer
 code that can be used to predict line and continuum radiation from an
 astronomical source model. The code uses unstructured 3D Delaunay
 grids for photon transport and accelerated Lambda Iteration for
@@ -50,13 +50,14 @@ Development history
 The initial LIME code was written by Christian Brinch
 between 2006 and 2010, with version 1.0 appearing in early 2010. LIME
 derives from the radiation transfer code RATRAN developed by
-Michiel R.  Hogerheijde and Floris van der Tak (Hogerhijde & van der
+Michiel R. Hogerheijde and Floris van der Tak (Hogerheijde & van der
 Tak, 2000), although after several rewrites, the shared codebase is
 very small. The photon transport method is a direct implementation of
 the SimpleX algorithm (Ritzerveld & Icke, 2006).
 
 Subsequent to the creation of the package by Christian Brinch, contributors to LIME have included:
 
+- Marc Evans
 - Tuomas Lunttila
 - Sébastien Maret
 - Marco Padovani
@@ -171,7 +172,7 @@ Command line options
 .. note::
 
    Starting with LIME 1.5, command line options can be used to change
-   LIME default behavior without editing the source code.
+   LIME default behaviour without editing the source code.
 
 LIME accepts several command line options:
 
@@ -274,7 +275,7 @@ This value sets the outer radius of the computational domain. It should
 be set large enough to cover the entire spatial extend of the model. In
 particular, if a cylindrical input model is used (e.g., the input file
 for the RATRAN code) one should not use the radius of the cylinder but
-rather the distance from the center to the corner of the (r,z)-plane.
+rather the distance from the centre to the corner of the (r,z)-plane.
 
 .. code:: c
 
@@ -285,7 +286,7 @@ than minScale will not be sampled properly. If one uses spherical
 sampling (see below) this number can also be thought of as the inner
 edge of the grid. This number should not be set smaller than needed,
 because that will cause an undesirably large number of grid points to end up near the
-center of the model.
+centre of the model.
 
 .. code:: c
 
@@ -342,7 +343,7 @@ The default value is now sampling=2.
 
 This parameter, which is only read if `par->samplingAlgorithm==1`, allows the user to provide LIME with the location of maxima in the grid point number density function. This is not required, but if the GPNDF is varies over the model field by very many orders of magnitude, it may speed the gridding process if provided.
 
-The parameter is a 2D array: the first index is the number of the maxium, the second is the spatial coordinate. Thus `par->gridDensMaxLoc[2][0]` refers to the X coordinate (coordinate 0) of the 3rd maximum (remember that C always counts from zero!)
+The parameter is a 2D array: the first index is the number of the maximum, the second is the spatial coordinate. Thus `par->gridDensMaxLoc[2][0]` refers to the X coordinate (coordinate 0) of the 3rd maximum (remember that C always counts from zero!)
 
 .. code:: c
 
@@ -356,7 +357,7 @@ This (vector) parameter is only read if `par->samplingAlgorithm==1`. It must be 
 
 This parameter is the temperature of the cosmic microwave background.
 This parameter defaults to 2.725K which is the value at zero redshift
-(i.e., the solar neighborhood). One should make sure to set this
+(i.e., the solar neighbourhood). One should make sure to set this
 parameter properly when calculating models at a redshift larger than
 zero: TCMB = 2.725(1+z) K. It should be noted that even though LIME can
 in this way take the change in CMB temperature with increasing z into account,
@@ -501,7 +502,7 @@ work, a magnetic field needs to be defined (see below). When
 polarization is switched on, LIME is identical to the DustPol code
 (Padovani et al., 2012), except that the expression Padovani et al. give for sigma2 has been shown by Ade et al. (2015) to be too small by a factor of 2. This correction has now been included in LIME.
 
-The next three (optional) parameters are linked to the density function you provide in your model file. All three parameters are vector quantities, and should therefore be indexed, the same as :ref:`par->moldatfile <par-moldatfile>` or :ref:`img <images>`. If you choose to make use of any or all of the three (which is recommended though not mandatory), you must supply, for each one you use, the same number of elements as your density function returns. As described below in the relevant section, the :ref:`density function <density>` can return multiple values per call, 1 for each species which is present in significant quantity. The contribution of such species to the physics of the situation is most usually via collisional excitation or quenching of levels of the radiating species of interest, and for this reason they are known in LIME as collision partners (CPs). 
+The next four (optional) parameters are linked to the density function you provide in your model file. All four parameters are vector quantities, and should therefore be indexed, the same as :ref:`par->moldatfile <par-moldatfile>` or :ref:`img <images>`. If you choose to make use of any or all of the four (which is recommended though not mandatory), you must supply, for each one you use, the same number of elements as your density function returns. As described below in the relevant section, the :ref:`density function <density>` can return multiple values per call, 1 for each species which is present in significant quantity. The contribution of such species to the physics of the situation is most usually via collisional excitation or quenching of levels of the radiating species of interest, and for this reason they are known in LIME as collision partners (CPs). 
 
 Because there are 2 independent sources of information about these collision partners, namely via the density function on the one hand and via any collisional transition-rate tables present in the moldata file on the other, we have to be careful to match up these sources properly. That is the intent of the parameter
 
@@ -521,6 +522,14 @@ the density function with collisional information in the datafiles.  Some of
 the messages in LIME will refer to the default LAMDA partner molecules, but
 this does not affect the calculations. In future we will introduce a better mechanism to allow the user to specify non-LAMDA collision partners.
 
+In order to allow the use of collision partners outside the LAMDA set, the parameter
+
+.. code:: c
+
+    (string) par->collPartNames[i] (optional)
+
+has been provided. If the user does not set this, LAMDA names are assumed.
+
 LIME calculates the number density of each of its radiating species, at each grid point, by multiplying the abundance of the species (returned via the function of that name) by a weighted sum of the density values. The next parameter allows the user to specify the weights in that sum.
 
 .. code:: c
@@ -529,17 +538,17 @@ LIME calculates the number density of each of its radiating species, at each gri
 
 An example of when this might be useful is if a density for electrons is provided, they being of collisional importance, but it is not desired to include electrons in the sum when calculating nmol values. In that case one would set the appropriate value of nMolWeights to zero.
 
-The final one of the density-linked parameters controls how the dust mass density and hence opacity is calculated. This again involves a weighted sum of provided density values, and this parameter allows the user to specify the weights to be used.
+The final one of the density-linked parameters controls how the dust mass density and hence opacity is calculated.
 
 .. code:: c
 
-    (double) par->dustWeights[i] (optional)
+    (double) par->collPartMolWeights[i] (optional)
 
 .. note::
 
-   The calculation of dust mass density at present makes use of a hard-wired average gas density value of 2.4, appropriate to a mix of 90% molecular hydrogen and 10% helium. The only way to compensate for this hard-wired value is to scale all the values of `par->dustWeights` accordingly.
+   The calculation of dust mass density in LIME<1.6 made use of a hard-wired average gas density value of 2.4, appropriate to a mix of 90% molecular hydrogen and 10% helium. This older formula will be used if none of the current four parameters are set.
 
-If none of the three density-linked parameters is provided, LIME will attempt to guess the information, in a manner as close as possible to the way it was done in version 1.5 and earlier. This is safe enough when a single density value is returned, and only H2 provided as collision partner in the moldata file(s), but more complicated situations can very easily result in the code guessing wrongly. For this reason we encourage users to make use of these three parameters, although in order to preserve backward compatibility with old model.c files, we have not (yet) made them mandatory.
+If none of the four density-linked parameters are provided, LIME will attempt to guess the information, in a manner as close as possible to the way it was done in version 1.5 and earlier. This is safe enough when a single density value is returned, and only H2 provided as collision partner in the moldata file(s), but more complicated situations can very easily result in the code guessing wrongly. For this reason we encourage users to make use of these four parameters, although in order to preserve backward compatibility with old model.c files, we have not (yet) made them mandatory.
 
 .. code:: c
 
@@ -653,12 +662,18 @@ Note that LIME assumes far-field geometry - you will get a distorted image if `i
 
 .. code:: c
 
-    (integer) img[i]->unit (required)
+    (integer) img[i]->unit (semi-optional)
 
 The unit of the image. This variable can take values between 0 and 4. 0
 for Kelvin, 1 for Jansky per pixel, 2 for SI units, and 3 for Solar
 luminosity per pixel. The value 4 is a special option that will create
 an optical depth image cube (dimensionless).
+
+.. code:: c
+
+    (string) img[i]->units (semi-optional)
+
+A comma-separated list of unit integers, provided as a single string. If this parameter is provided instead of `img[i]->unit` (one or the other must be provided), then as many images as there are units will be created.
 
 .. code:: c
 
@@ -702,7 +717,7 @@ information.
 The transition number, used to determine the image frequency when ray-tracing line images. This number refers
 to the transition number in the molecular data files. Contrary to the
 numbers in the data files, trans is zero-index, meaning that the first
-transition is labeled 0, the second transition 1, and so on. For linear
+transition is labelled 0, the second transition 1, and so on. For linear
 rotor molecules without fine structure transition in their data files
 (CO, CS, HCN, etc.) the trans parameter is identified by the lower level
 of the transition. For example, for CO J=1-0 the trans label would be
@@ -720,9 +735,16 @@ If `img[i]->trans` is set, this parameter will also be read, although to preserv
 
     (double) img[i]->freq (semi optional)
 
-Center frequency of the spectral axis in Hz. This parameter can be used
+Centre frequency of the spectral axis in Hz. This parameter can be used
 for both line and continuum images. See the :ref:`note below <img-semi>` for additional
 information.
+
+.. code:: c
+
+    (boolean) img[i]->doInterpolateVels (optional)
+
+This should be set non-zero (i.e. True) to replace calls to the velocity() function with a second-order in-cell interpolation during raytracing.
+
 
 .. _img-semi:
 
@@ -826,7 +848,7 @@ The density subroutine contains a user-defined description of the 3D density pro
       density[n] = f(x,y,z);
     }
 
-LIME can at present only deal with 7 collision partners (CPs), namely those listed in the LAMDA database. In most cases, a single density profile will suffice. Note that the number of returned density function values no longer has to be the same as the number of CPs listed in the moldata file(s) so long as the user sets values for the collPartIds parameter; but if this parameter is not supplied, and the numbers are different, LIME may not be able to match the CPs associated with each density value to those in the moldata file(s). Note also that moldata CPs for which there is no matching density will be ignored.
+LIME can at present deal with 20 collision partners (CPs). (Note that there are only 7 listed in the LAMDA database.) In most cases, a single density profile will suffice. Note that the number of returned density function values no longer has to be the same as the number of CPs listed in the moldata file(s) so long as the user sets values for the collPartIds parameter; but if this parameter is not supplied, and the numbers are different, LIME may not be able to match the CPs associated with each density value to those in the moldata file(s). Note also that moldata CPs for which there is no matching density will be ignored.
 
 The density is a number density, that is, the number of molecules of the respective CP per unit volume (in cubic meters, not cubic centimeters).
 
@@ -839,15 +861,32 @@ The abundance subroutine contains descriptions of the molecular abundance profil
 
     void
     abundance(double x, double y, double z, double *abundance){
-      abundance[0] = f(x,y,z);
-      abundance[1] = f(x,y,z);
+      abundance[0] = f0(x,y,z);
+      abundance[1] = f1(x,y,z);
       ...
-      abundance[n] = f(x,y,z);
+      abundance[n] = fn(x,y,z);
     }
 
 The abundance is the fractional abundance with respect to a weighted sum of the densities supplied for the collision partners. If the user does not supply the weights via the nMolWeights parameter, the code will try to guess them.
 
 Abundances are dimensionless.
+
+Molecular number density
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+As an alternative to the abundance function, the user is now able to supply a function which specifies directly the number density of each of the radiating species.
+
+.. code:: c
+
+    void
+    molNumDensity(double x, double y, double z, double *nmol){
+      nmol[0] = f0(x,y,z);
+      nmol[1] = f1(x,y,z);
+      ...
+      nmol[n] = fn(x,y,z);
+    }
+
+The densities are number densities, that is, the number of molecules per unit volume (in cubic meters, not cubic centimeters).
 
 Temperature
 ~~~~~~~~~~~

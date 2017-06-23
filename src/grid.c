@@ -184,7 +184,7 @@ void calcDustData(configInfo *par, double *dens, double *freqs\
     t = ts[1];
   }
 
-  if(par->dustWeights==NULL){ /* This is set up in checkUserDensWeights() to flag to use the pre<1.6 default. */
+  if(par->collPartUserSetFlags==0){ /* this means the user did not set any of the collision-partner-related parameters. Use the old formula. */
     dustToGas = AMU*2.4*dens[0]/gtd;
   }else{
     gasMassDensityAMUs = 0.0;

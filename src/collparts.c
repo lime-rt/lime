@@ -26,7 +26,7 @@ void setCollPartsDefaults(struct cpData *part){
 /*....................................................................*/
 void checkUserDensWeights(configInfo *par){
   /*
-This deals with five user-settable list parameters which relate to collision partners and their number densities: par->collPartIds, par->nMolWeights, par->dustWeights, par->collPartMolWeights and par->collPartNames. We have to see if these (optional) parameters were set, do some basic checks on them, and if they were set make sure they match the number of density values, which by this time should be stored in par->numDensities.
+This deals with four user-settable list parameters which relate to collision partners and their number densities: par->collPartIds, par->nMolWeights, par->collPartMolWeights and par->collPartNames. We have to see if these (optional) parameters were set, do some basic checks on them, and if they were set make sure they match the number of density values, which by this time should be stored in par->numDensities.
 
 	* par->collPartIds: this list acts as a link between the N density function returns (I'm using here N as shorthand for par->numDensities) and the M collision partner ID integers found in the moldatfiles. This allows us to associate density functions with the collision partner transition rates provided in the moldatfiles.
 
@@ -48,35 +48,35 @@ This deals with five user-settable list parameters which relate to collision par
 	* par->collPartMolWeights: this MUST be present if par->collPartNames has been supplied, and it MUST then have the same number and order of elements as all the other collision-partner lists. If this parameter is supplied but par->collPartNames not, it will be ignored.
 
 	* par->nMolWeights: this list gives the weights to be applied to the N density values when calculating molecular densities from abundances.
-
-	* par->dustWeights: ditto for the calculation of dust opacity. Note that if this is not supplied, LIME will attempt to reproduce the pre-1.6 behaviour which (i) took density return 0 to represent the entire bulk gas number density; (ii) implicitly assumed a 20% He, 80% H2 bulk composition, giving an average molecular weight of 2.4 for the bulk gas.
   */
-  int i,j,numUserSetCPIds,numUserSetNMWs,numUserSetDWs,numUserSetCPNames,numUserSetCPWeights;
+  int i,j,numUserSetCPIds,numUserSetNMWs,numUserSetCPNames,numUserSetCPWeights;
   int *uniqueCPIds=NULL;
   double sum;
 
+  par->collPartUserSetFlags = 0;
+
   /* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-  /* Get the numbers of elements set by the user for each of the 5 parameters:
+  /* Get the numbers of elements set by the user for each of the 4 parameters:
   */
   i = 0;
   while(i<MAX_N_COLL_PART && par->collPartIds[i]>0) i++;
   numUserSetCPIds = i;
+  if(i>0) par->collPartUserSetFlags |= (1<<CPF_BIT_ids);
 
   i = 0;
   while(i<MAX_N_COLL_PART && par->nMolWeights[i]>=0.0) i++;
   numUserSetNMWs = i;
+  if(i>0) par->collPartUserSetFlags |= (1<<CPF_BIT_weights);
 
   i = 0;
   while(i<MAX_N_COLL_PART && par->collPartNames[i]!=NULL) i++;
   numUserSetCPNames = i;
+  if(i>0) par->collPartUserSetFlags |= (1<<CPF_BIT_names);
 
   i = 0;
   while(i<MAX_N_COLL_PART && par->collPartMolWeights[i]>=0) i++;
   numUserSetCPWeights = i;
-
-  i = 0;
-  while(i<MAX_N_COLL_PART && par->dustWeights[i]>=0.0) i++;
-  numUserSetDWs = i;
+  if(i>0) par->collPartUserSetFlags |= (1<<CPF_BIT_MolWeights);
 
   /* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
   /* Perform checks on the numbers.
@@ -165,33 +165,6 @@ This deals with five user-settable list parameters which relate to collision par
     par->collPartMolWeights = realloc(par->collPartMolWeights, sizeof(*(par->collPartMolWeights))*par->numDensities);
   }
 
-  /* The dust weights are a little complicated. We want to achieve a balance between requiring the user to specify too many parameters and getting bad default behaviour. Basically the defaults are as follows:
-
-	- If par->collPartNames are not supplied, we must assume the LAMDA list of names; and if par->dustWeights are also not supplied, we have little recourse but to try to reproduce the pre-1.6 LIME behaviour which (i) took density return 0 to represent the entire bulk gas number density; (ii) implicitly assumed a 20% He, 80% H2 bulk composition, giving an average molecular weight of 2.4 for the bulk gas.
-
-	- If par->collPartNames are supplied, but par->dustWeights are not, all par->dustWeights values are set to unity.
-  */
-  if(numUserSetDWs != par->numDensities){
-    free(par->dustWeights);
-    par->dustWeights = NULL;
-
-    /* numUserSetDWs==0 is ok, this just means the user has not set the parameter at all, but for other values we should issue some warnings, because if the user sets any at all, they should set the same number as there are returns from density():
-    */
-    if(numUserSetDWs > 0){
-      if(!silent) warning("par->dustWeights will be ignored - there should be 1 for each density() return.");
-      numUserSetDWs = 0;
-    }
-
-  }else{
-    par->dustWeights = realloc(par->dustWeights, sizeof(*(par->dustWeights))*par->numDensities);
-  }
-
-  if(numUserSetDWs<=0 && numUserSetCPNames>0){
-    par->dustWeights = malloc(sizeof(*(par->dustWeights))*par->numDensities);
-    for(i=0;i<par->numDensities;i++)
-      par->dustWeights[i] = 1.0;
-  } /* Otherwise leave them at NULL, this will be detected in calcDustData() and used to trigger the pre-1.6 default. */
-
   /* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
   /* Now we do some sanity checks.
   */
@@ -223,20 +196,6 @@ This deals with five user-settable list parameters which relate to collision par
       exit(1);
     }
   }
-
-  if(numUserSetDWs>0){
-    /* Check that they do not sum to zero.
-    */
-    sum = 0.0;
-    for(i=0;i<numUserSetDWs;i++){
-      sum += par->dustWeights[i];
-    }
-    if(sum<=0.0){
-      if(!silent) bail_out("At least some of your par.dustWeights must be non-zero!");
-      exit(1);
-    }
-  }
-
 }
 
 /*....................................................................*/

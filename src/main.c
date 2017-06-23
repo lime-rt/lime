@@ -67,7 +67,7 @@ initParImg(inputPars *par, image **img)
   for(i=0;i<MAX_N_COLL_PART;i++) par->collPartIds[i] = 0; /* Possible values start at 1. */
   par->nMolWeights  = malloc(sizeof(double)*MAX_N_COLL_PART);
   for(i=0;i<MAX_N_COLL_PART;i++) par->nMolWeights[i] = -1.0;
-  par->dustWeights  = malloc(sizeof(double)*MAX_N_COLL_PART);
+  par->dustWeights  = malloc(sizeof(double)*MAX_N_COLL_PART); /* This param no longer has any effect. */
   for(i=0;i<MAX_N_COLL_PART;i++) par->dustWeights[i] = -1.0;
   par->collPartMolWeights = malloc(sizeof(double)*MAX_N_COLL_PART);
   for(i=0;i<MAX_N_COLL_PART;i++) par->collPartMolWeights[i] = -1.0;
@@ -195,7 +195,6 @@ run(inputPars inpars, image *inimg, const int nImages){
     predefinedGrid(&par,gp); /* Sets par.numDensities */
     checkUserDensWeights(&par); /* Needs par.numDensities */
   }else if(par.restart){
-//    mallocAndSetDefaultGrid(&gp, (size_t)par.ncell, (size_t)par.nSpecies);
     popsin(&par,&gp,&md,&popsdone);
   }else{
     checkUserDensWeights(&par); /* Needs par.numDensities */

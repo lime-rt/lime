@@ -70,10 +70,11 @@ input(inputPars *par, image *img){
     then this is multiplied by the abundance to return the number
     density.
 
-    par->dustWeights: this is similar, but the weighted sum of
-    densities now feeds into the calculation of the dust opacity.
+    par->collPartNames: this helps make a firm connection between the density functions and the collision partner information in the moldatfile.
 
-    Note that there are convenient macros defined in ../src/lime.h for
+    par->collPartMolWeights: this now allows control over the calculation of the dust opacity.
+
+    Note that there are convenient macros defined in ../src/collparts.h for
     7 types of collision partner.
 
     Below is an example of how you might use these parameters:
@@ -81,7 +82,8 @@ input(inputPars *par, image *img){
 
   par->collPartIds[0]           = CP_H2;
   par->nMolWeights[0]           = 1.0;
-  par->dustWeights[0]           = 1.0;
+  par->collPartNames[0]         = "H2";
+  par->collPartMolWeights[0]    = 2.0159;
 
   /* Set one or more of the following parameters for full output of the grid-specific data at any of 4 stages during the processing. (See the header of gridio.c for information about the stages.)
   par->gridOutFiles[0] = "grid_1.ds";

@@ -14,7 +14,6 @@ freeConfigInfo(configInfo *par){
   int i;
 
   free(par->nMolWeights);
-  free(par->dustWeights);
   free(par->collPartMolWeights);
   free(par->collPartIds);
   free(par->outputfile);

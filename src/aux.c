@@ -268,8 +268,6 @@ exit(1);
   for(i=0;i<MAX_N_COLL_PART;i++) par->collPartIds[i] = inpar.collPartIds[i];
   par->nMolWeights  = malloc(sizeof(double)*MAX_N_COLL_PART);
   for(i=0;i<MAX_N_COLL_PART;i++) par->nMolWeights[i] = inpar.nMolWeights[i];
-  par->dustWeights  = malloc(sizeof(double)*MAX_N_COLL_PART);
-  for(i=0;i<MAX_N_COLL_PART;i++) par->dustWeights[i] = inpar.dustWeights[i];
   par->collPartNames = malloc(sizeof(char*)*MAX_N_COLL_PART);
   for(i=0;i<MAX_N_COLL_PART;i++) copyInparStr(inpar.collPartNames[i], &(par->collPartNames[i]));
   par->collPartMolWeights = malloc(sizeof(double)*MAX_N_COLL_PART);

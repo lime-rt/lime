@@ -19,4 +19,10 @@
 #define CP_He			6
 #define CP_Hplus		7
 
+/* Bit codes for par->collPartUserSetFlags */
+#define CPF_BIT_ids        0
+#define CPF_BIT_weights    1
+#define CPF_BIT_names      2
+#define CPF_BIT_MolWeights 3
+
 #endif /* COLLPARTS_H */
