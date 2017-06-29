@@ -419,6 +419,14 @@ Elements of structs are set as follows:
     gp[id].numNeigh=qh_setsize(vertex->neighbors);
     /* Note that vertex->neighbors refers to facets abutting the vertex, not other vertices. In general there seem to be more facets surrounding a point than vertices (in fact there seem to be exactly 2x as many). In any case, mallocing to N_facets gives extra room. */
 
+    if(gp[id].numNeigh<=0){
+      if(!silent){
+        sprintf(message, "qhull failed silently, grid point %lu has 0 neighbours. Smoother gridDensity() might help.", id);
+        bail_out(message);
+      }
+exit(1);
+    }
+
     free(gp[id].neigh);
     gp[id].neigh=malloc(sizeof(struct grid *)*gp[id].numNeigh);
     for(k=0;k<gp[id].numNeigh;k++) {
@@ -498,7 +506,7 @@ Elements of structs are set as follows:
                 sprintf(message, "Something weird going on. Cannot find a cell with ID %lu", (unsigned long)(neighbor->id));
                 bail_out(message);
               }
-              exit(1);
+exit(1);
             }
           }
           i++;
@@ -1080,7 +1088,7 @@ exit(1);
 exit(1);
   }
   if(gridInfoRead.nSpecies > 0){
-    if((int)gridInfoRead.nSpecies!=par->nSpecies){
+    if((int)gridInfoRead.nSpecies!=par->nSpecies && par->doMolCalcs){
       if(!silent){
         sprintf(message, "Grid file had %d species but you have provided moldata files for %d."\
           , (int)gridInfoRead.nSpecies, par->nSpecies);
@@ -1098,6 +1106,9 @@ exit(1);
     }
 exit(1);
   }
+
+  if(!silent && par->nSolveItersDone>0 && (par->init_lte || par->lte_only))
+    warning("Your choice of LTE calculation will erase the RTE solution you read from file.");
 }
 
 /*....................................................................*/
@@ -1155,9 +1166,9 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
     status = readGrid(par->gridInFile, &gridInfoRead, desiredKwds\
       , numDesiredKwds, gp, &collPartNames, &numCollPartRead, &(par->dataFlags));
 
-    sanityCheckOfRead(status, par, gridInfoRead);
-
     par->nSolveItersDone = desiredKwds[1].intValue;
+
+    sanityCheckOfRead(status, par, gridInfoRead);
 
     freeKeywords(desiredKwds, numDesiredKwds);
     freeGridInfo(&gridInfoRead);
@@ -1373,7 +1384,8 @@ Generate the remaining values if needed.
     par->dataFlags |= DS_mask_density;
   }
 
-  checkGridDensities(par, *gp); /* Check that none of the density samples is too small. */
+  if(par->doMolCalcs)
+    checkGridDensities(par, *gp); /* Check that none of the density samples is too small. */
 
   if(!allBitsSet(par->dataFlags, DS_mask_temperatures)){
     for(i=0;i<par->pIntensity;i++)

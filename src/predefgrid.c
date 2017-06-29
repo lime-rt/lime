@@ -57,7 +57,11 @@ predefinedGrid(configInfo *par, struct grid *gp){
     if(!silent) progressbar((double) i/((double)par->pIntensity-1), 4);	
   }
 
-  checkGridDensities(par, gp);
+  fclose(fp);
+  if(!silent) printDone(4);
+
+  if(par->doMolCalcs)
+    checkGridDensities(par, gp);
 
   for(i=par->pIntensity;i<par->ncell;i++){
     x=2*gsl_rng_uniform(ran)-1.;
@@ -82,7 +86,6 @@ predefinedGrid(configInfo *par, struct grid *gp){
       for(j=0;j<DIM;j++) gp[i].vel[j]=0.;
     } else i--;
   }
-  fclose(fp);
 
   delaunay(DIM, gp, (unsigned long)par->ncell, 0, 1, &dc, &numCells);
 

@@ -258,11 +258,6 @@ typedef struct {
   _Bool doInterpolateVels;
 } imageInfo;
 
-typedef struct {
-  double x,y, *intensity, *tau;
-  unsigned int ppi;
-} rayData;
-
 struct blend{
   int molJ, lineJ;
   double deltaV;
@@ -364,7 +359,7 @@ void	lineBlend(molData*, configInfo*, struct blendInfo*);
 void	LTE(configInfo*, struct grid*, molData*);
 void	lteOnePoint(molData*, const int, const double, double*);
 void	mallocAndSetDefaultGrid(struct grid**, const size_t, const size_t);
-void	molInit(configInfo*, molData*, int*, const int);
+void	molInit(configInfo*, molData*);
 void	openSocket(char*);
 void	parseInput(inputPars, image*, const int, configInfo*, imageInfo**, molData**);
 void	photon(int, struct grid*, molData*, const gsl_rng*, configInfo*, const int, struct blendInfo, gridPointData*, double*);
@@ -377,7 +372,6 @@ void	processFitsError(int);
 double	ratranInput(char*, char*, double, double, double);
 void	raytrace(int, configInfo*, struct grid*, molData*, imageInfo*, double*, double*, const int);
 void	readDustFile(char*, double**, double**, int*);
-void	readMolData(configInfo*, molData*, int**, int*);
 void	readOrBuildGrid(configInfo*, struct grid**);
 void	readUserInput(inputPars*, imageInfo**, int*, int*);
 unsigned long reorderGrid(const unsigned long, struct grid*);

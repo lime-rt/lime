@@ -723,6 +723,13 @@ exit(1);
 exit(1);
   }
 
+  if(!silent && !par->doMolCalcs && par->init_lte)
+    warning("Your choice of par.init_lte will have no effect.");
+  if(!silent && !par->doMolCalcs && par->lte_only)
+    warning("Your choice of par.lte_only will have no effect.");
+  if(!silent && par->nSolveIters>0 && par->lte_only)
+    warning("Requesting par.nSolveIters>0 will have no effect if LTE calculation is also requested.");
+
   /* Allocate moldata array.
   */
   if(par->nSpecies>0){

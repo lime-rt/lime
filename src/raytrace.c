@@ -13,6 +13,12 @@ TODO:
 #include "lime.h"
 #include "raythrucells.h"
 
+typedef struct {
+  double x,y, *intensity, *tau;
+  unsigned int ppi;
+  _Bool isInsideImage;
+} rayData;
+
 struct baryVelBuffType {
   int numVertices,numEdges,(*edgeVertexIndices)[2];
   double **vertexVels,**edgeVels,*entryCellBary,*midCellBary,*exitCellBary,*shapeFns;
@@ -844,8 +850,31 @@ At the moment I will fix the number of segments, but it might possibly be faster
 }
 
 /*....................................................................*/
-void
+_Bool
 locateRayOnImage(double x[2], const double size, const double imgCentreXPixels\
+  , const double imgCentreYPixels, imageInfo *img, const int im\
+  , int *xi, int *yi, unsigned int *ppi){
+
+  _Bool isInsideImage;
+
+  /* Calculate which pixel the projected position (x[0],x[1]) falls within.
+  */
+  *xi = floor(x[0]/size + imgCentreXPixels);
+  *yi = floor(x[1]/size + imgCentreYPixels);
+  if(*xi<0 || *xi>=img[im].pxls || *yi<0 || *yi>=img[im].pxls){
+    isInsideImage = 0;
+    *ppi = 0; /* Under these circumstances it ought never to be accessed, but it is not good to leave it without a value at all. */
+  }else{
+    isInsideImage = 1;
+    *ppi = (unsigned int)(*yi)*(unsigned int)img[im].pxls + (unsigned int)(*xi);
+  }
+
+  return isInsideImage;
+}
+
+/*....................................................................*/
+void
+assignRayOnImage(double x[2], const double size, const double imgCentreXPixels\
   , const double imgCentreYPixels, imageInfo *img, const int im\
   , const int maxNumRaysPerPixel, rayData *rays, int *numActiveRays){
   /*
@@ -863,27 +892,19 @@ Returned information is thus:
   */
 
   int xi,yi,ichan;
-  _Bool isOutsideImage;
+  _Bool isInsideImage;
   unsigned int ppi;
 
-  /* Calculate which pixel the projected position (x[0],x[1]) falls within.
-  */
-  xi = floor(x[0]/size + imgCentreXPixels);
-  yi = floor(x[1]/size + imgCentreYPixels);
-  if(xi<0 || xi>=img[im].pxls || yi<0 || yi>=img[im].pxls){
-    isOutsideImage = 1;
-    ppi = 0; /* Under these circumstances it ought never to be accessed, but it is not good to leave it without a value at all. */
-  }else{
-    isOutsideImage = 0;
-    ppi = (unsigned int)yi*(unsigned int)img[im].pxls + (unsigned int)xi;
-  }
+  isInsideImage = locateRayOnImage(x, size, imgCentreXPixels\
+    , imgCentreYPixels, img, im, &xi, &yi, &ppi);
 
-  /* See if we want to keep the ray. For the time being we will include those outside the image bounds, but a cleverer algorithm would exclude some of them. Note that maxNumRaysPerPixel<1 is used to flag that there is no upper limit to the number of rays per pixel.
+  /* See if we want to keep the ray. For the time being we will include those outside the image bounds, because we need to interpolate between outside-image rays and inside-image ones, but a cleverer algorithm would exclude all but those which are affected by this (i.e. that immediately abut the image bounds). Note that maxNumRaysPerPixel<1 is used to flag that there is no upper limit to the number of rays per pixel.
   */
-  if(isOutsideImage || maxNumRaysPerPixel<1 || img[im].pixel[ppi].numRays<maxNumRaysPerPixel){
-    if(!isOutsideImage)
+  if(!isInsideImage || maxNumRaysPerPixel<1 || img[im].pixel[ppi].numRays<maxNumRaysPerPixel){
+    if(isInsideImage)
       img[im].pixel[ppi].numRays++;
 
+    rays[*numActiveRays].isInsideImage = isInsideImage;
     rays[*numActiveRays].ppi = ppi;
     rays[*numActiveRays].x = x[0];
     rays[*numActiveRays].y = x[1];
@@ -1221,7 +1242,7 @@ How to calculate this distance? Well if we have N points randomly but evenly dis
       }
     }
 
-    locateRayOnImage(xs, pixelSize, imgCentreXPixels, imgCentreYPixels, img, im, maxNumRaysPerPixel, rays, &numActiveRaysInternal);
+    assignRayOnImage(xs, pixelSize, imgCentreXPixels, imgCentreYPixels, img, im, maxNumRaysPerPixel, rays, &numActiveRaysInternal);
   } /* End loop 1, over grid points. */
 
   /* Add the circle rays:
@@ -1233,7 +1254,7 @@ How to calculate this distance? Well if we have N points randomly but evenly dis
       angle = i*scale;
       xs[0] = par->radius*cos(angle);
       xs[1] = par->radius*sin(angle);
-      locateRayOnImage(xs, pixelSize, imgCentreXPixels, imgCentreYPixels, img, im, maxNumRaysPerPixel, rays, &numActiveRays);
+      assignRayOnImage(xs, pixelSize, imgCentreXPixels, imgCentreYPixels, img, im, maxNumRaysPerPixel, rays, &numActiveRays);
     }
   }
   oneOnNumActiveRaysMinus1 = 1.0/(double)(numActiveRaysInternal-1);
@@ -1362,6 +1383,7 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
   } /* End of parallel block. */
 
   gsl_set_error_handler(defaultErrorHandler);
+  if(!silent) printDone(13);
 
   if(par->traceRayAlgorithm==1){
     free(cells);
@@ -1393,7 +1415,7 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
   /* For pixels with more than a cutoff number of rays, just average those rays into the pixel:
   */
   for(ri=0;ri<numActiveRays;ri++){
-    if(img[im].pixel[rays[ri].ppi].numRays >= minNumRaysForAverage){
+    if(rays[ri].isInsideImage && img[im].pixel[rays[ri].ppi].numRays >= minNumRaysForAverage){
       for(ichan=0;ichan<img[im].nchan;ichan++){
         img[im].pixel[rays[ri].ppi].intense[ichan] += rays[ri].intensity[ichan];
         img[im].pixel[rays[ri].ppi].tau[    ichan] += rays[ri].tau[      ichan];

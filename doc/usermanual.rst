@@ -321,6 +321,8 @@ thousands and about ten thousand.
 
 If this is left at the default value of 0, grid point sampling is performed according to the LIME<1.7 algorithm, as governed by parameter :ref:`par->sampling <par-sampling>`. If 1 is chosen, a new algorithm is employed which can quickly generate points with a distribution which accurately follows any feasible :ref:`gridDensity <grid-density>` function - including with sharp step-changes. This algorithm also incorporates a quasi-random choice of point candidates which avoids the requirement for the relatively time-consuming post-gridding smoothing phase.
 
+A user who selects par->samplingAlgorithm=1 and constructs their own :ref:`gridDensity <grid-density>` function obtains full control over the distribution of points. With this control however come some hazards. LIME still relies on 3rd-party software called qhull to triangulate the points after they are chosen, and qhull is a little flaky. It is prone to failing silently if it doesn't like the set of points one gives it. We have tried to trap these instances, to at least head off segmentation faults, but it is hard to guess all the ways in which somebody else's package may fail. If you have problems, try to smooth out any steps in your :ref:`gridDensity <grid-density>` function. If that doesn't fix things, you may have to go back to par->samplingAlgorithm=0.
+
 .. _par-sampling:
 
 .. code:: c
