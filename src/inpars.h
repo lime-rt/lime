@@ -15,12 +15,10 @@ typedef struct {
   double radius,minScale,tcmb,*nMolWeights,*dustWeights;
   double (*gridDensMaxLoc)[DIM],*gridDensMaxValues,*collPartMolWeights;
   int sinkPoints,pIntensity,blend,*collPartIds,traceRayAlgorithm,samplingAlgorithm;
-  int sampling,lte_only,init_lte,antialias,polarization,nThreads;
-  char **girdatfile;
-  int nSolveIters;
+  int sampling,lte_only,init_lte,antialias,polarization,nThreads,nSolveIters;
+  char **girdatfile,**moldatfile,**collPartNames;
   char *outputfile,*binoutputfile,*gridfile,*pregrid,*restart,*dust;
   char *gridInFile,**gridOutFiles;
-  char **moldatfile,**collPartNames;
   _Bool resetRNG,doSolveRTE;
 } inputPars;
 

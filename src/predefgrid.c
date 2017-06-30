@@ -51,7 +51,7 @@ predefinedGrid(configInfo *par, struct grid *gp){
     gp[i].B[2]=0.0;
 
     /* This next step needs to be done, even though it looks stupid */
-    gp[i].dir=malloc(sizeof(point)*1);
+    gp[i].dir=malloc(sizeof(*(gp[i].dir))*1);
     gp[i].ds =malloc(sizeof(double)*1);
     gp[i].neigh =malloc(sizeof(struct grid *)*1);
     if(!silent) progressbar((double) i/((double)par->pIntensity-1), 4);	
