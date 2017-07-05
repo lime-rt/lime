@@ -75,7 +75,7 @@ predefinedGrid(configInfo *par, struct grid *gp){
       gp[i].x[2]=scale*z;
       gp[i].sink=1;
       gp[i].mol[0].abun=0.0; /* Just to give it a value. */
-      gp[i].dens[0]=1e-30;
+      gp[i].dens[0]=EPS;
       gp[i].mol[0].nmol=0.0; /* Just to give it a value. */
       gp[i].t[0]=par->tcmb;
       gp[i].t[1]=par->tcmb;

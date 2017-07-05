@@ -66,19 +66,15 @@
 #define HCKB            1.43877735		/* 100.*HPLANCK*CLIGHT/KBOLTZ	*/
 
 /* Other constants */
-#define PI                      3.14159265358979323846	/* pi	*/
-#define SPI                     1.77245385091		/* sqrt(pi)	*/
-#define maxp                    0.15
+#define SQRT_PI                 (sqrt(M_PI))  		/* sqrt(pi)	*/
+#define LOCAL_CMB_TEMP          2.725
 #define NITERATIONS             16
 #define MAX_RAYS_PER_POINT      10000
 #define RAYS_PER_POINT          200
-#define minpop                  1.e-6
-#define eps                     1.0e-30
+#define EPS                     1.0e-30                /* general use small number */
 #define IMG_MIN_ALLOWED         1.0e-30
 #define TOL                     1e-6
 #define MAXITER                 50
-#define goal                    50
-#define fixset                  1e-6
 #define maxBlendDeltaV          1.e4		/* m/s */
 #define MAX_NSPECIES            100
 #define MAX_NIMAGES             100
@@ -301,9 +297,7 @@ void	freeMolData(const int, molData*);
 void	freePopulation(const unsigned short, struct populations*);
 void	freeSomeGridFields(const unsigned int, const unsigned short, struct grid*);
 double	gaussline(const double, const double);
-void	getArea(configInfo*, struct grid*, const gsl_rng*);
 double	geterf(const double, const double);
-void	getMass(configInfo*, struct grid*, const gsl_rng*);
 void	getEdgeVelocities(configInfo *, struct grid *);
 void	input(inputPars*, image*);
 double	interpolateKappa(const double, double*, double*, const int, gsl_spline*, gsl_interp_accel*);
@@ -347,7 +341,6 @@ void	printMessage(char *);
 void	progressbar(double, int);
 void	progressbar2(configInfo*, int, int, double, double, double);
 void	reportOutput(char*);
-void	quotemass(double);
 void	screenInfo(void);
 void	warning(char*);
 

@@ -430,7 +430,7 @@ photon(int id, struct grid *gp, molData *md, const gsl_rng *ran\
 
     /* Choose random initial photon direction (the distribution used here is even over the surface of a sphere of radius 1).
     */
-    pt_theta=gsl_rng_uniform(ran)*2*PI;
+    pt_theta=gsl_rng_uniform(ran)*2*M_PI;
     pt_z=2*gsl_rng_uniform(ran)-1;
     semiradius = sqrt(1.-pt_z*pt_z);
     inidir[0]=semiradius*cos(pt_theta);
@@ -760,6 +760,7 @@ stateq(int id, struct grid *gp, molData *md, const int ispec, configInfo *par\
   int t,s,iter,status;
   double *opop,*oopop,*tempNewPop=NULL;
   double diff;
+  const double minpop_for_convergence_check = 1.e-6;
   char errStr[80];
 
   gsl_matrix *colli  = gsl_matrix_alloc(md[ispec].nlev, md[ispec].nlev);
@@ -817,7 +818,7 @@ stateq(int id, struct grid *gp, molData *md, const int ispec, configInfo *par\
 
     diff=0.;
     for(t=0;t<md[ispec].nlev;t++){
-      gsl_vector_set(newpop,t,gsl_max(gsl_vector_get(newpop,t),1e-30));
+      gsl_vector_set(newpop,t,gsl_max(gsl_vector_get(newpop,t),EPS));
       oopop[t]=opop[t];
       opop[t]=gp[id].mol[ispec].pops[t];
 
@@ -826,7 +827,7 @@ stateq(int id, struct grid *gp, molData *md, const int ispec, configInfo *par\
         gp[id].mol[ispec].pops[t]=gsl_vector_get(newpop,t);
       }
 
-      if(gsl_min(gp[id].mol[ispec].pops[t],gsl_min(opop[t],oopop[t]))>minpop){
+      if(gsl_min(gp[id].mol[ispec].pops[t],gsl_min(opop[t],oopop[t]))>minpop_for_convergence_check){
         diff=gsl_max(fabs(gp[id].mol[ispec].pops[t]-opop[t])/gp[id].mol[ispec].pops[t]\
             ,gsl_max(fabs(gp[id].mol[ispec].pops[t]-oopop[t])/gp[id].mol[ispec].pops[t],diff));
       }

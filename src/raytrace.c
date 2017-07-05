@@ -1247,7 +1247,7 @@ At the present point in the code, for line images, instead of calculating the 'c
     cmbFreq = img[im].freq;
   }
 
-  local_cmb = planckfunc(cmbFreq,2.728);
+  local_cmb = planckfunc(cmbFreq,LOCAL_CMB_TEMP);
   calcGridContDustOpacity(par, cmbFreq, lamtab, kaptab, nEntries, gp);
 
   for(ppi=0;ppi<totalNumImagePixels;ppi++){
@@ -1272,8 +1272,8 @@ How to calculate this distance? Well if we have N points randomly but evenly dis
     if(rSqu > (4.0/9.0)*par->radiusSqu) numPointsInAnnulus += 1;
   }
   if(numPointsInAnnulus>0){
-    circleSpacing = (1.0/6.0)*par->radius*sqrt(5.0*PI/(double)numPointsInAnnulus);
-    numCircleRays = (int)(2.0*PI*par->radius/circleSpacing);
+    circleSpacing = (1.0/6.0)*par->radius*sqrt(5.0*M_PI/(double)numPointsInAnnulus);
+    numCircleRays = (int)(2.0*M_PI*par->radius/circleSpacing);
   }else{
     numCircleRays = 0;
   }
@@ -1299,7 +1299,7 @@ How to calculate this distance? Well if we have N points randomly but evenly dis
   */
   numActiveRays = numActiveRaysInternal;
   if(numCircleRays>0){
-    scale = 2.0*PI/(double)numCircleRays;
+    scale = 2.0*M_PI/(double)numCircleRays;
     for(i=0;i<numCircleRays;i++){
       angle = i*scale;
       xs[0] = par->radius*cos(angle);

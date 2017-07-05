@@ -46,7 +46,7 @@ void calcSourceFn(double dTau, const configInfo *par, double *remnantSnu, double
 /*....................................................................*/
 double planckfunc(const double freq, const double temp){
   double bb=10.,wn;
-  if(temp<eps) bb = 0.0;
+  if(temp<EPS) bb = 0.0;
   else {
     wn=freq/CLIGHT;
     if (HPLANCK*freq>100.*KBOLTZ*temp) 

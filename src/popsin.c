@@ -133,7 +133,7 @@ exit(1);
     density((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],(*gp)[i].dens);
   for(i=par->pIntensity;i<par->ncell;i++){
     for(j=0;j<par->numDensities;j++)
-      (*gp)[i].dens[j]=1e-30;//************** what is the low but non zero value for?
+      (*gp)[i].dens[j]=EPS; //************** what is the low but non zero value for? Probably to make sure no ills happen in case something gets divided by this?
   }
 
   par->dataFlags |= DS_mask_density;

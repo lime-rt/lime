@@ -250,17 +250,6 @@ goodnight(int initime){
 #endif
 }
 
-void
-quotemass(double mass){
-#ifdef NO_NCURSES
-  printf("  Total mass contained in model: %3.2e solar masses", mass);
-#else
-  move(21,6); printw("Total mass contained in model: %3.2e solar masses", mass);
-  refresh();
-#endif
-}
-
-
 
 void
 printMessage(char message[80]){
