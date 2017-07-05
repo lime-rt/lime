@@ -15,6 +15,7 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include <assert.h>
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_spline.h>
@@ -75,7 +76,7 @@
 #define IMG_MIN_ALLOWED         1.0e-30
 #define TOL                     1e-6
 #define MAXITER                 50
-#define maxBlendDeltaV          1.e4		/* m/s */
+#define maxBlendDeltaV          1.e4		          /* m/s */
 #define MAX_NSPECIES            100
 #define MAX_NIMAGES             100
 #define N_RAN_PER_SEGMENT       3
@@ -83,7 +84,7 @@
 #define FAST_EXP_NUM_BITS       8
 #define NUM_GRID_STAGES         5
 #define MAX_N_COLL_PART         20
-#define N_SMOOTH_ITERS          20
+#define N_SMOOTH_ITERS          5                      /* number of smoothing iterations if using  par->samplingAlgorithm=0 */
 #define TYPICAL_ISM_DENS        1000.0
 #define STR_LEN_0               80
 #define DENSITY_POWER           0.2

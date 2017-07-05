@@ -102,10 +102,12 @@ void readDustFile(char *dustFileName, double **lamtab, double **kaptab\
     if(!silent) bail_out("Error opening dust opacity data file!");
     exit(1);
   }
-  while(fgetc(fp) != EOF){
-    fgets(string,80,fp);
+
+
+  while(fgets(string,80,fp) != NULL){
     i++;
   }
+
   rewind(fp);
 
   /* Now read the values.
@@ -118,7 +120,7 @@ void readDustFile(char *dustFileName, double **lamtab, double **kaptab\
     exit(1);
   }
   for(k=0;k<i;k++){
-    fscanf(fp,"%lf %lf\n", &(*lamtab)[k], &(*kaptab)[k]);
+    assert(fscanf(fp,"%lf %lf\n", &(*lamtab)[k], &(*kaptab)[k])==2);
     (*lamtab)[k]=log10((*lamtab)[k]/1e6);
     (*kaptab)[k]=log10((*kaptab)[k]);
   }

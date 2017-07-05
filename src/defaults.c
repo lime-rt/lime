@@ -8,7 +8,6 @@
  */
 
 #include "lime.h"
-#include "assert.h"
 
 
 void __attribute__((weak))

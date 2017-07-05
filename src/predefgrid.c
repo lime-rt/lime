@@ -31,8 +31,6 @@ predefinedGrid(configInfo *par, struct grid *gp){
   fp=fopen(par->pregrid,"r");
 
   for(i=0;i<par->pIntensity;i++){
-    //    fscanf(fp,"%d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &gp[i].id, &gp[i].x[0], &gp[i].x[1], &gp[i].x[2],  &gp[i].dens[0], &gp[i].t[0], &abun, &gp[i].dopb_turb, &gp[i].vel[0], &gp[i].vel[1], &gp[i].vel[2]);
-    //    fscanf(fp,"%d %lf %lf %lf %lf %lf %lf %lf\n", &gp[i].id, &gp[i].x[0], &gp[i].x[1], &gp[i].x[2],  &gp[i].dens[0], &gp[i].t[0], &abun, &gp[i].dopb_turb);
     int nRead = fscanf(fp,"%d %lf %lf %lf %lf %lf %lf %lf %lf\n", &gp[i].id, &gp[i].x[0], &gp[i].x[1], &gp[i].x[2],  &gp[i].dens[0], &gp[i].t[0], &gp[i].vel[0], &gp[i].vel[1], &gp[i].vel[2]);
     if( nRead != 9 || gp[i].id < 0 || gp[i].id > par->pIntensity)
       {
