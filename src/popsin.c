@@ -107,7 +107,7 @@ popsin(configInfo *par, struct grid **gp, molData **md, int *popsdone){
   par->sinkPoints += nExtraSinks;
 
   distCalc(par, *gp);
-  getVelocities(par,*gp);
+  getEdgeVelocities(par,*gp);
 
   par->dataFlags |= (1 << DS_bit_x);
   par->dataFlags |= (1 << DS_bit_neighbours);

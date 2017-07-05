@@ -24,6 +24,57 @@ struct baryVelBuffType {
   double **vertexVels,**edgeVels,*entryCellBary,*midCellBary,*exitCellBary,*shapeFns;
 };
 
+typedef struct{
+  double x[DIM], xCmpntRay, B[3];
+  struct populations *mol;
+  struct continuumLine cont;
+} gridInterp;
+
+/*....................................................................*/
+void calcGridContDustOpacity(configInfo *par, const double freq\
+  , double *lamtab, double *kaptab, const int nEntries, struct grid *gp){
+
+  int id;
+  double gtd;
+  gsl_spline *spline = NULL;
+  gsl_interp_accel *acc = NULL;
+  double *kappatab = NULL;
+  double *knus=NULL, *dusts=NULL;
+  double *freqs=NULL;
+
+  kappatab = malloc(sizeof(*kappatab)*1);
+  knus     = malloc(sizeof(*knus)    *1);
+  dusts    = malloc(sizeof(*dusts)   *1);
+  freqs    = malloc(sizeof(*freqs)   *1);
+
+  freqs[0] = freq;
+
+  if(par->dust == NULL)
+    kappatab[0] = 0.;
+  else{
+    acc = gsl_interp_accel_alloc();
+    spline = gsl_spline_alloc(gsl_interp_cspline,nEntries);
+    gsl_spline_init(spline,lamtab,kaptab,nEntries);
+    kappatab[0] = interpolateKappa(freq, lamtab, kaptab, nEntries, spline, acc);
+  }
+
+  for(id=0;id<par->ncell;id++){
+    gasIIdust(gp[id].x[0],gp[id].x[1],gp[id].x[2],&gtd);
+    calcDustData(par, gp[id].dens, freqs, gtd, kappatab, 1, gp[id].t, knus, dusts);
+    gp[id].cont.knu = knus[0];
+    gp[id].cont.dust = dusts[0];
+  }
+
+  if(par->dust != NULL){
+    gsl_spline_free(spline);
+    gsl_interp_accel_free(acc);
+  }
+  free(knus);
+  free(dusts);
+  free(freqs);
+  free(kappatab);
+}
+
 /*....................................................................*/
 void
 calcLineAmpSample(const double x[3], const double dx[3], const double ds\
@@ -172,7 +223,6 @@ Note that the algorithm employed here is similar to that employed in the functio
 
   col=0;
   do{
-
     ds=-2.*zp-col; /* This default value is chosen to be as large as possible given the spherical model boundary. */
     nposn=-1;
     line_plane_intersect(gp,&ds,posn,&nposn,dx,x,cutoff); /* Returns a new ds equal to the distance to the next Voronoi face, and nposn, the ID of the grid cell that abuts that face. */
@@ -1366,6 +1416,7 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
       if(par->traceRayAlgorithm==0)
         traceray(rays[ri], im, par, gp, md, img\
           , cutoff, nStepsThruCell, oneOnNSteps);
+
       else if(par->traceRayAlgorithm==1)
         traceray_smooth(rays[ri], im, par, gp, vertexCoords, md, img\
           , cells, numCells, epsilon, gips, ptrToBuff\

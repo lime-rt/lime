@@ -317,6 +317,7 @@ void molInit(configInfo *par, molData *md){
 
   readMolData(par, md, &allUniqueCollPartIds, &numUniqueCollPartsFound);
   setUpDensityAux(par, allUniqueCollPartIds, numUniqueCollPartsFound);
+  free(allUniqueCollPartIds);
 
   if(par->girdatfile!=NULL){
     setUpGir(par, md);
@@ -362,6 +363,5 @@ void molInit(configInfo *par, molData *md){
   }
 
   calcMolCMBs(par, md);
-  free(allUniqueCollPartIds);
 }
 
