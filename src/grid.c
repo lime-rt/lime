@@ -530,7 +530,7 @@ Generate the remaining values if needed.
 
     if(!allBitsSet(par->dataFlags, DS_mask_ACOEFF)){
       if(!bitIsSet(defaultFuncFlags, FUNC_BIT_velocity)){
-        getEdgeVelocities(par,*gp); /* Mallocs and sets .v1, .v2, .v3, which are only used within photon(), which is only called if par->doMolCalcs. This also sets par->edgeVelsAvailable. */
+        getEdgeVelocities(par,*gp); /* Mallocs and sets .v1, .v2, .v3, which are only used within calculateJBar(), which is only called if par->doMolCalcs. This also sets par->edgeVelsAvailable. */
 
         par->dataFlags |= DS_mask_ACOEFF;
       }

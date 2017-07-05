@@ -251,7 +251,7 @@ void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *
 /*....................................................................*/
 void assignMolCollPartsToDensities(configInfo *par, molData *md){
   /*
-If we have reached this point, par->collPartIds (and par->nMolWeights) should have been malloc'd and filled with sensible values. Here we set up indices which allow us to associate a density function with each collision partner of each radiating molecule. This information is made use of in stateq.c.
+If we have reached this point, par->collPartIds (and par->nMolWeights) should have been malloc'd and filled with sensible values. Here we set up indices which allow us to associate a density function with each collision partner of each radiating molecule. This information is made use of in solver.c.
   */
   int i,j,ipart;
 

@@ -180,7 +180,7 @@ traceray(rayData ray, const int im\
   /*
 For a given image pixel position, this function evaluates the intensity of the total light emitted/absorbed along that line of sight through the (possibly rotated) model. The calculation is performed for several frequencies, one per channel of the output image.
 
-Note that the algorithm employed here is similar to that employed in the function photon() which calculates the average radiant flux impinging on a grid cell: namely the notional photon is started at the side of the model near the observer and 'propagated' in the receding direction until it 'reaches' the far side. This is rather non-physical in conception but it makes the calculation easier.
+Note that the algorithm employed here is similar to that employed in the function calculateJBar() which calculates the average radiant flux impinging on a grid cell: namely the notional photon is started at the side of the model near the observer and 'propagated' in the receding direction until it 'reaches' the far side. This is rather non-physical in conception but it makes the calculation easier.
   */
   int ichan,stokesId,di,i,posn,nposn,molI,lineI;
   double xp,yp,zp,x[DIM],dx[DIM],dist2,ndist2,col,ds,snu_pol[3],dtau;
@@ -292,7 +292,7 @@ Note that the algorithm employed here is similar to that employed in the functio
         } /* end if(img[im].doline) */
 
         dtau=alpha*ds;
-//???          if(dtau < -30) dtau = -30; // as in photon()?
+//???          if(dtau < -30) dtau = -30; // as in ()?
         calcSourceFn(dtau, par, &remnantSnu, &expDTau);
         remnantSnu *= jnu*ds;
 #ifdef FASTEXP
@@ -552,7 +552,7 @@ traceray_smooth(rayData ray, const int im\
   /*
 For a given image pixel position, this function evaluates the intensity of the total light emitted/absorbed along that line of sight through the (possibly rotated) model. The calculation is performed for several frequencies, one per channel of the output image.
 
-Note that the algorithm employed here to solve the RTE is similar to that employed in the function photon() which calculates the average radiant flux impinging on a grid cell: namely the notional photon is started at the side of the model near the observer and 'propagated' in the receding direction until it 'reaches' the far side. This is rather non-physical in conception but it makes the calculation easier.
+Note that the algorithm employed here to solve the RTE is similar to that employed in the function calculateJBar() which calculates the average radiant flux impinging on a grid cell: namely the notional photon is started at the side of the model near the observer and 'propagated' in the receding direction until it 'reaches' the far side. This is rather non-physical in conception but it makes the calculation easier.
 
 This version of traceray implements a new algorithm in which the population values are interpolated linearly from those at the vertices of the Delaunay cell which the working point falls within.
 
@@ -872,7 +872,7 @@ At the moment I will fix the number of segments, but it might possibly be faster
           } /* end if doLine. */
 
           dtau = alpha*ds;
-//???          if(dtau < -30) dtau = -30; // as in photon()?
+//???          if(dtau < -30) dtau = -30; // as in calculateJBar()?
           calcSourceFn(dtau, par, &remnantSnu, &expDTau);
           remnantSnu *= jnu*ds;
 #ifdef FASTEXP
