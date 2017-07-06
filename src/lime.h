@@ -52,23 +52,24 @@
 
 /* Physical constants */
 /* - NIST values as of 23 Sept 2015: */
-#define AMU             1.66053904e-27		/* atomic mass unit             [kg]	*/
-#define CLIGHT          2.99792458e8		/* speed of light in vacuum     [m / s]	*/
-#define HPLANCK         6.626070040e-34		/* Planck constant              [J * s]	*/
-#define KBOLTZ          1.38064852e-23		/* Boltzmann constant           [J / K]	*/
+#define AMU             1.66053904e-27       /* atomic mass unit             [kg]	*/
+#define CLIGHT          2.99792458e8         /* speed of light in vacuum     [m / s]	*/
+#define HPLANCK         6.626070040e-34      /* Planck constant              [J * s]	*/
+#define KBOLTZ          1.38064852e-23       /* Boltzmann constant           [J / K]	*/
 
 /* From IAU 2009: */
-#define GRAV            6.67428e-11		/* gravitational constant       [m^3 / kg / s^2]	*/
-#define AU              1.495978707e11		/* astronomical unit            [m]	*/
-#define LOCAL_CMB_TEMP  2.72548			/* local mean CMB temperature   [K]
+#define GRAV            6.67428e-11          /* gravitational constant       [m^3 / kg / s^2]	*/
+#define AU              1.495978707e11       /* astronomical unit            [m]               */
+
+#define LOCAL_CMB_TEMP  2.72548              /* local mean CMB temperature from Fixsen (2009) [K] */
 
 /* Derived: */
-#define PC              3.08567758e16		/* parsec (~3600*180*AU/PI)     [m]	*/
-#define HPIP            8.918502221e-27		/* HPLANCK*CLIGHT/4.0/PI/SPI	*/
-#define HCKB            1.43877735		/* 100.*HPLANCK*CLIGHT/KBOLTZ	*/
+#define PC              3.08567758e16        /* parsec (~3600*180*AU/PI)     [m]	*/
+#define HPIP            8.918502221e-27	     /* HPLANCK*CLIGHT/4.0/PI/SPI	*/
+#define HCKB            1.43877735           /* 100.*HPLANCK*CLIGHT/KBOLTZ	*/
 
 /* Other constants */
-#define SQRT_PI                 (sqrt(M_PI))  		/* sqrt(pi)	*/
+#define SQRT_PI                 (sqrt(M_PI))           /* sqrt(pi)	*/
 #define NITERATIONS             16
 #define MAX_RAYS_PER_POINT      10000
 #define RAYS_PER_POINT          200
@@ -76,7 +77,7 @@
 #define IMG_MIN_ALLOWED         1.0e-30
 #define TOL                     1e-6
 #define MAXITER                 50
-#define maxBlendDeltaV          1.e4		          /* m/s */
+#define maxBlendDeltaV          1.e4                   /* m/s */
 #define MAX_NSPECIES            100
 #define MAX_NIMAGES             100
 #define N_RAN_PER_SEGMENT       3
@@ -90,7 +91,7 @@
 #define DENSITY_POWER           0.2
 #define TREE_POWER              2.0
 #define MAX_N_HIGH              10
-#define ERF_TABLE_LIMIT         6.0             /* For x>6 erf(x)-1<double precision machine epsilon, so no need to store the values for larger x. */
+#define ERF_TABLE_LIMIT         6.0                    /* For x>6 erf(x)-1<double precision machine epsilon, so no need to store the values for larger x. */
 #define ERF_TABLE_SIZE          6145
 #define BIN_WIDTH               (ERF_TABLE_LIMIT/(ERF_TABLE_SIZE-1.))
 #define IBIN_WIDTH              (1./BIN_WIDTH)
