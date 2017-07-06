@@ -60,6 +60,7 @@
 /* From IAU 2009: */
 #define GRAV            6.67428e-11		/* gravitational constant       [m^3 / kg / s^2]	*/
 #define AU              1.495978707e11		/* astronomical unit            [m]	*/
+#define LOCAL_CMB_TEMP  2.72548			/* local mean CMB temperature   [K]
 
 /* Derived: */
 #define PC              3.08567758e16		/* parsec (~3600*180*AU/PI)     [m]	*/
@@ -68,7 +69,6 @@
 
 /* Other constants */
 #define SQRT_PI                 (sqrt(M_PI))  		/* sqrt(pi)	*/
-#define LOCAL_CMB_TEMP          2.725
 #define NITERATIONS             16
 #define MAX_RAYS_PER_POINT      10000
 #define RAYS_PER_POINT          200

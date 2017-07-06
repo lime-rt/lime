@@ -292,7 +292,9 @@ Note that the algorithm employed here is similar to that employed in the functio
         } /* end if(img[im].doline) */
 
         dtau=alpha*ds;
-//???          if(dtau < -30) dtau = -30; // as in ()?
+        /* Should we check for overly strong masers as in calculateJBar()?
+        if(dtau < -30) dtau = -30;  
+        */
         calcSourceFn(dtau, par, &remnantSnu, &expDTau);
         remnantSnu *= jnu*ds;
 #ifdef FASTEXP
