@@ -65,8 +65,8 @@ void randomsViaRejection(configInfo *par, const unsigned int desiredNumPoints, g
       while(!pointIsAccepted && j<maxNumAttempts){
         if(par->sampling==0){
           r=pow(10,logmin+gsl_rng_uniform(randGen)*(lograd-logmin));
-          theta=2.*PI*gsl_rng_uniform(randGen);
-          phi=PI*gsl_rng_uniform(randGen);
+          theta=2.*M_PI*gsl_rng_uniform(randGen);
+          phi=M_PI*gsl_rng_uniform(randGen);
           sinPhi=sin(phi);
           x[0]=r*cos(theta)*sinPhi;
           x[1]=r*sin(theta)*sinPhi;
@@ -77,7 +77,7 @@ void randomsViaRejection(configInfo *par, const unsigned int desiredNumPoints, g
           if(DIM==3) x[2]=(2*gsl_rng_uniform(randGen)-1)*par->radius;
         } else if(par->sampling==2){
           r=pow(10,logmin+gsl_rng_uniform(randGen)*(lograd-logmin));
-          theta=2.*PI*gsl_rng_uniform(randGen);
+          theta=2.*M_PI*gsl_rng_uniform(randGen);
           if(DIM==3) {
             z=2*gsl_rng_uniform(randGen)-1.;
             semiradius=r*sqrt(1.-z*z);
@@ -392,7 +392,7 @@ exit(1);
 
     /* Add surface sink particles */
     for(k=par->pIntensity;k<par->ncell;k++){
-      theta=gsl_rng_uniform(randGen)*2*PI;
+      theta=gsl_rng_uniform(randGen)*2*M_PI;
 
       if(DIM==3) {
         z=2*gsl_rng_uniform(randGen)-1.;
@@ -455,7 +455,7 @@ Generate the remaining values if needed.
       density((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],(*gp)[i].dens);
     for(i=par->pIntensity;i<par->ncell;i++){
       for(j=0;j<par->numDensities;j++)
-        (*gp)[i].dens[j]=1e-30;//************** what is the low but non zero value for?
+        (*gp)[i].dens[j]=EPS; //************** what is the low but non zero value for? Probably to make sure no ills happen in case something gets divided by this?
     }
 
     par->dataFlags |= DS_mask_density;
@@ -530,7 +530,7 @@ Generate the remaining values if needed.
 
     if(!allBitsSet(par->dataFlags, DS_mask_ACOEFF)){
       if(!bitIsSet(defaultFuncFlags, FUNC_BIT_velocity)){
-        getEdgeVelocities(par,*gp); /* Mallocs and sets .v1, .v2, .v3, which are only used within photon(), which is only called if par->doMolCalcs. This also sets par->edgeVelsAvailable. */
+        getEdgeVelocities(par,*gp); /* Mallocs and sets .v1, .v2, .v3, which are only used within calculateJBar(), which is only called if par->doMolCalcs. This also sets par->edgeVelsAvailable. */
 
         par->dataFlags |= DS_mask_ACOEFF;
       }

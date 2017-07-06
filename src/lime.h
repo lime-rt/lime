@@ -15,6 +15,7 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include <assert.h>
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_spline.h>
@@ -51,35 +52,32 @@
 
 /* Physical constants */
 /* - NIST values as of 23 Sept 2015: */
-#define AMU             1.66053904e-27		/* atomic mass unit             [kg]	*/
-#define CLIGHT          2.99792458e8		/* speed of light in vacuum     [m / s]	*/
-#define HPLANCK         6.626070040e-34		/* Planck constant              [J * s]	*/
-#define KBOLTZ          1.38064852e-23		/* Boltzmann constant           [J / K]	*/
+#define AMU             1.66053904e-27       /* atomic mass unit             [kg]	*/
+#define CLIGHT          2.99792458e8         /* speed of light in vacuum     [m / s]	*/
+#define HPLANCK         6.626070040e-34      /* Planck constant              [J * s]	*/
+#define KBOLTZ          1.38064852e-23       /* Boltzmann constant           [J / K]	*/
 
 /* From IAU 2009: */
-#define GRAV            6.67428e-11		/* gravitational constant       [m^3 / kg / s^2]	*/
-#define AU              1.495978707e11		/* astronomical unit            [m]	*/
+#define GRAV            6.67428e-11          /* gravitational constant       [m^3 / kg / s^2]	*/
+#define AU              1.495978707e11       /* astronomical unit            [m]               */
+
+#define LOCAL_CMB_TEMP  2.72548              /* local mean CMB temperature from Fixsen (2009) [K] */
 
 /* Derived: */
-#define PC              3.08567758e16		/* parsec (~3600*180*AU/PI)     [m]	*/
-#define HPIP            8.918502221e-27		/* HPLANCK*CLIGHT/4.0/PI/SPI	*/
-#define HCKB            1.43877735		/* 100.*HPLANCK*CLIGHT/KBOLTZ	*/
+#define PC              3.08567758e16        /* parsec (~3600*180*AU/PI)     [m]	*/
+#define HPIP            8.918502221e-27	     /* HPLANCK*CLIGHT/4.0/PI/SPI	*/
+#define HCKB            1.43877735           /* 100.*HPLANCK*CLIGHT/KBOLTZ	*/
 
 /* Other constants */
-#define PI                      3.14159265358979323846	/* pi	*/
-#define SPI                     1.77245385091		/* sqrt(pi)	*/
-#define maxp                    0.15
+#define SQRT_PI                 (sqrt(M_PI))           /* sqrt(pi)	*/
 #define NITERATIONS             16
 #define MAX_RAYS_PER_POINT      10000
 #define RAYS_PER_POINT          200
-#define minpop                  1.e-6
-#define eps                     1.0e-30
+#define EPS                     1.0e-30                /* general use small number */
 #define IMG_MIN_ALLOWED         1.0e-30
 #define TOL                     1e-6
 #define MAXITER                 50
-#define goal                    50
-#define fixset                  1e-6
-#define maxBlendDeltaV          1.e4		/* m/s */
+#define maxBlendDeltaV          1.e4                   /* m/s */
 #define MAX_NSPECIES            100
 #define MAX_NIMAGES             100
 #define N_RAN_PER_SEGMENT       3
@@ -87,13 +85,13 @@
 #define FAST_EXP_NUM_BITS       8
 #define NUM_GRID_STAGES         5
 #define MAX_N_COLL_PART         20
-#define N_SMOOTH_ITERS          20
+#define N_SMOOTH_ITERS          5                      /* number of smoothing iterations if using  par->samplingAlgorithm=0 */
 #define TYPICAL_ISM_DENS        1000.0
 #define STR_LEN_0               80
 #define DENSITY_POWER           0.2
 #define TREE_POWER              2.0
 #define MAX_N_HIGH              10
-#define ERF_TABLE_LIMIT         6.0             /* For x>6 erf(x)-1<double precision machine epsilon, so no need to store the values for larger x. */
+#define ERF_TABLE_LIMIT         6.0                    /* For x>6 erf(x)-1<double precision machine epsilon, so no need to store the values for larger x. */
 #define ERF_TABLE_SIZE          6145
 #define BIN_WIDTH               (ERF_TABLE_LIMIT/(ERF_TABLE_SIZE-1.))
 #define IBIN_WIDTH              (1./BIN_WIDTH)
@@ -301,9 +299,7 @@ void	freeMolData(const int, molData*);
 void	freePopulation(const unsigned short, struct populations*);
 void	freeSomeGridFields(const unsigned int, const unsigned short, struct grid*);
 double	gaussline(const double, const double);
-void	getArea(configInfo*, struct grid*, const gsl_rng*);
 double	geterf(const double, const double);
-void	getMass(configInfo*, struct grid*, const gsl_rng*);
 void	getEdgeVelocities(configInfo *, struct grid *);
 void	input(inputPars*, image*);
 double	interpolateKappa(const double, double*, double*, const int, gsl_spline*, gsl_interp_accel*);
@@ -347,7 +343,6 @@ void	printMessage(char *);
 void	progressbar(double, int);
 void	progressbar2(configInfo*, int, int, double, double, double);
 void	reportOutput(char*);
-void	quotemass(double);
 void	screenInfo(void);
 void	warning(char*);
 

@@ -31,8 +31,6 @@ predefinedGrid(configInfo *par, struct grid *gp){
   fp=fopen(par->pregrid,"r");
 
   for(i=0;i<par->pIntensity;i++){
-    //    fscanf(fp,"%d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n", &gp[i].id, &gp[i].x[0], &gp[i].x[1], &gp[i].x[2],  &gp[i].dens[0], &gp[i].t[0], &abun, &gp[i].dopb_turb, &gp[i].vel[0], &gp[i].vel[1], &gp[i].vel[2]);
-    //    fscanf(fp,"%d %lf %lf %lf %lf %lf %lf %lf\n", &gp[i].id, &gp[i].x[0], &gp[i].x[1], &gp[i].x[2],  &gp[i].dens[0], &gp[i].t[0], &abun, &gp[i].dopb_turb);
     int nRead = fscanf(fp,"%d %lf %lf %lf %lf %lf %lf %lf %lf\n", &gp[i].id, &gp[i].x[0], &gp[i].x[1], &gp[i].x[2],  &gp[i].dens[0], &gp[i].t[0], &gp[i].vel[0], &gp[i].vel[1], &gp[i].vel[2]);
     if( nRead != 9 || gp[i].id < 0 || gp[i].id > par->pIntensity)
       {
@@ -75,7 +73,7 @@ predefinedGrid(configInfo *par, struct grid *gp){
       gp[i].x[2]=scale*z;
       gp[i].sink=1;
       gp[i].mol[0].abun=0.0; /* Just to give it a value. */
-      gp[i].dens[0]=1e-30;
+      gp[i].dens[0]=EPS;
       gp[i].mol[0].nmol=0.0; /* Just to give it a value. */
       gp[i].t[0]=par->tcmb;
       gp[i].t[1]=par->tcmb;

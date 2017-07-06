@@ -554,8 +554,8 @@ LIME provides two different schemes of {R_1, R_2, R_3}: {PA, phi, theta} and {PA
     }else{
       /* Load inclination rotation matrix R_inc:
       */
-      cos_incl = cos((*img)[i].incl + PI);
-      sin_incl = sin((*img)[i].incl + PI);
+      cos_incl = cos((*img)[i].incl + M_PI);
+      sin_incl = sin((*img)[i].incl + M_PI);
       auxRotMat[0][0] =  cos_incl;
       auxRotMat[0][1] =  0.0;
       auxRotMat[0][2] = -sin_incl;
@@ -592,8 +592,8 @@ LIME provides two different schemes of {R_1, R_2, R_3}: {PA, phi, theta} and {PA
     }else{
       /* Load azimuth rotation matrix R_az:
       */
-      cos_az   = cos((*img)[i].azimuth + PI/2.0);
-      sin_az   = sin((*img)[i].azimuth + PI/2.0);
+      cos_az   = cos((*img)[i].azimuth + M_PI/2.0);
+      sin_az   = sin((*img)[i].azimuth + M_PI/2.0);
       auxRotMat[0][0] =  cos_az;
       auxRotMat[0][1] = -sin_az;
       auxRotMat[0][2] =  0.0;
@@ -716,7 +716,7 @@ run(inputPars inpars, image *inimg, const int nImages){
   if(!silent) screenInfo();
 
 #ifdef FASTEXP
-  calcTableEntries(FAST_EXP_MAX_TAYLOR, FAST_EXP_NUM_BITS);
+  calcExpTableEntries(FAST_EXP_MAX_TAYLOR, FAST_EXP_NUM_BITS);
 #endif
   fillErfTable();
 

@@ -27,7 +27,7 @@ double oneOver_i[FAST_EXP_MAX_TAYLOR+1];
 void fillErfTable() {
   int i;
   for (i=0;i<ERF_TABLE_SIZE;i++) {
-    ERF_TABLE[i]=(SPI/2.)*erf(i*ERF_TABLE_LIMIT/(ERF_TABLE_SIZE-1.));
+    ERF_TABLE[i]=(SQRT_PI/2.)*erf(i*ERF_TABLE_LIMIT/(ERF_TABLE_SIZE-1.));
   }
 }
 
@@ -38,7 +38,7 @@ geterf(const double x0, const double x1) {
 
   double val0=0.,val1=0.;
   
-  if (fabs(x0)>=ERF_TABLE_LIMIT) val0=(SPI/2.);
+  if (fabs(x0)>=ERF_TABLE_LIMIT) val0=(SQRT_PI/2.);
   else {
     int index = (int)(fabs(x0*IBIN_WIDTH));
     double inter_coeff = (fabs(x0*IBIN_WIDTH)-index);
@@ -46,7 +46,7 @@ geterf(const double x0, const double x1) {
   }
   if (x0<0.) val0=-val0;
  
-  if (fabs(x1)>=ERF_TABLE_LIMIT) val1=(SPI/2.);
+  if (fabs(x1)>=ERF_TABLE_LIMIT) val1=(SQRT_PI/2.);
   else {
     int index = (int)(fabs(x1*IBIN_WIDTH));
     double inter_coeff = (fabs(x1*IBIN_WIDTH)-index);

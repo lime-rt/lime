@@ -6,7 +6,7 @@
  *  Copyright (C) 2015-2017 The LIME development team
  *
 TODO:
-  - The test to run photon() etc in levelPops just tests dens[0]. This is a bit sloppy.
+  - The test to run calculateJBar() etc in levelPops just tests dens[0]. This is a bit sloppy.
  */
 
 #include "lime.h"
@@ -16,7 +16,7 @@ TODO:
 #include <gsl/gsl_permutation.h>
 #include <gsl/gsl_errno.h>
 
-/* Data concerning a single grid vertex which is passed from photon() to stateq(). This data needs to be thread-safe. */
+/* Data concerning a single grid vertex which is passed from calculateJBar() to solveStatEq(). This data needs to be thread-safe. */
 typedef struct {
   double *jbar,*phot,*vfac,*vfac_loc;
 } gridPointData;
@@ -406,7 +406,7 @@ void calcLineAmpLin(struct grid *g, const int id, const int k\
 
 /*....................................................................*/
 void
-photon(int id, struct grid *gp, molData *md, const gsl_rng *ran\
+calculateJBar(int id, struct grid *gp, molData *md, const gsl_rng *ran\
   , configInfo *par, const int nlinetot, struct blendInfo blends\
   , gridPointData *mp, double *halfFirstDs){
 
@@ -430,7 +430,7 @@ photon(int id, struct grid *gp, molData *md, const gsl_rng *ran\
 
     /* Choose random initial photon direction (the distribution used here is even over the surface of a sphere of radius 1).
     */
-    pt_theta=gsl_rng_uniform(ran)*2*PI;
+    pt_theta=gsl_rng_uniform(ran)*2*M_PI;
     pt_z=2*gsl_rng_uniform(ran)-1;
     semiradius = sqrt(1.-pt_z*pt_z);
     inidir[0]=semiradius*cos(pt_theta);
@@ -477,7 +477,7 @@ photon(int id, struct grid *gp, molData *md, const gsl_rng *ran\
           mp[molI].vfac[iphot]=vfac_out[molI];
         }
         /*
-        Contribution of the local cell to emission and absorption is done in getjbar.
+        Contribution of the local cell to emission and absorption is done in updateJBar.
         We only store the vfac for the local cell for use in ALI loops.
         */
         here=there;
@@ -584,7 +584,7 @@ photon(int id, struct grid *gp, molData *md, const gsl_rng *ran\
 
 /*....................................................................*/
 void
-getjbar(int posn, molData *md, struct grid *gp, const int molI\
+updateJBar(int posn, molData *md, struct grid *gp, const int molI\
   , configInfo *par, struct blendInfo blends, int nextMolWithBlend\
   , gridPointData *mp, double *halfFirstDs){
 
@@ -644,7 +644,7 @@ getFixedMatrix(molData *md, int ispec, struct grid *gp, int id, gsl_matrix *coll
 
   /* Initialize matrix with zeros */
   if(md[ispec].nlev<=0){
-    if(!silent) bail_out("Matrix initialization error in stateq");
+    if(!silent) bail_out("Matrix initialization error in solveStatEq");
     exit(1);
   }
   gsl_matrix_set_zero(colli);
@@ -753,13 +753,14 @@ LTE(configInfo *par, struct grid *gp, molData *md){
 
 /*....................................................................*/
 void
-stateq(int id, struct grid *gp, molData *md, const int ispec, configInfo *par\
+solveStatEq(int id, struct grid *gp, molData *md, const int ispec, configInfo *par\
   , struct blendInfo blends, int nextMolWithBlend, gridPointData *mp\
   , double *halfFirstDs, _Bool *luWarningGiven){
 
   int t,s,iter,status;
   double *opop,*oopop,*tempNewPop=NULL;
   double diff;
+  const double minpop_for_convergence_check = 1.e-6;
   char errStr[80];
 
   gsl_matrix *colli  = gsl_matrix_alloc(md[ispec].nlev, md[ispec].nlev);
@@ -784,7 +785,7 @@ stateq(int id, struct grid *gp, molData *md, const int ispec, configInfo *par\
   getFixedMatrix(md,ispec,gp,id,colli,par);
 
   while((diff>TOL && iter<MAXITER) || iter<5){
-    getjbar(id,md,gp,ispec,par,blends,nextMolWithBlend,mp,halfFirstDs);
+    updateJBar(id,md,gp,ispec,par,blends,nextMolWithBlend,mp,halfFirstDs);
 
     getMatrix(matrix,md,ispec,mp,colli);
 
@@ -817,7 +818,7 @@ stateq(int id, struct grid *gp, molData *md, const int ispec, configInfo *par\
 
     diff=0.;
     for(t=0;t<md[ispec].nlev;t++){
-      gsl_vector_set(newpop,t,gsl_max(gsl_vector_get(newpop,t),1e-30));
+      gsl_vector_set(newpop,t,gsl_max(gsl_vector_get(newpop,t),EPS));
       oopop[t]=opop[t];
       opop[t]=gp[id].mol[ispec].pops[t];
 
@@ -826,7 +827,7 @@ stateq(int id, struct grid *gp, molData *md, const int ispec, configInfo *par\
         gp[id].mol[ispec].pops[t]=gsl_vector_get(newpop,t);
       }
 
-      if(gsl_min(gp[id].mol[ispec].pops[t],gsl_min(opop[t],oopop[t]))>minpop){
+      if(gsl_min(gp[id].mol[ispec].pops[t],gsl_min(opop[t],oopop[t]))>minpop_for_convergence_check){
         diff=gsl_max(fabs(gp[id].mol[ispec].pops[t]-opop[t])/gp[id].mol[ispec].pops[t]\
             ,gsl_max(fabs(gp[id].mol[ispec].pops[t]-oopop[t])/gp[id].mol[ispec].pops[t],diff));
       }
@@ -927,7 +928,7 @@ levelPops(molData *md, configInfo *par, struct grid *gp, int *popsdone, double *
 
     defaultErrorHandler = gsl_set_error_handler_off();
     /*
-This is done to allow proper handling of errors which may arise in the LU solver within stateq(). It is done here because the GSL documentation does not recommend leaving the error handler at the default within multi-threaded code.
+This is done to allow proper handling of errors which may arise in the LU solver within solveStatEq(). It is done here because the GSL documentation does not recommend leaving the error handler at the default within multi-threaded code.
 
 While this is off however, other gsl_* etc calls will not exit if they encounter a problem. We may need to pay some attention to trapping their errors.
     */
@@ -973,10 +974,10 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
             if(!silent) progressbar(nVerticesDone/(double)par->pIntensity,10);
           }
           if(gp[id].dens[0] > 0 && gp[id].t[0] > 0){
-            photon(id,gp,md,threadRans[threadI],par,nlinetot,blends,mp,halfFirstDs);
+            calculateJBar(id,gp,md,threadRans[threadI],par,nlinetot,blends,mp,halfFirstDs);
             nextMolWithBlend = 0;
             for(ispec=0;ispec<par->nSpecies;ispec++){
-              stateq(id,gp,md,ispec,par,blends,nextMolWithBlend,mp,halfFirstDs,&luWarningGiven);
+              solveStatEq(id,gp,md,ispec,par,blends,nextMolWithBlend,mp,halfFirstDs,&luWarningGiven);
               if(par->blend && blends.mols!=NULL && ispec==blends.mols[nextMolWithBlend].molI)
                 nextMolWithBlend++;
             }
