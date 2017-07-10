@@ -113,8 +113,14 @@ doc::
 docclean::
 	rm -rf ${docdir}/_html
 
-clean:: 
-	rm -f *~ ${srcdir}/*.o ${TARGET} gridconvert
+objclean::
+	rm -f *~ ${srcdir}/*.o
 
-distclean:: clean docclean
+limeclean:: objclean
+	rm -f ${TARGET}
+
+clean:: objclean
+	rm -f gridconvert
+
+distclean:: clean docclean limeclean
 
