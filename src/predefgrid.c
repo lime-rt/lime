@@ -94,8 +94,6 @@ predefinedGrid(configInfo *par, struct grid *gp){
   par->sinkPoints += nExtraSinks;
 
   distCalc(par,gp);
-  //  getArea(par,gp, ran);
-  //  getMass(par,gp, ran);
 
   par->dataFlags |= (1 << DS_bit_x);
   par->dataFlags |= (1 << DS_bit_neighbours);
@@ -105,12 +103,32 @@ predefinedGrid(configInfo *par, struct grid *gp){
   par->dataFlags |= (1 << DS_bit_turb_doppler);
   par->dataFlags |= (1 << DS_bit_temperatures);
   par->dataFlags |= (1 << DS_bit_magfield);
-  par->dataFlags |= (1 << DS_bit_ACOEFF);
 
 //**** should fill in any missing info via the appropriate function calls.
 
   if(par->gridfile) write_VTK_unstructured_Points(par, gp);
   gsl_rng_free(ran);
   free(dc);
+}
+
+void writeGridToAscii(char *outFileName, struct grid *gp, const unsigned int nInternalPoints, const int dataFlags){
+  FILE *fp;
+  unsigned int i_ui;
+  const int dataMask = (1<<DS_bit_x)|(1<<DS_bit_velocity)|(1<<DS_bit_density)|(1<<DS_bit_temperatures);
+
+  if(!allBitsSet(dataFlags, dataMask)){
+    if(!silent) bail_out("Some of the columns needed to write the grid file are missing.");
+    exit(1);
+  }
+
+  if((fp=fopen(outFileName, "w"))==NULL){
+    if(!silent) bail_out("Error writing output grid file!");
+    exit(1);
+  }
+
+  for(i_ui=0;i_ui<nInternalPoints;i_ui++)
+    fprintf(fp,"%d %lf %lf %lf %lf %lf %lf %lf %lf\n", gp[i_ui].id, gp[i_ui].x[0], gp[i_ui].x[1], gp[i_ui].x[2],  gp[i_ui].dens[0], gp[i_ui].t[0], gp[i_ui].vel[0], gp[i_ui].vel[1], gp[i_ui].vel[2]);
+
+  fclose(fp);
 }
 

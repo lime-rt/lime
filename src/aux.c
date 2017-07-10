@@ -11,6 +11,30 @@ TODO:
 #include "lime.h"
 
 /*....................................................................*/
+void mallocAndSetDefaultMolData(const int nSpecies, molData **md){
+  int i;
+
+  (*md)=malloc(sizeof(molData)*nSpecies);
+  for(i=0;i<nSpecies;i++){
+    (*md)[i].nlev  = -1;
+    (*md)[i].nline = -1;
+    (*md)[i].npart = -1;
+    (*md)[i].amass = -1.0;
+    (*md)[i].part    = NULL;
+    (*md)[i].lal     = NULL;
+    (*md)[i].lau     = NULL;
+    (*md)[i].aeinst  = NULL;
+    (*md)[i].gir     = NULL;
+    (*md)[i].freq    = NULL;
+    (*md)[i].beinstu = NULL;
+    (*md)[i].beinstl = NULL;
+    (*md)[i].eterm   = NULL;
+    (*md)[i].gstat   = NULL;
+    (*md)[i].cmb     = NULL;
+  }
+}
+
+/*....................................................................*/
 void calcSourceFn(double dTau, const configInfo *par, double *remnantSnu, double *expDTau){
   /*
   The source function S is defined as j_nu/alpha, which is clearly not
