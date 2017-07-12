@@ -1357,6 +1357,31 @@ nth moment is defined as
 Sometimes the first moment (and also higher order moments) is normalized
 by the zero moment.
 
+Converting between old and new grid formats
+-------------------------------------------
+
+Since LIME 1.7 the user has been able to store grid information corresponding to a number of different stages of processing in FITS-format files. This facility has been improved and tidied up for version 1.8; an HDF5 alternative has also been provided. Since the early days of LIME however the program has offered two ways to read in at least partial grid information, activated respectively by the parameters par.pregrid and par.restart. These pathways have been entirely superseded by the comprehensive FITS/HDF5 implementation but have been retained for the present to support backward compatibility. Be warned however that we intend eventually to dispense with them. To prepare for this situation, a new utility has been added to the LIME package: gridconvert. You will need to compile this yourself as a one-off, since no run-time compilation script is provided. Viz:
+
+.. code:: c
+
+    cd <LIME root directory>
+    make gridconvert
+
+On the `make` line you can include the additional argument `USEHDF5=yes` if you prefer write/read to/from HDF5 instead of FITS. To clean up object files and other junk afterwards, do
+
+.. code:: c
+
+    make objclean
+
+To clean everything away and restore the package to its status at download, do
+
+.. code:: c
+
+    make clean
+
+Running LIME in the usual way will not delete or otherwise affect gridconvert.
+
+
 Ideas for LIME 2.0
 ------------------
 

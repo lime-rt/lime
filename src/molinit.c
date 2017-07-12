@@ -52,7 +52,7 @@ checkFirstLineMolDat(FILE *fp, char *moldatfile){
       sprintf(message, "Bad format first line of moldat file %s.", moldatfile);
       bail_out(message);
     }
-    exit(1);
+exit(1);
   }
 }
 
@@ -66,6 +66,7 @@ void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *
   const int sizeI=200;
   char string[sizeI],message[80];
   FILE *fp;
+  char *expectedLine="!MOLECULE";
 
   *allUniqueCollPartIds = malloc(sizeof(**allUniqueCollPartIds)*MAX_N_COLL_PART);
   *numUniqueCollPartsFound = 0;
@@ -73,11 +74,19 @@ void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *
   for(i=0;i<par->nSpecies;i++){
     if((fp=fopen(par->moldatfile[i], "r"))==NULL) {
       if(!silent) bail_out("Error opening molecular data file");
-      exit(1);
+exit(1);
     }
 
     /* Read the header of the data file */
     assert(fgets(string, sizeI, fp)!=NULL);
+    if(strncmp(string, expectedLine, strlen(expectedLine))!=0){
+      if(!silent){
+        sprintf(message, "Bad format first line of moldat file for species %d.", i);
+        bail_out(message);
+      }
+exit(1);
+    }
+
     assert(fgets(md[i].molName, 80, fp)!=NULL);
     md[i].molName[strcspn(md[i].molName, "\r\n")] = 0;
     assert(fgets(string, sizeI, fp)!=NULL);
@@ -143,7 +152,7 @@ void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *
       string[sizeof(string)-1] = 'x';
       if(fgets(string, sizeI, fp)==NULL){
         if(!silent) bail_out("Read of collision-partner comment line failed.");
-        exit(1);
+exit(1);
       } else{
         if(string[sizeof(string)-1]=='\0' && string[sizeof(string)-2]!='\n'){
           /* The presence now of a final \0 means the comment string was either just long enough for the buffer, or too long; the absence of \n in the 2nd-last place means it was too long.
@@ -152,7 +161,7 @@ void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *
             sprintf(message, "Collision-partner comment line must be shorter than %d characters.", sizeI-1);
             bail_out(message);
           }
-          exit(1);
+exit(1);
         }
       }
 
@@ -181,7 +190,7 @@ void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *
               sprintf(message, "More than %d unique collision partners found in the moldata files.", MAX_N_COLL_PART);
               bail_out(message);
             }
-            exit(1);
+exit(1);
           }
 
           (*allUniqueCollPartIds)[*numUniqueCollPartsFound] = collPartId;
@@ -244,7 +253,7 @@ void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *
 
   if((*numUniqueCollPartsFound)<=0){
     if(!silent) bail_out("No recognized collision partners read from file.");
-    exit(1);
+exit(1);
   }
 }
 
@@ -265,7 +274,7 @@ If we have reached this point, par->collPartIds (and par->nMolWeights) should ha
       }
       if(md[i].part[ipart].densityIndex==-1){
         if(!silent) bail_out("No density function has been found for molecule/coll. part. combination.");
-        exit(1);
+exit(1);
       }
     }
   }

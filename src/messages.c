@@ -250,7 +250,6 @@ goodnight(int initime){
 #endif
 }
 
-
 void
 printMessage(char message[80]){
 #ifdef NO_NCURSES

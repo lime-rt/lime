@@ -44,7 +44,7 @@
 
 #include "dims.h"
 
-#define VERSION	"1.8"
+#define VERSION "1.8"
 #define DEFAULT_NTHREADS 1
 #ifndef NTHREADS /* Value passed from the LIME script */
 #define NTHREADS DEFAULT_NTHREADS
@@ -65,7 +65,7 @@
 
 /* Derived: */
 #define PC              3.08567758e16        /* parsec (~3600*180*AU/PI)     [m]	*/
-#define HPIP            8.918502221e-27	     /* HPLANCK*CLIGHT/4.0/PI/SPI	*/
+#define HPIP            8.918502221e-27      /* HPLANCK*CLIGHT/4.0/PI/SPI	*/
 #define HCKB            1.43877735           /* 100.*HPLANCK*CLIGHT/KBOLTZ	*/
 
 /* Other constants */
@@ -138,6 +138,9 @@
 #define FUNC_BIT_magfield      6
 #define FUNC_BIT_gasIIdust     7
 #define FUNC_BIT_gridDensity   8
+
+#define TRUE                   1
+#define FALSE                  0
 
 #include "collparts.h"
 #include "inpars.h"
@@ -305,6 +308,7 @@ void	input(inputPars*, image*);
 double	interpolateKappa(const double, double*, double*, const int, gsl_spline*, gsl_interp_accel*);
 void	levelPops(molData*, configInfo*, struct grid*, int*, double*, double*, const int);
 void	mallocAndSetDefaultGrid(struct grid**, const size_t, const size_t);
+void	mallocAndSetDefaultMolData(const int, molData**);
 void	molInit(configInfo*, molData*);
 void	openSocket(char*);
 double	planckfunc(const double, const double);
@@ -314,10 +318,12 @@ void	predefinedGrid(configInfo*, struct grid*);
 void	processFitsError(int);
 void	raytrace(int, configInfo*, struct grid*, molData*, imageInfo*, double*, double*, const int);
 void	readDustFile(char*, double**, double**, int*);
+void	readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *numUniqueCollPartsFound);
 void	readOrBuildGrid(configInfo*, struct grid**);
 unsigned long reorderGrid(const unsigned long, struct grid*);
 void	reportInfsAtOrigin(const int, const double*, const char*);
 void	setCollPartsDefaults(struct cpData*);
+int	setupAndWriteGrid(configInfo *par, struct grid *gp, molData *md, char *outFileName);
 void	setUpDensityAux(configInfo*, int*, const int);
 void	smooth(configInfo*, struct grid*);
 void	sourceFunc_line(const molData*, const double, const struct populations*, const int, double*, double*);
@@ -325,6 +331,7 @@ void	sourceFunc_cont(const struct continuumLine, double*, double*);
 void	sourceFunc_pol(double*, const struct continuumLine, double (*rotMat)[3], double*, double*);
 void	writeFitsAllUnits(const int, configInfo*, imageInfo*);
 void	writeGridIfRequired(configInfo*, struct grid*, molData*, const int);
+void	writeGridToAscii(char *outFileName, struct grid *gp, const unsigned int nInternalPoints, const int dataFlags);
 void	write_VTK_unstructured_Points(configInfo*, struct grid*);
 
 

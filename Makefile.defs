@@ -37,6 +37,21 @@ STDSOURCES = \
 HDF5SOURCES = \
 	src/grid2hdf5.c
 
+CONVSOURCES = \
+	src/aux.c\
+	src/collparts.c\
+	src/defaults.c\
+	src/frees.c\
+	src/grid2fits.c\
+	src/gridconvert.c\
+	src/gridio.c\
+	src/grid_aux.c\
+	src/messages.c\
+	src/molinit.c\
+	src/popsin.c\
+	src/popsout.c\
+	src/predefgrid.c
+
 COREINCLUDES = \
 	src/dims.h\
 	src/collparts.h\
@@ -49,4 +64,12 @@ COREINCLUDES = \
 
 HDF5INCLUDES = \
 	src/grid2hdf5.h
+
+CONVINCLUDES = \
+	src/dims.h\
+	src/collparts.h\
+	src/grid2fits.h\
+	src/gridio.h\
+	src/inpars.h\
+	src/lime.h
 

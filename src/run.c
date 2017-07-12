@@ -663,24 +663,7 @@ exit(1);
   /* Allocate moldata array.
   */
   if(par->nSpecies>0){
-    (*md)=malloc(sizeof(molData)*par->nSpecies);
-    for( i=0; i<par->nSpecies; i++ ){
-      (*md)[i].nlev  = -1;
-      (*md)[i].nline = -1;
-      (*md)[i].npart = -1;
-      (*md)[i].amass = -1.0;
-      (*md)[i].part = NULL;
-      (*md)[i].lal = NULL;
-      (*md)[i].lau = NULL;
-      (*md)[i].aeinst = NULL;
-      (*md)[i].gir = NULL;
-      (*md)[i].freq = NULL;
-      (*md)[i].beinstu = NULL;
-      (*md)[i].beinstl = NULL;
-      (*md)[i].eterm = NULL;
-      (*md)[i].gstat = NULL;
-      (*md)[i].cmb = NULL;
-    }
+    mallocAndSetDefaultMolData(par->nSpecies, md);
   } /* otherwise leave it at NULL - we will not be using it. */
 
   if(par->samplingAlgorithm==0)

@@ -478,7 +478,6 @@ write_VTK_unstructured_Points(configInfo *par, struct grid *g){
   free(pt_array);
 }
 
-
 /*....................................................................*/
 void
 getEdgeVelocities(configInfo *par, struct grid *gp){
