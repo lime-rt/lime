@@ -68,8 +68,8 @@ getNewEntryFaceI(const int numDims, const unsigned long dci, const struct simple
   /* Finds the index of the old cell in the face list of the new cell. */
 
   const int numFaces=numDims+1;
-  _Bool matchFound = 0;
-  int ffi = 0, newEntryFaceI;
+  _Bool matchFound=0;
+  int ffi=0,newEntryFaceI=-1;
 
   while(ffi<numFaces && matchFound==0){
     if(newCell.neigh[ffi]!=NULL && newCell.neigh[ffi]->id==dci){

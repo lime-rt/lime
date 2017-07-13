@@ -563,10 +563,10 @@ A note about the object 'gips': this is an array with 3 elements, each one a str
   const int numFaces = DIM+1,nVertPerFace=3,numRayInterpSamp=3;
   int ichan,stokesId,di,status,lenChainPtrs=0,entryI,exitI,vi,vvi,ci,ei,fi;
   int si,molI,lineI,k,i;
-  double xp,yp,zp,x[DIM],dir[DIM],projVelRay,vel[DIM],projVelOffset,projVel2ndDeriv;
+  double xp,yp,zp,x[DIM],dir[DIM],projVelRay=0.0,vel[DIM],projVelOffset=0.0,projVel2ndDeriv;
   double xCmpntsRay[nVertPerFace],ds,snu_pol[3],dtau,contJnu,contAlpha;
   double jnu,alpha,lineRedShift,vThisChan,deltav,vfac,remnantSnu,expDTau;
-  double brightnessIncrement,projVelOld,projVelNew;
+  double brightnessIncrement,projVelOld=0.0,projVelNew=0.0;
   intersectType entryIntcptFirstCell, *cellExitIntcpts=NULL;
   unsigned long *chainOfCellIds=NULL,dci,dci0,dci1;
   unsigned long gis[2][nVertPerFace],gi,gi0,gi1,trialGi;

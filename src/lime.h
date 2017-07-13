@@ -15,7 +15,6 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
-#include <assert.h>
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_spline.h>
@@ -70,6 +69,7 @@
 
 /* Other constants */
 #define SQRT_PI                 (sqrt(M_PI))           /* sqrt(pi)	*/
+#define ARCSEC_TO_RN            M_PI/180.0/3600.0
 #define NITERATIONS             16
 #define MAX_RAYS_PER_POINT      10000
 #define RAYS_PER_POINT          200
@@ -287,6 +287,9 @@ void	calcGridMolDoppler(configInfo*, molData*, struct grid*);
 void	calcGridMolSpecNumDens(configInfo*, molData*, struct grid*);
 void	calcSourceFn(double, const configInfo*, double*, double*);
 void	checkFirstLineMolDat(FILE *fp, char *moldatfile);
+void	checkFgets(char *fgetsResult, char *message);
+void	checkFscanf(const int fscanfResult, const int expectedNum, char *message);
+void	checkFread(const size_t freadResult, const size_t expectedNum, char *message);
 void	checkGridDensities(configInfo*, struct grid*);
 void	checkUserDensWeights(configInfo*);
 void	copyInparStr(const char*, char**);
@@ -342,6 +345,7 @@ void	casaStyleProgressBar(const int, int);
 void	collpartmesg(char*, int);
 void	collpartmesg2(char*);
 void	collpartmesg3(int, int);
+void	error(char*);
 void	goodnight(int);
 void	greetings(void);
 void	greetings_parallel(int);

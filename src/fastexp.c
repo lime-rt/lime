@@ -15,9 +15,6 @@ double EXP_TABLE_3D[256][2][10];
 /* I've hard-wired the dimensions of these arrays, but it would be better perhaps to declare them as pointers, and calculate the dimensions with the help of the function call:
   calcFastExpRange(FAST_EXP_MAX_TAYLOR, FAST_EXP_NUM_BITS, &numMantissaFields, &lowestExponent, &numExponentsUsed)
 */
-#else
-double EXP_TABLE_2D[1][1]; /* nominal definitions so the fastexp.c module will compile. */
-double EXP_TABLE_3D[1][1][1];
 #endif
 
 double ERF_TABLE[ERF_TABLE_SIZE];
@@ -176,6 +173,7 @@ thus
   *numExponentsUsed = 1+nHi-nLo;
 }
 
+#ifdef FASTEXP
 /*....................................................................*/
 void calcExpTableEntries(const int maxTaylorOrder, const int maxNumBitsPerMantField){
   /*
@@ -284,5 +282,6 @@ This value should be calculated from 127+lowestExponent, where 127 is the offset
           EXP_TABLE_3D[j1][0][l]*
           EXP_TABLE_3D[j2][1][l]);
 }
+#endif
 
 

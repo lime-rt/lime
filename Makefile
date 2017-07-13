@@ -51,7 +51,7 @@ ifdef OLD_FITSIO
 endif
 
 # Names of source files included:
-include Makefile.defs
+include Makefile.srcs
 
 ##
 ## Do not change anything below unless you know what you are doing! 
@@ -67,7 +67,7 @@ LDFLAGS = -lgsl -lgslcblas -l${QHULL} -lcfitsio -lncurses -lm
 
 ifeq (${DOTEST},yes)
   CCFLAGS += -DTEST
-  CC += -g -Wunused -Wno-unused-result -Wformat -Wformat-security
+  CC += -g -Wunused -Wno-unused-value -Wformat -Wformat-security
 endif
 
 SRCS = ${CORESOURCES} ${STDSOURCES}

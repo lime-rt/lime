@@ -54,7 +54,7 @@ binpopsout(configInfo *par, struct grid *gp, molData *md){
   for(j=0;j<par->nSpecies;j++){
     dummyMol[j].dust = malloc(sizeof(double)*md[j].nline);
     dummyMol[j].knu  = malloc(sizeof(double)*md[j].nline);
-    dummy2[  j]      = malloc(sizeof(double)*md[i].nline);
+    dummy2[  j]      = malloc(sizeof(double)*md[j].nline);
     for(k=0;k<md[j].nline;k++){
       dummyMol[j].dust[k] = 0.0;
       dummyMol[j].knu[ k] = 0.0;

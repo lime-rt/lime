@@ -11,6 +11,45 @@ TODO:
 #include "lime.h"
 
 /*....................................................................*/
+void checkFgets(char *fgetsResult, char *message){
+  char string[80];
+
+  if(fgetsResult==NULL){
+    if(!silent){
+      sprintf(string, "fgets() failed to read %s", message);
+      bail_out(string);
+    }
+exit(1);
+  }
+}
+
+/*....................................................................*/
+void checkFscanf(const int fscanfResult, const int expectedNum, char *message){
+  char string[80];
+
+  if(fscanfResult!=expectedNum){
+    if(!silent){
+      sprintf(string, "fscanf() failed to read %s - read %d bytes when %d expected.", message, fscanfResult, expectedNum);
+      bail_out(string);
+    }
+exit(1);
+  }
+}
+
+/*....................................................................*/
+void checkFread(const size_t freadResult, const size_t expectedNum, char *message){
+  char string[80];
+
+  if(freadResult!=expectedNum){
+    if(!silent){
+      sprintf(string, "fread() failed to read %s", message);
+      bail_out(string);
+    }
+exit(1);
+  }
+}
+
+/*....................................................................*/
 void mallocAndSetDefaultMolData(const int nSpecies, molData **md){
   int i;
 
@@ -144,7 +183,7 @@ void readDustFile(char *dustFileName, double **lamtab, double **kaptab\
     exit(1);
   }
   for(k=0;k<i;k++){
-    assert(fscanf(fp,"%lf %lf\n", &(*lamtab)[k], &(*kaptab)[k])==2);
+    checkFscanf(fscanf(fp,"%lf %lf\n", &(*lamtab)[k], &(*kaptab)[k]), 2, "dust opacities.");
     (*lamtab)[k]=log10((*lamtab)[k]/1e6);
     (*kaptab)[k]=log10((*kaptab)[k]);
   }

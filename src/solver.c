@@ -275,7 +275,7 @@ getNextEdge(double *inidir, const int startGi, const int presentGi\
   /*
 The idea here is to select for the next grid point, that one which lies closest (with a little randomizing jitter) to the photon track, while requiring the direction of the edge to be in the 'forward' hemisphere of the photon direction.
   */
-  int i,ni,niOfSmallest,niOfNextSmallest;
+  int i,ni,niOfSmallest=-1,niOfNextSmallest;
   double dirCos,distAlongTrack,dirFromStart[3],coord,distToTrackSquared,smallest,nextSmallest;
   const static double scatterReduction = 0.4;
   /*

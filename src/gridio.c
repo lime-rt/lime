@@ -410,7 +410,7 @@ This is designed to be a generic function to write the grid data (in any of its 
   struct linkType *links=NULL, **nnLinks=NULL;
   unsigned int *firstNearNeigh=NULL;
 
-  if (outFileName==""){
+  if (outFileName==NULL || strlen(outFileName)<=0){
     if(!silent) warning("Cannot write grid list to file, filename is blank.");
     return 1;
   }
@@ -787,7 +787,7 @@ NOTE that collPartNames and its components must be freed after use.
 
   /* Some sanity checks:
   */
-  if((*dataFlags)!=0 && gridInfoRead->nSinkPoints<=0 || gridInfoRead->nInternalPoints<=0 || gridInfoRead->nDims<=0){
+  if((*dataFlags)!=0 && (gridInfoRead->nSinkPoints<=0 || gridInfoRead->nInternalPoints<=0 || gridInfoRead->nDims<=0)){
     closeAndFree(fptr, firstNearNeigh, nnLinks, links, 0);
     freeGrid(totalNumGridPoints, gridInfoRead->nSpecies, *gp);
 
