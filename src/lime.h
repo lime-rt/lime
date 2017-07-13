@@ -360,9 +360,6 @@ void	warning(char*);
 #ifdef FASTEXP
 extern double EXP_TABLE_2D[128][10];
 extern double EXP_TABLE_3D[256][2][10];
-//#else
-//extern double EXP_TABLE_2D[1][1]; /* nominal definitions so the fastexp.c module will compile. */
-//extern double EXP_TABLE_3D[1][1][1];
 #endif
 
 extern double ERF_TABLE[ERF_TABLE_SIZE];
