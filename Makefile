@@ -4,6 +4,9 @@
 # Copyright (C) 2006-2014 Christian Brinch
 # Copyright (C) 2015-2017 The LIME development team
 
+# Platform-dependent stuff:
+include Makefile.defs
+
 ##
 ## Make sure to put the correct paths.
 ##
@@ -32,23 +35,13 @@ ifneq (,$(wildcard /usr/local/lib/.))
 endif
 
 
-CPPFLAGS	= -I${PREFIX}/include \
-		  -I${PREFIX}/src \
-		  -I${HOME}/include \
-		  -I/opt/local/include \
-		  -I/sw//include \
-	          ${EXTRACPPFLAGS}
+CPPFLAGS += -I${PREFIX}/include \
+	    -I${PREFIX}/src \
+	    -I${HOME}/include \
+	    -I/opt/local/include \
+	    -I/sw//include \
+	    ${EXTRACPPFLAGS}
 
-ifdef OLD_QHULL
-	QHULL   = qhull
-	CPPFLAGS += -DOLD_QHULL
-else
-	QHULL   = qhullstatic
-endif
-
-ifdef OLD_FITSIO
-	CPPFLAGS += -DOLD_FITSIO
-endif
 
 # Names of source files included:
 include Makefile.srcs
@@ -63,28 +56,28 @@ MODELS  = model.c # Overwritten in usual practice by the value passed in by the 
 MODELO 	= ${srcdir}/model.o
 
 CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing
-LDFLAGS = -lgsl -lgslcblas -l${QHULL} -lcfitsio -lncurses -lm 
+LDFLAGS = -lgsl -lgslcblas -l${LIB_QHULL} -lcfitsio -lncurses -lm 
 
 ifeq (${DOTEST},yes)
   CCFLAGS += -DTEST
   CC += -g -Wunused -Wno-unused-value -Wformat -Wformat-security
 endif
 
-SRCS = ${CORESOURCES} ${STDSOURCES}
-INCS = ${COREINCLUDES}
-
 ifeq (${USEHDF5},yes)
   CPPFLAGS += -DUSEHDF5
   CCFLAGS += -DH5_NO_DEPRECATED_SYMBOLS
   LDFLAGS += -lhdf5_hl -lhdf5 -lz
-  SRCS += ${HDF5SOURCES}
-  INCS += ${HDF5INCLUDES}
+  CORESOURCES += ${HDF5SOURCES}
+  CONVSOURCES += ${HDF5SOURCES}
+  COREINCLUDES += ${HDF5INCLUDES}
 endif
 
+SRCS = ${CORESOURCES} ${STDSOURCES}
+INCS = ${COREINCLUDES}
 OBJS = $(SRCS:.c=.o)
 CONV_OBJS = $(CONVSOURCES:.c=.o)
 
-.PHONY: all doc docclean clean distclean
+.PHONY: all doc docclean objclean limeclean clean distclean
 
 all:: ${TARGET} 
 
@@ -123,4 +116,5 @@ clean:: objclean
 	rm -f gridconvert
 
 distclean:: clean docclean limeclean
+	rm Makefile.defs
 
