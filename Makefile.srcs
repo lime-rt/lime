@@ -52,6 +52,11 @@ CONVSOURCES = \
 	src/popsout.c\
 	src/predefgrid.c
 
+PYSOURCES = \
+	src/pydefaults.c\
+	src/pymain.c\
+	src/pyutils.c
+
 COREINCLUDES = \
 	src/dims.h\
 	src/collparts.h\
@@ -72,4 +77,7 @@ CONVINCLUDES = \
 	src/gridio.h\
 	src/inpars.h\
 	src/lime.h
+
+PYINCLUDES = \
+	src/pytypes.h
 

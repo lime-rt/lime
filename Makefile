@@ -51,6 +51,7 @@ include Makefile.srcs
 ##
 
 TARGET  = lime.x # Overwritten in usual practice by the value passed in by the 'lime' script.
+PYTARGET = pylime
 CC	= gcc -fopenmp
 MODELS  = model.c # Overwritten in usual practice by the value passed in by the 'lime' script.
 MODELO 	= ${srcdir}/model.o
@@ -74,10 +75,13 @@ endif
 
 SRCS = ${CORESOURCES} ${STDSOURCES}
 INCS = ${COREINCLUDES}
+PYSRCS = ${CORESOURCES} ${PYSOURCES}
+PYINCS = ${COREINCLUDES} ${PYINCLUDES}
 OBJS = $(SRCS:.c=.o)
+PYOBJS = $(PYSRCS:.c=.o)
 CONV_OBJS = $(CONVSOURCES:.c=.o)
 
-.PHONY: all doc docclean objclean limeclean clean distclean
+.PHONY: all doc docclean objclean limeclean clean distclean pyclean python
 
 all:: ${TARGET} 
 
@@ -90,9 +94,18 @@ ${TARGET}: ${OBJS} ${MODELO}
 
 ${OBJS} : ${INCS}
 ${CONV_OBJS} : ${CONVINCLUDES}
+${PYOBJS} : ${PYINCS}
 
 ${MODELO}: ${INCS}
 	${CC} ${CCFLAGS} ${CPPFLAGS} -o ${MODELO} -c ${MODELS}
+
+python: CCFLAGS += ${PYCCFLAGS}
+python: CPPFLAGS += -DNO_NCURSES
+python: LDFLAGS += ${PYLDFLAGS}
+python: ${PYTARGET}
+
+${PYTARGET}: ${PYOBJS}
+	${CC} -o $@ $^ ${LIBS} ${LDFLAGS}
 
 gridconvert : CPPFLAGS += -DNO_NCURSES
 
@@ -112,7 +125,10 @@ objclean::
 limeclean:: objclean
 	rm -f ${TARGET}
 
-clean:: objclean
+pyclean:: objclean
+	rm -f ${pydir}/*.pyc ${PYTARGET}
+
+clean:: objclean pyclean
 	rm -f gridconvert
 
 distclean:: clean docclean limeclean

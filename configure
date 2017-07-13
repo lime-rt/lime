@@ -26,3 +26,13 @@ else
   [ -e /usr/include/libcfitsio0/fitsio.h ] ||\
   exit 2
 fi
+
+pybin="python"
+pyconf="$pybin-config"
+command -v $pyconf >/dev/null 2>&1 || ! echo "oops" || exit 3
+
+PYCCFLAGS=`$pyconf --cflags`
+PYLDFLAGS=`$pyconf --ldflags`
+echo "PYCCFLAGS = $PYCCFLAGS" >> $defsfile
+echo "PYLDFLAGS = $PYLDFLAGS" >> $defsfile
+

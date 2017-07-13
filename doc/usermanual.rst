@@ -99,13 +99,31 @@ memory (>1 GB), but less will do as well. LIME can be run in multi-threaded
 run several instances of LIME simultaneously on a
 multi-processor machine with enough memory.
 
-Setting up LIME
-~~~~~~~~~~~~~~~
+Flavours of LIME
+~~~~~~~~~~~~~~~~
 
-LIME is compiled at run time, so there is no need to make any kind of
-pre-installation of the code. The only requirement for the code to run
-is that the path to `lime` script is in the PATH environment
-variable.
+In addition to the old-style LIME which requires a model file written in C, we have now made an alternative available which can use a model file written in :ref:`python <lime-python>`. 
+
+Setting up LIME
+---------------
+
+The first thing you need to do is go into the LIME package directory and type
+
+::
+
+    ./configure
+
+This will set up LIME with libraries and include files appropriate to your computer. If you forget to do this after unpacking the code, when you try to run LIME, or make any other LIME-associated target, you will see the error:
+
+::
+
+    Makefile:8: Makefile.defs: No such file or directory
+    make: *** No rule to make target 'Makefile.defs'.  Stop.
+
+Traditional LIME:
+~~~~~~~~~~~~~~~~~
+
+In this mode, LIME is compiled at run time. There is a script called `lime` in the package directory which compiles the code plus the C-language model file you provide it, then runs the code. If you don't want to invoke this script with its full path name, you will need to add the LIME package directory to your PATH environment variable.
 
 .. note::
 
@@ -113,28 +131,50 @@ variable.
    `sourceme.bash` (depending on your SHELL type) is not needed
    anymore.
 
-Running LIME
-~~~~~~~~~~~~
-
-Once the PATH variable is set, LIME can be run from the command
-line
+Once the PATH variable is set, LIME can be run from the command line as
 
 ::
 
-    lime model.c
+    lime [options...] <model file>
 
-where model.c is the file containing the model (this file can have any
-name). This will cause the code to be compiled and the terminal window
-should change and display the progress of the calculations. After
-completion, the user is prompted to press a key which will bring the
-terminal window back. It is possible to run LIME in silent mode, that
+where :ref:`options <lime-options>` are discussed below and :ref:`model file <lime-model>` is the C module containing the model description. This will cause the code to be compiled and run. The terminal window should change and display the progress of the calculations.
+
+It is possible to run LIME in silent mode, that
 is, without any output in the terminal window. This is done by setting
-the silent flag to 1 (the default setting is 0) in the file
-LimePackage/src/lime.h. LIME also accepts several
-:ref:`command line options <lime-options>`.
+the silent flag to 1 (the default setting is 0) towards the top of the file
+LimePackage/src/main.c.
+
+The `lime` script now also accepts several :ref:`command line options <lime-options>`.
+
+
+.. _lime-python:
+
+Using LIME with a python-written model file: 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For this, we have to compile LIME. Go to the package directory and type
+
+::
+
+    make python
+
+If this completes ok without errors, the next thing to do is add `LimePackage/python` to your PYTHONPATH environment variable. You may want to make this a permanent change to PYTHONPATH by performing the addition in your .cshrc/.bashrc.
+
+This compiled version is called `pylime` and will also be found in the LimePackage directory. To run pylime, do
+
+::
+
+    pylime model.py
+
+Similar considerations regarding the PATH environment variable apply to both `pylime` and `lime`.
+
+.. note::
+
+   Eventually we will provide some of the same command-line options for `pylime` as for `lime`, but at present there are none. Note that the output is non-`ncurses`.
+
 
 The inner workings of LIME
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------
 
 The first thing that happens after compilation is that LIME allocates
 memory for the grid and the molecular data based on the parameter
@@ -195,8 +235,7 @@ LIME accepts several command line options:
 
 .. option:: -n
 
-   Turn off `ncurses` messages. This is useful when running LIME in a
-   non-interactive way.
+   Sets LIME to produce normal output rather than the default `ncurses` output style. This is useful when running LIME in a non-interactive way.
 
 .. option:: -t
 
@@ -212,11 +251,13 @@ LIME accepts several command line options:
    The number of threads may also be set with the :ref:`par->nThreads <par-nthreads>`
    parameter. This will override the value set via the -p option.
 
+.. _lime-model:
+
 Setting up models
 -----------------
 
-The model file
-~~~~~~~~~~~~~~
+The C model file
+~~~~~~~~~~~~~~~~
 
 All basic setup of a model is done in a single file which we refer to as
 model.c (although it may be given any name). The file model.c is, as the name
