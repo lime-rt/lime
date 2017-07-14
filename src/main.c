@@ -9,7 +9,11 @@
 
 #include "lime.h"
 
+#ifdef NOVERBOSE
+int silent = 1;
+#else
 int silent = 0;
+#endif
 
 /*....................................................................*/
 int

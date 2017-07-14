@@ -64,6 +64,10 @@ ifeq (${DOTEST},yes)
   CC += -g -Wunused -Wno-unused-value -Wformat -Wformat-security
 endif
 
+ifeq (${VERBOSE},no)
+  CCFLAGS += -DNOVERBOSE
+endif
+
 ifeq (${USEHDF5},yes)
   CPPFLAGS += -DUSEHDF5
   CCFLAGS += -DH5_NO_DEPRECATED_SYMBOLS
