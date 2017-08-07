@@ -498,7 +498,7 @@ exit(1);
 exit(1);
     }
 
-    (*img)[i].imgres=(*img)[i].imgres*ARCSEC_TO_RN;
+    (*img)[i].imgres=(*img)[i].imgres*ARCSEC_TO_RAD;
     (*img)[i].pixel = malloc(sizeof(*((*img)[i].pixel))*(*img)[i].pxls*(*img)[i].pxls);
     for(id=0;id<((*img)[i].pxls*(*img)[i].pxls);id++){
       (*img)[i].pixel[id].intense = malloc(sizeof(double)*(*img)[i].nchan);

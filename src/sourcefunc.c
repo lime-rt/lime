@@ -41,6 +41,8 @@ A vector defined in the LIME model basis can be converted to the observer basis 
 	Bp^T = B^T * rotMat
 
 where ^T denotes transpose.
+
+Note that this is called from within a multi-threaded block.
   */
   const int nDim=3;
   double Bp[nDim];
@@ -78,6 +80,9 @@ where ^T denotes transpose.
 /*....................................................................*/
 void sourceFunc_line(const molData *md, const double vfac, const struct populations *mol\
   , const int lineI, double *jnu, double *alpha){
+  /*
+Note that this is called from within a multi-threaded block.
+  */
 
   /* Line part:		j_nu = v*consts*1/b*rho*n_i*A_ij */
   *jnu   += vfac*HPIP*mol->specNumDens[md->lau[lineI]]*md->aeinst[lineI];
@@ -92,6 +97,9 @@ void sourceFunc_line(const molData *md, const double vfac, const struct populati
 /*....................................................................*/
 void sourceFunc_cont(const struct continuumLine cont, double *jnu\
   , double *alpha){
+  /*
+Note that this is called from within a multi-threaded block.
+  */
 
   /* Emission */
   /* Continuum part:	j_nu = T_dust * kappa_nu */
@@ -113,6 +121,8 @@ The theory behind this was originally drawn from
   Padovani, M. et al, A&A 543, A16 (2012)
 
 and references therein. However, as pointed out in Ade, P. A. R. et al, A&A 576, A105 (2015), Padovani's expression for sigma2 is too small by a factor of 2. This correction has been propagated here.
+
+Note that this is called from within a multi-threaded block.
   */
 
   double jnu, trigFuncs[3];

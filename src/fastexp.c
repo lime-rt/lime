@@ -15,10 +15,11 @@ double EXP_TABLE_3D[256][2][10];
 /* I've hard-wired the dimensions of these arrays, but it would be better perhaps to declare them as pointers, and calculate the dimensions with the help of the function call:
   calcFastExpRange(FAST_EXP_MAX_TAYLOR, FAST_EXP_NUM_BITS, &numMantissaFields, &lowestExponent, &numExponentsUsed)
 */
+
+double oneOver_i[FAST_EXP_MAX_TAYLOR+1];
 #endif
 
 double ERF_TABLE[ERF_TABLE_SIZE];
-double oneOver_i[FAST_EXP_MAX_TAYLOR+1];
 
 /*....................................................................*/
 void fillErfTable() {

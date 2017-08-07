@@ -69,7 +69,7 @@
 
 /* Other constants */
 #define SQRT_PI                 (sqrt(M_PI))           /* sqrt(pi)	*/
-#define ARCSEC_TO_RN            M_PI/180.0/3600.0
+#define ARCSEC_TO_RAD           (M_PI/180.0/3600.0)
 #define NITERATIONS             16
 #define MAX_RAYS_PER_POINT      10000
 #define RAYS_PER_POINT          200
@@ -360,10 +360,10 @@ void	warning(char*);
 #ifdef FASTEXP
 extern double EXP_TABLE_2D[128][10];
 extern double EXP_TABLE_3D[256][2][10];
+extern double oneOver_i[FAST_EXP_MAX_TAYLOR+1];
 #endif
 
 extern double ERF_TABLE[ERF_TABLE_SIZE];
-extern double oneOver_i[FAST_EXP_MAX_TAYLOR+1];
 
 #endif /* LIME_H */
 

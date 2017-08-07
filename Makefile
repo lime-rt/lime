@@ -61,7 +61,8 @@ LDFLAGS = -lgsl -lgslcblas -l${LIB_QHULL} -lcfitsio -lncurses -lm
 
 ifeq (${DOTEST},yes)
   CCFLAGS += -DTEST
-  CC += -g -Wunused -Wno-unused-value -Wformat -Wformat-security
+#  CC += -g -Wunused -Wno-unused-value -Wformat -Wformat-security
+  CC += -g -Wall
 endif
 
 ifeq (${VERBOSE},no)
