@@ -724,7 +724,7 @@ run(inputPars inpars, image *inimg, const int nImages){
      programs. In this case, inpars and img must be specified by the
      external program.
   */
-  int i,gi,si,status=0;
+  int i,gi,si,status=0,sigactionStatus=0;
   int initime=time(0);
   int popsdone=0;
   molData *md=NULL;
@@ -734,6 +734,17 @@ run(inputPars inpars, image *inimg, const int nImages){
   char message[80];
   int nEntries=0;
   double *lamtab=NULL,*kaptab=NULL;
+
+  struct sigaction sigact;
+  sigact.sa_handler = sigintHandler;
+  sigactionStatus = sigaction(SIGINT, &sigact, NULL);
+  if(sigactionStatus){
+    if(!silent){
+      sprintf(message, "Call to sigaction() returned with status %d", sigactionStatus);
+      bail_out(message);
+    }
+exit(1);
+  }
 
   /*Set locale to avoid trouble when reading files*/
   setlocale(LC_ALL, "C");

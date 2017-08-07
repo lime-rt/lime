@@ -11,6 +11,17 @@ TODO:
 #include "lime.h"
 
 /*....................................................................*/
+void sigintHandler(int sigI){
+#ifdef IS_PYTHON
+  Py_Finalize();
+#endif
+
+//*** write output file?
+
+exit(1);
+}
+
+/*....................................................................*/
 void checkFgets(char *fgetsResult, char *message){
   char string[80];
 
@@ -86,6 +97,8 @@ void calcSourceFn(double dTau, const configInfo *par, double *remnantSnu, double
 
   Note that the same cutoff condition holds for replacement of
   exp(-dTau) by its Taylor expansion to 3rd order.
+
+  Note that this is called from within the multi-threaded block.
   */
 
 #ifdef FASTEXP

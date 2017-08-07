@@ -15,6 +15,7 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include <signal.h>
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_spline.h>
@@ -328,6 +329,7 @@ void	reportInfsAtOrigin(const int, const double*, const char*);
 void	setCollPartsDefaults(struct cpData*);
 int	setupAndWriteGrid(configInfo *par, struct grid *gp, molData *md, char *outFileName);
 void	setUpDensityAux(configInfo*, int*, const int);
+void	sigintHandler(int sigI);
 void	smooth(configInfo*, struct grid*);
 void	sourceFunc_line(const molData*, const double, const struct populations*, const int, double*, double*);
 void	sourceFunc_cont(const struct continuumLine, double*, double*);
