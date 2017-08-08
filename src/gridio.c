@@ -634,16 +634,7 @@ There is a subtle point about ordering to grasp. The order of the .vels entries 
     gp[i_ui].v2 = malloc(gridInfoRead.nDims*gp[i_ui].numNeigh*sizeof(double));
     gp[i_ui].v3 = malloc(gridInfoRead.nDims*gp[i_ui].numNeigh*sizeof(double));
   }
-  for(i_ui=gridInfoRead.nInternalPoints;i_ui<gridInfoRead.nSinkPoints;i_ui++){
-    for(j=0;j<gp[i_ui].numNeigh;j++){
-      for(i_us=0;i_us<gridInfoRead.nDims;i_us++){
-        gp[i_ui].v1[gridInfoRead.nDims*j+i_us] = 0.0;
-        gp[i_ui].v2[gridInfoRead.nDims*j+i_us] = 0.0;
-        gp[i_ui].v3[gridInfoRead.nDims*j+i_us] = 0.0;
-      }
-    }
-  }
-  for(i_ui=0;i_ui<gridInfoRead.nInternalPoints;i_ui++){
+  for(i_ui=0;i_ui<totalNumGridPoints;i_ui++){
     for(j=0;j<gp[i_ui].numNeigh;j++){
       linkPtr = nnLinks[firstNearNeigh[i_ui]+j];
       if(linkPtr->gis[0]==i_ui){

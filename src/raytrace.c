@@ -1391,11 +1391,11 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
     if(img[im].doline && img[im].doInterpolateVels){
       free(velBuff.shapeFns);
       for(i=0;i<velBuff.numEdges;i++)
-        free(velBuff.edgeVels);
+        free(velBuff.edgeVels[i]);
       free(velBuff.edgeVels);
       free(velBuff.edgeVertexIndices);
       for(i=0;i<velBuff.numVertices;i++)
-        free(velBuff.vertexVels);
+        free(velBuff.vertexVels[i]);
       free(velBuff.vertexVels);
       free(velBuff.exitCellBary);
       free(velBuff.midCellBary);
