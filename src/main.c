@@ -6,36 +6,12 @@
  *  Copyright (C) 2015-2017 The LIME development team
  *
  */
-#include <locale.h>
 
 #include "lime.h"
-#include "gridio.h"
 
 int silent = 0;
-int defaultFuncFlags = 0;
-double defaultDensyPower = DENSITY_POWER;
 
-/* Forward declaration of functions only used in this file */
-int initParImg(inputPars *par, image **img);
-int main();
-
-
-
-#ifdef FASTEXP
-double EXP_TABLE_2D[128][10];
-double EXP_TABLE_3D[256][2][10];
-/* I've hard-wired the dimensions of these arrays, but it would be better perhaps to declare them as pointers, and calculate the dimensions with the help of the function call:
-  calcFastExpRange(FAST_EXP_MAX_TAYLOR, FAST_EXP_NUM_BITS, &numMantissaFields, &lowestExponent, &numExponentsUsed)
-*/
-#else
-double EXP_TABLE_2D[1][1]; /* nominal definitions so the fastexp.c module will compile. */
-double EXP_TABLE_3D[1][1][1];
-#endif
-
-double ERF_TABLE[ERF_TABLE_SIZE];
-double oneOver_i[FAST_EXP_MAX_TAYLOR+1];
-
-
+/*....................................................................*/
 int
 initParImg(inputPars *par, image **img)
 {
@@ -79,7 +55,7 @@ initParImg(inputPars *par, image **img)
     for(j=0;j<DIM;j++) par->gridDensMaxLoc[i][j] = 0.0;
   }
 
-  par->tcmb = 2.725;
+  par->tcmb = LOCAL_CMB_TEMP;
   par->lte_only=0;
   par->init_lte=0;
   par->samplingAlgorithm=0;
@@ -150,139 +126,34 @@ initParImg(inputPars *par, image **img)
   return nImages;
 }
 
-
+/*....................................................................*/
 void
-run(inputPars inpars, image *inimg, const int nImages){
-  /* Run LIME with inpars and the output fits files specified.
-
-     This routine may be used as an interface to LIME from external
-     programs. In this case, inpars and img must be specified by the
-     external program.
-  */
-  int i,gi,si;
-  int initime=time(0);
-  int popsdone=0;
-  molData *md=NULL;
-  configInfo par;
-  imageInfo *img=NULL;
-  struct grid *gp=NULL;
-  char message[80];
-  int nEntries=0;
-  double *lamtab=NULL,*kaptab=NULL;
-
-  /*Set locale to avoid trouble when reading files*/
-  setlocale(LC_ALL, "C");
-
-  if(!silent) greetings();
-  if(!silent) screenInfo();
-
-#ifdef FASTEXP
-  calcTableEntries(FAST_EXP_MAX_TAYLOR, FAST_EXP_NUM_BITS);
-#endif
-  fillErfTable();
-
-  parseInput(inpars, inimg, nImages, &par, &img, &md); /* Sets par.numDensities for !(par.doPregrid || par.restart) */
-
-  if(!silent && par.nThreads>1){
-    sprintf(message, "Number of threads used: %d", par.nThreads);
-    printMessage(message);
-  }
-
-  if(par.doPregrid){
-    mallocAndSetDefaultGrid(&gp, (size_t)par.ncell, (size_t)par.nSpecies);
-    predefinedGrid(&par,gp); /* Sets par.numDensities */
-    checkUserDensWeights(&par); /* Needs par.numDensities */
-  }else if(par.restart){
-    popsin(&par,&gp,&md,&popsdone);
-  }else{
-    checkUserDensWeights(&par); /* Needs par.numDensities */
-    readOrBuildGrid(&par,&gp);
-  }
-
-  if(par.dust != NULL)
-    readDustFile(par.dust, &lamtab, &kaptab, &nEntries);
-
-  /* Make all the continuum images:
-  */
-  if(par.nContImages>0){
-    for(i=0;i<par.nImages;i++){
-      if(!img[i].doline){
-        raytrace(i, &par, gp, md, img, lamtab, kaptab, nEntries);
-        writeFitsAllUnits(i, &par, img);
-      }
-    }
-  }
-
-  if(par.doMolCalcs){
-    if(!popsdone){
-      molInit(&par, md);
-      calcGridMolDoppler(&par, md, gp);
-    }
-    if(par.useAbun)
-      calcGridMolDensities(&par, &gp);
-
-    for(gi=0;gi<par.ncell;gi++){
-      for(si=0;si<par.nSpecies;si++)
-        gp[gi].mol[si].specNumDens = malloc(sizeof(double)*md[si].nlev);
-    }
-
-    if(!popsdone && ((par.lte_only && !allBitsSet(par.dataFlags, DS_mask_populations))\
-                     || par.nSolveIters>par.nSolveItersDone))
-      levelPops(md, &par, gp, &popsdone, lamtab, kaptab, nEntries);
-
-    calcGridMolSpecNumDens(&par,md,gp);
-
-    par.nSolveItersDone = par.nSolveIters;
-  }
-
-  if(onlyBitsSet(par.dataFlags & DS_mask_all_but_mag, DS_mask_3))
-    writeGridIfRequired(&par, gp, NULL, 3);
-  else if(onlyBitsSet(par.dataFlags & DS_mask_all_but_mag, DS_mask_5)){
-    writeGridIfRequired(&par, gp, md, 5);
-  }else if(!silent){
-    sprintf(message, "Data flags %x match neither mask 3 %x (cont.) or 5 %x (line).", par.dataFlags, DS_mask_3, DS_mask_5);
-    warning(message);
-  }
-
-  freeSomeGridFields((unsigned int)par.ncell, (unsigned short)par.nSpecies, gp);
-
-  /* Now make the line images.   */
-
-  if(par.nLineImages>0){
-    for(i=0;i<par.nImages;i++){
-      if(img[i].doline){
-        raytrace(i, &par, gp, md, img, lamtab, kaptab, nEntries);
-        writeFitsAllUnits(i, &par, img);
-      }
-    }
-  }
-
-  if(!silent){
-    if(par.nImages>0) reportOutput(img[0].filename);
-    goodnight(initime);
-  }
-
-  freeGrid((unsigned int)par.ncell, (unsigned short)par.nSpecies, gp);
-  freeMolData(par.nSpecies, md);
-  freeImgInfo(par.nImages, img);
-  freeConfigInfo(&par);
-
-  if(par.dust != NULL){
-    free(kaptab);
-    free(lamtab);
-  }
+freeInputPars(inputPars *par){
+  free(par->collPartIds);
+  free(par->nMolWeights);
+  free(par->dustWeights);
+  free(par->collPartMolWeights);
+  free(par->moldatfile);
+  free(par->girdatfile);
+  free(par->collPartNames);
+  free(par->gridOutFiles);
+  free(par->gridDensMaxValues);
+  free(par->gridDensMaxLoc);
 }
 
+/*....................................................................*/
 int main() {
   /* Main program for stand-alone LIME */
 
   inputPars par;
   image	*img = NULL;
-  int nImages;
+  int nImages,status=0;
+
+  (void)status; // just to stop compiler warnings because this return value is currently unused.
 
   nImages = initParImg(&par, &img);
 
-  run(par, img, nImages);
+  status = run(par, img, nImages);
 
   free(img);
   freeInputPars(&par);

@@ -612,7 +612,7 @@ Ok we have a bit of a tricky situation here in that the number of columns we wri
 
   /* Write keywords.
   */
-  if (collPartNames!=NULL){
+  if(collPartNames!=NULL){
     if(gridInfo.nDensities>maxNumCollPart){
       if(!silent){
         sprintf(message, "There seem to be %d collision partners but keywords can only be written for %d.", (int)gridInfo.nDensities, (int)maxNumCollPart);

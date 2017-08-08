@@ -82,6 +82,7 @@ ifeq (${USEHDF5},yes)
 endif
 
 OBJS = $(SRCS:.c=.o)
+CONV_OBJS = $(CONVSOURCES:.c=.o)
 
 .PHONY: all doc docclean clean distclean
 
@@ -95,9 +96,15 @@ ${TARGET}: ${OBJS} ${MODELO}
 	${CC} -o $@ $^ ${LIBS} ${LDFLAGS}
 
 ${OBJS} : ${INCS}
+${CONV_OBJS} : ${CONVINCLUDES}
 
 ${MODELO}: ${INCS}
 	${CC} ${CCFLAGS} ${CPPFLAGS} -o ${MODELO} -c ${MODELS}
+
+gridconvert : CPPFLAGS += -DNO_NCURSES
+
+gridconvert: ${CONV_OBJS}
+	${CC} -o $@ $^ ${LIBS} ${LDFLAGS}
 
 doc::
 	mkdir ${docdir}/_html || true
@@ -106,8 +113,14 @@ doc::
 docclean::
 	rm -rf ${docdir}/_html
 
-clean:: 
-	rm -f *~ ${srcdir}/*.o ${pydir}/*.pyc ${TARGET} ${PYTARGET}
+objclean::
+	rm -f *~ ${srcdir}/*.o
 
-distclean:: clean docclean
+limeclean:: objclean
+	rm -f ${TARGET}
+
+clean:: objclean
+	rm -f gridconvert
+
+distclean:: clean docclean limeclean
 

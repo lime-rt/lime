@@ -24,6 +24,57 @@ struct baryVelBuffType {
   double **vertexVels,**edgeVels,*entryCellBary,*midCellBary,*exitCellBary,*shapeFns;
 };
 
+typedef struct{
+  double x[DIM], xCmpntRay, B[3];
+  struct populations *mol;
+  struct continuumLine cont;
+} gridInterp;
+
+/*....................................................................*/
+void calcGridContDustOpacity(configInfo *par, const double freq\
+  , double *lamtab, double *kaptab, const int nEntries, struct grid *gp){
+
+  int id;
+  double gtd;
+  gsl_spline *spline = NULL;
+  gsl_interp_accel *acc = NULL;
+  double *kappatab = NULL;
+  double *knus=NULL, *dusts=NULL;
+  double *freqs=NULL;
+
+  kappatab = malloc(sizeof(*kappatab)*1);
+  knus     = malloc(sizeof(*knus)    *1);
+  dusts    = malloc(sizeof(*dusts)   *1);
+  freqs    = malloc(sizeof(*freqs)   *1);
+
+  freqs[0] = freq;
+
+  if(par->dust == NULL)
+    kappatab[0] = 0.;
+  else{
+    acc = gsl_interp_accel_alloc();
+    spline = gsl_spline_alloc(gsl_interp_cspline,nEntries);
+    gsl_spline_init(spline,lamtab,kaptab,nEntries);
+    kappatab[0] = interpolateKappa(freq, lamtab, kaptab, nEntries, spline, acc);
+  }
+
+  for(id=0;id<par->ncell;id++){
+    gasIIdust(gp[id].x[0],gp[id].x[1],gp[id].x[2],&gtd);
+    calcDustData(par, gp[id].dens, freqs, gtd, kappatab, 1, gp[id].t, knus, dusts);
+    gp[id].cont.knu = knus[0];
+    gp[id].cont.dust = dusts[0];
+  }
+
+  if(par->dust != NULL){
+    gsl_spline_free(spline);
+    gsl_interp_accel_free(acc);
+  }
+  free(knus);
+  free(dusts);
+  free(freqs);
+  free(kappatab);
+}
+
 /*....................................................................*/
 void
 calcLineAmpSample(const double x[3], const double dx[3], const double ds\
@@ -129,7 +180,7 @@ traceray(rayData ray, const int im\
   /*
 For a given image pixel position, this function evaluates the intensity of the total light emitted/absorbed along that line of sight through the (possibly rotated) model. The calculation is performed for several frequencies, one per channel of the output image.
 
-Note that the algorithm employed here is similar to that employed in the function photon() which calculates the average radiant flux impinging on a grid cell: namely the notional photon is started at the side of the model near the observer and 'propagated' in the receding direction until it 'reaches' the far side. This is rather non-physical in conception but it makes the calculation easier.
+Note that the algorithm employed here is similar to that employed in the function calculateJBar() which calculates the average radiant flux impinging on a grid cell: namely the notional photon is started at the side of the model near the observer and 'propagated' in the receding direction until it 'reaches' the far side. This is rather non-physical in conception but it makes the calculation easier.
   */
   int ichan,stokesId,di,i,posn,nposn,molI,lineI;
   double xp,yp,zp,x[DIM],dx[DIM],dist2,ndist2,col,ds,snu_pol[3],dtau;
@@ -172,7 +223,6 @@ Note that the algorithm employed here is similar to that employed in the functio
 
   col=0;
   do{
-
     ds=-2.*zp-col; /* This default value is chosen to be as large as possible given the spherical model boundary. */
     nposn=-1;
     line_plane_intersect(gp,&ds,posn,&nposn,dx,x,cutoff); /* Returns a new ds equal to the distance to the next Voronoi face, and nposn, the ID of the grid cell that abuts that face. */
@@ -242,7 +292,9 @@ Note that the algorithm employed here is similar to that employed in the functio
         } /* end if(img[im].doline) */
 
         dtau=alpha*ds;
-//???          if(dtau < -30) dtau = -30; // as in photon()?
+        /* Should we check for overly strong masers as in calculateJBar()?
+        if(dtau < -30) dtau = -30;  
+        */
         calcSourceFn(dtau, par, &remnantSnu, &expDTau);
         remnantSnu *= jnu*ds;
 #ifdef FASTEXP
@@ -502,7 +554,7 @@ traceray_smooth(rayData ray, const int im\
   /*
 For a given image pixel position, this function evaluates the intensity of the total light emitted/absorbed along that line of sight through the (possibly rotated) model. The calculation is performed for several frequencies, one per channel of the output image.
 
-Note that the algorithm employed here to solve the RTE is similar to that employed in the function photon() which calculates the average radiant flux impinging on a grid cell: namely the notional photon is started at the side of the model near the observer and 'propagated' in the receding direction until it 'reaches' the far side. This is rather non-physical in conception but it makes the calculation easier.
+Note that the algorithm employed here to solve the RTE is similar to that employed in the function calculateJBar() which calculates the average radiant flux impinging on a grid cell: namely the notional photon is started at the side of the model near the observer and 'propagated' in the receding direction until it 'reaches' the far side. This is rather non-physical in conception but it makes the calculation easier.
 
 This version of traceray implements a new algorithm in which the population values are interpolated linearly from those at the vertices of the Delaunay cell which the working point falls within.
 
@@ -822,7 +874,7 @@ At the moment I will fix the number of segments, but it might possibly be faster
           } /* end if doLine. */
 
           dtau = alpha*ds;
-//???          if(dtau < -30) dtau = -30; // as in photon()?
+//???          if(dtau < -30) dtau = -30; // as in calculateJBar()?
           calcSourceFn(dtau, par, &remnantSnu, &expDTau);
           remnantSnu *= jnu*ds;
 #ifdef FASTEXP
@@ -1197,7 +1249,7 @@ At the present point in the code, for line images, instead of calculating the 'c
     cmbFreq = img[im].freq;
   }
 
-  local_cmb = planckfunc(cmbFreq,2.728);
+  local_cmb = planckfunc(cmbFreq,LOCAL_CMB_TEMP);
   calcGridContDustOpacity(par, cmbFreq, lamtab, kaptab, nEntries, gp);
 
   for(ppi=0;ppi<totalNumImagePixels;ppi++){
@@ -1222,8 +1274,8 @@ How to calculate this distance? Well if we have N points randomly but evenly dis
     if(rSqu > (4.0/9.0)*par->radiusSqu) numPointsInAnnulus += 1;
   }
   if(numPointsInAnnulus>0){
-    circleSpacing = (1.0/6.0)*par->radius*sqrt(5.0*PI/(double)numPointsInAnnulus);
-    numCircleRays = (int)(2.0*PI*par->radius/circleSpacing);
+    circleSpacing = (1.0/6.0)*par->radius*sqrt(5.0*M_PI/(double)numPointsInAnnulus);
+    numCircleRays = (int)(2.0*M_PI*par->radius/circleSpacing);
   }else{
     numCircleRays = 0;
   }
@@ -1249,7 +1301,7 @@ How to calculate this distance? Well if we have N points randomly but evenly dis
   */
   numActiveRays = numActiveRaysInternal;
   if(numCircleRays>0){
-    scale = 2.0*PI/(double)numCircleRays;
+    scale = 2.0*M_PI/(double)numCircleRays;
     for(i=0;i<numCircleRays;i++){
       angle = i*scale;
       xs[0] = par->radius*cos(angle);
@@ -1366,6 +1418,7 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
       if(par->traceRayAlgorithm==0)
         traceray(rays[ri], im, par, gp, md, img\
           , cutoff, nStepsThruCell, oneOnNSteps);
+
       else if(par->traceRayAlgorithm==1)
         traceray_smooth(rays[ri], im, par, gp, vertexCoords, md, img\
           , cells, numCells, epsilon, gips, ptrToBuff\

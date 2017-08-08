@@ -50,10 +50,10 @@ write3Dfits(int im, int unit_index, configInfo *par, imageInfo *img){
   equinox =2.0e3;
   restfreq=img[im].freq;
   velref  =257;
-  cdelt1  =-1.8e2*img[im].imgres/PI;
+  cdelt1  =-1.8e2*img[im].imgres/M_PI;
   crpix1  =(double) img[im].pxls/2+0.5;
   crval1  =0.0e0;
-  cdelt2  =1.8e2*img[im].imgres/PI;
+  cdelt2  =1.8e2*img[im].imgres/M_PI;
   crpix2  =(double) img[im].pxls/2+0.5;
   crval2  =0.0e0;
   cdelt3  =img[im].velres;
@@ -100,7 +100,7 @@ write3Dfits(int im, int unit_index, configInfo *par, imageInfo *img){
     scale=1.0;
   else if(unitI==3) {
     ru3 = img[im].distance/1.975e13;
-    scale=4.*PI*ru3*ru3*img[im].freq*img[im].imgres*img[im].imgres;
+    scale=4.*M_PI*ru3*ru3*img[im].freq*img[im].imgres*img[im].imgres;
   }
   else if(unitI!=4) {
     if(!silent) bail_out("Image unit number invalid");
@@ -181,10 +181,10 @@ write2Dfits(int im, int unit_index, configInfo *par, imageInfo *img){
   equinox =2.0e3;
   restfreq=img[im].freq;
   velref  =257;
-  cdelt1  =-1.8e2*img[im].imgres/PI;
+  cdelt1  =-1.8e2*img[im].imgres/M_PI;
   crpix1  =(double) img[im].pxls/2+0.5;
   crval1  =0.0e0;
-  cdelt2  =1.8e2*img[im].imgres/PI;
+  cdelt2  =1.8e2*img[im].imgres/M_PI;
   crpix2  =(double) img[im].pxls/2+0.5;
   crval2  =0.0e0;
   bscale  =1.0e0;
@@ -224,7 +224,7 @@ write2Dfits(int im, int unit_index, configInfo *par, imageInfo *img){
     scale=1.0;
   else if(unitI==3) {
     ru3 = img[im].distance/1.975e13;
-    scale=4.*PI*ru3*ru3*img[im].freq*img[im].imgres*img[im].imgres;
+    scale=4.*M_PI*ru3*ru3*img[im].freq*img[im].imgres*img[im].imgres;
   }
   else if(unitI!=4 && unitI!=5) {
     if(!silent) bail_out("Image unit number invalid");
