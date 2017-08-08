@@ -3,16 +3,26 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015-2016 The LIME development team
+ *  Copyright (C) 2015-2017 The LIME development team
  *
 TODO:
  */
 
-#include <Python.h>
 #include "lime.h"
+#include <argp.h>
 #include "pytypes.h"
 
+#ifdef NOVERBOSE
+int silent = 1;
+#else
 int silent = 0;
+#endif
+
+#ifdef TEST
+_Bool fixRandomSeeds = TRUE;
+#else
+_Bool fixRandomSeeds = FALSE;
+#endif
 
 PyObject *pModule_global = NULL,\
          *pMacros_global = NULL,\
@@ -299,12 +309,22 @@ doppler(double x, double y, double z, double *doppValue){
 /*....................................................................*/
 void
 velocity(double x, double y, double z, double *veloValues){
+  /*
+Note that the present function can be called within multi-threaded C code. That's why we need the extra stuff to deal with the GIL.
+  */
+
   if(pVelocity==NULL) /* User did not supply this function. */
     velocity_default(x, y, z, veloValues);
   else{
     int nItems=0,i;
     PyObject *pResult=NULL,*pListItem;
+//***    PyGILState_STATE gstate;
+
+//***    gstate = PyGILState_Ensure();
+
     userFuncWrapper(pVelocity, "velocity", pMacros_global, x, y, z, &pResult); /* Sets up and calls the function. pResult guaranteed non-NULL. */
+
+//***    PyGILState_Release(gstate);
 
     /* The returned value should be a list of 3 floats (or ints).
     */
@@ -579,6 +599,66 @@ In 'standard' LIME the user copies the location of a (read-only) string to each 
   }
 }
 
+const char *argp_program_version = VERSION;
+const char *argp_program_bug_address = "https://github.com/lime-rt/lime";
+/* Program documentation. */
+static char doc[] = "pylime - the version of LIME which accepts a model file written in python.";
+
+/* A description of the arguments we accept. */
+static char args_doc[] = "modelfilename";
+
+/* The options we understand. */
+static struct argp_option options[] = {
+  {"silent",   's',     0, 0, "Suppress output messages." },
+  {"testmode", 't',     0, 0, "Use fixed RNG seeds." },
+  {"nthreads", 'p', "int", 0, "Run in parallel with NTHREADS threads (default: 1)" },
+  { 0 }
+};
+
+/* Used by main to communicate with parse_opt. */
+struct arguments
+{
+  _Bool doSilent,fixSeeds;
+  char *modelfilename;
+  int numThreads;
+};
+
+/* Parse a single option. */
+static error_t
+parse_opt (int key, char *arg, struct argp_state *state)
+{
+  /* Get the input argument from argp_parse, which we
+     know is a pointer to our arguments structure. */
+  struct arguments *arguments = state->input;
+
+  switch (key)
+    {
+    case 's':
+      arguments->doSilent = TRUE;
+      break;
+    case 't':
+      arguments->fixSeeds = TRUE;
+      break;
+    case 'p':
+      arguments->numThreads = atoi(arg);
+      break;
+
+    case ARGP_KEY_ARG:
+      arguments->modelfilename = arg;
+      break;
+
+    case ARGP_KEY_END:
+      break;
+
+    default:
+      return ARGP_ERR_UNKNOWN;
+    }
+  return 0;
+}
+
+/* Our argp parser. */
+static struct argp argp = { options, parse_opt, args_doc, doc };
+
 /*....................................................................*/
 int
 main(int argc, char *argv[]){
@@ -590,7 +670,7 @@ For pretty detailed documentation on embedding python in C, see
   https://docs.python.org/2/c-api/index.html
   */
 
-  const int lenSuffix=3,maxLenNoSuffix=STR_LEN_0,nDblMacros=9,nIntMacros=7;
+  const int lenSuffix=3,maxLenNoSuffix=STR_LEN_0,nDblMacros=10,nIntMacros=7;
   const char *nameOfExecutable="lime", *headerModuleName="par_classes";
   const char *oldModulePath;
   char *modelName,modelNameNoSuffix[maxLenNoSuffix+1],message[STR_LEN_0],*newModulePath;
@@ -602,6 +682,7 @@ For pretty detailed documentation on embedding python in C, see
   parTemplateType *parTemplate=NULL,*imgParTemplate=NULL;
   struct {char *name; double value;} macrosDbl[nDblMacros];
   struct {char *name;    int value;} macrosInt[nIntMacros];
+  struct arguments arguments;
 
   i = 0;
   macrosDbl[i++].name = "AMU";
@@ -610,6 +691,7 @@ For pretty detailed documentation on embedding python in C, see
   macrosDbl[i++].name = "KBOLTZ";
   macrosDbl[i++].name = "GRAV";
   macrosDbl[i++].name = "AU";
+  macrosDbl[i++].name = "LOCAL_CMB_TEMP";
   macrosDbl[i++].name = "PC";
   macrosDbl[i++].name = "PI";
   macrosDbl[i++].name = "SQRT_PI";
@@ -620,6 +702,7 @@ For pretty detailed documentation on embedding python in C, see
   macrosDbl[i++].value = KBOLTZ;
   macrosDbl[i++].value = GRAV;
   macrosDbl[i++].value = AU;
+  macrosDbl[i++].value = LOCAL_CMB_TEMP;
   macrosDbl[i++].value = PC;
   macrosDbl[i++].value = M_PI;
   macrosDbl[i++].value = SQRT_PI;
@@ -636,18 +719,34 @@ For pretty detailed documentation on embedding python in C, see
   for(i=0;i<nIntMacros;i++)
     macrosInt[i].value = i+1;
 
-  mallocInputParStrs(&par);
+  /* Set defaults for argument returns:
+  */
+  arguments.doSilent      = FALSE;
+  arguments.fixSeeds      = FALSE;
+  arguments.numThreads    = -1;
+  arguments.modelfilename = NULL;
+
+  /* Parse our arguments; every option seen by parse_opt will be reflected in arguments.
+  */
+  argp_parse(&argp, argc, argv, 0, 0, &arguments);
+
+  /* Interpret the options (numThreads is left until later):
+  */
+  if(arguments.doSilent)
+    silent = 1;
+
+  if(arguments.fixSeeds)
+    fixRandomSeeds = TRUE;
 
   /* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
   /* Get the model name, then strip off the '.py' from it:
   */
-  if(argc<2){
-    sprintf(message, "Useage: %s <python model file>", nameOfExecutable);
+  if(arguments.modelfilename==NULL){
+    sprintf(message, "Usage: %s <python model file>", nameOfExecutable);
     error(message);
   }
-  modelName = argv[1];
 
-  lenNoSuffix = strlen(modelName) - lenSuffix;
+  lenNoSuffix = strlen(arguments.modelfilename) - lenSuffix;
   if(lenNoSuffix<1){
     sprintf(message, "Model file name must be more than %d characters long!", lenSuffix);
     error(message);
@@ -657,7 +756,7 @@ For pretty detailed documentation on embedding python in C, see
     error(message);
   }
 
-  strncpy(suffix, modelName + lenNoSuffix, lenSuffix);
+  strncpy(suffix, arguments.modelfilename + lenNoSuffix, lenSuffix);
   suffix[lenSuffix] = '\0';
 
   if(strcmp(suffix,".py")!=0){
@@ -665,11 +764,12 @@ For pretty detailed documentation on embedding python in C, see
     error(message);
   }
 
-  strncpy(modelNameNoSuffix, modelName, strlen(modelName)-lenSuffix);
+  strncpy(modelNameNoSuffix, arguments.modelfilename, strlen(arguments.modelfilename)-lenSuffix);
   modelNameNoSuffix[lenNoSuffix] = '\0';
 
   /* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
   Py_Initialize();
+//***  PyEval_InitThreads();//**************** seems to be needed even here in LIME where we thread in C not python.
 
   /* The first thing to do is add the PWD to sys.path, which doesn't happen by default when embedding.
   */
@@ -780,6 +880,7 @@ For pretty detailed documentation on embedding python in C, see
   /* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
   /* Read user-supplied parameters from the 'model' module they supply:
   */
+  mallocInputParStrs(&par);
   status = initParImg(pModule_global, pMacros_global, parTemplate, nPars, imgParTemplate, nImgPars, &par, &img, &nImages);
   if(status){
     Py_DECREF(pMacros_global);
@@ -790,6 +891,9 @@ For pretty detailed documentation on embedding python in C, see
 
   free(imgParTemplate);
   free(parTemplate);
+
+  if(arguments.numThreads>0) /* Indicates that the user has set it to something sensible on the command line. */
+    par.nThreads = arguments.numThreads;
 
   /* Set up the 'user-supplied' functions (they are left at NULL if the user has not supplied them)
   */

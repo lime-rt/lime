@@ -3,14 +3,15 @@
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015-2016 The LIME development team
+ *  Copyright (C) 2015-2017 The LIME development team
  *
 TODO:
  */
 
-#include <Python.h>
 #include "lime.h"
 #include "pytypes.h"
+
+_Bool _doTest=FALSE;
 
 /*....................................................................*/
 int
@@ -409,9 +410,9 @@ The user should set and return both 'ordinary' and 'image' parameters as attribu
 Note that this routine can be, and is, used both for 'ordinary' and 'image' parameters.
   */
 
-  int i,nItems,status=0;
-  PyObject *pAttr,*pFirstItem;
-  _Bool typesMatch=1;
+  int i,nItems,nItems1,status=0;
+  PyObject *pAttr,*pFirstItem,*pFirstItem1;
+  _Bool typesMatch=TRUE;
 
   for(i=0;i<nPars;i++){
     pAttr = PyObject_GetAttrString(pParInstance, parTemplate[i].name);
@@ -424,8 +425,8 @@ Note that this routine can be, and is, used both for 'ordinary' and 'image' para
       nItems = (int)PyList_Size(pAttr);
       if(PyErr_Occurred()){
         printOrClearPyError();
-       Py_DECREF(pAttr);
-       return 2;
+        Py_DECREF(pAttr);
+        return 2;
       }
       if(nItems>0){
         pFirstItem = PyList_GetItem(pAttr, (Py_ssize_t)0); /* Don't have to DECREF pFirstItem, it is a borrowed reference. */
@@ -434,7 +435,26 @@ Note that this routine can be, and is, used both for 'ordinary' and 'image' para
           Py_DECREF(pAttr);
           return 3;
         }
-        typesMatch = checkAttrType(pFirstItem, parTemplate[i].type);
+
+        if(PyList_CheckExact(pFirstItem)){ /* Is it a list? */
+          nItems1 = (int)PyList_Size(pFirstItem);
+          if(PyErr_Occurred()){
+            printOrClearPyError();
+            Py_DECREF(pAttr);
+            return 4;
+          }
+          if(nItems1>0){
+            pFirstItem1 = PyList_GetItem(pFirstItem, (Py_ssize_t)0); /* Don't have to DECREF pFirstItem1, it is a borrowed reference. */
+            if(pFirstItem1==NULL){
+              printOrClearPyError();
+              Py_DECREF(pAttr);
+              return 5;
+            }
+            typesMatch = checkAttrType(pFirstItem1, parTemplate[i].type);
+          }
+        }else{ /* ...no, just a scalar. */
+          typesMatch = checkAttrType(pFirstItem, parTemplate[i].type);
+        }
       }
     }else{ /* ...no, just a scalar. */
       typesMatch = checkAttrType(pAttr, parTemplate[i].type);
@@ -442,8 +462,10 @@ Note that this routine can be, and is, used both for 'ordinary' and 'image' para
 
     Py_DECREF(pAttr);
 
+if(_doTest) printf("%d  %s  %s\n", i, parTemplate[i].name, parTemplate[i].type);
+
     if(!typesMatch)
-      return 4;
+      return 6;
   }
 
   return status;
@@ -480,10 +502,10 @@ Note: type 'obj' is possible, but results in no action here. Such attributes nee
 
 /*....................................................................*/
 void
-extractValue(PyObject *pPars, const char *attrName, const char *attrType\
+extractScalarValue(PyObject *pPars, const char *attrName, const char *attrType\
   , const int maxStrLen, struct tempType *tempValue){
   /*
-A slight wrapper for pyToC() in the case of scalar parameters, justified because extractValues() is a much more extensive wrapper to pyToC() for list parameters.
+A slight wrapper for pyToC() in the case of scalar parameters, justified because extractListValues() is a much more extensive wrapper to pyToC() for list parameters.
 
 Note: NO ERROR CHECKING is performed, since (we hope) all errors possible here have already been caught.
   */
@@ -494,7 +516,7 @@ Note: NO ERROR CHECKING is performed, since (we hope) all errors possible here h
 
 /*....................................................................*/
 int
-extractValues(PyObject *pPars, const char *attrName, const char *attrType\
+extractListValues(PyObject *pPars, const char *attrName, const char *attrType\
   , const int maxStrLen, struct tempType **tempValues){
   /*
 A wrapper for pyToC() to deal with list parameters.
@@ -524,6 +546,50 @@ Notes:
   Py_DECREF(pAttr);
 
   return nValues;
+}
+
+/*....................................................................*/
+void
+extractListListValues(PyObject *pPars, const char *attrName, const char *attrType\
+  , const int maxStrLen, struct tempType ***tempValues, int (*nValues)[2]){
+  /*
+A wrapper for pyToC() to deal with list of lists parameters (actually pythonized 2D arrays).
+
+Notes:
+  - pAttr0 and pAttr1 should be lists.
+  - The number of elements in pAttr1 is assumed to be constant.
+  - NO ERROR CHECKING is performed, since (we hope) all errors possible here have already been caught.
+  - tempValues should be NULL before the call.
+  */
+  int i,j,nValues0=0,nValues1=0;
+  PyObject *pAttr0,*pAttr1,*pItem;
+
+  pAttr0 = PyObject_GetAttrString(pPars, attrName);
+  nValues0 = (int)PyList_Size(pAttr0);
+
+  if(nValues0>0){
+    *tempValues = malloc(sizeof(**tempValues)*nValues0);
+
+    for(i=0;i<nValues0;i++){
+      pAttr1 = PyList_GetItem(pAttr0, (Py_ssize_t)i); /* Don't have to DECREF pAttr1, it is a borrowed reference. */
+      nValues1 = (int)PyList_Size(pAttr1);
+
+      if(nValues1>0){
+        (*tempValues)[i] = malloc(sizeof(*(*tempValues)[i])*nValues1);
+
+        for(j=0;j<nValues1;j++){
+          pItem = PyList_GetItem(pAttr1, (Py_ssize_t)j); /* Don't have to DECREF pItem, it is a borrowed reference. */
+          pyToC(pItem, attrType, maxStrLen, &((*tempValues)[i])[j]);
+        }
+      }else
+        (*tempValues)[i] = NULL;
+    }
+  }
+
+  Py_DECREF(pAttr0);
+
+  (*nValues)[0] = nValues0;
+  (*nValues)[1] = nValues1;
 }
 
 /*....................................................................*/
@@ -559,11 +625,13 @@ initParImg(PyObject *pModule, PyObject *pMacros, parTemplateType *parTemplate\
   , inputPars *par, image **img, int *nImages){
   /*
 Here we extract par and img from the user's supplied 'model' module by calling their python function 'input(macros)'.
+
+***NOTE*** that the number, order and type of the parameters must be the same as given in ../python/par_classes.py.
   */
 
-  int status=0,i,j,nValues;
+  int status=0,i,j,k,nValues,dims[2];
   PyObject *pFunc,*pArgs,*pPars,*pImgList,*pImgPars;
-  struct tempType tempValue,*tempValues=NULL;
+  struct tempType tempValue,*tempValues=NULL,**tempValues2=NULL;
 
   getPythonFunc(pModule, "input", 1, &pFunc);
   if(pFunc==NULL){
@@ -641,31 +709,31 @@ Here we extract par and img from the user's supplied 'model' module by calling t
   /* Finally, copy the parameters to the par struct.
   */
   i = 0;
-  extractValue(pPars, "radius",            parTemplate[i++].type, STR_LEN_0, &tempValue);
+  extractScalarValue(pPars, "radius",            parTemplate[i++].type, STR_LEN_0, &tempValue);
   par->radius            = tempValue.doubleValue;
-  extractValue(pPars, "minScale",          parTemplate[i++].type, STR_LEN_0, &tempValue);
+  extractScalarValue(pPars, "minScale",          parTemplate[i++].type, STR_LEN_0, &tempValue);
   par->minScale          = tempValue.doubleValue;
-  extractValue(pPars, "pIntensity",        parTemplate[i++].type, STR_LEN_0, &tempValue);
+  extractScalarValue(pPars, "pIntensity",        parTemplate[i++].type, STR_LEN_0, &tempValue);
   par->pIntensity        = tempValue.intValue;
-  extractValue(pPars, "sinkPoints",        parTemplate[i++].type, STR_LEN_0, &tempValue);
+  extractScalarValue(pPars, "sinkPoints",        parTemplate[i++].type, STR_LEN_0, &tempValue);
   par->sinkPoints        = tempValue.intValue;
 
-  extractValue(pPars, "dust",              parTemplate[i++].type, STR_LEN_0, &tempValue);
+  extractScalarValue(pPars, "dust",              parTemplate[i++].type, STR_LEN_0, &tempValue);
   if(strlen(tempValue.strValue)>0) strcpy(par->dust,          tempValue.strValue);
-  extractValue(pPars, "outputfile",        parTemplate[i++].type, STR_LEN_0, &tempValue);
+  extractScalarValue(pPars, "outputfile",        parTemplate[i++].type, STR_LEN_0, &tempValue);
   if(strlen(tempValue.strValue)>0) strcpy(par->outputfile,    tempValue.strValue);
-  extractValue(pPars, "binoutputfile",     parTemplate[i++].type, STR_LEN_0, &tempValue);
+  extractScalarValue(pPars, "binoutputfile",     parTemplate[i++].type, STR_LEN_0, &tempValue);
   if(strlen(tempValue.strValue)>0) strcpy(par->binoutputfile, tempValue.strValue);
-  extractValue(pPars, "gridfile",          parTemplate[i++].type, STR_LEN_0, &tempValue);
+  extractScalarValue(pPars, "gridfile",          parTemplate[i++].type, STR_LEN_0, &tempValue);
   if(strlen(tempValue.strValue)>0) strcpy(par->gridfile,      tempValue.strValue);
-  extractValue(pPars, "pregrid",           parTemplate[i++].type, STR_LEN_0, &tempValue);
+  extractScalarValue(pPars, "pregrid",           parTemplate[i++].type, STR_LEN_0, &tempValue);
   if(strlen(tempValue.strValue)>0) strcpy(par->pregrid,       tempValue.strValue);
-  extractValue(pPars, "restart",           parTemplate[i++].type, STR_LEN_0, &tempValue);
+  extractScalarValue(pPars, "restart",           parTemplate[i++].type, STR_LEN_0, &tempValue);
   if(strlen(tempValue.strValue)>0) strcpy(par->restart,       tempValue.strValue);
-  extractValue(pPars, "gridInFile",        parTemplate[i++].type, STR_LEN_0, &tempValue);
+  extractScalarValue(pPars, "gridInFile",        parTemplate[i++].type, STR_LEN_0, &tempValue);
   if(strlen(tempValue.strValue)>0) strcpy(par->gridInFile,    tempValue.strValue);
 
-  nValues = extractValues(pPars, "collPartIds", parTemplate[i++].type, STR_LEN_0, &tempValues);
+  nValues = extractListValues(pPars, "collPartIds", parTemplate[i++].type, STR_LEN_0, &tempValues);
   if(nValues>0){
     if(nValues>MAX_N_COLL_PART){
       nValues = MAX_N_COLL_PART;
@@ -674,7 +742,7 @@ Here we extract par and img from the user's supplied 'model' module by calling t
     for(j=0;j<nValues;j++)
       par->collPartIds[j] = tempValues[j].intValue;
   }
-  nValues = extractValues(pPars, "nMolWeights", parTemplate[i++].type, STR_LEN_0, &tempValues);
+  nValues = extractListValues(pPars, "nMolWeights", parTemplate[i++].type, STR_LEN_0, &tempValues);
   if(nValues>0){
     if(nValues>MAX_N_COLL_PART){
       nValues = MAX_N_COLL_PART;
@@ -683,7 +751,7 @@ Here we extract par and img from the user's supplied 'model' module by calling t
     for(j=0;j<nValues;j++)
       par->nMolWeights[j] = tempValues[j].doubleValue;
   }
-  nValues = extractValues(pPars, "dustWeights", parTemplate[i++].type, STR_LEN_0, &tempValues);
+  nValues = extractListValues(pPars, "dustWeights", parTemplate[i++].type, STR_LEN_0, &tempValues);
   if(nValues>0){
     if(nValues>MAX_N_COLL_PART){
       nValues = MAX_N_COLL_PART;
@@ -692,7 +760,7 @@ Here we extract par and img from the user's supplied 'model' module by calling t
     for(j=0;j<nValues;j++)
       par->dustWeights[j] = tempValues[j].doubleValue;
   }
-  nValues = extractValues(pPars, "collPartMolWeights", parTemplate[i++].type, STR_LEN_0, &tempValues);
+  nValues = extractListValues(pPars, "collPartMolWeights", parTemplate[i++].type, STR_LEN_0, &tempValues);
   if(nValues>0){
     if(nValues>MAX_N_COLL_PART){
       nValues = MAX_N_COLL_PART;
@@ -702,46 +770,62 @@ Here we extract par and img from the user's supplied 'model' module by calling t
       par->collPartMolWeights[j] = tempValues[j].doubleValue;
   }
 
-/*
-  nValues = extractValues(pPars, "gridDensMaxValues", parTemplate[i++].type, STR_LEN_0, &tempValues);
+  nValues = extractListValues(pPars, "gridDensMaxValues", parTemplate[i++].type, STR_LEN_0, &tempValues);
   if(nValues>0){
-    if(nValues>MAX_N_COLL_PART){
-      nValues = MAX_N_COLL_PART;
+    if(nValues>MAX_N_HIGH){
+      nValues = MAX_N_HIGH;
       if(!silent) warning("Too many gridDensMaxValues supplied!");
     }
     for(j=0;j<nValues;j++)
       par->gridDensMaxValues[j] = tempValues[j].doubleValue;
   }
-*/
 
-  extractValue(pPars, "tcmb",              parTemplate[i++].type, STR_LEN_0, &tempValue);
+  extractListListValues(pPars, "gridDensMaxLoc", parTemplate[i++].type, STR_LEN_0, &tempValues2, &dims);
+  if(dims[0]>0){
+    if(dims[0]>MAX_N_HIGH){
+      dims[0] = MAX_N_HIGH;
+      if(!silent) warning("Too many gridDensMaxLoc supplied!");
+    }
+    if(dims[1]>DIM){
+      dims[1] = DIM;
+      if(!silent) warning("Too many spatial dimensions in gridDensMaxLoc!");
+    }
+    for(j=0;j<dims[0];j++){
+      for(k=0;k<dims[1];k++)
+        par->gridDensMaxLoc[j][k] = tempValues2[j][k].doubleValue;
+      free(tempValues2[j]);
+    }
+  }
+  free(tempValues2);
+
+  extractScalarValue(pPars, "tcmb",              parTemplate[i++].type, STR_LEN_0, &tempValue);
   par->tcmb              = tempValue.doubleValue;
-  extractValue(pPars, "lte_only",          parTemplate[i++].type, STR_LEN_0, &tempValue);
+  extractScalarValue(pPars, "lte_only",          parTemplate[i++].type, STR_LEN_0, &tempValue);
   par->lte_only          = tempValue.boolValue;
-  extractValue(pPars, "init_lte",          parTemplate[i++].type, STR_LEN_0, &tempValue);
+  extractScalarValue(pPars, "init_lte",          parTemplate[i++].type, STR_LEN_0, &tempValue);
   par->init_lte          = tempValue.boolValue;
-  extractValue(pPars, "samplingAlgorithm", parTemplate[i++].type, STR_LEN_0, &tempValue);
+  extractScalarValue(pPars, "samplingAlgorithm", parTemplate[i++].type, STR_LEN_0, &tempValue);
   par->samplingAlgorithm = tempValue.intValue;
-  extractValue(pPars, "sampling",          parTemplate[i++].type, STR_LEN_0, &tempValue);
+  extractScalarValue(pPars, "sampling",          parTemplate[i++].type, STR_LEN_0, &tempValue);
   par->sampling          = tempValue.intValue;
-  extractValue(pPars, "blend",             parTemplate[i++].type, STR_LEN_0, &tempValue);
+  extractScalarValue(pPars, "blend",             parTemplate[i++].type, STR_LEN_0, &tempValue);
   par->blend             = tempValue.boolValue;
-  extractValue(pPars, "antialias",         parTemplate[i++].type, STR_LEN_0, &tempValue);
+  extractScalarValue(pPars, "antialias",         parTemplate[i++].type, STR_LEN_0, &tempValue);
   par->antialias         = tempValue.intValue;
-  extractValue(pPars, "polarization",      parTemplate[i++].type, STR_LEN_0, &tempValue);
+  extractScalarValue(pPars, "polarization",      parTemplate[i++].type, STR_LEN_0, &tempValue);
   par->polarization      = tempValue.boolValue;
-  extractValue(pPars, "nThreads",          parTemplate[i++].type, STR_LEN_0, &tempValue);
+  extractScalarValue(pPars, "nThreads",          parTemplate[i++].type, STR_LEN_0, &tempValue);
   par->nThreads          = tempValue.intValue;
-  extractValue(pPars, "nSolveIters",       parTemplate[i++].type, STR_LEN_0, &tempValue);
+  extractScalarValue(pPars, "nSolveIters",       parTemplate[i++].type, STR_LEN_0, &tempValue);
   par->nSolveIters       = tempValue.intValue;
-  extractValue(pPars, "traceRayAlgorithm", parTemplate[i++].type, STR_LEN_0, &tempValue);
+  extractScalarValue(pPars, "traceRayAlgorithm", parTemplate[i++].type, STR_LEN_0, &tempValue);
   par->traceRayAlgorithm = tempValue.intValue;
-  extractValue(pPars, "resetRNG",          parTemplate[i++].type, STR_LEN_0, &tempValue);
+  extractScalarValue(pPars, "resetRNG",          parTemplate[i++].type, STR_LEN_0, &tempValue);
   par->resetRNG          = tempValue.boolValue;
-  extractValue(pPars, "doSolveRTE",        parTemplate[i++].type, STR_LEN_0, &tempValue);
+  extractScalarValue(pPars, "doSolveRTE",        parTemplate[i++].type, STR_LEN_0, &tempValue);
   par->doSolveRTE        = tempValue.boolValue;
 
-  nValues = extractValues(pPars, "gridOutFiles",  parTemplate[i++].type, STR_LEN_0, &tempValues);
+  nValues = extractListValues(pPars, "gridOutFiles",  parTemplate[i++].type, STR_LEN_0, &tempValues);
   if(nValues>0){
     if(nValues>NUM_GRID_STAGES){
       nValues = NUM_GRID_STAGES;
@@ -751,7 +835,7 @@ Here we extract par and img from the user's supplied 'model' module by calling t
       strcpy(par->gridOutFiles[j], tempValues[j].strValue);
   }
 
-  nValues = extractValues(pPars, "moldatfile",  parTemplate[i++].type, STR_LEN_0, &tempValues);
+  nValues = extractListValues(pPars, "moldatfile",  parTemplate[i++].type, STR_LEN_0, &tempValues);
   if(nValues>0){
     if(nValues>MAX_NSPECIES){
       nValues = MAX_NSPECIES;
@@ -761,7 +845,7 @@ Here we extract par and img from the user's supplied 'model' module by calling t
       strcpy(par->moldatfile[j], tempValues[j].strValue);
   }
 
-  nValues = extractValues(pPars, "girdatfile",  parTemplate[i++].type, STR_LEN_0, &tempValues);
+  nValues = extractListValues(pPars, "girdatfile",  parTemplate[i++].type, STR_LEN_0, &tempValues);
   if(nValues>0){
     if(nValues>MAX_NSPECIES){
       nValues = MAX_NSPECIES;
@@ -771,7 +855,7 @@ Here we extract par and img from the user's supplied 'model' module by calling t
       strcpy(par->girdatfile[j], tempValues[j].strValue);
   }
 
-  nValues = extractValues(pPars, "collPartNames",  parTemplate[i++].type, STR_LEN_0, &tempValues);
+  nValues = extractListValues(pPars, "collPartNames",  parTemplate[i++].type, STR_LEN_0, &tempValues);
   if(nValues>0){
     if(nValues>MAX_N_COLL_PART){
       nValues = MAX_N_COLL_PART;
@@ -803,45 +887,45 @@ Here we extract par and img from the user's supplied 'model' module by calling t
       pImgPars = PyList_GET_ITEM(pImgList, (Py_ssize_t)j); /* Don't have to DECREF pImgPars, it is a borrowed reference. */
 
       i = 0;
-      extractValue(pImgPars, "nchan",      imgParTemplate[i++].type, STR_LEN_0, &tempValue);
+      extractScalarValue(pImgPars, "nchan",      imgParTemplate[i++].type, STR_LEN_0, &tempValue);
       (*img)[j].nchan = tempValue.intValue;
-      extractValue(pImgPars, "trans",      imgParTemplate[i++].type, STR_LEN_0, &tempValue);
+      extractScalarValue(pImgPars, "trans",      imgParTemplate[i++].type, STR_LEN_0, &tempValue);
       (*img)[j].trans = tempValue.intValue;
-      extractValue(pImgPars, "molI",       imgParTemplate[i++].type, STR_LEN_0, &tempValue);
+      extractScalarValue(pImgPars, "molI",       imgParTemplate[i++].type, STR_LEN_0, &tempValue);
       (*img)[j].molI = tempValue.intValue;
-      extractValue(pImgPars, "velres",     imgParTemplate[i++].type, STR_LEN_0, &tempValue);
+      extractScalarValue(pImgPars, "velres",     imgParTemplate[i++].type, STR_LEN_0, &tempValue);
       (*img)[j].velres = tempValue.doubleValue;
-      extractValue(pImgPars, "imgres",     imgParTemplate[i++].type, STR_LEN_0, &tempValue);
+      extractScalarValue(pImgPars, "imgres",     imgParTemplate[i++].type, STR_LEN_0, &tempValue);
       (*img)[j].imgres = tempValue.doubleValue;
-      extractValue(pImgPars, "pxls",       imgParTemplate[i++].type, STR_LEN_0, &tempValue);
+      extractScalarValue(pImgPars, "pxls",       imgParTemplate[i++].type, STR_LEN_0, &tempValue);
       (*img)[j].pxls = tempValue.intValue;
-      extractValue(pImgPars, "unit",       imgParTemplate[i++].type, STR_LEN_0, &tempValue);
+      extractScalarValue(pImgPars, "unit",       imgParTemplate[i++].type, STR_LEN_0, &tempValue);
       (*img)[j].unit = tempValue.intValue;
-      extractValue(pImgPars, "freq",       imgParTemplate[i++].type, STR_LEN_0, &tempValue);
+      extractScalarValue(pImgPars, "freq",       imgParTemplate[i++].type, STR_LEN_0, &tempValue);
       (*img)[j].freq = tempValue.doubleValue;
-      extractValue(pImgPars, "bandwidth",  imgParTemplate[i++].type, STR_LEN_0, &tempValue);
+      extractScalarValue(pImgPars, "bandwidth",  imgParTemplate[i++].type, STR_LEN_0, &tempValue);
       (*img)[j].bandwidth = tempValue.doubleValue;
-      extractValue(pImgPars, "source_vel", imgParTemplate[i++].type, STR_LEN_0, &tempValue);
+      extractScalarValue(pImgPars, "source_vel", imgParTemplate[i++].type, STR_LEN_0, &tempValue);
       (*img)[j].source_vel = tempValue.doubleValue;
-      extractValue(pImgPars, "theta",      imgParTemplate[i++].type, STR_LEN_0, &tempValue);
+      extractScalarValue(pImgPars, "theta",      imgParTemplate[i++].type, STR_LEN_0, &tempValue);
       (*img)[j].theta = tempValue.doubleValue;
-      extractValue(pImgPars, "phi",        imgParTemplate[i++].type, STR_LEN_0, &tempValue);
+      extractScalarValue(pImgPars, "phi",        imgParTemplate[i++].type, STR_LEN_0, &tempValue);
       (*img)[j].phi = tempValue.doubleValue;
-      extractValue(pImgPars, "incl",       imgParTemplate[i++].type, STR_LEN_0, &tempValue);
+      extractScalarValue(pImgPars, "incl",       imgParTemplate[i++].type, STR_LEN_0, &tempValue);
       (*img)[j].incl = tempValue.doubleValue;
-      extractValue(pImgPars, "posang",     imgParTemplate[i++].type, STR_LEN_0, &tempValue);
+      extractScalarValue(pImgPars, "posang",     imgParTemplate[i++].type, STR_LEN_0, &tempValue);
       (*img)[j].posang = tempValue.doubleValue;
-      extractValue(pImgPars, "azimuth",    imgParTemplate[i++].type, STR_LEN_0, &tempValue);
+      extractScalarValue(pImgPars, "azimuth",    imgParTemplate[i++].type, STR_LEN_0, &tempValue);
       (*img)[j].azimuth = tempValue.doubleValue;
-      extractValue(pImgPars, "distance",   imgParTemplate[i++].type, STR_LEN_0, &tempValue);
+      extractScalarValue(pImgPars, "distance",   imgParTemplate[i++].type, STR_LEN_0, &tempValue);
       (*img)[j].distance = tempValue.doubleValue;
-      extractValue(pImgPars, "doInterpolateVels",imgParTemplate[i++].type, STR_LEN_0, &tempValue);
+      extractScalarValue(pImgPars, "doInterpolateVels",imgParTemplate[i++].type, STR_LEN_0, &tempValue);
       (*img)[j].doInterpolateVels = tempValue.boolValue;
 
-      extractValue(pImgPars, "filename",   imgParTemplate[i++].type, STR_LEN_0, &tempValue);
+      extractScalarValue(pImgPars, "filename",   imgParTemplate[i++].type, STR_LEN_0, &tempValue);
       if(strlen(tempValue.strValue)>0)
         strcpy((*img)[j].filename, tempValue.strValue);
-      extractValue(pImgPars, "units",      imgParTemplate[i++].type, STR_LEN_0, &tempValue);
+      extractScalarValue(pImgPars, "units",      imgParTemplate[i++].type, STR_LEN_0, &tempValue);
       if(strlen(tempValue.strValue)>0)
         strcpy((*img)[j].units, tempValue.strValue);
     }

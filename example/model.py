@@ -11,28 +11,32 @@ import math
 # For definitions of the classes ModelParameters and ImageParameters:
 from par_classes import *
 
-# Note that the useful macros defined in lime.h are also provided here in the dictionary 'macros' provided as an argument to each funciton below. See the example code at the end for the full list of macro values provided.
+# Note that the useful macros defined in lime.h are also provided here in the dictionary 'macros' provided as an argument to each function below. See the example code at the end for the full list of macro values provided.
 
 #.......................................................................
 def input(macros):
   par = ModelParameters()
 
-  # Basic parameters. See cheat sheet for details.
+  # We give all the possible parameters here, but have commented out many which can be left at their defaults.
+
+  # Parameters which must be set (they have no sensible defaults).
   #
-  par.radius            = 2000*macros["AU"]
+  par.radius            = 2000.0*macros["AU"]
   par.minScale          = 0.5*macros["AU"]
   par.pIntensity        = 4000
   par.sinkPoints        = 3000
-  par.dust              = "jena_thin_e6.tab"
-  par.moldatfile        = ["hco+@xpol.dat"] # must be a list, even when there is only 1 item.
-  par.antialias         = 4
-  par.sampling          = 2
 
+  # Parameters which may be omitted (i.e. left at their default values) under some circumstances.
+  #
+  par.dust              = "jena_thin_e6.tab"
   par.outputfile        = "populations.pop"
   par.binoutputfile     = "restart.pop"
   par.gridfile          = "grid.vtk"
+#  par.pregrid           = "pregrid.asc"
+#  par.restart           = "restart.pop"
+#  par.gridInFile        = "grid_5.ds"
 
-  #    Setting elements of the following three arrays is optional. NOTE
+  #    Setting elements of the following two arrays is optional. NOTE
   #    that, if you do set any of their values, you should set as many as
   #    the number of elements returned by your function density(). The
   #    ith element of the array in question will then be assumed to refer
@@ -68,33 +72,60 @@ def input(macros):
   #    then this is multiplied by the abundance to return the number
   #    density.
   #
-  #    par->dustWeights: this is similar, but the weighted sum of
-  #    densities now feeds into the calculation of the dust opacity.
-  #
   #    Note that there are convenient macros defined in ../src/lime.h for
   #    7 types of collision partner.
   #
   #    Below is an example of how you might use these parameters:
+  #
+  par.collPartIds        = [macros["CP_H2"]] # must be a list, even when there is only 1 item.
+  par.nMolWeights        = [1.0] # must be a list, even when there is only 1 item.
 
-  par.collPartIds       = [macros["CP_H2"]] # must be a list, even when there is only 1 item.
-  par.nMolWeights       = [1.0] # must be a list, even when there is only 1 item.
-  par.dustWeights       = [1.0] # must be a list, even when there is only 1 item.
+#  par.collPartNames     = ["phlogiston"] # must be a list, even when there is only 1 item.
+#  par.collPartMolWeights = [2.0159] # must be a list, even when there is only 1 item.
+
+#  par.gridDensMaxValues = [1.0] # must be a list, even when there is only 1 item.
+#  par.gridDensMaxLoc    = [[0.0,0.0,0.0]] # must be a list, each element of which is also a list with 3 entries (1 for each spatial coordinate).
+
+#  par.tcmb              = 2.72548
+#  par.lte_only          = False
+#  par.init_lte          = False
+#  par.samplingAlgorithm = 0
+  par.sampling          = 2 # Now only accessed if par.samplingAlgorithm==0 (the default).
+#  par.blend             = False
+#  par.polarization      = False
+#  par.nThreads          = 1
+  par.nSolveIters       = 14
+  par.traceRayAlgorithm = 1
+#  par.resetRNG          = False
+#  par.doSolveRTE        = False
+#  par.gridOutFiles      = ['','','','',"grid_5.ds"] # must be a list with 5 string elements, although some or all can be empty.
+  par.moldatfile        = ["hco+@xpol.dat"] # must be a list, even when there is only 1 item.
+#  par.girdatfile        = ["myGIRs.dat"] # must be a list, even when there is only 1 item.
+
 
   # Definitions for image #0. Add further similar blocks for additional images.
   #
-  par.img.append(ImageParameters()) # by default this list par.img has 0 entries.
-  par.img[-1].nchan                  = 61             # Number of channels
-  par.img[-1].velres                 = 500.0          # Channel resolution in m/s
-  par.img[-1].trans                  = 3              # zero-indexed J quantum number
-  par.img[-1].pxls                   = 100            # Pixels per dimension
-  par.img[-1].imgres                 = 0.1            # Resolution in arc seconds
-  par.img[-1].distance               = 140*macros["PC"] # source distance in m
-  par.img[-1].source_vel             = 0.0            # source velocity in m/s
-  par.img[-1].unit                   = 0              # 0:Kelvin 1:Jansky/pixel 2:SI 3:Lsun/pixel 4:tau
-  par.img[-1].filename               = "image0.fits"  # Output filename
-#  par.img[-1].azimuth                = 0.0
-#  par.img[-1].incl                   = 0.0
-#  par.img[-1].posang                 = 0.0
+  par.img.append(ImageParameters()) # by default this list par.img has 0 entries. Each 'append' will add an entry. The [-1] entry is the most recently added.
+
+  par.img[-1].nchan             = 61             # Number of channels
+  par.img[-1].trans             = 3              # zero-indexed J quantum number
+#  par.img[-1].molI              = -1
+  par.img[-1].velres            = 500.0          # Channel resolution in m/s
+  par.img[-1].imgres            = 0.1            # Resolution in arc seconds
+  par.img[-1].pxls              = 100            # Pixels per dimension
+  par.img[-1].unit              = 0              # 0:Kelvin 1:Jansky/pixel 2:SI 3:Lsun/pixel 4:tau
+#  par.img[-1].freq              = -1.0
+#  par.img[-1].bandwidth         = -1.0
+  par.img[-1].source_vel        = 0.0            # source velocity in m/s
+#  par.img[-1].theta             = 0.0
+#  par.img[-1].phi               = 0.0
+#  par.img[-1].incl              = 0.0
+#  par.img[-1].posang            = 0.0
+#  par.img[-1].azimuth           = 0.0
+  par.img[-1].distance          = 140.0*macros["PC"] # source distance in m
+  par.img[-1].doInterpolateVels = True
+  par.img[-1].filename          = "image0.fits"  # Output filename
+#  par.img[-1].units             = "0,1"
 
   return par
 
@@ -114,7 +145,7 @@ Note that these species are expected to be the bulk constituent(s) of the physic
 The identity of each collision partner is provided via the list parameter par.collPartIds. If you do provide this, obviously it must have the same number and ordering of elements as the density list you provide here; if you don't include it, LIME will try to guess the identities of the species you provide density values for.
   """
 
-  rMin = 0.1*macros["AU"] # greater than zero to avoid a singularity at the origin.
+  rMin = 0.7*macros["AU"] # greater than zero to avoid a singularity at the origin.
 
   # Calculate radial distance from origin
   #
@@ -128,7 +159,7 @@ The identity of each collision partner is provided via the list parameter par.co
   else:
     rToUse = rMin # Just to prevent overflows at r==0!
 
-  listOfDensities = [1.5e6*((rToUse/(300*macros["AU"]))**(-1.5))*1e6] # must be a list, even when there is only 1 item.
+  listOfDensities = [1.5e6*((rToUse/(300.0*macros["AU"]))**(-1.5))*1e6] # must be a list, even when there is only 1 item.
 
   return listOfDensities
 
@@ -235,15 +266,16 @@ if __name__ == '__main__':
   # Put any private debugging tests here, which you can then run by calling the module directly from the unix command line.
 
   macros = {\
-    "AMU"     :1.66053904e-27,\
-    "CLIGHT"  :2.99792458e8,\
-    "HPLANCK" :6.626070040e-34,\
-    "KBOLTZ"  :1.38064852e-23,\
-    "GRAV"    :6.67428e-11,\
-    "AU"      :1.495978707e11,\
-    "PC"      :3.08567758e16,\
-    "PI"      :3.14159265358979323846,\
-    "SPI"     :1.77245385091,\
+    "AMU"           :1.66053904e-27,\
+    "CLIGHT"        :2.99792458e8,\
+    "HPLANCK"       :6.626070040e-34,\
+    "KBOLTZ"        :1.38064852e-23,\
+    "GRAV"          :6.67428e-11,\
+    "AU"            :1.495978707e11,\
+    "LOCAL_CMB_TEMP":2.72548,\
+    "PC"            :3.08567758e16,\
+    "PI"            :3.14159265358979323846,\
+    "SPI"           :1.77245385091,\
     "CP_H2"   :1,\
     "CP_p_H2" :2,\
     "CP_o_H2" :3,\

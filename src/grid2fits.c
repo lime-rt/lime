@@ -1415,7 +1415,7 @@ The present function mallocs the pointer *links.
       processFitsError(status);
 
       for(i_LL=0;i_LL<totalNumLinks;i_LL++)
-        (*links)[i_LL].vels[gridInfoRead->nDims*j_us + i_us] = vels[i_LL];
+        (*links)[i_LL].vels[gridInfoRead->nDims*i_us + j_us] = vels[i_LL];
     }
   }
   free(vels);

@@ -450,6 +450,7 @@ Note that this is called from within the multi-threaded block.
   for(ei=0;ei<(*ptrToBuff).numEdges;ei++){
     (*ptrToBuff).shapeFns[vi] = 4.0*barys[(*ptrToBuff).edgeVertexIndices[ei][0]]\
                                    *barys[(*ptrToBuff).edgeVertexIndices[ei][1]];
+
     vi++;
   }
 }
@@ -921,6 +922,9 @@ At the moment I will fix the number of segments, but it might possibly be faster
 
     entryI = exitI;
     exitI = 1 - exitI;
+
+//if(ci>210) exit(1);
+//if(ci>=2) exit(1);
   } /* End loop over cells in the chain traversed by the ray. */
 
   if(img[im].doline && img[im].doInterpolateVels)
@@ -1473,11 +1477,11 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
     if(img[im].doline && img[im].doInterpolateVels){
       free(velBuff.shapeFns);
       for(i=0;i<velBuff.numEdges;i++)
-        free(velBuff.edgeVels);
+        free(velBuff.edgeVels[i]);
       free(velBuff.edgeVels);
       free(velBuff.edgeVertexIndices);
       for(i=0;i<velBuff.numVertices;i++)
-        free(velBuff.vertexVels);
+        free(velBuff.vertexVels[i]);
       free(velBuff.vertexVels);
       free(velBuff.exitCellBary);
       free(velBuff.midCellBary);

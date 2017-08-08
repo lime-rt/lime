@@ -24,7 +24,7 @@ function usage {
     echo "   -V           Display version information"
     echo "   -h           Display this message"
     echo "   -f           Use fast exponential computation"
-    echo "   -s           Suppresses output messages"
+    echo "   -s           Suppress output messages"
     echo "   -t           Compile with debugging and fixed RNG seeds"
     echo "   -n           Turn off ncurses output"
     echo "   -p NTHREADS  Run in parallel with NTHREADS threads (default: 1)"

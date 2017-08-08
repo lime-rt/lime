@@ -5,7 +5,7 @@
 #  This file is part of LIME, the versatile line modeling engine
 #
 #  Copyright (C) 2006-2014 Christian Brinch
-#  Copyright (C) 2015-2016 The LIME development team
+#  Copyright (C) 2015-2017 The LIME development team
 #
 #
 # DO NOT ALTER THIS FILE UNLESS YOU KNOW WHAT YOU ARE DOING!
@@ -18,7 +18,7 @@ class ImageParameters:
   """
 This is to define the complete list of 'image' parameters which the user can set for each image. Although the parameters are set up as class attributes when the module is imported, the fundamental definition is via the 'hidden' attribute _listOfAttrs. This list includes a tuple element for each parameter. Each tuple has 5 elements: the parameter name, its type (one of ['int','float','bool','str','obj']), whether it is a list, whether it is mandatory, and the default value.
 
-***NOTE*** that the ordering of the elements in _listOfAttrs is important - the code in pymodel_wrap.initParImg() depends on it. Don't change it without also changing the relevant code.
+***NOTE*** that the ordering of the elements in _listOfAttrs is important - the code in pymain.initParImg() depends on it. Don't change it without also changing the relevant code.
   """
   _listOfAttrs = []
   #                     name                type    list?  mand?  default
@@ -50,7 +50,7 @@ class ModelParameters:
   """
 This is to define the complete list of 'ordinary' parameters which the user can set. Although the parameters are set up as class attributes when the module is imported, the fundamental definition is via the 'hidden' attribute _listOfAttrs. This list includes a tuple element for each parameter. Each tuple has 5 elements: the parameter name, its type (one of ['int','float','bool','str','obj']), whether it is a list, whether it is mandatory, and the default value. 
 
-***NOTE*** that the ordering of the elements in _listOfAttrs is important - the code in pymodel_wrap.initParImg() depends on it. Don't change it without also changing the relevant code.
+***NOTE*** that the ordering of the elements in _listOfAttrs is important - the code in pymain.initParImg() depends on it. Don't change it without also changing the relevant code.
   """
   _listOfAttrs = []
   #                     name                 type   list?  mand?  default
@@ -72,7 +72,8 @@ This is to define the complete list of 'ordinary' parameters which the user can 
   _listOfAttrs.append(('dustWeights',       'float',True,  False, []))
   _listOfAttrs.append(('collPartMolWeights','float',True,  False, []))
 
-###  _listOfAttrs.append(('gridDensMaxValues', 'float',True,  False, []))
+  _listOfAttrs.append(('gridDensMaxValues', 'float',True,  False, []))
+  _listOfAttrs.append(('gridDensMaxLoc',    'float',True,  False, []))
 
   _listOfAttrs.append(('tcmb',             'float',False, False, _LOCAL_CMB_TEMP))
   _listOfAttrs.append(('lte_only',         'bool', False, False, False))
@@ -83,7 +84,7 @@ This is to define the complete list of 'ordinary' parameters which the user can 
   _listOfAttrs.append(('antialias',        'int',  False, False, 1))
   _listOfAttrs.append(('polarization',     'bool', False, False, False))
   _listOfAttrs.append(('nThreads',         'int',  False, False, _NTHREADS))
-  _listOfAttrs.append(('nSolveIters',      'int',  False, False, 17)) #******************
+  _listOfAttrs.append(('nSolveIters',      'int',  False, False, 17))
   _listOfAttrs.append(('traceRayAlgorithm','int',  False, False, 0))
   _listOfAttrs.append(('resetRNG',         'bool', False, False, False))
   _listOfAttrs.append(('doSolveRTE',       'bool', False, False, False))

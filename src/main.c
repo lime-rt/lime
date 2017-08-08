@@ -15,6 +15,12 @@ int silent = 1;
 int silent = 0;
 #endif
 
+#ifdef TEST
+_Bool fixRandomSeeds = TRUE;
+#else
+_Bool fixRandomSeeds = FALSE;
+#endif
+
 /*....................................................................*/
 int
 initParImg(inputPars *par, image **img)

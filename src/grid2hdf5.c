@@ -1882,7 +1882,7 @@ The present function mallocs the pointer *links.
 //*** check status?
 
       for(i_ui=0;i_ui<gridInfoRead->nLinks;i_ui++)
-        (*links)[i_ui].vels[gridInfoRead->nDims*j_us + i_us] = vels[i_ui];
+        (*links)[i_ui].vels[gridInfoRead->nDims*i_us + j_us] = vels[i_ui];
     }
   }
   free(vels);

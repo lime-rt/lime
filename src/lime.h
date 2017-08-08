@@ -10,6 +10,10 @@
 #ifndef LIME_H
 #define LIME_H
 
+#ifdef IS_PYTHON
+#include <Python.h>
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -260,6 +264,7 @@ struct cell {
 /* Some global variables */
 extern int silent,defaultFuncFlags;
 extern double defaultDensyPower;
+extern _Bool fixRandomSeeds;
 
 /* User-specifiable functions */
 void	density(double,double,double,double *);

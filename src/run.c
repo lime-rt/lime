@@ -8,9 +8,8 @@
 TODO:
  */
 
-#include <locale.h>
-
 #include "lime.h"
+#include <locale.h>
 #include "gridio.h" /* For countDensityCols() */
 
 int defaultFuncFlags = 0;
@@ -47,7 +46,7 @@ parseInput(const inputPars inpar, image *inimg, const int nImages, configInfo *p
   /*
 The parameters visible to the user have now been strictly confined to members of the structs 'inputPars' and 'image', both of which are defined in inpars.h. There are however further internally-set values which is is convenient to bundle together with the user-set ones. At present we have a fairly clunky arrangement in which the user-set values are copied member-by-member from the user-dedicated structs to the generic internal structs 'configInfo' and 'imageInfo'. This is done in the present function, along with some checks and other initialization.
   */
-
+  _Bool changedInterp;
   int i,j,id,status=0,numGirDatFiles;
   double BB[3],normBSquared,dens[MAX_N_COLL_PART],r[DIM];
   FILE *fp;
@@ -353,7 +352,7 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
       (*img)[i].posang     = inimg[i].posang;
       (*img)[i].azimuth    = inimg[i].azimuth;
       (*img)[i].distance   = inimg[i].distance;
-      (*img)[i].doInterpolateVels = inimg[i].doInterpolateVels;
+      (*img)[i].doInterpolateVels = inimg[i].doInterpolateVels; // This is only accessed if par->traceRayAlgorithm==1.
     }
   }
 
@@ -644,9 +643,21 @@ LIME provides two different schemes of {R_1, R_2, R_3}: {PA, phi, theta} and {PA
   par->nLineImages = 0;
   par->nContImages = 0;
   par->doInterpolateVels = 0;
+  changedInterp=FALSE;
   for(i=0;i<nImages;i++){
     if((*img)[i].doline){
-      if(par->traceRayAlgorithm==1 && !(*img)[i].doInterpolateVels && bitIsSet(defaultFuncFlags, FUNC_BIT_velocity)){
+
+#ifdef IS_PYTHON
+      if(par->traceRayAlgorithm==1 && !(*img)[i].doInterpolateVels\
+      && !bitIsSet(defaultFuncFlags, FUNC_BIT_velocity)\
+      && par->nThreads>1){
+        changedInterp = TRUE;
+        (*img)[i].doInterpolateVels = TRUE;
+      }
+#endif
+
+      if(par->traceRayAlgorithm==1 && !(*img)[i].doInterpolateVels\
+      && bitIsSet(defaultFuncFlags, FUNC_BIT_velocity)){
         if(!silent) bail_out("par->traceRayAlgorithm==1 && !img[i].doInterpolateVels requires you to supply a velocity function.");
 exit(1);
       }
@@ -657,6 +668,9 @@ exit(1);
     if((*img)[i].doInterpolateVels)
       par->doInterpolateVels = 1;
   }
+
+  if(!silent && changedInterp)
+    warning("You cannot call a python velocity function when multi-threaded. Vels will be interpolated from grid values.");
 
   if(par->nContImages>0){
     if(par->dust==NULL){
@@ -676,12 +690,20 @@ exit(1);
 
   if(par->nLineImages>0 && par->traceRayAlgorithm==0 && !par->doPregrid){
     if(bitIsSet(defaultFuncFlags, FUNC_BIT_velocity)){
-      par->useVelFuncInRaytrace = 0;
+      par->useVelFuncInRaytrace = FALSE;
       if(!silent) warning("No velocity function supplied - raytracing will have lower precision.");
     }else
-      par->useVelFuncInRaytrace = 1;
+      par->useVelFuncInRaytrace = TRUE;
   }else
-    par->useVelFuncInRaytrace = 0;
+    par->useVelFuncInRaytrace = FALSE;
+
+#ifdef IS_PYTHON
+  if(par->nThreads>1 && par->useVelFuncInRaytrace){
+    par->useVelFuncInRaytrace = FALSE;
+    if(!silent)
+      warning("You cannot call a python velocity function when multi-threaded.");
+  }
+#endif
 
   par->edgeVelsAvailable=0; /* default value, this is set within getEdgeVelocities(). */
 
@@ -735,8 +757,9 @@ run(inputPars inpars, image *inimg, const int nImages){
   int nEntries=0;
   double *lamtab=NULL,*kaptab=NULL;
 
-  struct sigaction sigact;
-  sigact.sa_handler = sigintHandler;
+  struct sigaction sigact = {.sa_handler = sigintHandler};
+//  struct sigaction sigact;
+//  sigact.sa_handler = sigintHandler;
   sigactionStatus = sigaction(SIGINT, &sigact, NULL);
   if(sigactionStatus){
     if(!silent){

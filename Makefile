@@ -16,6 +16,7 @@ PREFIX  =  ${PATHTOLIME}
 srcdir		= ${CURDIR}/src
 docdir		= ${CURDIR}/doc
 exampledir	= ${CURDIR}/example
+pydir		= ${CURDIR}/python
 #*** better to use ${PREFIX} here rather than ${CURDIR}? (the latter is used in artist/lime.)
 
 ifneq (,$(wildcard ${PREFIX}/lib/.))
@@ -105,7 +106,7 @@ ${MODELO}: ${INCS}
 	${CC} ${CCFLAGS} ${CPPFLAGS} -o ${MODELO} -c ${MODELS}
 
 python: CCFLAGS += ${PYCCFLAGS}
-python: CPPFLAGS += -DNO_NCURSES
+python: CPPFLAGS += -DNO_NCURSES -DIS_PYTHON
 python: LDFLAGS += ${PYLDFLAGS}
 python: ${PYTARGET}
 
