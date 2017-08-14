@@ -327,11 +327,10 @@ Generate the grid point locations.
     outRandLocations = malloc(sizeof(*outRandLocations)*par->pIntensity);
 
     randGen = gsl_rng_alloc(ranNumGenType);	/* Random number generator */
-#ifdef TEST
-    gsl_rng_set(randGen,342971);
-#else
-    gsl_rng_set(randGen,time(0));
-#endif
+    if(fixRandomSeeds)
+      gsl_rng_set(randGen,342971);
+    else
+      gsl_rng_set(randGen,time(0));
 
     if(par->samplingAlgorithm==0){
       randomsViaRejection(par, (unsigned int)par->pIntensity, randGen, outRandLocations);
@@ -339,11 +338,10 @@ Generate the grid point locations.
     } else if(par->samplingAlgorithm==1){
       setConstDefaults(&rinc);
 
-#ifdef TEST
-      rinc.randSeed = 342971;
-#else
-      rinc.randSeed = time(0);
-#endif
+      if(fixRandomSeeds)
+        rinc.randSeed = 342971;
+      else
+        rinc.randSeed = time(0);
 
       rinc.numDims = DIM;
       rinc.par = *par;

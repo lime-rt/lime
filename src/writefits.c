@@ -13,7 +13,7 @@ void
 write3Dfits(int im, int unit_index, configInfo *par, imageInfo *img){
   double bscale,bzero,epoch,lonpole,equinox,restfreq;
   double cdelt1,crpix1,crval1,cdelt2,crpix2,crval2;
-  double cdelt3,crpix3,crval3,ru3,scale;
+  double cdelt3,crpix3,crval3,ru3,scale=1.0;
   int velref,unitI;
   float *row;
   int px,py,ichan;
@@ -143,7 +143,7 @@ void
 write2Dfits(int im, int unit_index, configInfo *par, imageInfo *img){
   double bscale,bzero,epoch,lonpole,equinox,restfreq;
   double cdelt1,crpix1,crval1,cdelt2,crpix2,crval2;
-  double ru3,scale;
+  double ru3,scale=1.0;
   int velref,unitI;
   float *row,minVal;
   int px,py;

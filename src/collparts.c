@@ -154,10 +154,11 @@ This deals with four user-settable list parameters which relate to collision par
     /* numUserSetCPWeights==0 is ok, this just means the user has not set the parameter at all, but for other values we should issue some warnings, because if the user sets any at all, they should set the same number as there are returns from density():
     */
     if(numUserSetCPWeights > 0){
-      if(numUserSetCPNames <= 0)
+      if(numUserSetCPNames <= 0){
         if(!silent) warning("par->collPartMolWeights will be ignored - you must also set par->collPartNames.");
-      else
+      }else{
         if(!silent) warning("par->collPartMolWeights will be ignored - there should be 1 for each density() return.");
+      }
       numUserSetCPWeights = 0;
     }
 

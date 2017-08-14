@@ -4,6 +4,9 @@
 # Copyright (C) 2006-2014 Christian Brinch
 # Copyright (C) 2015-2017 The LIME development team
 
+# Platform-dependent stuff:
+include Makefile.defs
+
 ##
 ## Make sure to put the correct paths.
 ##
@@ -13,6 +16,7 @@ PREFIX  =  ${PATHTOLIME}
 srcdir		= ${CURDIR}/src
 docdir		= ${CURDIR}/doc
 exampledir	= ${CURDIR}/example
+pydir		= ${CURDIR}/python
 #*** better to use ${PREFIX} here rather than ${CURDIR}? (the latter is used in artist/lime.)
 
 ifneq (,$(wildcard ${PREFIX}/lib/.))
@@ -32,59 +36,58 @@ ifneq (,$(wildcard /usr/local/lib/.))
 endif
 
 
-CPPFLAGS	= -I${PREFIX}/include \
-		  -I${PREFIX}/src \
-		  -I${HOME}/include \
-		  -I/opt/local/include \
-		  -I/sw//include \
-	          ${EXTRACPPFLAGS}
+CPPFLAGS += -I${PREFIX}/include \
+	    -I${PREFIX}/src \
+	    -I${HOME}/include \
+	    -I/opt/local/include \
+	    -I/sw//include \
+	    ${EXTRACPPFLAGS}
 
-ifdef OLD_QHULL
-	QHULL   = qhull
-	CPPFLAGS += -DOLD_QHULL
-else
-	QHULL   = qhullstatic
-endif
-
-ifdef OLD_FITSIO
-	CPPFLAGS += -DOLD_FITSIO
-endif
 
 # Names of source files included:
-include Makefile.defs
+include Makefile.srcs
 
 ##
 ## Do not change anything below unless you know what you are doing! 
 ##
 
 TARGET  = lime.x # Overwritten in usual practice by the value passed in by the 'lime' script.
+PYTARGET = pylime
 CC	= gcc -fopenmp
 MODELS  = model.c # Overwritten in usual practice by the value passed in by the 'lime' script.
 MODELO 	= ${srcdir}/model.o
 
 CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing
-LDFLAGS = -lgsl -lgslcblas -l${QHULL} -lcfitsio -lncurses -lm 
+LDFLAGS = -lgsl -lgslcblas -l${LIB_QHULL} -lcfitsio -lncurses -lm 
 
 ifeq (${DOTEST},yes)
   CCFLAGS += -DTEST
-  CC += -g -Wunused -Wno-unused-result -Wformat -Wformat-security
+#  CC += -g -Wunused -Wno-unused-value -Wformat -Wformat-security
+  CC += -g -Wall
 endif
 
-SRCS = ${CORESOURCES} ${STDSOURCES}
-INCS = ${COREINCLUDES}
+ifeq (${VERBOSE},no)
+  CCFLAGS += -DNOVERBOSE
+endif
 
 ifeq (${USEHDF5},yes)
   CPPFLAGS += -DUSEHDF5
   CCFLAGS += -DH5_NO_DEPRECATED_SYMBOLS
   LDFLAGS += -lhdf5_hl -lhdf5 -lz
-  SRCS += ${HDF5SOURCES}
-  INCS += ${HDF5INCLUDES}
+  CORESOURCES += ${HDF5SOURCES}
+  CONVSOURCES += ${HDF5SOURCES}
+  COREINCLUDES += ${HDF5INCLUDES}
 endif
 
+SRCS = ${CORESOURCES} ${STDSOURCES}
+INCS = ${COREINCLUDES}
+PYSRCS = ${CORESOURCES} ${PYSOURCES}
+PYINCS = ${COREINCLUDES} ${PYINCLUDES}
 OBJS = $(SRCS:.c=.o)
+PYOBJS = $(PYSRCS:.c=.o)
 CONV_OBJS = $(CONVSOURCES:.c=.o)
 
-.PHONY: all doc docclean clean distclean
+.PHONY: all doc docclean objclean limeclean clean distclean pyclean python
 
 all:: ${TARGET} 
 
@@ -97,9 +100,18 @@ ${TARGET}: ${OBJS} ${MODELO}
 
 ${OBJS} : ${INCS}
 ${CONV_OBJS} : ${CONVINCLUDES}
+${PYOBJS} : ${PYINCS}
 
 ${MODELO}: ${INCS}
 	${CC} ${CCFLAGS} ${CPPFLAGS} -o ${MODELO} -c ${MODELS}
+
+python: CCFLAGS += ${PYCCFLAGS}
+python: CPPFLAGS += -DNO_NCURSES -DIS_PYTHON
+python: LDFLAGS += ${PYLDFLAGS}
+python: ${PYTARGET}
+
+${PYTARGET}: ${PYOBJS}
+	${CC} -o $@ $^ ${LIBS} ${LDFLAGS}
 
 gridconvert : CPPFLAGS += -DNO_NCURSES
 
@@ -119,8 +131,12 @@ objclean::
 limeclean:: objclean
 	rm -f ${TARGET}
 
-clean:: objclean
+pyclean:: objclean
+	rm -f ${pydir}/*.pyc ${PYTARGET}
+
+clean:: objclean pyclean
 	rm -f gridconvert
 
 distclean:: clean docclean limeclean
+	rm Makefile.defs
 

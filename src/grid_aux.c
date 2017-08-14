@@ -373,9 +373,11 @@ void distCalc(configInfo *par, struct grid *gp){
     for(k=0;k<gp[i].numNeigh;k++){
       for(l=0;l<3;l++)
         gp[i].dir[k].x[l] = gp[i].neigh[k]->x[l] - gp[i].x[l];
-        gp[i].ds[k] = sqrt(  gp[i].dir[k].x[0]*gp[i].dir[k].x[0]\
+
+      gp[i].ds[k] = sqrt(  gp[i].dir[k].x[0]*gp[i].dir[k].x[0]\
                          + gp[i].dir[k].x[1]*gp[i].dir[k].x[1]\
                          + gp[i].dir[k].x[2]*gp[i].dir[k].x[2]);
+
       for(l=0;l<3;l++)
         gp[i].dir[k].xn[l] = gp[i].dir[k].x[l]/gp[i].ds[k];
     }

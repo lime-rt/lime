@@ -82,6 +82,8 @@ calcLineAmpSample(const double x[3], const double dx[3], const double ds\
   , const double oneOnNSteps, const double deltav, double *vfac){
   /*
 The bulk velocity of the model material can vary significantly with position, thus so can the value of the line-shape function at a given frequency and direction. The present function calculates 'vfac', an approximate average of the line-shape function along a path of length ds in the direction of the line of sight.
+
+Note that this is called from within the multi-threaded block.
   */
   int i;
   double v,val;
@@ -108,6 +110,8 @@ calcLineAmpInterp(const double projVelRay, const double binv\
   , const double deltav, double *vfac){
   /*
 The bulk velocity of the model material can vary significantly with position, thus so can the value of the line-shape function at a given frequency and direction. The present function calculates 'vfac', an approximate average of the line-shape function along a path of length ds in the direction of the line of sight.
+
+Note that this is called from within the multi-threaded block.
   */
   double v,val;
 
@@ -129,6 +133,8 @@ calcLineAmpErf(const double projVelOld, const double projVelNew, const double bi
   , const double deltav, const double segmentLen, double *vfac){
   /*
 The bulk velocity of the model material can vary significantly with position, thus so can the value of the line-shape function at a given frequency and direction. The present function calculates 'vfac', an approximate average of the line-shape function along a path of length ds in the direction of the line of sight.
+
+Note that this is called from within the multi-threaded block.
   */
   double vbOld,vbNew;
 
@@ -147,6 +153,8 @@ line_plane_intersect(struct grid *gp, double *ds, int posn, int *nposn\
   , double *dx, double *x, double cutoff){
   /*
 This function returns ds as the (always positive-valued) distance between the present value of x and the next Voronoi face in the direction of vector dx, and nposn as the id of the grid cell that abuts that face. 
+
+Note that this is called from within the multi-threaded block.
   */
   double newdist, numerator, denominator ;
   int i;
@@ -181,6 +189,8 @@ traceray(rayData ray, const int im\
 For a given image pixel position, this function evaluates the intensity of the total light emitted/absorbed along that line of sight through the (possibly rotated) model. The calculation is performed for several frequencies, one per channel of the output image.
 
 Note that the algorithm employed here is similar to that employed in the function calculateJBar() which calculates the average radiant flux impinging on a grid cell: namely the notional photon is started at the side of the model near the observer and 'propagated' in the receding direction until it 'reaches' the far side. This is rather non-physical in conception but it makes the calculation easier.
+
+Note that this is called from within the multi-threaded block.
   */
   int ichan,stokesId,di,i,posn,nposn,molI,lineI;
   double xp,yp,zp,x[DIM],dx[DIM],dist2,ndist2,col,ds,snu_pol[3],dtau;
@@ -332,6 +342,8 @@ For a linear interpolation, each shape function Q_i(r_) is in fact just equal to
 In the present case, N==3, the simplex is a triangular face of a Delaunay cell, and the point at which we desire the interpolated value is the intersection of a ray with that face. Several grid quantities of interest are interpolated.
 
 For a readable definition of barycentric coordinates, see the wikipedia article of that name.
+
+Note that this is called from within the multi-threaded block.
   */
 
   int di,molI,levelI;
@@ -378,6 +390,9 @@ For a readable definition of barycentric coordinates, see the wikipedia article 
 void
 doSegmentInterp(gridInterp gips[3], const int iA, molData *md\
   , const int numMols, const double oneOnNumSegments, const int si){
+  /*
+Note that this is called from within the multi-threaded block.
+  */
 
   const double fracA = (si + 0.5)*oneOnNumSegments, fracB = 1.0 - fracA;
   const int iB = 1 - iA;
@@ -408,6 +423,9 @@ doSegmentInterp(gridInterp gips[3], const int iA, molData *md\
 /*....................................................................*/
 void
 calc2ndOrderShapeFunctions(struct baryVelBuffType *ptrToBuff, const int rayNum){
+  /*
+Note that this is called from within the multi-threaded block.
+  */
   int vi,ei;
   char message[STR_LEN_0];
   double *barys=NULL;
@@ -432,6 +450,7 @@ calc2ndOrderShapeFunctions(struct baryVelBuffType *ptrToBuff, const int rayNum){
   for(ei=0;ei<(*ptrToBuff).numEdges;ei++){
     (*ptrToBuff).shapeFns[vi] = 4.0*barys[(*ptrToBuff).edgeVertexIndices[ei][0]]\
                                    *barys[(*ptrToBuff).edgeVertexIndices[ei][1]];
+
     vi++;
   }
 }
@@ -440,6 +459,9 @@ calc2ndOrderShapeFunctions(struct baryVelBuffType *ptrToBuff, const int rayNum){
 void
 doBaryInterpVel(const int numDims, struct baryVelBuffType *ptrToBuff\
 , double vels[numDims]){
+  /*
+Note that this is called from within the multi-threaded block.
+  */
   int di,vi,ei;
 
   for(di=0;di<numDims;di++)
@@ -476,6 +498,8 @@ The interpolated value at r_ is, as before, the sum of the values at the vertice
 In the present case, N==4, so there are 6 half-edge points.
 
 The remaining difference between the present function and doBaryInterp() is that here we only interpolate velocity.
+
+Note that this is called from within the multi-threaded block.
   */
 
   int i;
@@ -504,6 +528,8 @@ Given y0, y1 and y2 at x0, x1 and x2, the Lagrange interpolating polynomial is
 If we calculate x as a fractional value along the line segment then, for the y values we have in hand, this reduces to
 
 	y ~ y0*(x-1)*(2x-1) + y1*x*(2x-1) + y2*4x*(1-x).
+
+***** Appears to be unused.
   */
 
   double shapeFns[3];
@@ -531,6 +557,8 @@ Given y0, y1 and y2 at x0, x1 and x2, the Lagrange interpolating polynomial is
 If x is the fractional distance along the line segment, then for the y values we have in hand, this reduces to
 
 	y ~ y0*(x-1)*(2x-1) + y1*x*(2x-1) + y2*4x*(1-x).
+
+Note that this is called from within the multi-threaded block.
   */
 
   double shapeFns[3],y;
@@ -559,14 +587,16 @@ Note that the algorithm employed here to solve the RTE is similar to that employ
 This version of traceray implements a new algorithm in which the population values are interpolated linearly from those at the vertices of the Delaunay cell which the working point falls within.
 
 A note about the object 'gips': this is an array with 3 elements, each one a struct of type 'gridInterp'. This struct is meant to store as many of the grid-point quantities (interpolated from the appropriate values at actual grid locations) as are necessary for solving the radiative transfer equations along the ray path. The first 2 entries give the values for the entry and exit points to a Delaunay cell, but which is which can change, and is indicated via the variables entryI and exitI (this is a convenience to avoid copying the values, since the values for the exit point of one cell are obviously just those for entry point of the next). The third entry stores values interpolated along the ray path within a cell.
+
+Note that this is called from within the multi-threaded block.
   */
   const int numFaces = DIM+1,nVertPerFace=3,numRayInterpSamp=3;
   int ichan,stokesId,di,status,lenChainPtrs=0,entryI,exitI,vi,vvi,ci,ei,fi;
   int si,molI,lineI,k,i;
-  double xp,yp,zp,x[DIM],dir[DIM],projVelRay,vel[DIM],projVelOffset,projVel2ndDeriv;
+  double xp,yp,zp,x[DIM],dir[DIM],projVelRay=0.0,vel[DIM],projVelOffset=0.0,projVel2ndDeriv;
   double xCmpntsRay[nVertPerFace],ds,snu_pol[3],dtau,contJnu,contAlpha;
   double jnu,alpha,lineRedShift,vThisChan,deltav,vfac,remnantSnu,expDTau;
-  double brightnessIncrement,projVelOld,projVelNew;
+  double brightnessIncrement,projVelOld=0.0,projVelNew=0.0;
   intersectType entryIntcptFirstCell, *cellExitIntcpts=NULL;
   unsigned long *chainOfCellIds=NULL,dci,dci0,dci1;
   unsigned long gis[2][nVertPerFace],gi,gi0,gi1,trialGi;
@@ -892,6 +922,9 @@ At the moment I will fix the number of segments, but it might possibly be faster
 
     entryI = exitI;
     exitI = 1 - exitI;
+
+//if(ci>210) exit(1);
+//if(ci>=2) exit(1);
   } /* End loop over cells in the chain traversed by the ray. */
 
   if(img[im].doline && img[im].doInterpolateVels)

@@ -8,9 +8,8 @@
 TODO:
  */
 
-#include <locale.h>
-
 #include "lime.h"
+#include <locale.h>
 #include "gridio.h" /* For countDensityCols() */
 
 int defaultFuncFlags = 0;
@@ -47,7 +46,7 @@ parseInput(const inputPars inpar, image *inimg, const int nImages, configInfo *p
   /*
 The parameters visible to the user have now been strictly confined to members of the structs 'inputPars' and 'image', both of which are defined in inpars.h. There are however further internally-set values which is is convenient to bundle together with the user-set ones. At present we have a fairly clunky arrangement in which the user-set values are copied member-by-member from the user-dedicated structs to the generic internal structs 'configInfo' and 'imageInfo'. This is done in the present function, along with some checks and other initialization.
   */
-
+  _Bool changedInterp;
   int i,j,id,status=0,numGirDatFiles;
   double BB[3],normBSquared,dens[MAX_N_COLL_PART],r[DIM];
   FILE *fp;
@@ -131,7 +130,7 @@ exit(1);
   par->ncell = inpar.pIntensity + inpar.sinkPoints;
   par->radiusSqu = inpar.radius*inpar.radius;
   par->minScaleSqu=inpar.minScale*inpar.minScale;
-  par->doPregrid = (inpar.pregrid==NULL)?0:1;
+  par->doPregrid = (par->pregrid==NULL)?0:1;
   par->nSolveItersDone = 0; /* This can be set to some non-zero value if the user reads in a grid file at dataStageI==5. */
   par->useAbun = 1; /* Can be unset within readOrBuildGrid(). */
 
@@ -353,7 +352,7 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
       (*img)[i].posang     = inimg[i].posang;
       (*img)[i].azimuth    = inimg[i].azimuth;
       (*img)[i].distance   = inimg[i].distance;
-      (*img)[i].doInterpolateVels = inimg[i].doInterpolateVels;
+      (*img)[i].doInterpolateVels = inimg[i].doInterpolateVels; // This is only accessed if par->traceRayAlgorithm==1.
     }
   }
 
@@ -370,8 +369,7 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
         if(!silent) bail_out("Error allocating memory for single unit");
       }
       (*img)[i].imgunits[0] = inimg[i].unit;
-    }
-    else{
+    }else{
       /* Otherwise parse image units, populate imgunits array with appropriate image identifiers and track number
        * of units requested */
       copyInparStr((*img)[i].units, &(units_str));
@@ -385,14 +383,14 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
         }
         (*img)[i].imgunits[j-1] = (int)strtol(pch, &pch_end, 0);
         if(*pch_end){
-          sprintf(message, "Units string contains '%s' which could not be converted to an integer", pch_end);
+          sprintf(message, "Image %d: units string contains '%s' which could not be converted to an integer", i, pch_end);
           if(!silent) bail_out(message);
 exit(1);
         }
         pch = strtok(NULL, pch_sep);
       }
       (*img)[i].numunits = j;
-    }
+    } /* End parse of units. */
     
     if((*img)[i].nchan == 0 && (*img)[i].velres<0 ){ /* => user has set neither nchan nor velres. One of the two is required for a line image. */
       /* Assume continuum image */
@@ -411,27 +409,17 @@ exit(1);
         (*img)[i].nchan=1;
 
       if((*img)[i].freq<0){
-        if(!silent) bail_out("You must set image freq for a continuum image.");
-exit(1);
-      }
-
-      if(par->dust==NULL){
-        if(!silent) bail_out("You must point par.dust to a dust opacity file for a continuum image.");
-exit(1);
-      }else{
-        if((fp=fopen(par->dust, "r"))==NULL){
-          if(!silent){
-            sprintf(message, "Couldn't open dust opacity data file %s", par->dust);
-            bail_out(message);
-          }
-exit(1);
+        if(!silent){
+          sprintf(message, "Image %d: you must set freq for a continuum image.", i);
+          bail_out(message);
         }
-        fclose(fp);
+exit(1);
       }
 
-      if((*img)[i].trans>-1 || (*img)[i].bandwidth>-1.)
-        if(!silent) warning("Image bandwidth and trans are ignored for a continuum image.");
-
+      if(!silent && ((*img)[i].trans>-1 || (*img)[i].bandwidth>-1.0)){
+        sprintf(message, "Image %d: bandwidth and trans are ignored for a continuum image.", i);
+        warning(message);
+      }
       (*img)[i].doline=0;
 
     }else{ /* => user has set one of either nchan or velres, or possibly both. */
@@ -446,32 +434,70 @@ For a valid line image, the user must set one of the following pairs:
 The presence of one of these combinations at least is checked here, although the actual calculation is done in raytrace(), because it depends on moldata info which we have not yet got.
       */
       if((*img)[i].bandwidth > 0 && (*img)[i].velres > 0){
-        if(!silent && (*img)[i].nchan > 0)
-          warning("Your nchan value will be overwritten.");
+        if(!silent && (*img)[i].nchan > 0){
+          sprintf(message, "Image %d: your nchan value will be overwritten.", i);
+          warning(message);
+        }
 
       }else if((*img)[i].nchan <= 0 || ((*img)[i].bandwidth <= 0 && (*img)[i].velres <= 0)) {
-        if(!silent) bail_out("Insufficient info to calculate nchan, velres and bandwidth.");
+        if(!silent){
+          sprintf(message, "Image %d: insufficient info to calculate nchan, velres and bandwidth.", i);
+          bail_out(message);
+        }
 exit(1);
       }
 
       /* Check that we have keywords which allow us to calculate the image frequency (if necessary) after reading in the moldata file:
       */
       if((*img)[i].trans>-1){ /* => user has set trans, possibly also freq. */
-        if(!silent && (*img)[i].freq > 0)
-          warning("You set image trans, so I'm ignoring freq.");
+        if(!silent && (*img)[i].freq > 0){
+          sprintf(message, "Image %d: you set trans, so I'm ignoring freq.", i);
+          warning(message);
+        }
 
         if((*img)[i].molI < 0){
-          if(par->nSpecies>1 && !silent) warning("You did not set image molI, so I'm assuming the 1st molecule.");
+          if(!silent && par->nSpecies>1){
+            sprintf(message, "Image %d: you did not set molI, so I'm assuming the 1st molecule.", i);
+            warning(message);
+          }
           (*img)[i].molI = 0;
         }
       }else if((*img)[i].freq<0){ /* => user has set neither trans nor freq. */
-        if(!silent) bail_out("You must set either freq or trans (plus optionally molI).");
+        if(!silent){
+          sprintf(message, "Image %d: you must set either freq or trans (plus optionally molI).", i);
+          bail_out(message);
+        }
 exit(1);
       }/* else => the user has set freq. */
 
       (*img)[i].doline=1;
+    } /* End check of line or continuum. */
+
+    if((*img)[i].imgres<0.0){
+      if(!silent){
+        sprintf(message, "Image %d: you must set imgres.", i);
+        bail_out(message);
+      }
+exit(1);
     }
-    (*img)[i].imgres=(*img)[i].imgres/206264.806;
+
+    if((*img)[i].pxls<0){
+      if(!silent){
+        sprintf(message, "Image %d: you must set pxls.", i);
+        bail_out(message);
+      }
+exit(1);
+    }
+
+    if((*img)[i].distance<0.0){
+      if(!silent){
+        sprintf(message, "Image %d: you must set distance.", i);
+        bail_out(message);
+      }
+exit(1);
+    }
+
+    (*img)[i].imgres=(*img)[i].imgres*ARCSEC_TO_RAD;
     (*img)[i].pixel = malloc(sizeof(*((*img)[i].pixel))*(*img)[i].pxls*(*img)[i].pxls);
     for(id=0;id<((*img)[i].pxls*(*img)[i].pxls);id++){
       (*img)[i].pixel[id].intense = malloc(sizeof(double)*(*img)[i].nchan);
@@ -617,9 +643,21 @@ LIME provides two different schemes of {R_1, R_2, R_3}: {PA, phi, theta} and {PA
   par->nLineImages = 0;
   par->nContImages = 0;
   par->doInterpolateVels = 0;
+  changedInterp=FALSE;
   for(i=0;i<nImages;i++){
     if((*img)[i].doline){
-      if(par->traceRayAlgorithm==1 && !(*img)[i].doInterpolateVels && bitIsSet(defaultFuncFlags, FUNC_BIT_velocity)){
+
+#ifdef IS_PYTHON
+      if(par->traceRayAlgorithm==1 && !(*img)[i].doInterpolateVels\
+      && !bitIsSet(defaultFuncFlags, FUNC_BIT_velocity)\
+      && par->nThreads>1){
+        changedInterp = TRUE;
+        (*img)[i].doInterpolateVels = TRUE;
+      }
+#endif
+
+      if(par->traceRayAlgorithm==1 && !(*img)[i].doInterpolateVels\
+      && bitIsSet(defaultFuncFlags, FUNC_BIT_velocity)){
         if(!silent) bail_out("par->traceRayAlgorithm==1 && !img[i].doInterpolateVels requires you to supply a velocity function.");
 exit(1);
       }
@@ -631,14 +669,41 @@ exit(1);
       par->doInterpolateVels = 1;
   }
 
+  if(!silent && changedInterp)
+    warning("You cannot call a python velocity function when multi-threaded. Vels will be interpolated from grid values.");
+
+  if(par->nContImages>0){
+    if(par->dust==NULL){
+      if(!silent) bail_out("You must point par.dust to a dust opacity file for a continuum image.");
+exit(1);
+    }else{
+      if((fp=fopen(par->dust, "r"))==NULL){
+        if(!silent){
+          sprintf(message, "Couldn't open dust opacity data file %s", par->dust);
+          bail_out(message);
+        }
+exit(1);
+      }
+      fclose(fp);
+    }
+  }
+
   if(par->nLineImages>0 && par->traceRayAlgorithm==0 && !par->doPregrid){
     if(bitIsSet(defaultFuncFlags, FUNC_BIT_velocity)){
-      par->useVelFuncInRaytrace = 0;
+      par->useVelFuncInRaytrace = FALSE;
       if(!silent) warning("No velocity function supplied - raytracing will have lower precision.");
     }else
-      par->useVelFuncInRaytrace = 1;
+      par->useVelFuncInRaytrace = TRUE;
   }else
-    par->useVelFuncInRaytrace = 0;
+    par->useVelFuncInRaytrace = FALSE;
+
+#ifdef IS_PYTHON
+  if(par->nThreads>1 && par->useVelFuncInRaytrace){
+    par->useVelFuncInRaytrace = FALSE;
+    if(!silent)
+      warning("You cannot call a python velocity function when multi-threaded.");
+  }
+#endif
 
   par->edgeVelsAvailable=0; /* default value, this is set within getEdgeVelocities(). */
 
@@ -681,7 +746,7 @@ run(inputPars inpars, image *inimg, const int nImages){
      programs. In this case, inpars and img must be specified by the
      external program.
   */
-  int i,gi,si,status=0;
+  int i,gi,si,status=0,sigactionStatus=0;
   int initime=time(0);
   int popsdone=0;
   molData *md=NULL;
@@ -691,6 +756,18 @@ run(inputPars inpars, image *inimg, const int nImages){
   char message[80];
   int nEntries=0;
   double *lamtab=NULL,*kaptab=NULL;
+
+  struct sigaction sigact = {.sa_handler = sigintHandler};
+//  struct sigaction sigact;
+//  sigact.sa_handler = sigintHandler;
+  sigactionStatus = sigaction(SIGINT, &sigact, NULL);
+  if(sigactionStatus){
+    if(!silent){
+      sprintf(message, "Call to sigaction() returned with status %d", sigactionStatus);
+      bail_out(message);
+    }
+exit(1);
+  }
 
   /*Set locale to avoid trouble when reading files*/
   setlocale(LC_ALL, "C");
@@ -768,8 +845,8 @@ run(inputPars inpars, image *inimg, const int nImages){
 
   freeSomeGridFields((unsigned int)par.ncell, (unsigned short)par.nSpecies, gp);
 
-  /* Now make the line images.   */
-
+  /* Now make the line images.
+  */
   if(par.nLineImages>0){
     for(i=0;i<par.nImages;i++){
       if(img[i].doline){
@@ -794,7 +871,7 @@ run(inputPars inpars, image *inimg, const int nImages){
     free(lamtab);
   }
 
-  return status;
+  return status; /* This is a bit of a placeholder for now. Ideally we would like all the functions called to return status values rather than exiting. This would allow python-calling versions of Lime to exit 'nicely' at the top level. */
 }
 
 
