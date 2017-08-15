@@ -15,6 +15,12 @@ TODO:
 int defaultFuncFlags = 0;
 double defaultDensyPower = DENSITY_POWER;
 
+#ifdef TEST
+_Bool fixRandomSeeds = TRUE;
+#else
+_Bool fixRandomSeeds = FALSE;
+#endif
+
 /*....................................................................*/
 void
 reportInfAtOrigin(const double value, const char *funcName){
@@ -74,25 +80,8 @@ The parameters visible to the user have now been strictly confined to members of
   (void)dummyR;
   (void)dummyNdens;
 
-  /* Check that the mandatory parameters now have 'sensible' settings (i.e., that they have been set at all). Raise an exception if not. */
-  if (inpar.radius<=0){
-    if(!silent) bail_out("You must define the radius parameter.");
-exit(1);
-  }
-  if (inpar.minScale<=0){
-    if(!silent) bail_out("You must define the minScale parameter.");
-exit(1);
-  }
-  if (inpar.pIntensity<=0){
-    if(!silent) bail_out("You must define the pIntensity parameter.");
-exit(1);
-  }
-  if (inpar.sinkPoints<=0){
-    if(!silent) bail_out("You must define the sinkPoints parameter.");
-exit(1);
-  }
-
-  /* Copy over user-set parameters to the configInfo versions. (This seems like duplicated effort but it is a good principle to separate the two structs, for several reasons, as follows. (i) We will usually want more config parameters than user-settable ones. The separation leaves it clearer which things the user needs to (or can) set. (ii) The separation allows checking and screening out of impossible combinations of parameters. (iii) We can adopt new names (for clarity) for config parameters without bothering the user with a changed interface.)
+  /* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+Copy over user-set parameters to the configInfo versions. (This seems like duplicated effort but it is a good principle to separate the two structs, for several reasons, as follows. (i) We will usually want more config parameters than user-settable ones. The separation leaves it clearer which things the user needs to (or can) set. (ii) The separation allows checking and screening out of impossible combinations of parameters. (iii) We can adopt new names (for clarity) for config parameters without bothering the user with a changed interface.)
   */
   par->radius       = inpar.radius;
   par->minScale     = inpar.minScale;
@@ -126,19 +115,10 @@ exit(1);
   for(i=0;i<NUM_GRID_STAGES;i++)
     copyInparStr(inpar.gridOutFiles[i], &(par->gridOutFiles[i]));
 
-  /* Now set the additional values in par. */
-  par->ncell = inpar.pIntensity + inpar.sinkPoints;
-  par->radiusSqu = inpar.radius*inpar.radius;
-  par->minScaleSqu=inpar.minScale*inpar.minScale;
-  par->doPregrid = (par->pregrid==NULL)?0:1;
-  par->nSolveItersDone = 0; /* This can be set to some non-zero value if the user reads in a grid file at dataStageI==5. */
-  par->useAbun = 1; /* Can be unset within readOrBuildGrid(). */
-
   for(i=0;i<NUM_GRID_STAGES;i++)
     par->writeGridAtStage[i] = 0;
-  par->dataFlags = 0;
 
-  if(!par->doPregrid && par->restart){
+  if(par->pregrid==NULL && par->restart){
     par->nSpecies=0; /* This will get set during popsin(). */
     par->girdatfile = NULL;
   }else{
@@ -213,6 +193,38 @@ exit(1);
   i = 0;
   while(i<MAX_N_HIGH && par->gridDensMaxValues[i]>=0) i++;
   par->numGridDensMaxima = i;
+
+  /* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+End of copy. */
+
+  /* Now set the additional values in par. (Note that some of these can be redefined if we read grid points from a file.) */
+  par->ncell = par->pIntensity + par->sinkPoints;
+  par->radiusSqu = par->radius*par->radius;
+  par->minScaleSqu=par->minScale*par->minScale;
+  par->doPregrid = (par->pregrid==NULL)?0:1;
+  par->nSolveItersDone = 0; /* This can be set to some non-zero value if the user reads in a grid file at dataStageI==5. */
+  par->useAbun = 1; /* Can be unset within readOrBuildGrid(). */
+  par->dataFlags = 0;
+
+  if(par->gridInFile==NULL){
+    /* Check that the mandatory parameters now have 'sensible' settings (i.e., that they have been set at all). Raise an exception if not. */
+    if (par->radius<=0){
+      if(!silent) bail_out("You must define the radius parameter.");
+exit(1);
+    }
+    if (par->minScale<=0){
+      if(!silent) bail_out("You must define the minScale parameter.");
+exit(1);
+    }
+    if (par->pIntensity<=0){
+      if(!silent) bail_out("You must define the pIntensity parameter.");
+exit(1);
+    }
+    if (par->sinkPoints<=0){
+      if(!silent) bail_out("You must define the sinkPoints parameter.");
+exit(1);
+    }
+  }
 
   /*
 Run through all the user functions and set flags in the global defaultFuncFlags for those which have defaulted. NOTE however that we will not check which of these functions the user has provided until readOrBuildGrid(), because this will depend on the appropriate data being present or not in any grid file we read in. There are two exceptions to this:
@@ -758,8 +770,6 @@ run(inputPars inpars, image *inimg, const int nImages){
   double *lamtab=NULL,*kaptab=NULL;
 
   struct sigaction sigact = {.sa_handler = sigintHandler};
-//  struct sigaction sigact;
-//  sigact.sa_handler = sigintHandler;
   sigactionStatus = sigaction(SIGINT, &sigact, NULL);
   if(sigactionStatus){
     if(!silent){
