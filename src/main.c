@@ -15,12 +15,6 @@ int silent = 1;
 int silent = 0;
 #endif
 
-#ifdef TEST
-_Bool fixRandomSeeds = TRUE;
-#else
-_Bool fixRandomSeeds = FALSE;
-#endif
-
 /*....................................................................*/
 int
 initParImg(inputPars *par, image **img)
@@ -74,7 +68,7 @@ initParImg(inputPars *par, image **img)
   par->antialias=1;
   par->polarization=0;
   par->nThreads = NTHREADS;
-  par->nSolveIters=17;
+  par->nSolveIters=0;
   par->traceRayAlgorithm=0;
   par->resetRNG=0;
   par->doSolveRTE=0;

@@ -922,9 +922,6 @@ At the moment I will fix the number of segments, but it might possibly be faster
 
     entryI = exitI;
     exitI = 1 - exitI;
-
-//if(ci>210) exit(1);
-//if(ci>=2) exit(1);
   } /* End loop over cells in the chain traversed by the ray. */
 
   if(img[im].doline && img[im].doInterpolateVels)
