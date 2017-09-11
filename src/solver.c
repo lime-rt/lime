@@ -886,9 +886,9 @@ void gridPopsInit(configInfo *par, molData *md, struct grid *gp){
 }
 
 /*....................................................................*/
-void
+int
 levelPops(molData *md, configInfo *par, struct grid *gp, int *popsdone, double *lamtab, double *kaptab, const int nEntries){
-  int id,iter,ilev,ispec,c=0,n,i,threadI,nVerticesDone,nItersDone,nlinetot;
+  int id,iter,ilev,ispec,c=0,n,i,threadI,nVerticesDone,nItersDone,nlinetot,nExtraSolverIters=0;
   double percent=0.,*median,result1=0,result2=0,snr,delta_pop;
   int nextMolWithBlend;
   struct statistics { double *pop, *ave, *sigma; } *stat;
@@ -1062,6 +1062,7 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
       nItersDone++;
     }
     gsl_set_error_handler(defaultErrorHandler);
+    nExtraSolverIters = nItersDone - par->nSolveItersDone;
 
     freeMolsWithBlends(blends.mols, blends.numMolsWithBlends);
 
@@ -1084,5 +1085,7 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
   if(par->binoutputfile != NULL) binpopsout(par,gp,md);
 
   *popsdone=1;
+
+  return nExtraSolverIters;
 }
 
