@@ -223,7 +223,7 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
   struct cell *dc=NULL; /* Not used at present. */
   unsigned long numCells;
   struct gridInfoType gridInfoRead;
-  char **collPartNames=NULL;
+  char **collPartNames=NULL,message[STR_LEN_0];
 
   par->dataFlags = 0;
   if(par->gridInFile!=NULL){
@@ -323,6 +323,17 @@ exit(1);
     if(!allBitsSet(par->dataFlags, DS_mask_ACOEFF)){
       if(bitIsSet(defaultFuncFlags, FUNC_BIT_velocity)){
         if(!silent) warning("There were no edge velocities in the file, and you haven't supplied a velocity() function.");
+      }
+    }
+
+    if(!par->restart && !(par->lte_only && !allBitsSet(par->dataFlags, DS_mask_populations))){
+      if(par->nSolveIters<=par->nSolveItersDone){
+        /* Under these conditions, gp[].mol[].pops will not be allocated, and calcGridMolSpecNumDens() will fail. */
+        if(!silent){
+          sprintf(message, "You requested %d par->nSolveIters but this should be > the number %d already done.", par->nSolveIters, par->nSolveItersDone);
+          bail_out(message);
+        }
+exit(1);
       }
     }
   } /* End if par->doMolCalcs */

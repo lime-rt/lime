@@ -315,7 +315,7 @@ double	geterf(const double, const double);
 void	getEdgeVelocities(configInfo *, struct grid *);
 void	input(inputPars*, image*);
 double	interpolateKappa(const double, double*, double*, const int, gsl_spline*, gsl_interp_accel*);
-void	levelPops(molData*, configInfo*, struct grid*, int*, double*, double*, const int);
+int	levelPops(molData*, configInfo*, struct grid*, int*, double*, double*, const int);
 void	mallocAndSetDefaultGrid(struct grid**, const size_t, const size_t);
 void	mallocAndSetDefaultMolData(const int, molData**);
 void	molInit(configInfo*, molData*);
