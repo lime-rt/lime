@@ -760,7 +760,7 @@ run(inputPars inpars, image *inimg, const int nImages){
   */
   int i,gi,si,status=0,sigactionStatus=0;
   int initime=time(0);
-  int popsdone=0;
+  int popsdone=0,nExtraSolverIters=0;
   molData *md=NULL;
   configInfo par;
   imageInfo *img=NULL;
@@ -837,11 +837,11 @@ exit(1);
 
     if(!popsdone && ((par.lte_only && !allBitsSet(par.dataFlags, DS_mask_populations))\
                      || par.nSolveIters>par.nSolveItersDone))
-      levelPops(md, &par, gp, &popsdone, lamtab, kaptab, nEntries);
+      nExtraSolverIters = levelPops(md, &par, gp, &popsdone, lamtab, kaptab, nEntries);
 
     calcGridMolSpecNumDens(&par,md,gp);
 
-    par.nSolveItersDone = par.nSolveIters;
+    par.nSolveItersDone += nExtraSolverIters;
   }
 
   if(onlyBitsSet(par.dataFlags & DS_mask_all_but_mag, DS_mask_3))
