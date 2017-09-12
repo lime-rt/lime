@@ -9,30 +9,60 @@
 
 #include "lime.h"
 
+void
+writeWCS(fitsfile *fptr, const int i, int axesOrder[4], double cdelt[4], double crpix[4], double crval[4], char ctype[4][9], char cunit[4][9]){
+  char myStr[9];
+  int status = 0;
+
+  sprintf(myStr, "CTYPE%d  ", i+1);
+  fits_write_key(fptr, TSTRING, myStr, &ctype[axesOrder[i]], "", &status);
+  sprintf(myStr, "CDELT%d  ", i+1);
+  fits_write_key(fptr, TDOUBLE, myStr, &cdelt[axesOrder[i]], "", &status);
+  sprintf(myStr, "CRPIX%d  ", i+1);
+  fits_write_key(fptr, TDOUBLE, myStr, &crpix[axesOrder[i]], "", &status);
+  sprintf(myStr, "CRVAL%d  ", i+1);
+  fits_write_key(fptr, TDOUBLE, myStr, &crval[axesOrder[i]], "", &status);
+  sprintf(myStr, "CUNIT%d  ", i+1);
+  fits_write_key(fptr, TSTRING, myStr, &cunit[axesOrder[i]], "", &status);	
+}
+
 void 
-write3Dfits(int im, int unit_index, configInfo *par, imageInfo *img){
+write4Dfits(int im, int unit_index, configInfo *par, imageInfo *img){
+  /*
+Users have complained that downstream packages (produced by lazy coders >:8) will not deal with FITS cubes having less that 4 axes. Thus all LIME output images are now sent to the present function.
+  */
+  const int numAxes=4;
   double bscale,bzero,epoch,lonpole,equinox,restfreq;
-  double cdelt1,crpix1,crval1,cdelt2,crpix2,crval2;
-  double cdelt3,crpix3,crval3,ru3,scale;
-  int velref,unitI;
+  int axesOrder[] = {0,1,2,3};
+  char ctype[numAxes][9],cunit[numAxes][9];
+  double cdelt[numAxes],crpix[numAxes],crval[numAxes];
+  double ru3,scale;
+  int velref,unitI,i;
   float *row;
   int px,py,ichan;
   fitsfile *fptr;
   int status = 0;
-  int naxis=3, bitpix=-32;
-  long naxes[3];
-  long int fpixels[3],lpixels[3];
-  char negfile[100]="! ";
+  int naxis=numAxes, bitpix=-32;
+  long naxes[numAxes];
+  long int fpixels[numAxes],lpixels[numAxes];
+  char negfile[100]="! ",message[STR_LEN_0];
   unsigned long ppi;
 
   unitI = img[im].imgunits[unit_index];
   row = malloc(sizeof(*row)*img[im].pxls);
 
-  naxes[0]=img[im].pxls;
-  naxes[1]=img[im].pxls;
-  if(img[im].doline==1) naxes[2]=img[im].nchan;
-  else if(img[im].doline==0 && par->polarization) naxes[2]=3;
-  else naxes[2]=1;//********** should call write2Dfits for this.
+  naxes[axesOrder[0]] = img[im].pxls;
+  naxes[axesOrder[1]] = img[im].pxls;
+
+  if(img[im].doline)
+    naxes[axesOrder[2]] = img[im].nchan;
+  else
+    naxes[axesOrder[2]] = 1; /* In this case nchan can =3, the number of active Stokes parameters, if the dust is polarized. */
+
+  if(!img[im].doline && par->polarization)
+    naxes[axesOrder[3]]=4;
+  else
+    naxes[axesOrder[3]]=1;
 
   fits_create_file(&fptr, img[im].filename, &status);
 
@@ -50,15 +80,34 @@ write3Dfits(int im, int unit_index, configInfo *par, imageInfo *img){
   equinox =2.0e3;
   restfreq=img[im].freq;
   velref  =257;
-  cdelt1  =-1.8e2*img[im].imgres/M_PI;
-  crpix1  =(double) img[im].pxls/2+0.5;
-  crval1  =0.0e0;
-  cdelt2  =1.8e2*img[im].imgres/M_PI;
-  crpix2  =(double) img[im].pxls/2+0.5;
-  crval2  =0.0e0;
-  cdelt3  =img[im].velres;
-  crpix3  =(double) (img[im].nchan-1)/2.+1;
-  crval3  =0.0e0;
+
+  sprintf(ctype[axesOrder[0]], "RA---SIN");
+  cdelt[axesOrder[0]] = -1.8e2*img[im].imgres/PI;
+  crpix[axesOrder[0]] = ((double)img[im].pxls)/2.0 + 0.5;
+  crval[axesOrder[0]] = 0.0e0;
+  sprintf(cunit[axesOrder[0]], "DEG    ");
+
+  sprintf(ctype[axesOrder[1]], "DEC--SIN");
+  cdelt[axesOrder[1]] = 1.8e2*img[im].imgres/PI;
+  crpix[axesOrder[1]] = ((double)img[im].pxls)/2.0 + 0.5;
+  crval[axesOrder[1]] = 0.0e0;
+  sprintf(cunit[axesOrder[1]], "DEG    ");
+
+  sprintf(ctype[axesOrder[2]], "VELO-LSR");
+  if(img[im].doline)
+    cdelt[axesOrder[2]] = img[im].velres;
+  else
+    cdelt[axesOrder[2]] = 1.0;
+  crpix[axesOrder[2]] = (double) (naxes[axesOrder[2]]-1)/2.+1;
+  crval[axesOrder[2]] = 0.0e0;
+  sprintf(cunit[axesOrder[2]], "M/S    ");
+
+  sprintf(ctype[axesOrder[3]], "STOKES  ");
+  cdelt[axesOrder[3]] = 1.0;
+  crpix[axesOrder[3]] = (double) (naxes[axesOrder[3]]-1)/2.+1;
+  crval[axesOrder[3]] = 0.0e0;
+  sprintf(cunit[axesOrder[3]], "       ");
+
   bscale  =1.0e0;
   bzero   =0.0e0;
 
@@ -69,23 +118,13 @@ write3Dfits(int im, int unit_index, configInfo *par, imageInfo *img){
   fits_write_key(fptr, TSTRING, "SPECSYS ", &"LSRK    ",    "", &status);
   fits_write_key(fptr, TDOUBLE, "RESTFREQ", &restfreq,      "", &status);
   fits_write_key(fptr, TINT,    "VELREF  ", &velref,        "", &status);
-  fits_write_key(fptr, TSTRING, "CTYPE1  ", &"RA---SIN",    "", &status);
-  fits_write_key(fptr, TDOUBLE, "CDELT1  ", &cdelt1,        "", &status);
-  fits_write_key(fptr, TDOUBLE, "CRPIX1  ", &crpix1,        "", &status);
-  fits_write_key(fptr, TDOUBLE, "CRVAL1  ", &crval1,        "", &status);
-  fits_write_key(fptr, TSTRING, "CUNIT1  ", &"DEG     ",    "", &status);	
-  fits_write_key(fptr, TSTRING, "CTYPE2  ", &"DEC--SIN",    "", &status);
-  fits_write_key(fptr, TDOUBLE, "CDELT2  ", &cdelt2,        "", &status);
-  fits_write_key(fptr, TDOUBLE, "CRPIX2  ", &crpix2,        "", &status);  	
-  fits_write_key(fptr, TDOUBLE, "CRVAL2  ", &crval2,        "", &status);
-  fits_write_key(fptr, TSTRING, "CUNIT2  ", &"DEG     ",    "", &status);
-  fits_write_key(fptr, TSTRING, "CTYPE3  ", &"VELO-LSR",    "", &status);  
-  fits_write_key(fptr, TDOUBLE, "CDELT3  ", &cdelt3,        "", &status);
-  fits_write_key(fptr, TDOUBLE, "CRPIX3  ", &crpix3,        "", &status);
-  fits_write_key(fptr, TDOUBLE, "CRVAL3  ", &crval3,        "", &status);
-  fits_write_key(fptr, TSTRING, "CUNIT3  ", &"M/S     ",    "", &status);
+
+  for(i=0;i<numAxes;i++)
+    writeWCS(fptr, i, axesOrder, cdelt, crpix, crval, ctype, cunit);
+
   fits_write_key(fptr, TDOUBLE, "BSCALE  ", &bscale,        "", &status);
   fits_write_key(fptr, TDOUBLE, "BZERO   ", &bzero,         "", &status);
+
   if(unitI==0) fits_write_key(fptr, TSTRING, "BUNIT", &"K       ", "", &status);
   if(unitI==1) fits_write_key(fptr, TSTRING, "BUNIT", &"JY/PIXEL", "", &status);
   if(unitI==2) fits_write_key(fptr, TSTRING, "BUNIT", &"WM2HZSR ", "", &status);
@@ -108,158 +147,86 @@ write3Dfits(int im, int unit_index, configInfo *par, imageInfo *img){
   }
 
   /* Write FITS data */
-  for(ichan=0;ichan<img[im].nchan;ichan++){
-    for(py=0;py<img[im].pxls;py++){
-      for(px=0;px<img[im].pxls;px++){
-        ppi = py*img[im].pxls + px;
+  if(img[im].doline){
+    for(ichan=0;ichan<img[im].nchan;ichan++){
+      for(py=0;py<img[im].pxls;py++){
+        for(px=0;px<img[im].pxls;px++){
+          ppi = py*img[im].pxls + px;
 
-        if(unitI>-1 && unitI<4)
-          row[px]=(float) img[im].pixel[ppi].intense[ichan]*scale;
-        else if(unitI==4)
-          row[px]=(float) img[im].pixel[ppi].tau[ichan];
-        else {
-          if(!silent) bail_out("Image unit number invalid");
-          exit(0);
+          if(unitI>-1 && unitI<4)
+            row[px]=(float) img[im].pixel[ppi].intense[ichan]*scale;
+          else if(unitI==4)
+            row[px]=(float) img[im].pixel[ppi].tau[ichan];
+          else {
+            if(!silent) bail_out("Image unit number invalid");
+            exit(0);
+          }
+          if (fabs(row[px])<IMG_MIN_ALLOWED) row[px]=IMG_MIN_ALLOWED;
         }
-        if (fabs(row[px])<IMG_MIN_ALLOWED) row[px]=IMG_MIN_ALLOWED;
+        fpixels[axesOrder[0]] = 1;
+        fpixels[axesOrder[1]] = py+1;
+        fpixels[axesOrder[2]] = ichan+1;
+        fpixels[axesOrder[3]] = 1;
+        lpixels[axesOrder[0]] = img[im].pxls;
+        lpixels[axesOrder[1]] = py+1;
+        lpixels[axesOrder[2]] = ichan+1;
+        lpixels[axesOrder[3]] = 1;
+        fits_write_subset(fptr, TFLOAT, fpixels, lpixels, row, &status);
       }
-      fpixels[0]=1;
-      fpixels[1]=py+1;
-      fpixels[2]=ichan+1;
-      lpixels[0]=img[im].pxls;
-      lpixels[1]=py+1;
-      lpixels[2]=ichan+1;
-      fits_write_subset(fptr, TFLOAT, fpixels, lpixels, row, &status);
+    }
+  }else{
+    for(ichan=0;ichan<img[im].nchan;ichan++){
+      for(py=0;py<img[im].pxls;py++){
+        for(px=0;px<img[im].pxls;px++){
+          ppi = py*img[im].pxls + px;
+
+          if(unitI>-1 && unitI<4)
+            row[px]=(float) img[im].pixel[ppi].intense[ichan]*scale;
+          else if(unitI==4)
+            row[px]=(float) img[im].pixel[ppi].tau[ichan];
+          else {
+            if(!silent) bail_out("Image unit number invalid");
+            exit(0);
+          }
+          if (fabs(row[px])<IMG_MIN_ALLOWED) row[px]=IMG_MIN_ALLOWED;
+        }
+        fpixels[axesOrder[0]] = 1;
+        fpixels[axesOrder[1]] = py+1;
+        fpixels[axesOrder[3]] = ichan+1;
+        fpixels[axesOrder[2]] = 1;
+        lpixels[axesOrder[0]] = img[im].pxls;
+        lpixels[axesOrder[1]] = py+1;
+        lpixels[axesOrder[3]] = ichan+1;
+        lpixels[axesOrder[2]] = 1;
+        fits_write_subset(fptr, TFLOAT, fpixels, lpixels, row, &status);
+      }
+    }
+
+    if(par->polarization){ /* ichan should have run from 0 to 2 in this case. Stokes I, Q and U but no V. Load zeros into the last pol channel: */
+      if(ichan<img[im].nchan!=3){
+        if(!silent){
+          sprintf(message, "%d pol channels found but %d expected.", img[im].nchan, 3);
+          bail_out(message);
+        }
+exit(1);
+      }
+      ichan = 3;
+      for(px=0;px<img[im].pxls;px++)
+        row[px] = IMG_MIN_ALLOWED;
+      for(py=0;py<img[im].pxls;py++){
+        fpixels[axesOrder[0]] = 1;
+        fpixels[axesOrder[1]] = py+1;
+        fpixels[axesOrder[3]] = ichan+1;
+        fpixels[axesOrder[2]] = 1;
+        lpixels[axesOrder[0]] = img[im].pxls;
+        lpixels[axesOrder[1]] = py+1;
+        lpixels[axesOrder[3]] = ichan+1;
+        lpixels[axesOrder[2]] = 1;
+        fits_write_subset(fptr, TFLOAT, fpixels, lpixels, row, &status);
+      }
     }
   }
-  fits_close_file(fptr, &status);
 
-  free(row);
-
-  if(!silent) printDone(13);
-}
-
-void 
-write2Dfits(int im, int unit_index, configInfo *par, imageInfo *img){
-  double bscale,bzero,epoch,lonpole,equinox,restfreq;
-  double cdelt1,crpix1,crval1,cdelt2,crpix2,crval2;
-  double ru3,scale;
-  int velref,unitI;
-  float *row,minVal;
-  int px,py;
-  fitsfile *fptr;
-  int status = 0;
-  int naxis=2, bitpix=-32;
-  long naxes[2];
-  long int fpixels[2],lpixels[2];
-  char negfile[100]="! ";
-  unsigned long ppi;
-
-  unitI = img[im].imgunits[unit_index];
-  row = malloc(sizeof(*row)*img[im].pxls);
-
-  naxes[0]=img[im].pxls;
-  naxes[1]=img[im].pxls;
-  if(unitI!=5 && (img[im].doline==1 || (img[im].doline==0 && par->polarization))){
-    if(!silent) bail_out("You need to write a 3D FITS output in this case");
-    exit(0);
-  }
-
-  fits_create_file(&fptr, img[im].filename, &status);
-
-  if(status!=0){
-    if(!silent) warning("Overwriting existing fits file                   ");
-    status=0;
-    strcat(negfile,img[im].filename);
-    fits_create_file(&fptr, negfile, &status);
-  }
-
-  /* Write FITS header */ 
-  fits_create_img(fptr, bitpix, naxis, naxes, &status);
-  epoch   =2.0e3;
-  lonpole =1.8e2;
-  equinox =2.0e3;
-  restfreq=img[im].freq;
-  velref  =257;
-  cdelt1  =-1.8e2*img[im].imgres/M_PI;
-  crpix1  =(double) img[im].pxls/2+0.5;
-  crval1  =0.0e0;
-  cdelt2  =1.8e2*img[im].imgres/M_PI;
-  crpix2  =(double) img[im].pxls/2+0.5;
-  crval2  =0.0e0;
-  bscale  =1.0e0;
-  bzero   =0.0e0;
-
-  fits_write_key(fptr, TSTRING, "OBJECT  ", &"LIMEMDL ",    "", &status);
-  fits_write_key(fptr, TDOUBLE, "EPOCH   ", &epoch,         "", &status);
-  fits_write_key(fptr, TDOUBLE, "LONPOLE ", &lonpole,       "", &status);
-  fits_write_key(fptr, TDOUBLE, "EQUINOX ", &equinox,       "", &status);
-  fits_write_key(fptr, TSTRING, "SPECSYS ", &"LSRK    ",    "", &status);
-  fits_write_key(fptr, TDOUBLE, "RESTFREQ", &restfreq,      "", &status);
-  fits_write_key(fptr, TINT,    "VELREF  ", &velref,        "", &status);
-  fits_write_key(fptr, TSTRING, "CTYPE1  ", &"RA---SIN",    "", &status);
-  fits_write_key(fptr, TDOUBLE, "CDELT1  ", &cdelt1,        "", &status);
-  fits_write_key(fptr, TDOUBLE, "CRPIX1  ", &crpix1,        "", &status);
-  fits_write_key(fptr, TDOUBLE, "CRVAL1  ", &crval1,        "", &status);
-  fits_write_key(fptr, TSTRING, "CUNIT1  ", &"DEG     ",    "", &status);	
-  fits_write_key(fptr, TSTRING, "CTYPE2  ", &"DEC--SIN",    "", &status);
-  fits_write_key(fptr, TDOUBLE, "CDELT2  ", &cdelt2,        "", &status);
-  fits_write_key(fptr, TDOUBLE, "CRPIX2  ", &crpix2,        "", &status);  	
-  fits_write_key(fptr, TDOUBLE, "CRVAL2  ", &crval2,        "", &status);
-  fits_write_key(fptr, TSTRING, "CUNIT2  ", &"DEG     ",    "", &status);
-  fits_write_key(fptr, TDOUBLE, "BSCALE  ", &bscale,        "", &status);
-  fits_write_key(fptr, TDOUBLE, "BZERO   ", &bzero,         "", &status);
-  if(unitI==0) fits_write_key(fptr, TSTRING, "BUNIT", &"K       ", "", &status);
-  if(unitI==1) fits_write_key(fptr, TSTRING, "BUNIT", &"JY/PIXEL", "", &status);
-  if(unitI==2) fits_write_key(fptr, TSTRING, "BUNIT", &"WM2HZSR ", "", &status);
-  if(unitI==3) fits_write_key(fptr, TSTRING, "BUNIT", &"Lsun/PX ", "", &status);
-  if(unitI==4) fits_write_key(fptr, TSTRING, "BUNIT", &"        ", "", &status);
-  if(unitI==5) fits_write_key(fptr, TSTRING, "BUNIT", &"N_RAYS  ", "", &status);
-
-  if(     unitI==0)
-    scale=0.5*(CLIGHT/img[im].freq)*(CLIGHT/img[im].freq)/KBOLTZ;
-  else if(unitI==1)
-    scale=1e26*img[im].imgres*img[im].imgres;
-  else if(unitI==2)
-    scale=1.0;
-  else if(unitI==3) {
-    ru3 = img[im].distance/1.975e13;
-    scale=4.*M_PI*ru3*ru3*img[im].freq*img[im].imgres*img[im].imgres;
-  }
-  else if(unitI!=4 && unitI!=5) {
-    if(!silent) bail_out("Image unit number invalid");
-    exit(0);
-  }
-
-  if(unitI<5)
-    minVal = IMG_MIN_ALLOWED;
-  else
-    minVal = 0.0;
-
-  /* Write FITS data */
-  for(py=0;py<img[im].pxls;py++){
-    for(px=0;px<img[im].pxls;px++){
-      ppi = py*img[im].pxls + px;
-
-      if(unitI>-1 && unitI<4)
-        row[px]=(float) img[im].pixel[ppi].intense[0]*scale;
-      else if(unitI==4)
-        row[px]=(float) img[im].pixel[ppi].tau[0];
-      else if(unitI==5)
-        row[px]=(float) img[im].pixel[ppi].numRays;
-      else {
-        if(!silent) bail_out("Image unit number invalid");
-        exit(0);
-      }
-      if (fabs(row[px])<minVal) row[px]=minVal;
-
-      fpixels[0]=1;
-      fpixels[1]=py+1;
-      lpixels[0]=img[im].pxls;
-      lpixels[1]=py+1;
-      fits_write_subset(fptr, TFLOAT, fpixels, lpixels, row, &status);
-    }
-  }
   fits_close_file(fptr, &status);
 
   free(row);
@@ -270,17 +237,11 @@ write2Dfits(int im, int unit_index, configInfo *par, imageInfo *img){
 void writeFits(const int i, const int unit_index, configInfo *par, imageInfo *img){
   int unitI = img[i].imgunits[unit_index];
 
-  if(unitI<5){
-    if(img[i].doline==1 || (img[i].doline==0 && par->polarization))
-      write3Dfits(i,unit_index,par,img);
-    else
-      write2Dfits(i,unit_index,par,img);
-  }else if(unitI==5)
-    write2Dfits(i,unit_index,par,img);
-  else{
+  if(unitI>5){
     if(!silent) bail_out("Image unit number invalid");
-    exit(0);
+exit(1);
   }
+  write4Dfits(i, unit_index, par, img);
 }
 
 char *removeFilenameExtension(char* inStr, char extensionChar, char pathSeparator) {

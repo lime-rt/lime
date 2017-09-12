@@ -1603,7 +1603,7 @@ Add and subtract appropriate amounts of cmb.
 
 Some explanation is probably helpful here to explain what is going on. If we think of a ray at a given frequency passing through the model, the starting value of its intensity I(0) will be the cosmic background value, which in the bands of interest to LIME can be assumed to be the familiar ~2.7K black-body value. This is the value encoded in local_cmb. According to the backwards-propagation algorithm for solving the RTE described in Hogerheijde & van der Tak, Astron. Astrophys. 362, 697 (2000), the final term in the sum giving the intensity is I(0)*exp(-tau), where tau is the accumulated opacity of the model. For rays passing through areas of zero molecular column density (e.g. outside the model radius), the final or total radiation intensity can be assumed to equal I(0). However, LIME users prefer images not have scalar offsets, no matter how faithful to reality the offset is, thus we also subtract away a constant I(0) from the whole image; thus image areas outside the model radius are (in the present function) left at, or returned to, zero, and I(0) (aka local_cmb) is subtracted from all the in-radius pixels after the final RTE addition.
 
-Note further that users also do not like the resulting zero-valued pixels (!), hence the addition of IMG_MIN_ALLOWED done to all such pixels in functions write2Dfits() and write3Dfits(). Such is life.
+Note further that users also do not like the resulting zero-valued pixels (!), hence the addition of IMG_MIN_ALLOWED done to all such pixels in functions write4Dfits(). Such is life.
   */
   if(par->polarization){ /* just add cmb to Stokes I, which is the first 'channel' */
     lastChan = 0;
