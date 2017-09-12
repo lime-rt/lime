@@ -14,27 +14,35 @@ TODO:
 /*....................................................................*/
 void readDummyCollPart(FILE *fp, const int strLen){
   char string[strLen];
-  int ntrans, ntemp, itemp, itrans, idummy, dummyLcu, dummyLcl;
-  double dummyTemp, dummyDown;
+  int ntrans=0,ntemp=0,itemp,itrans,idummy,dummyLcu,dummyLcl;
+  double dummyTemp,dummyDown;
 
-  assert(fgets(string, strLen, fp)!=NULL);
-  assert(fscanf(fp,"%d\n", &ntrans)==1);
-  assert(fgets(string, strLen, fp)!=NULL);
-  assert(fscanf(fp,"%d\n", &ntemp)==1);
-  assert(fgets(string, strLen, fp)!=NULL);
+  /* Stops compiler warnings when -Wunused-variable */
+  (void)dummyTemp;
+  (void)dummyDown;
+  (void)idummy;
+  (void)dummyLcu;
+  (void)dummyLcl;
+  (void)string;
+
+  checkFgets(fgets(string, strLen, fp), "dcp 0");
+  checkFscanf(fscanf(fp,"%d\n", &ntrans), 1, "dcp 1");
+  checkFgets(fgets(string, strLen, fp), "dcp 2");
+  checkFscanf(fscanf(fp,"%d\n", &ntemp), 1, "dcp 3");
+  checkFgets(fgets(string, strLen, fp), "dcp 4");
 
   for(itemp=0;itemp<ntemp;itemp++)
-    assert(fscanf(fp, "%lf", &dummyTemp)==1);
+    checkFscanf(fscanf(fp, "%lf", &dummyTemp), 1, "dcp 5");
 
-  assert(fscanf(fp,"\n")==0);
-  assert(fgets(string, strLen, fp)!=NULL);
+  checkFscanf(fscanf(fp,"\n"), 0, "dcp 6");
+  checkFgets(fgets(string, strLen, fp), "dcp 7");
 
   for(itrans=0;itrans<ntrans;itrans++){
-    assert(fscanf(fp, "%d %d %d", &idummy, &dummyLcu, &dummyLcl)==3);
+    checkFscanf(fscanf(fp, "%d %d %d", &idummy, &dummyLcu, &dummyLcl), 3, "dcp 8");
     for(itemp=0;itemp<ntemp;itemp++){
-      assert(fscanf(fp, "%lf", &dummyDown)==1);
+      checkFscanf(fscanf(fp, "%lf", &dummyDown), 1, "dcp 9");
     }
-    assert(fscanf(fp,"\n")==0);
+    checkFscanf(fscanf(fp,"\n"), 0, "dcp 10");
   }
 }
 
@@ -45,7 +53,13 @@ checkFirstLineMolDat(FILE *fp, char *moldatfile){
   char string[sizeI],message[80];
   char *expectedLine="!MOLECULE";
 
-  assert(fgets(string, sizeI, fp)!=NULL);
+  if(fgets(string, sizeI, fp)==NULL){
+    if(!silent){
+      sprintf(message, "Moldat file %s seems to be empty.", moldatfile);
+      bail_out(message);
+    }
+exit(1);
+  }
 
   if(strncmp(string, expectedLine, strlen(expectedLine))!=0){
     if(!silent){
@@ -60,13 +74,16 @@ exit(1);
 void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *numUniqueCollPartsFound){
   /* NOTE! allUniqueCollPartIds is malloc'd in the present function, but not freed. The calling program must free it elsewhere.
   */
-  int i,j,k,ilev,idummy,iline,numPartsAcceptedThisMol,ipart,collPartId,itemp,itrans;
+  int i,j,k,ilev,idummy,iline,numPartsAcceptedThisMol,ipart,collPartId=-1,itemp,itrans;
   double dummy;
   _Bool cpWasFoundInUserList,previousCpFound;
   const int sizeI=200;
   char string[sizeI],message[80];
   FILE *fp;
-  char *expectedLine="!MOLECULE";
+
+  /* Stops compiler warnings when -Wunused-variable */
+  (void)idummy;
+  (void)dummy;
 
   *allUniqueCollPartIds = malloc(sizeof(**allUniqueCollPartIds)*MAX_N_COLL_PART);
   *numUniqueCollPartsFound = 0;
@@ -77,23 +94,15 @@ void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *
 exit(1);
     }
 
-    /* Read the header of the data file */
-    assert(fgets(string, sizeI, fp)!=NULL);
-    if(strncmp(string, expectedLine, strlen(expectedLine))!=0){
-      if(!silent){
-        sprintf(message, "Bad format first line of moldat file for species %d.", i);
-        bail_out(message);
-      }
-exit(1);
-    }
+    checkFirstLineMolDat(fp, par->moldatfile[i]);
 
-    assert(fgets(md[i].molName, 80, fp)!=NULL);
+    checkFgets(fgets(md[i].molName, 80, fp), "molName");
     md[i].molName[strcspn(md[i].molName, "\r\n")] = 0;
-    assert(fgets(string, sizeI, fp)!=NULL);
-    assert(fscanf(fp, "%lf\n", &md[i].amass)==1);
-    assert(fgets(string, sizeI, fp)!=NULL);
-    assert(fscanf(fp, "%d\n", &md[i].nlev)==1);
-    assert(fgets(string, sizeI, fp)!=NULL);
+    checkFgets(fgets(string, sizeI, fp), "blank line");
+    checkFscanf(fscanf(fp, "%lf\n", &md[i].amass), 1, "amass");
+    checkFgets(fgets(string, sizeI, fp), "blank line");
+    checkFscanf(fscanf(fp, "%d\n", &md[i].nlev), 1, "nlev");
+    checkFgets(fgets(string, sizeI, fp), "blank line");
 
     md[i].amass *= AMU;
 
@@ -102,14 +111,14 @@ exit(1);
 
     /* Read the level energies and statistical weights */
     for(ilev=0;ilev<md[i].nlev;ilev++){
-      assert(fscanf(fp, "%d %lf %lf", &idummy, &md[i].eterm[ilev], &md[i].gstat[ilev])==3);
-      assert(fgets(string, sizeI, fp)!=NULL);
+      checkFscanf(fscanf(fp, "%d %lf %lf", &idummy, &md[i].eterm[ilev], &md[i].gstat[ilev]), 3, "eterm, gstat");
+      checkFgets(fgets(string, sizeI, fp), "blank line");
     }
 
     /* Read the number of transitions and allocate array space */
-    assert(fgets(string, sizeI, fp)!=NULL);
-    assert(fscanf(fp, "%d\n", &md[i].nline)==1);
-    assert(fgets(string, sizeI, fp)!=NULL);
+    checkFgets(fgets(string, sizeI, fp), "blank line");
+    checkFscanf(fscanf(fp, "%d\n", &md[i].nline), 1, "nline");
+    checkFgets(fgets(string, sizeI, fp), "blank line");
 
     md[i].lal     = malloc(sizeof(int)   *md[i].nline);
     md[i].lau     = malloc(sizeof(int)   *md[i].nline);
@@ -120,8 +129,8 @@ exit(1);
 
     /* Read transitions, Einstein A, and frequencies */
     for(iline=0;iline<md[i].nline;iline++){
-      assert(fscanf(fp, "%d %d %d %lf %lf %lf\n", &idummy, &md[i].lau[iline]\
-        , &md[i].lal[iline], &md[i].aeinst[iline], &md[i].freq[iline], &dummy)==6);
+      checkFscanf(fscanf(fp, "%d %d %d %lf %lf %lf\n", &idummy, &md[i].lau[iline]\
+        , &md[i].lal[iline], &md[i].aeinst[iline], &md[i].freq[iline], &dummy), 6, "lau, lal etc");
       md[i].freq[iline]*=1e9;
       md[i].lau[iline]-=1;
       md[i].lal[iline]-=1;
@@ -135,8 +144,8 @@ exit(1);
     }
 
     /* Collision rates below here */
-    assert(fgets(string, sizeI, fp)!=NULL);
-    assert(fscanf(fp,"%d\n", &md[i].npart)==1);
+    checkFgets(fgets(string, sizeI, fp), "blank line");
+    checkFscanf(fscanf(fp,"%d\n", &md[i].npart), 1, "npart");
 
     md[i].part = malloc(sizeof(*(md[i].part))*md[i].npart);
 
@@ -144,8 +153,8 @@ exit(1);
     */
     k = 0; /* Index to only those CPs which are found to be associated with a density function. */
     for(ipart=0;ipart<md[i].npart;ipart++){
-      assert(fgets(string, sizeI, fp)!=NULL);
-      assert(fscanf(fp,"%d\n", &collPartId)==1);
+      checkFgets(fgets(string, sizeI, fp), "blank line");
+      checkFscanf(fscanf(fp,"%d\n", &collPartId), 1, "collPartId integer");
 
       /* We want to test if the comment after the coll partner ID number is longer than the buffer size. To do this, we write a character - any character, as long as it is not \0 - to the last element of the buffer before reading into it:
       */
@@ -204,36 +213,36 @@ exit(1);
           readDummyCollPart(fp, sizeI);
 
         }else{ /* Add the CP data to md[i].part, we will need it to solve the population levels. */
-          assert(fgets(string, sizeI, fp)!=NULL);
-          assert(fscanf(fp,"%d\n", &md[i].part[k].ntrans)==1);
-          assert(fgets(string, sizeI, fp)!=NULL);
-          assert(fscanf(fp,"%d\n", &md[i].part[k].ntemp)==1);
-          assert(fgets(string, sizeI, fp)!=NULL);
+          checkFgets(fgets(string, sizeI, fp), "blank line");
+          checkFscanf(fscanf(fp,"%d\n", &md[i].part[k].ntrans), 1, "ntrans");
+          checkFgets(fgets(string, sizeI, fp), "blank line");
+          checkFscanf(fscanf(fp,"%d\n", &md[i].part[k].ntemp), 1, "ntemp");
+          checkFgets(fgets(string, sizeI, fp), "blank line");
 
           md[i].part[k].temp = malloc(sizeof(double)*md[i].part[k].ntemp);
           md[i].part[k].lcl  = malloc(sizeof(int)   *md[i].part[k].ntrans);
           md[i].part[k].lcu  = malloc(sizeof(int)   *md[i].part[k].ntrans);
 
           for(itemp=0;itemp<md[i].part[k].ntemp;itemp++){
-            assert(fscanf(fp, "%lf", &md[i].part[k].temp[itemp])==1);
+            checkFscanf(fscanf(fp, "%lf", &md[i].part[k].temp[itemp]), 1, "temp");
           }
 
-          assert(fscanf(fp,"\n")==0);
-          assert(fgets(string, sizeI, fp)!=NULL);
+          checkFscanf(fscanf(fp,"\n"), 0, "LF");
+          checkFgets(fgets(string, sizeI, fp), "blank line");
 
           md[i].part[k].down = malloc(sizeof(double)\
             *md[i].part[k].ntrans*md[i].part[k].ntemp);
 
           for(itrans=0;itrans<md[i].part[k].ntrans;itrans++){
-            assert(fscanf(fp, "%d %d %d", &idummy, &md[i].part[k].lcu[itrans], &md[i].part[k].lcl[itrans])==3);
+            checkFscanf(fscanf(fp, "%d %d %d", &idummy, &md[i].part[k].lcu[itrans], &md[i].part[k].lcl[itrans]), 3, "lcu, lcl");
             md[i].part[k].lcu[itrans]-=1;
             md[i].part[k].lcl[itrans]-=1;
             for(itemp=0;itemp<md[i].part[k].ntemp;itemp++){
               j = itrans*md[i].part[k].ntemp+itemp;
-              assert(fscanf(fp, "%lf", &md[i].part[k].down[j])==1);
+              checkFscanf(fscanf(fp, "%lf", &md[i].part[k].down[j]), 1, "down");
               md[i].part[k].down[j] /= 1.0e6;  /* collision data is assuming that coll.part density is in [cm^-3], but LIME uses [m^-3] */
             }
-            assert(fscanf(fp,"\n")==0);
+            checkFscanf(fscanf(fp,"\n"), 0, "LF");
           }
         } /* End if(par->lte_only) */
         k++;

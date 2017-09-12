@@ -9,7 +9,11 @@
 
 #include "lime.h"
 
+#ifdef NOVERBOSE
+int silent = 1;
+#else
 int silent = 0;
+#endif
 
 /*....................................................................*/
 int
@@ -64,7 +68,7 @@ initParImg(inputPars *par, image **img)
   par->antialias=1;
   par->polarization=0;
   par->nThreads = NTHREADS;
-  par->nSolveIters=17;
+  par->nSolveIters=0;
   par->traceRayAlgorithm=0;
   par->resetRNG=0;
   par->doSolveRTE=0;
@@ -105,19 +109,23 @@ initParImg(inputPars *par, image **img)
 
   /* Set img defaults. */
   for(i=0;i<nImages;i++) {
-    (*img)[i].source_vel=0.0;
-    (*img)[i].phi=0.0;
-    (*img)[i].nchan=0;
-    (*img)[i].velres=-1.;
-    (*img)[i].trans=-1;
-    (*img)[i].molI=-1;
-    (*img)[i].freq=-1.;
-    (*img)[i].bandwidth=-1.;
-    (*img)[i].incl    = defaultAngle;
-    (*img)[i].azimuth = defaultAngle;
-    (*img)[i].posang  = defaultAngle;
-    (*img)[i].unit = 0;
-    (*img)[i].doInterpolateVels = 0;
+    (*img)[i].nchan      =  0;
+    (*img)[i].trans      = -1;
+    (*img)[i].molI       = -1;
+    (*img)[i].velres     = -1.0;
+    (*img)[i].imgres     = -1.0;
+    (*img)[i].pxls       = -1;
+    (*img)[i].unit       =  0;
+    (*img)[i].freq       = -1.0;
+    (*img)[i].bandwidth  = -1.0;
+    (*img)[i].source_vel =  0.0;
+    (*img)[i].theta      =  0.0;
+    (*img)[i].phi        =  0.0;
+    (*img)[i].incl       = defaultAngle;
+    (*img)[i].posang     = defaultAngle;
+    (*img)[i].azimuth    = defaultAngle;
+    (*img)[i].distance   = -1.0;
+    (*img)[i].doInterpolateVels = FALSE;
   }
 
   /* Second-pass reading of the user-set parameters (this time just to read the par->moldatfile and img stuff). */
@@ -146,14 +154,22 @@ int main() {
   /* Main program for stand-alone LIME */
 
   inputPars par;
-  image	*img = NULL;
+  image *img = NULL;
   int nImages,status=0;
+  char message[STR_LEN_0];
 
   (void)status; // just to stop compiler warnings because this return value is currently unused.
 
   nImages = initParImg(&par, &img);
 
   status = run(par, img, nImages);
+  if(status){
+    if(!silent){
+      sprintf(message, "Function run() returned with status %d", status);
+      bail_out(message);
+    }
+exit(1);
+  }
 
   free(img);
   freeInputPars(&par);

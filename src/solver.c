@@ -61,6 +61,9 @@ freeMolsWithBlends(struct molWithBlends *mols, const int numMolsWithBlends){
 /*....................................................................*/
 void
 freeGridPointData(const int nSpecies, gridPointData *mol){
+  /*
+Note that this is called from within the multi-threaded block.
+  */
   int i;
   if(mol!= NULL){
     for(i=0;i<nSpecies;i++){
@@ -274,8 +277,10 @@ getNextEdge(double *inidir, const int startGi, const int presentGi\
   , struct grid *gp, const gsl_rng *ran){
   /*
 The idea here is to select for the next grid point, that one which lies closest (with a little randomizing jitter) to the photon track, while requiring the direction of the edge to be in the 'forward' hemisphere of the photon direction.
+
+Note that this is called from within the multi-threaded block.
   */
-  int i,ni,niOfSmallest,niOfNextSmallest;
+  int i,ni,niOfSmallest=-1,niOfNextSmallest;
   double dirCos,distAlongTrack,dirFromStart[3],coord,distToTrackSquared,smallest,nextSmallest;
   const static double scatterReduction = 0.4;
   /*
@@ -347,6 +352,9 @@ Note that the equivalent ratio value produced by the 1.6 code was 0.91.
 /*....................................................................*/
 void calcLineAmpPWLin(struct grid *g, const int id, const int k\
   , const int molI, const double deltav, double *inidir, double *vfac_in, double *vfac_out){
+  /*
+Note that this is called from within the multi-threaded block.
+  */
 
   /* convolution of a Gaussian with a box */
   double binv_this, binv_next, v[5];
@@ -385,6 +393,9 @@ void calcLineAmpPWLin(struct grid *g, const int id, const int k\
 /*....................................................................*/
 void calcLineAmpLin(struct grid *g, const int id, const int k\
   , const int molI, const double deltav, double *inidir, double *vfac_in, double *vfac_out){
+  /*
+Note that this is called from within the multi-threaded block.
+  */
 
   /* convolution of a Gaussian with a box */
   double binv_this, binv_next, v[3];
@@ -409,6 +420,9 @@ void
 calculateJBar(int id, struct grid *gp, molData *md, const gsl_rng *ran\
   , configInfo *par, const int nlinetot, struct blendInfo blends\
   , gridPointData *mp, double *halfFirstDs){
+  /*
+Note that this is called from within the multi-threaded block.
+  */
 
   int iphot,iline,here,there,firststep,neighI;
   int nextMolWithBlend, nextLineWithBlend, molI, lineI, molJ, lineJ, bi;
@@ -587,6 +601,9 @@ void
 updateJBar(int posn, molData *md, struct grid *gp, const int molI\
   , configInfo *par, struct blendInfo blends, int nextMolWithBlend\
   , gridPointData *mp, double *halfFirstDs){
+  /*
+Note that this is called from within the multi-threaded block.
+  */
 
   int lineI,iphot,bi,molJ,lineJ,nextLineWithBlend;
   double dtau,expDTau,remnantSnu,vsum=0.;
@@ -641,6 +658,9 @@ updateJBar(int posn, molData *md, struct grid *gp, const int molI\
 void
 getFixedMatrix(molData *md, int ispec, struct grid *gp, int id, gsl_matrix *colli, configInfo *par){
   int ipart,k,l,ti;
+  /*
+Note that this is called from within the multi-threaded block.
+  */
 
   /* Initialize matrix with zeros */
   if(md[ispec].nlev<=0){
@@ -708,6 +728,9 @@ getFixedMatrix(molData *md, int ispec, struct grid *gp, int id, gsl_matrix *coll
 void
 getMatrix(gsl_matrix *matrix, molData *md, int ispec, gridPointData *mp, gsl_matrix *colli){
   int k,l,li;
+  /*
+Note that this is called from within the multi-threaded block.
+  */
 
   /* Initialize matrix by copying the fixed part */
   gsl_matrix_memcpy(matrix, colli);
@@ -756,6 +779,9 @@ void
 solveStatEq(int id, struct grid *gp, molData *md, const int ispec, configInfo *par\
   , struct blendInfo blends, int nextMolWithBlend, gridPointData *mp\
   , double *halfFirstDs, _Bool *luWarningGiven){
+  /*
+Note that this is called from within the multi-threaded block.
+  */
 
   int t,s,iter,status;
   double *opop,*oopop,*tempNewPop=NULL;
@@ -860,9 +886,9 @@ void gridPopsInit(configInfo *par, molData *md, struct grid *gp){
 }
 
 /*....................................................................*/
-void
+int
 levelPops(molData *md, configInfo *par, struct grid *gp, int *popsdone, double *lamtab, double *kaptab, const int nEntries){
-  int id,iter,ilev,ispec,c=0,n,i,threadI,nVerticesDone,nItersDone,nlinetot;
+  int id,iter,ilev,ispec,c=0,n,i,threadI,nVerticesDone,nItersDone,nlinetot,nExtraSolverIters=0;
   double percent=0.,*median,result1=0,result2=0,snr,delta_pop;
   int nextMolWithBlend;
   struct statistics { double *pop, *ave, *sigma; } *stat;
@@ -887,11 +913,10 @@ levelPops(molData *md, configInfo *par, struct grid *gp, int *popsdone, double *
 
     /* Random number generator */
     gsl_rng *ran = gsl_rng_alloc(ranNumGenType);
-#ifdef TEST
-    gsl_rng_set(ran, 1237106) ;
-#else 
-    gsl_rng_set(ran,time(0));
-#endif
+    if(fixRandomSeeds)
+      gsl_rng_set(ran, 1237106) ;
+    else 
+      gsl_rng_set(ran,time(0));
 
     gsl_rng **threadRans;
     threadRans = malloc(sizeof(gsl_rng *)*par->nThreads);
@@ -1037,6 +1062,7 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
       nItersDone++;
     }
     gsl_set_error_handler(defaultErrorHandler);
+    nExtraSolverIters = nItersDone - par->nSolveItersDone;
 
     freeMolsWithBlends(blends.mols, blends.numMolsWithBlends);
 
@@ -1059,5 +1085,7 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
   if(par->binoutputfile != NULL) binpopsout(par,gp,md);
 
   *popsdone=1;
+
+  return nExtraSolverIters;
 }
 

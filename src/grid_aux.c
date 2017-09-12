@@ -373,9 +373,11 @@ void distCalc(configInfo *par, struct grid *gp){
     for(k=0;k<gp[i].numNeigh;k++){
       for(l=0;l<3;l++)
         gp[i].dir[k].x[l] = gp[i].neigh[k]->x[l] - gp[i].x[l];
-        gp[i].ds[k] = sqrt(  gp[i].dir[k].x[0]*gp[i].dir[k].x[0]\
+
+      gp[i].ds[k] = sqrt(  gp[i].dir[k].x[0]*gp[i].dir[k].x[0]\
                          + gp[i].dir[k].x[1]*gp[i].dir[k].x[1]\
                          + gp[i].dir[k].x[2]*gp[i].dir[k].x[2]);
+
       for(l=0;l<3;l++)
         gp[i].dir[k].xn[l] = gp[i].dir[k].x[l]/gp[i].ds[k];
     }
@@ -514,7 +516,7 @@ getEdgeVelocities(configInfo *par, struct grid *gp){
 
 /*....................................................................*/
 int setupAndWriteGrid(configInfo *par, struct grid *gp, molData *md, char *outFileName){
-  const int numKwds=2;
+  const int numKwds=3;
   int i,status = 0;
   struct gridInfoType gridInfo;
   unsigned short i_us;
@@ -546,7 +548,14 @@ int setupAndWriteGrid(configInfo *par, struct grid *gp, molData *md, char *outFi
   primaryKwds[i].doubleValue = par->radius;
   sprintf(primaryKwds[i].comment, "[m] Model radius.");
 
-  i = 1;
+  i++;
+  initializeKeyword(&primaryKwds[i]);
+  primaryKwds[i].datatype = lime_DOUBLE;
+  sprintf(primaryKwds[i].keyname, "MINSCALE");
+  primaryKwds[i].doubleValue = par->minScale;
+  sprintf(primaryKwds[i].comment, "[m] Minimum model scale.");
+
+  i++;
   initializeKeyword(&primaryKwds[i]);
   primaryKwds[i].datatype = lime_INT;
   sprintf(primaryKwds[i].keyname, "NSOLITER");

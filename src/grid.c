@@ -149,14 +149,15 @@ exit(1);
   if(gridInfoRead.nSinkPoints>0 && par->sinkPoints>0){
     if((int)gridInfoRead.nSinkPoints!=par->sinkPoints){
       if(!silent) warning("par->sinkPoints will be overwritten");
-      par->sinkPoints = (int)gridInfoRead.nSinkPoints;
     }
     if((int)gridInfoRead.nInternalPoints!=par->pIntensity){
       if(!silent) warning("par->pIntensity will be overwritten");
-      par->pIntensity = (int)gridInfoRead.nInternalPoints;
     }
-    par->ncell = par->sinkPoints + par->pIntensity;
   }
+  par->sinkPoints = (int)gridInfoRead.nSinkPoints;
+  par->pIntensity = (int)gridInfoRead.nInternalPoints;
+  par->ncell = par->sinkPoints + par->pIntensity;
+
   if(gridInfoRead.nDims!=DIM){ /* At present this situation is already detected and handled inside readGridExtFromFits(), but it may not be in future. The test here has no present functionality but saves trouble later if we change grid.x from an array to a pointer. */
     if(!silent){
       sprintf(message, "Grid file had %d dimensions but there should be %d.", (int)gridInfoRead.nDims, DIM);
@@ -222,20 +223,24 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
   struct cell *dc=NULL; /* Not used at present. */
   unsigned long numCells;
   struct gridInfoType gridInfoRead;
-  char **collPartNames=NULL;
+  char **collPartNames=NULL,message[STR_LEN_0];
 
   par->dataFlags = 0;
   if(par->gridInFile!=NULL){
-    const int numDesiredKwds=2;
+    const int numDesiredKwds=3;
     struct keywordType *desiredKwds=malloc(sizeof(struct keywordType)*numDesiredKwds);
 
     i = 0;
     initializeKeyword(&desiredKwds[i]);
     desiredKwds[i].datatype = lime_DOUBLE;
     sprintf(desiredKwds[i].keyname, "RADIUS  ");
-    /* Currently not doing anything with the read keyword. */
 
-    i = 1;
+    i++;
+    initializeKeyword(&desiredKwds[i]);
+    desiredKwds[i].datatype = lime_DOUBLE;
+    sprintf(desiredKwds[i].keyname, "MINSCALE  ");
+
+    i++;
     initializeKeyword(&desiredKwds[i]);
     desiredKwds[i].datatype = lime_INT;
     sprintf(desiredKwds[i].keyname, "NSOLITER");
@@ -243,7 +248,12 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
     status = readGrid(par->gridInFile, &gridInfoRead, desiredKwds\
       , numDesiredKwds, gp, &collPartNames, &numCollPartRead, &(par->dataFlags));
 
-    par->nSolveItersDone = desiredKwds[1].intValue;
+    par->radius          = desiredKwds[0].doubleValue;
+    par->minScale        = desiredKwds[1].doubleValue;
+    par->nSolveItersDone = desiredKwds[2].intValue;
+
+    par->radiusSqu   = par->radius*par->radius;
+    par->minScaleSqu = par->minScale*par->minScale;
 
     sanityCheckOfRead(status, par, gridInfoRead);
 
@@ -315,6 +325,17 @@ exit(1);
         if(!silent) warning("There were no edge velocities in the file, and you haven't supplied a velocity() function.");
       }
     }
+
+    if(!par->restart && !(par->lte_only && !allBitsSet(par->dataFlags, DS_mask_populations))){
+      if(par->nSolveIters<=par->nSolveItersDone){
+        /* Under these conditions, gp[].mol[].pops will not be allocated, and calcGridMolSpecNumDens() will fail. */
+        if(!silent){
+          sprintf(message, "You requested %d par->nSolveIters but this should be > the number %d already done.", par->nSolveIters, par->nSolveItersDone);
+          bail_out(message);
+        }
+exit(1);
+      }
+    }
   } /* End if par->doMolCalcs */
 
   /* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
@@ -327,11 +348,10 @@ Generate the grid point locations.
     outRandLocations = malloc(sizeof(*outRandLocations)*par->pIntensity);
 
     randGen = gsl_rng_alloc(ranNumGenType);	/* Random number generator */
-#ifdef TEST
-    gsl_rng_set(randGen,342971);
-#else
-    gsl_rng_set(randGen,time(0));
-#endif
+    if(fixRandomSeeds)
+      gsl_rng_set(randGen,342971);
+    else
+      gsl_rng_set(randGen,time(0));
 
     if(par->samplingAlgorithm==0){
       randomsViaRejection(par, (unsigned int)par->pIntensity, randGen, outRandLocations);
@@ -339,11 +359,10 @@ Generate the grid point locations.
     } else if(par->samplingAlgorithm==1){
       setConstDefaults(&rinc);
 
-#ifdef TEST
-      rinc.randSeed = 342971;
-#else
-      rinc.randSeed = time(0);
-#endif
+      if(fixRandomSeeds)
+        rinc.randSeed = 342971;
+      else
+        rinc.randSeed = time(0);
 
       rinc.numDims = DIM;
       rinc.par = *par;

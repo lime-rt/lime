@@ -18,17 +18,19 @@ predefinedGrid(configInfo *par, struct grid *gp){
   unsigned long numCells,nExtraSinks;
 
   gsl_rng *ran = gsl_rng_alloc(gsl_rng_ranlxs2);
-#ifdef TEST
-  gsl_rng_set(ran,6611304);
-#else
-  gsl_rng_set(ran,time(0));
-#endif
+  if(fixRandomSeeds)
+    gsl_rng_set(ran,6611304);
+  else
+    gsl_rng_set(ran,time(0));
 
   par->numDensities = 1;
   for(i=0;i<par->ncell; i++)
     gp[i].dens = malloc(sizeof(double)*par->numDensities);
 
-  fp=fopen(par->pregrid,"r");
+  if((fp=fopen(par->pregrid,"r"))==NULL) {
+    if(!silent) bail_out("Error opening pregrid file");
+exit(1);
+  }
 
   for(i=0;i<par->pIntensity;i++){
     int nRead = fscanf(fp,"%d %lf %lf %lf %lf %lf %lf %lf %lf\n", &gp[i].id, &gp[i].x[0], &gp[i].x[1], &gp[i].x[2],  &gp[i].dens[0], &gp[i].t[0], &gp[i].vel[0], &gp[i].vel[1], &gp[i].vel[2]);

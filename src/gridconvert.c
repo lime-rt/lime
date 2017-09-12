@@ -170,7 +170,10 @@ Options:
 
   /* Parse our arguments; every option seen by parse_opt will be reflected in arguments.
   */
-  argp_parse(&argp, argc, argv, 0, 0, &arguments);
+  if(argp_parse(&argp, argc, argv, 0, 0, &arguments)){
+    bail_out("Argument parser returned with an error status.");
+exit(1);
+  }
 
   /* Do some checks of the arguments. I'm doing this here rather than using the argp machinery because the latter does not seem well adjusted to the situation we have here in which the expected number of arguments depends on the values of some of them.
   */

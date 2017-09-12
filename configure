@@ -1,0 +1,38 @@
+#! /bin/sh
+
+defsfile="./Makefile.defs"
+
+[ -e $defsfile ] && rm $defsfile
+touch $defsfile
+
+echo "LIB_QHULL = qhull" >> $defsfile
+if [ -e /usr/include/libqhull/qhull_a.h ]
+then
+  echo "CPPFLAGS += -DFUNNY_QHULL" >> $defsfile
+else
+  [ -e /usr/include/qhull/qhull_a.h ] ||\
+  [ -e /opt/local/include/qhull/qhull_a.h ] ||\
+  [ -e /sw/include/qhull/qhull_a.h ] ||\
+  exit 1
+fi
+
+if [ -e /usr/include/cfitsio/fitsio.h ]
+then
+  echo "CPPFLAGS += -DOLD_FITSIO" >> $defsfile
+else
+  [ -e /usr/include/fitsio.h ] ||\
+  [ -e /opt/local/include/fitsio.h ] ||\
+  [ -e /sw/include/fitsio.h ] ||\
+  [ -e /usr/include/libcfitsio0/fitsio.h ] ||\
+  exit 2
+fi
+
+pybin="python"
+pyconf="$pybin-config"
+command -v $pyconf >/dev/null 2>&1 || ! echo "oops" || exit 3
+
+PYCCFLAGS=`$pyconf --cflags`
+PYLDFLAGS=`$pyconf --ldflags`
+echo "PYCCFLAGS = $PYCCFLAGS" >> $defsfile
+echo "PYLDFLAGS = $PYLDFLAGS" >> $defsfile
+

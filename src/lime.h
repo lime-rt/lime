@@ -10,22 +10,26 @@
 #ifndef LIME_H
 #define LIME_H
 
+#ifdef IS_PYTHON
+#include <Python.h>
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include <time.h>
-#include <assert.h>
+#include <signal.h>
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_spline.h>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_linalg.h>
 
-#ifdef OLD_QHULL
-#include <qhull/qhull_a.h>
-#else
+#ifdef FUNNY_QHULL
 #include <libqhull/qhull_a.h>
+#else
+#include <qhull/qhull_a.h>
 #endif
 
 #ifdef OLD_FITSIO
@@ -70,6 +74,7 @@
 
 /* Other constants */
 #define SQRT_PI                 (sqrt(M_PI))           /* sqrt(pi)	*/
+#define ARCSEC_TO_RAD           (M_PI/180.0/3600.0)
 #define NITERATIONS             16
 #define MAX_RAYS_PER_POINT      10000
 #define RAYS_PER_POINT          200
@@ -259,6 +264,7 @@ struct cell {
 /* Some global variables */
 extern int silent,defaultFuncFlags;
 extern double defaultDensyPower;
+extern _Bool fixRandomSeeds;
 
 /* User-specifiable functions */
 void	density(double,double,double,double *);
@@ -287,6 +293,9 @@ void	calcGridMolDoppler(configInfo*, molData*, struct grid*);
 void	calcGridMolSpecNumDens(configInfo*, molData*, struct grid*);
 void	calcSourceFn(double, const configInfo*, double*, double*);
 void	checkFirstLineMolDat(FILE *fp, char *moldatfile);
+void	checkFgets(char *fgetsResult, char *message);
+void	checkFscanf(const int fscanfResult, const int expectedNum, char *message);
+void	checkFread(const size_t freadResult, const size_t expectedNum, char *message);
 void	checkGridDensities(configInfo*, struct grid*);
 void	checkUserDensWeights(configInfo*);
 void	copyInparStr(const char*, char**);
@@ -306,7 +315,7 @@ double	geterf(const double, const double);
 void	getEdgeVelocities(configInfo *, struct grid *);
 void	input(inputPars*, image*);
 double	interpolateKappa(const double, double*, double*, const int, gsl_spline*, gsl_interp_accel*);
-void	levelPops(molData*, configInfo*, struct grid*, int*, double*, double*, const int);
+int	levelPops(molData*, configInfo*, struct grid*, int*, double*, double*, const int);
 void	mallocAndSetDefaultGrid(struct grid**, const size_t, const size_t);
 void	mallocAndSetDefaultMolData(const int, molData**);
 void	molInit(configInfo*, molData*);
@@ -325,6 +334,7 @@ void	reportInfsAtOrigin(const int, const double*, const char*);
 void	setCollPartsDefaults(struct cpData*);
 int	setupAndWriteGrid(configInfo *par, struct grid *gp, molData *md, char *outFileName);
 void	setUpDensityAux(configInfo*, int*, const int);
+void	sigintHandler(int sigI);
 void	smooth(configInfo*, struct grid*);
 void	sourceFunc_line(const molData*, const double, const struct populations*, const int, double*, double*);
 void	sourceFunc_cont(const struct continuumLine, double*, double*);
@@ -342,6 +352,7 @@ void	casaStyleProgressBar(const int, int);
 void	collpartmesg(char*, int);
 void	collpartmesg2(char*);
 void	collpartmesg3(int, int);
+void	error(char*);
 void	goodnight(int);
 void	greetings(void);
 void	greetings_parallel(int);
@@ -356,13 +367,10 @@ void	warning(char*);
 #ifdef FASTEXP
 extern double EXP_TABLE_2D[128][10];
 extern double EXP_TABLE_3D[256][2][10];
-#else
-extern double EXP_TABLE_2D[1][1]; /* nominal definitions so the fastexp.c module will compile. */
-extern double EXP_TABLE_3D[1][1][1];
+extern double oneOver_i[FAST_EXP_MAX_TAYLOR+1];
 #endif
 
 extern double ERF_TABLE[ERF_TABLE_SIZE];
-extern double oneOver_i[FAST_EXP_MAX_TAYLOR+1];
 
 #endif /* LIME_H */
 

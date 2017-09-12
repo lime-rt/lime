@@ -230,8 +230,6 @@ exit(1);
   fits_close_file(fptr, &status);
 
   free(row);
-
-  if(!silent) printDone(13);
 }
 
 void writeFits(const int i, const int unit_index, configInfo *par, imageInfo *img){
