@@ -82,13 +82,13 @@ Users have complained that downstream packages (produced by lazy coders >:8) wil
   velref  =257;
 
   sprintf(ctype[axesOrder[0]], "RA---SIN");
-  cdelt[axesOrder[0]] = -1.8e2*img[im].imgres/PI;
+  cdelt[axesOrder[0]] = -1.8e2*img[im].imgres/M_PI;
   crpix[axesOrder[0]] = ((double)img[im].pxls)/2.0 + 0.5;
   crval[axesOrder[0]] = 0.0e0;
   sprintf(cunit[axesOrder[0]], "DEG    ");
 
   sprintf(ctype[axesOrder[1]], "DEC--SIN");
-  cdelt[axesOrder[1]] = 1.8e2*img[im].imgres/PI;
+  cdelt[axesOrder[1]] = 1.8e2*img[im].imgres/M_PI;
   crpix[axesOrder[1]] = ((double)img[im].pxls)/2.0 + 0.5;
   crval[axesOrder[1]] = 0.0e0;
   sprintf(cunit[axesOrder[1]], "DEG    ");
