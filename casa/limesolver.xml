@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" ?>
+<casaxml xmlns="http://casa.nrao.edu/schema/psetTypes.html"
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xsi:schemaLocation="http://casa.nrao.edu/schema/casa.xsd
+file:///opt/casa/code/xmlcasa/xml/casa.xsd">
+
+<task type="function" name="limesolver" category="editing">
+
+  <shortdescription>This task runs the LIne Modelling Engine (LIME).</shortdescription>
+      
+  <description>This task runs the LIne Modelling Engine (LIME). The user may select from a library of models, set parameters for those models, then run LIME on the model. LIME then solves for the level populations of the specified radiating species.
+  </description>
+
+  <input>
+    <param type="double" name="radius">
+      <description>Radius of the model sphere (m)</description>
+      <value>0.0</value>
+      <allowed kind="range"><value range="min">0.0</value></allowed>
+    </param>
+    <param type="double" name="minScale">
+      <description>Minimum spatial model scale (m)</description>
+      <value>0.0</value>
+      <allowed kind="range"><value range="min">0.0</value></allowed>
+    </param>
+    <param type="double" name="tcmb">
+      <description>Temperature of CMB (K)</description>
+      <value>2.728</value>
+      <allowed kind="range"><value range="min">0.0</value></allowed>
+    </param>
+    <param type="int" name="sinkPoints">
+      <description>(Nominal) number of points to go on the model boundary</description>
+      <value>0</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+    <param type="int" name="pIntensity">
+      <description>(Nominal) number of points to go in the model interior</description>
+      <value>0</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+    <param type="int" name="samplingAlgorithm">
+      <description>Algorithm for grid point random sampling</description>
+      <value>0</value>
+      <allowed kind="enum">
+        <value>0</value>
+        <value>1</value>
+      </allowed>
+    </param>
+    <param type="int" name="sampling" subparam="true">
+      <description>Random sampling distribution</description>
+      <value>2</value>
+      <allowed kind="enum">
+        <value>0</value>
+        <value>1</value>
+        <value>2</value>
+      </allowed>
+    </param>
+    <param type="bool" name="lte_only">
+      <description>Whether to use only the LTE approximation</description>
+      <value>False</value>
+    </param>
+    <param type="bool" name="init_lte">
+      <description>Whether use LTE populations as starting values</description>
+      <value>False</value>
+    </param>
+    <param type="int" name="nThreads">
+      <description>Number of threads for parallel processing</description>
+      <value>1</value>
+      <allowed kind="range"><value range="min">1</value></allowed>
+    </param>
+    <param type="int" name="nSolveIters">
+      <description>Total number of solution iterations desired</description>
+      <value>17</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+    <param type="stringArray" name="moldatfile">
+      <description>Input files with transition rates for radiating molecules</description>
+      <value type="vector">
+        <value></value>
+      </value>
+    </param>
+    <param type="string" name="dust">
+      <description>Input file with dust opacity data</description>
+      <value></value>
+    </param>
+    <param type="string" name="gridInFile">
+      <description>Input file with previously calculated model grid</description>
+      <value></value>
+    </param>
+    <param type="stringArray" name="gridOutFiles">
+      <description>Output files to contain model grid information at one of 5 stages</description>
+      <value type="vector">
+        <value></value>
+      </value>
+    </param>
+    <param type="bool" name="resetRNG">
+      <description>Whether to use the same random number seeds for each solution iteration</description>
+      <value>False</value>
+    </param>
+
+    <param type="string" name="modelID">
+      <description>Identifier for the model to use.</description>
+      <value>BonnorEbert56</value>
+    </param>
+
+    <param type="double" name="T" subparam="true">
+      <description>Temperature of the core (K)</description>
+      <value>10.0</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+    <param type="double" name="rhoc" subparam="true">
+      <description>Central volume density of the core</description>
+      <value>1.0e6</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+
+    <param type="double" name="Mstar" subparam="true">
+      <description>Mass of the central (proto-)star (Msun)</description>
+      <value>0.5</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+    <param type="double" name="Rstar" subparam="true">
+      <description>Radius of the central star (Rsun)</description>
+      <value>2.0</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+    <param type="double" name="Tstar" subparam="true">
+      <description>Effective temperature of the star (K)</description>
+      <value>4000.0</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+    <param type="double" name="bgdens" subparam="true">
+      <description>Background number density (floor value for the disk density)(1/cm^3)</description>
+      <value>0.0001</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+    <param type="double" name="hph" subparam="true">
+      <description>Ratio of the height of the disk atmosphere above the midplane and the pressure scale height (at all radii)</description>
+      <value>4.0</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+    <param type="double" name="plsig1" subparam="true">
+      <description>Power exponent of the radial surface density distribution</description>
+      <value>-1.0</value>
+    </param>
+    <param type="double" name="rin" subparam="true">
+      <description>Inner Radius of the disk (AU)</description>
+      <value>1.0</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+    <param type="double" name="rout" subparam="true">
+      <description>Outer radius of the disk (AU)</description>
+      <value>100.0</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+    <param type="double" name="sig0" subparam="true">
+      <description>Surface density at rout (g/cm^2)</description>
+      <value>0.01</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+
+    <param type="double" name="mdisk" subparam="true">
+      <description>Total disk mass (gas + dust; gas-to-dust ratio of 100 is used) (Msun)</description>
+      <value>0.01</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+
+    <param type="double" name="cs" subparam="true">
+      <description>Sound speed (m/s)</description>
+      <value>1000.0</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+    <param type="double" name="h0" subparam="true">
+      <description>Mass flux ratio parameter</description>
+      <value>0.75</value>
+      <allowed kind="enum">
+        <value>0.125</value>
+        <value>0.5</value>
+        <value>0.75</value>
+        <value>1.0</value>
+        <value>1.25</value>
+      </allowed>
+    </param>
+
+    <param type="double" name="ab0" subparam="true">
+      <description>Abundance at inner edge</description>
+      <value>0.0004</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+    <param type="double" name="mdot" subparam="true">
+      <description>Mass loss rate (Msun/yr)</description>
+      <value>1e-5</value>
+      <allowed kind="range">
+        <value range="min">1e-8</value>
+        <value range="max">1e-4</value>
+      </allowed>
+    </param>
+    <param type="double" name="tin" subparam="true">
+      <description>Temperature at inner edge (K)</description>
+      <value>1100.0</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+    <param type="double" name="ve" subparam="true">
+      <description>Expansion velocity (km/s)</description>
+      <value>15.0</value>
+      <allowed kind="range">
+        <value range="min">7.5</value>
+        <value range="max">30.0</value>
+      </allowed>
+    </param>
+
+    <param type="double" name="mdota" subparam="true">
+      <description>Accretion rate (Msun/year)</description>
+      <value>1e-6</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+    <param type="double" name="mu" subparam="true">
+      <description>Ratio of the centrifugal radius to the cloud radius</description>
+      <value>0.0</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+    <param type="double" name="nu" subparam="true">
+      <description>Ratio of the radial velocity to the Kepler velocity at the cloud outer radius</description>
+      <value>0.0</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+    <param type="double" name="rc" subparam="true">
+      <description>Centrifugal radius (AU)</description>
+      <value>200.0</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+
+    <param type="double" name="Tcloud" subparam="true">
+      <description>Temperature of the cloud (K)</description>
+      <value>30.0</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+    <param type="double" name="age" subparam="true">
+      <description>Age of source (yr)</description>
+      <value>100000.0</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+
+    <param type="double" name="Rn" subparam="true">
+      <description>Validity radius of kinematic approximation (AU)</description>
+      <value>1.0</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+
+
+
+    <constraints>
+      <when param="samplingAlgorithm">
+        <equals type="int" value="0">
+          <default param="sampling"><value type="int">2</value></default>
+        </equals>
+        <equals type="int" value="1"/>
+      </when>
+
+      <when param="modelID">
+        <equals type="string" value='BonnorEbert56'>
+          <default param="T"><value    type="double">10.0</value></default>
+          <default param="rhoc"><value type="double">1.0e6</value></default>
+        </equals>
+
+        <equals type="string" value='CG97'>
+          <default param="Mstar"><value  type="double">0.5</value></default>
+          <default param="Rstar"><value  type="double">2.0</value></default>
+          <default param="Tstar"><value  type="double">4000.0</value></default>
+          <default param="bgdens"><value type="double">0.0001</value></default>
+          <default param="hph"><value    type="double">4.0</value></default>
+          <default param="plsig1"><value type="double">-1.0</value></default>
+          <default param="rin"><value    type="double">1.0</value></default>
+          <default param="rout"><value   type="double">100.0</value></default>
+          <default param="sig0"><value   type="double">0.01</value></default>
+        </equals>
+
+        <equals type="string" value='DDN01'>
+          <default param="Mstar"><value  type="double">1.0</value></default>
+          <default param="Rstar"><value  type="double">1.0</value></default>
+          <default param="Tstar"><value  type="double">4000.0</value></default>
+          <default param="bgdens"><value type="double">0.0001</value></default>
+          <default param="mdisk"><value  type="double">0.01</value></default>
+          <default param="plsig1"><value type="double">-1.0</value></default>
+          <default param="rin"><value    type="double">1.0</value></default>
+          <default param="rout"><value   type="double">100.0</value></default>
+        </equals>
+
+        <equals type="string" value='LiShu96'>
+          <default param="cs"><value type="double">1000.0</value></default>
+          <default param="h0"><value type="double">0.75</value></default>
+        </equals>
+
+        <equals type="string" value='Mamon88'>
+          <default param="ab0"><value  type="double">0.0004</value></default>
+          <default param="mdot"><value type="double">1e-5</value></default>
+          <default param="rin"><value  type="double">2.0</value></default>
+          <default param="tin"><value  type="double">1100.0</value></default>
+          <default param="ve"><value   type="double">15.0</value></default>
+        </equals>
+
+        <equals type="string" value='Mendoza09'>
+          <default param="mdota"><value type="double">1e-6</value></default>
+          <default param="Mstar"><value type="double">0.5</value></default>
+          <default param="mu"><value    type="double">0.0</value></default>
+          <default param="nu"><value    type="double">0.0</value></default>
+          <default param="rc"><value    type="double">200.0</value></default>
+        </equals>
+
+        <equals type="string" value='Shu77'>
+          <default param="Tcloud"><value type="double">30.0</value></default>
+          <default param="age"><value    type="double">100000.0</value></default>
+        </equals>
+
+        <equals type="string" value='Ulrich76'>
+          <default param="mdota"><value type="double">1e-6</value></default>
+          <default param="Mstar"><value type="double">0.1</value></default>
+          <default param="rc"><value    type="double">60.0</value></default>
+        </equals>
+
+        <equals type="string" value='allen03a'>
+          <default param="Rn"><value     type="double">1.0</value></default>
+          <default param="Tcloud"><value type="double">30.0</value></default>
+          <default param="age"><value    type="double">100000.0</value></default>
+          <default param="cs"><value     type="double">1000.0</value></default>
+        </equals>
+      </when>
+    </constraints>
+
+  </input>
+
+  <returns type="void"/>
+
+</task>
+
+</casaxml>

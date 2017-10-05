@@ -135,21 +135,6 @@ initParImg(inputPars *par, image **img)
 }
 
 /*....................................................................*/
-void
-freeInputPars(inputPars *par){
-  free(par->collPartIds);
-  free(par->nMolWeights);
-  free(par->dustWeights);
-  free(par->collPartMolWeights);
-  free(par->moldatfile);
-  free(par->girdatfile);
-  free(par->collPartNames);
-  free(par->gridOutFiles);
-  free(par->gridDensMaxValues);
-  free(par->gridDensMaxLoc);
-}
-
-/*....................................................................*/
 int main() {
   /* Main program for stand-alone LIME */
 

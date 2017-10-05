@@ -10,6 +10,8 @@
 #ifndef INPARS_H
 #define INPARS_H
 
+#include "dims.h"
+
 /* input parameters */
 typedef struct {
   double radius,minScale,tcmb,*nMolWeights,*dustWeights;

@@ -10,6 +10,7 @@
  */
 
 #include "lime.h"
+#include "defaults.h"
 
 
 void
@@ -114,7 +115,7 @@ exit(1);
   par->sinkPoints += nExtraSinks;
 
   distCalc(par, *gp);
-  if(!bitIsSet(defaultFuncFlags, FUNC_BIT_velocity)){
+  if(!bitIsSet(defaultFuncFlags, USERFUNC_velocity)){
     /* In any case, it is extremely dodgy to read vertex velocities from a file but then use a separate-supplied function to calculate the edge velocity samples. This is stupid astronomer code - asking for trouble. */
     getEdgeVelocities(par,*gp);
     par->dataFlags |= (1 << DS_bit_ACOEFF);
@@ -128,11 +129,11 @@ exit(1);
 /*  par->dataFlags |= (1 << DS_bit_magfield); commented out because we are not yet reading it in popsin (and may never do so) */
   par->dataFlags |= (1 << DS_bit_populations);
 
-  if(bitIsSet(defaultFuncFlags, FUNC_BIT_density)){
+  if(bitIsSet(defaultFuncFlags, USERFUNC_density)){
     if(!silent) bail_out("You need to supply a density() function.");
 exit(1);
   }
-  if(bitIsSet(defaultFuncFlags, FUNC_BIT_temperature)){
+  if(bitIsSet(defaultFuncFlags, USERFUNC_temperature)){
     if(!silent) bail_out("You need to supply a temperature() function.");
 exit(1);
   }

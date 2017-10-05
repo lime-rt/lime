@@ -196,7 +196,8 @@ This function should return a tuple of 2 temperatures (in kelvin). The 2nd is op
     temp0 = rToTemp[1][xi]+(r-rToTemp[0][xi])*(rToTemp[1][xi+1]-rToTemp[1][xi])\
           / (rToTemp[0][xi+1]-rToTemp[0][xi])
 
-  return (temp0, None)
+#  return (temp0, None)
+  return [temp0, 0.0]
 
 #.......................................................................
 def abundance(macros, x, y, z):

@@ -67,9 +67,9 @@ binpopsout(configInfo *par, struct grid *gp, molData *md){
     exit(1);
   }
 
-  fwrite(&par->radius,   sizeof(double), 1, fp);
-  fwrite(&par->ncell,    sizeof(int), 1, fp);
-  fwrite(&par->nSpecies, sizeof(int), 1, fp);
+  checkFwrite(fwrite(&par->radius,   sizeof(double), 1, fp), 1, "radius");
+  checkFwrite(fwrite(&par->ncell,    sizeof(int),    1, fp), 1, "ncell");
+  checkFwrite(fwrite(&par->nSpecies, sizeof(int),    1, fp), 1, "nSpecies");
 
   for(i=0;i<par->nSpecies;i++){
     if(md[i].part==NULL)
@@ -77,39 +77,39 @@ binpopsout(configInfo *par, struct grid *gp, molData *md){
     else
       nTrans[0] = md[i].part[0].ntrans;
 
-    fwrite(&md[i].nlev,  sizeof(int),                1,fp);
-    fwrite(&md[i].nline, sizeof(int),                1,fp);
-    fwrite(&md[i].npart, sizeof(int),                1,fp);
-    fwrite(nTrans,       sizeof(int),                1,fp);
-    fwrite(md[i].lal,    sizeof(int)*md[i].nline,    1,fp);
-    fwrite(md[i].lau,    sizeof(int)*md[i].nline,    1,fp);
-    fwrite(md[i].aeinst, sizeof(double)*md[i].nline, 1,fp);
-    fwrite(md[i].freq,   sizeof(double)*md[i].nline, 1,fp);
-    fwrite(md[i].beinstl,sizeof(double)*md[i].nline, 1,fp);
-    fwrite(md[i].beinstu,sizeof(double)*md[i].nline, 1,fp);
-    fwrite(dummy2[i], sizeof(double)*md[i].nline,1,fp);
-    fwrite(&dummy, sizeof(double),1,fp);
-    fwrite(&dummy, sizeof(double),1,fp);
+    checkFwrite(fwrite(&md[i].nlev,  sizeof(int),                1,fp), 1, "nlev");
+    checkFwrite(fwrite(&md[i].nline, sizeof(int),                1,fp), 1, "nline");
+    checkFwrite(fwrite(&md[i].npart, sizeof(int),                1,fp), 1, "npart");
+    checkFwrite(fwrite(nTrans,       sizeof(int),                1,fp), 1, "nTrans");
+    checkFwrite(fwrite(md[i].lal,    sizeof(int)   *md[i].nline, 1,fp), 1, "lal");
+    checkFwrite(fwrite(md[i].lau,    sizeof(int)   *md[i].nline, 1,fp), 1, "lau");
+    checkFwrite(fwrite(md[i].aeinst, sizeof(double)*md[i].nline, 1,fp), 1, "aeinst");
+    checkFwrite(fwrite(md[i].freq,   sizeof(double)*md[i].nline, 1,fp), 1, "freq");
+    checkFwrite(fwrite(md[i].beinstl,sizeof(double)*md[i].nline, 1,fp), 1, "beinstl");
+    checkFwrite(fwrite(md[i].beinstu,sizeof(double)*md[i].nline, 1,fp), 1, "beinstu");
+    checkFwrite(fwrite(dummy2[i],    sizeof(double)*md[i].nline, 1,fp), 1, "dummy2");
+    checkFwrite(fwrite(&dummy,       sizeof(double),             1,fp), 1, "dummy");
+    checkFwrite(fwrite(&dummy,       sizeof(double),             1,fp), 1, "dummy");
   }
 
   for(i=0;i<par->ncell;i++){
-    fwrite(&gp[i].id,   sizeof(int),      1, fp);
-    fwrite(&gp[i].x,  DIM*sizeof(double),   1, fp);
-    fwrite(&gp[i].vel,DIM*sizeof(double),   1, fp);
-    fwrite(&gp[i].sink, sizeof(int),      1, fp);
+    checkFwrite(fwrite(&gp[i].id,     sizeof(int),      1, fp), 1, "id");
+    checkFwrite(fwrite(&gp[i].x,  DIM*sizeof(double),   1, fp), 1, "x");
+    checkFwrite(fwrite(&gp[i].vel,DIM*sizeof(double),   1, fp), 1, "vel");
+    checkFwrite(fwrite(&gp[i].sink,   sizeof(int),      1, fp), 1, "sink");
     for(j=0;j<par->nSpecies;j++)
-      fwrite(&gp[i].mol[j].nmol,  sizeof(double),           1, fp);
-    fwrite(&gp[i].dopb_turb, sizeof gp[i].dopb_turb, 1, fp);
+      checkFwrite(fwrite(&gp[i].mol[j].nmol,  sizeof(double), 1, fp), 1, "nmol");
+    checkFwrite(fwrite(&gp[i].dopb_turb, sizeof(double), 1, fp), 1, "dopb_turb");
     for(j=0;j<par->nSpecies;j++){
-      fwrite(gp[i].mol[j].pops,  sizeof(double)*md[j].nlev, 1, fp);
-      fwrite(dummyMol[j].knu,   sizeof(double)*md[j].nline,1, fp);
-      fwrite(dummyMol[j].dust,  sizeof(double)*md[j].nline,1, fp);
-      fwrite(&gp[i].mol[j].dopb, sizeof(double),           1, fp);
-      fwrite(&gp[i].mol[j].binv, sizeof(double),           1, fp);
+      checkFwrite(fwrite(gp[i].mol[j].pops,  sizeof(double)*md[j].nlev, 1, fp), 1, "pops");
+      checkFwrite(fwrite(dummyMol[j].knu,    sizeof(double)*md[j].nline,1, fp), 1, "knu");
+      checkFwrite(fwrite(dummyMol[j].dust,   sizeof(double)*md[j].nline,1, fp), 1, "dust");
+      checkFwrite(fwrite(&gp[i].mol[j].dopb, sizeof(double),            1, fp), 1, "dopb");
+      checkFwrite(fwrite(&gp[i].mol[j].binv, sizeof(double),            1, fp), 1, "binv");
     }
-    fwrite(&gp[i].dens[0], sizeof(double), 1, fp);
-    fwrite(&gp[i].t[0],    sizeof(double), 1, fp);
-    fwrite(&gp[i].mol[0].abun, sizeof(double), 1, fp);
+    checkFwrite(fwrite(&gp[i].dens[0],     sizeof(double), 1, fp), 1, "dens");
+    checkFwrite(fwrite(&gp[i].t[0],        sizeof(double), 1, fp), 1, "t");
+    checkFwrite(fwrite(&gp[i].mol[0].abun, sizeof(double), 1, fp), 1, "abun");
   }
 
   fclose(fp);

@@ -6,26 +6,28 @@ defsfile="./Makefile.defs"
 touch $defsfile
 
 echo "LIB_QHULL = qhull" >> $defsfile
-if [ -e /usr/include/libqhull/qhull_a.h ]
-then
-  echo "CPPFLAGS += -DFUNNY_QHULL" >> $defsfile
-else
-  [ -e /usr/include/qhull/qhull_a.h ] ||\
-  [ -e /opt/local/include/qhull/qhull_a.h ] ||\
-  [ -e /sw/include/qhull/qhull_a.h ] ||\
-  exit 1
-fi
 
-if [ -e /usr/include/cfitsio/fitsio.h ]
-then
-  echo "CPPFLAGS += -DOLD_FITSIO" >> $defsfile
-else
-  [ -e /usr/include/fitsio.h ] ||\
-  [ -e /opt/local/include/fitsio.h ] ||\
-  [ -e /sw/include/fitsio.h ] ||\
-  [ -e /usr/include/libcfitsio0/fitsio.h ] ||\
-  exit 2
-fi
+qhull_incs=( "/usr/include/libqhull" "/usr/include/qhull" "/opt/local/include/qhull" "/sw/include/qhull" )
+
+for incdir in ${qhull_incs[@]}
+do
+  if [ -e $incdir/qhull_a.h ]
+  then
+    echo "CCFLAGS += -I$incdir" >> $defsfile
+    break
+  fi
+done 
+
+fitsio_incs=( "/usr/include/cfitsio" "/usr/include/libcfitsio0" )
+
+for incdir in ${fitsio_incs[@]}
+do
+  if [ -e $incdir/fitsio.h ]
+  then
+    echo "CCFLAGS += -I$incdir" >> $defsfile
+    break
+  fi
+done 
 
 pybin="python"
 pyconf="$pybin-config"

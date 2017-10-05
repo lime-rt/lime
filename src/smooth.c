@@ -21,6 +21,7 @@ smooth(configInfo *par, struct grid *gp){
   double dist;		/* Distance to a neighbor					*/
   struct cell *dc=NULL; /* Not used at present. */
   unsigned long numCells;
+  double progFraction;
 
   for(sg=0;sg<N_SMOOTH_ITERS;sg++){
     delaunay(DIM, gp, (unsigned long)par->ncell, 0, 0, &dc, &numCells);
@@ -40,17 +41,17 @@ smooth(configInfo *par, struct grid *gp){
 
       if(par->radius-sqrt(gp[i].x[0]*gp[i].x[0] + gp[i].x[1]*gp[i].x[1] + gp[i].x[2]*gp[i].x[2])<mindist) cn=-1;
 
-      if(cn>-1) {
+      if(cn>-1){
         for(k=0;k<DIM;k++){
           move[k] = gp[i].x[k] - gp[i].dir[cn].x[k]*0.20;
-        }			  
+        }
         if((move[0]*move[0]+move[1]*move[1]+move[2]*move[2])<par->radiusSqu &&
            (move[0]*move[0]+move[1]*move[1]+move[2]*move[2])>par->minScaleSqu){
           for(k=0;k<DIM;k++) gp[i].x[k]=move[k];
         }
       }
     }
-		
+
     for(i=par->pIntensity;i<par->ncell;i++){
       mindist=1e30;
       cn=-1;
@@ -65,16 +66,17 @@ smooth(configInfo *par, struct grid *gp){
       j=gp[i].neigh[cn]->id;
       for(k=0;k<DIM;k++){
         gp[i].x[k] = gp[i].x[k] - (gp[j].x[k]-gp[i].x[k]) * 0.15;
-      }			
-      dist=par->radius/sqrt(gp[i].x[0]*gp[i].x[0] + gp[i].x[1]*gp[i].x[1] + gp[i].x[2]*gp[i].x[2]);	
+      }
+      dist=par->radius/sqrt(gp[i].x[0]*gp[i].x[0] + gp[i].x[1]*gp[i].x[1] + gp[i].x[2]*gp[i].x[2]);
       for(k=0;k<DIM;k++){
         gp[i].x[k] *= dist;
-      }	
+      }
     }
-		
-    if(!silent) progressbar((double)(sg+1)/(double)N_SMOOTH_ITERS, 5);	
+
+    progFraction = (double)(sg+1)/(double)N_SMOOTH_ITERS;
+    if(!silent) progressbar(progFraction, 5);
     free(dc);
-  }	
+  }
 }
 
 

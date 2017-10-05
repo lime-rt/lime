@@ -90,6 +90,21 @@ freeImgInfo(const int nImages, imageInfo *img){
 
 /*....................................................................*/
 void
+freeInputPars(inputPars *par){
+  free(par->collPartIds);
+  free(par->nMolWeights);
+  free(par->dustWeights);
+  free(par->collPartMolWeights);
+  free(par->moldatfile);
+  free(par->girdatfile);
+  free(par->collPartNames);
+  free(par->gridOutFiles);
+  free(par->gridDensMaxValues);
+  free(par->gridDensMaxLoc);
+}
+
+/*....................................................................*/
+void
 freeMolData(const int nSpecies, molData *md){
   int i,j;
   if(md!= NULL){

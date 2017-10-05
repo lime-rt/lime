@@ -9,13 +9,13 @@
 CORESOURCES = \
 	src/aux.c\
 	src/collparts.c\
+	src/defaults.c\
 	src/fastexp.c\
 	src/frees.c\
 	src/grid2fits.c\
 	src/grid.c\
 	src/gridio.c\
 	src/grid_aux.c\
-	src/messages.c\
 	src/molinit.c\
 	src/popsin.c\
 	src/popsout.c\
@@ -31,8 +31,9 @@ CORESOURCES = \
 	src/writefits.c
 
 STDSOURCES = \
-	src/defaults.c\
-	src/main.c
+	src/lime_defaults.c\
+	src/main.c\
+	src/messages.c
 
 HDF5SOURCES = \
 	src/grid2hdf5.c
@@ -53,19 +54,26 @@ CONVSOURCES = \
 	src/predefgrid.c
 
 PYSOURCES = \
-	src/pydefaults.c\
-	src/pymain.c\
-	src/pyutils.c
+	src/messages.c\
+	src/py_main.c\
+	src/py_messages.c\
+	src/py_models.c\
+	src/py_utils.c
 
 COREINCLUDES = \
-	src/dims.h\
 	src/collparts.h\
+	src/constants.h\
+	src/defaults.h\
+	src/dims.h\
 	src/grid2fits.h\
+	src/grid2hdf5.h\
 	src/gridio.h\
 	src/inpars.h\
+	src/lime_config.h\
 	src/lime.h\
 	src/raythrucells.h\
-	src/tree_random.h
+	src/tree_random.h\
+	src/ufunc_types.h
 
 HDF5INCLUDES = \
 	src/grid2hdf5.h
@@ -79,5 +87,7 @@ CONVINCLUDES = \
 	src/lime.h
 
 PYINCLUDES = \
-	src/pytypes.h
+	src/error_codes.h\
+	src/py_lime.h\
+	src/py_utils.h
 

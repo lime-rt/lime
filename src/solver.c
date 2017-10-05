@@ -280,8 +280,8 @@ The idea here is to select for the next grid point, that one which lies closest 
 
 Note that this is called from within the multi-threaded block.
   */
-  int i,ni,niOfSmallest=-1,niOfNextSmallest;
-  double dirCos,distAlongTrack,dirFromStart[3],coord,distToTrackSquared,smallest,nextSmallest;
+  int i,ni,niOfSmallest=-1,niOfNextSmallest=-1;
+  double dirCos,distAlongTrack,dirFromStart[3],coord,distToTrackSquared,smallest=0.0,nextSmallest=0.0;
   const static double scatterReduction = 0.4;
   /*
 This affects the ratio of N_2/N_1, where N_2 is the number of times the edge giving the 2nd-smallest distance from the photon track is chosen and N_1 ditto the smallest. Some ratio values obtained from various values of scatterReduction:
@@ -872,24 +872,10 @@ Note that this is called from within the multi-threaded block.
 }
 
 /*....................................................................*/
-void gridPopsInit(configInfo *par, molData *md, struct grid *gp){
-  int i,id,ilev;
-
-  for(i=0;i<par->nSpecies;i++){
-    /* Allocate space for populations etc */
-    for(id=0;id<par->ncell; id++){
-      gp[id].mol[i].pops = malloc(sizeof(double)*md[i].nlev);
-      for(ilev=0;ilev<md[i].nlev;ilev++)
-        gp[id].mol[i].pops[ilev] = 0.0;
-    }
-  }
-}
-
-/*....................................................................*/
 int
 levelPops(molData *md, configInfo *par, struct grid *gp, int *popsdone, double *lamtab, double *kaptab, const int nEntries){
   int id,iter,ilev,ispec,c=0,n,i,threadI,nVerticesDone,nItersDone,nlinetot,nExtraSolverIters=0;
-  double percent=0.,*median,result1=0,result2=0,snr,delta_pop;
+  double percent=0.,*median,result1=0,result2=0,snr,delta_pop,progFraction;
   int nextMolWithBlend;
   struct statistics { double *pop, *ave, *sigma; } *stat;
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
@@ -901,8 +887,6 @@ levelPops(molData *md, configInfo *par, struct grid *gp, int *popsdone, double *
   nlinetot = 0;
   for(ispec=0;ispec<par->nSpecies;ispec++)
     nlinetot += md[ispec].nline;
-
-  gridPopsInit(par,md,gp);
 
   if(par->lte_only){
     LTE(par,gp,md);
@@ -996,7 +980,8 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
           halfFirstDs = malloc(sizeof(*halfFirstDs)*gp[id].nphot);
 
           if (threadI == 0){ /* i.e., is master thread. */
-            if(!silent) progressbar(nVerticesDone/(double)par->pIntensity,10);
+            progFraction = nVerticesDone/(double)par->pIntensity;
+            if(!silent) progressbar(progFraction,10);
           }
           if(gp[id].dens[0] > 0 && gp[id].t[0] > 0){
             calculateJBar(id,gp,md,threadRans[threadI],par,nlinetot,blends,mp,halfFirstDs);

@@ -11,6 +11,7 @@ TODO:
 #include "lime.h"
 #include <locale.h>
 #include "gridio.h" /* For countDensityCols() */
+#include "defaults.h"
 
 int defaultFuncFlags = 0;
 double defaultDensyPower = DENSITY_POWER;
@@ -38,10 +39,17 @@ reportInfsAtOrigin(const int numElements, const double *values, const char *func
   int i;
   char message[STR_LEN_0];
 
-  for(i=0;i<numElements;i++){
-    if(isinf(values[i]) && !silent){
-      sprintf(message, "You have a singularity at the origin in return %d of your %s() function.", i, funcName);
+  if(numElements<=0){
+    if(isinf(*values) && !silent){
+      sprintf(message, "You have a singularity at the origin of your %s() function.", funcName);
       warning(message);
+    }
+  }else{
+    for(i=0;i<numElements;i++){
+      if(isinf(values[i]) && !silent){
+        sprintf(message, "You have a singularity at the origin in return %d of your %s() function.", i, funcName);
+        warning(message);
+      }
     }
   }
 }
@@ -234,16 +242,21 @@ Run through all the user functions and set flags in the global defaultFuncFlags 
 	- The density() function, because we need to know the number of densities early on, in case we need to call the default gridDensity() function. Thus we test for this below.
   */
   density(      0.0,0.0,0.0, dummyDens);
-  if(!bitIsSet(defaultFuncFlags, FUNC_BIT_density)) reportInfsAtOrigin(1, dummyDens, "density");
+  if(!bitIsSet(defaultFuncFlags, USERFUNC_density))       reportInfsAtOrigin(1, dummyDens, "density");
   temperature(  0.0,0.0,0.0, dummyT);
+  if(!bitIsSet(defaultFuncFlags, USERFUNC_temperature))   reportInfsAtOrigin(2, dummyT, "temperature");
   abundance(    0.0,0.0,0.0, dummyAbun);
+  if(!bitIsSet(defaultFuncFlags, USERFUNC_abundance))     reportInfsAtOrigin(1, dummyAbun, "abundance");
   molNumDensity(0.0,0.0,0.0, dummyNmol);
-  if(!bitIsSet(defaultFuncFlags, FUNC_BIT_molNumDensity)) reportInfsAtOrigin(1, dummyNmol, "molNumDensity");
+  if(!bitIsSet(defaultFuncFlags, USERFUNC_molNumDensity)) reportInfsAtOrigin(1, dummyNmol, "molNumDensity");
   doppler(      0.0,0.0,0.0, &dummyTurbDop);
+  if(!bitIsSet(defaultFuncFlags, USERFUNC_doppler))       reportInfsAtOrigin(0, &dummyTurbDop, "doppler");
   velocity(     0.0,0.0,0.0, dummyVel);
-  if(!bitIsSet(defaultFuncFlags, FUNC_BIT_velocity)) reportInfsAtOrigin(3, dummyVel, "velocity");
+  if(!bitIsSet(defaultFuncFlags, USERFUNC_velocity))      reportInfsAtOrigin(3, dummyVel, "velocity");
   magfield(     0.0,0.0,0.0, dummyB);
+  if(!bitIsSet(defaultFuncFlags, USERFUNC_magfield))      reportInfsAtOrigin(3, dummyB, "magfield");
   gasIIdust(    0.0,0.0,0.0, &dummyG2d);
+  if(!bitIsSet(defaultFuncFlags, USERFUNC_gasIIdust))     reportInfsAtOrigin(0, &dummyG2d, "gasIIdust");
 
   free(dummyNmol);
   free(dummyAbun);
@@ -269,7 +282,7 @@ exit(1);
     }
 
     if(par->numDensities<=0){
-      if(bitIsSet(defaultFuncFlags, FUNC_BIT_density)){
+      if(bitIsSet(defaultFuncFlags, USERFUNC_density)){
         if(!silent) bail_out("You need to provide a density() function.");
 exit(1);
       }
@@ -278,7 +291,7 @@ exit(1);
       */
       for(i=0;i<MAX_N_COLL_PART;i++) dens[i] = -1.0;
       density(0.0,0.0,0.0,dens);
-      /* Testing for a singularity in the density function at the origin is now performed in readOrBuildGrid() */
+      /* Testing for a singularity in the density function at the origin has already been done, just a little above here. */
       i = 0;
       while(i<MAX_N_COLL_PART && dens[i]>=0) i++;
       par->numDensities = i;
@@ -293,8 +306,8 @@ exit(1);
   if(!(par->doPregrid || par->restart || par->gridInFile!=NULL)){
     /* In this case we will need to calculate grid point locations, thus we will need to call the function gridDensity(). The default one is ok, but this (i) needs the user to supply a density function, and (ii) requires par->gridDensGlobalMax etc to be calculated.
     */
-    if(bitIsSet(defaultFuncFlags, FUNC_BIT_gridDensity)){
-      if(bitIsSet(defaultFuncFlags, FUNC_BIT_density)){
+    if(bitIsSet(defaultFuncFlags, USERFUNC_gridDensity)){
+      if(bitIsSet(defaultFuncFlags, USERFUNC_density)){
         if(!silent) bail_out("You need to supply either a density() function or a gridDensity() function which doesn't call density().");
 exit(1);
       }
@@ -660,8 +673,9 @@ LIME provides two different schemes of {R_1, R_2, R_3}: {PA, phi, theta} and {PA
     if((*img)[i].doline){
 
 #ifdef IS_PYTHON
+      /* This is done because we want to avoid calling the velocity() function within raytrace(). */
       if(par->traceRayAlgorithm==1 && !(*img)[i].doInterpolateVels\
-      && !bitIsSet(defaultFuncFlags, FUNC_BIT_velocity)\
+      && !bitIsSet(defaultFuncFlags, USERFUNC_velocity)\
       && par->nThreads>1){
         changedInterp = TRUE;
         (*img)[i].doInterpolateVels = TRUE;
@@ -669,7 +683,7 @@ LIME provides two different schemes of {R_1, R_2, R_3}: {PA, phi, theta} and {PA
 #endif
 
       if(par->traceRayAlgorithm==1 && !(*img)[i].doInterpolateVels\
-      && bitIsSet(defaultFuncFlags, FUNC_BIT_velocity)){
+      && bitIsSet(defaultFuncFlags, USERFUNC_velocity)){
         if(!silent) bail_out("par->traceRayAlgorithm==1 && !img[i].doInterpolateVels requires you to supply a velocity function.");
 exit(1);
       }
@@ -701,7 +715,7 @@ exit(1);
   }
 
   if(par->nLineImages>0 && par->traceRayAlgorithm==0 && !par->doPregrid){
-    if(bitIsSet(defaultFuncFlags, FUNC_BIT_velocity)){
+    if(bitIsSet(defaultFuncFlags, USERFUNC_velocity)){
       par->useVelFuncInRaytrace = FALSE;
       if(!silent) warning("No velocity function supplied - raytracing will have lower precision.");
     }else
@@ -719,21 +733,6 @@ exit(1);
 
   par->edgeVelsAvailable=0; /* default value, this is set within getEdgeVelocities(). */
 
-  par->doMolCalcs = par->doSolveRTE || par->nLineImages>0;
-  if(par->doMolCalcs && par->moldatfile==NULL && (par->doPregrid || !par->restart)){
-    if(!silent) bail_out("You must point par->moldatfile to a data file if you want the RTE solved.");
-exit(1);
-  }
-
-  if(par->nSpecies>0 && !par->doMolCalcs){
-    if(!silent) bail_out("If you want only continuum calculations you must supply zero moldatfiles.");
-exit(1);
-  }
-
-  if(!silent && !par->doMolCalcs && par->init_lte)
-    warning("Your choice of par.init_lte will have no effect.");
-  if(!silent && !par->doMolCalcs && par->lte_only)
-    warning("Your choice of par.lte_only will have no effect.");
   if(!silent && par->nSolveIters>0 && par->lte_only)
     warning("Requesting par.nSolveIters>0 will have no effect if LTE calculation is also requested.");
 
@@ -747,6 +746,21 @@ exit(1);
     defaultDensyPower = DENSITY_POWER;
   else
     defaultDensyPower = TREE_POWER;
+
+}
+
+/*....................................................................*/
+void gridPopsInit(configInfo *par, molData *md, struct grid *gp){
+  int i,id,ilev;
+
+  for(i=0;i<par->nSpecies;i++){
+    /* Allocate space for populations etc */
+    for(id=0;id<par->ncell; id++){
+      gp[id].mol[i].pops = malloc(sizeof(double)*md[i].nlev);
+      for(ilev=0;ilev<md[i].nlev;ilev++)
+        gp[id].mol[i].pops[ilev] = 0.0;
+    }
+  }
 }
 
 /*....................................................................*/
@@ -792,6 +806,29 @@ exit(1);
 
   parseInput(inpars, inimg, nImages, &par, &img, &md); /* Sets par.numDensities for !(par.doPregrid || par.restart) */
 
+  if(par.restart){
+    par.doSolveRTE = FALSE;
+    par.doMolCalcs = (par.nLineImages>0);
+
+  }else{
+    if(par.nSolveIters>0 || par.lte_only) /* To save the user having to set par.doSolveRTE as well as par.nSolveIters>0 or par.lte_only. */
+      par.doSolveRTE = TRUE;
+
+    par.doMolCalcs = par.doSolveRTE || par.nLineImages>0;
+    if(par.doMolCalcs && par.moldatfile==NULL){
+      if(!silent) bail_out("You must point par->moldatfile to a data file.");
+exit(1);
+    }
+  }
+
+  if(!silent && !par.doMolCalcs && par.init_lte)
+    warning("Your choice of par.init_lte will have no effect.");
+
+  if(par.nSpecies>0 && !par.doMolCalcs){
+    if(!silent) bail_out("If you want only continuum calculations you must supply zero moldatfiles.");
+exit(1);
+  }
+
   if(!silent && par.nThreads>1){
     sprintf(message, "Number of threads used: %d", par.nThreads);
     printMessage(message);
@@ -801,8 +838,10 @@ exit(1);
     mallocAndSetDefaultGrid(&gp, (size_t)par.ncell, (size_t)par.nSpecies);
     predefinedGrid(&par,gp); /* Sets par.numDensities */
     checkUserDensWeights(&par); /* Needs par.numDensities */
+
   }else if(par.restart){
     popsin(&par,&gp,&md,&popsdone);
+
   }else{
     checkUserDensWeights(&par); /* Needs par.numDensities */
     readOrBuildGrid(&par,&gp);
@@ -835,8 +874,10 @@ exit(1);
         gp[gi].mol[si].specNumDens = malloc(sizeof(double)*md[si].nlev);
     }
 
-    if(!popsdone && ((par.lte_only && !allBitsSet(par.dataFlags, DS_mask_populations))\
-                     || par.nSolveIters>par.nSolveItersDone))
+    if(!popsdone)
+      gridPopsInit(&par,md,gp);
+
+    if(par.doSolveRTE)
       nExtraSolverIters = levelPops(md, &par, gp, &popsdone, lamtab, kaptab, nEntries);
 
     calcGridMolSpecNumDens(&par,md,gp);
