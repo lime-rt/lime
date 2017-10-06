@@ -855,14 +855,14 @@ setMacros(void){
   macrosDbl[i++].name = "CLIGHT";
   macrosDbl[i++].name = "HPLANCK";
   macrosDbl[i++].name = "KBOLTZ";
-  macrosDbl[i++].name = "YJULIAN"
-  macrosDbl[i++].name = "STEFANB"
+  macrosDbl[i++].name = "YJULIAN";
+  macrosDbl[i++].name = "STEFANB";
   macrosDbl[i++].name = "GRAV";
   macrosDbl[i++].name = "AU";
   macrosDbl[i++].name = "LOCAL_CMB_TEMP";
   macrosDbl[i++].name = "PC";
-  macrosDbl[i++].name = "MSUN"
-  macrosDbl[i++].name = "RSUN"
+  macrosDbl[i++].name = "MSUN";
+  macrosDbl[i++].name = "RSUN";
   macrosDbl[i++].name = "PI";
   macrosDbl[i++].name = "SQRT_PI";
   i = 0;
@@ -870,14 +870,14 @@ setMacros(void){
   macrosDbl[i++].value = CLIGHT;
   macrosDbl[i++].value = HPLANCK;
   macrosDbl[i++].value = KBOLTZ;
-  macrosDbl[i++].value = YJULIAN
-  macrosDbl[i++].value = STEFANB
+  macrosDbl[i++].value = YJULIAN;
+  macrosDbl[i++].value = STEFANB;
   macrosDbl[i++].value = GRAV;
   macrosDbl[i++].value = AU;
   macrosDbl[i++].value = LOCAL_CMB_TEMP;
   macrosDbl[i++].value = PC;
-  macrosDbl[i++].value = MSUN
-  macrosDbl[i++].value = RSUN
+  macrosDbl[i++].value = MSUN;
+  macrosDbl[i++].value = RSUN;
   macrosDbl[i++].value = M_PI;
   macrosDbl[i++].value = sqrt(M_PI);
 
