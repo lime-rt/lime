@@ -23,11 +23,12 @@ exit(1);
 
 /*....................................................................*/
 void checkFgets(char *fgetsResult, char *message){
-  char string[80];
+  const size_t buflen=80;
+  char string[buflen];
 
   if(fgetsResult==NULL){
     if(!silent){
-      sprintf(string, "fgets() failed to read %s", message);
+      snprintf(string, buflen, "fgets() failed to read %s", message);
       bail_out(string);
     }
 exit(1);
@@ -36,11 +37,12 @@ exit(1);
 
 /*....................................................................*/
 void checkFscanf(const int fscanfResult, const int expectedNum, char *message){
-  char string[80];
+  const size_t buflen=80;
+  char string[buflen];
 
   if(fscanfResult!=expectedNum){
     if(!silent){
-      sprintf(string, "fscanf() failed to read %s - read %d bytes when %d expected.", message, fscanfResult, expectedNum);
+      snprintf(string, buflen, "fscanf() failed to read %s - read %d bytes when %d expected.", message, fscanfResult, expectedNum);
       bail_out(string);
     }
 exit(1);
@@ -49,11 +51,12 @@ exit(1);
 
 /*....................................................................*/
 void checkFread(const size_t freadResult, const size_t expectedNum, char *message){
-  char string[80];
+  const size_t buflen=80;
+  char string[buflen];
 
   if(freadResult!=expectedNum){
     if(!silent){
-      sprintf(string, "fread() failed to read %s. Expected %d got %d", message, (int)expectedNum, (int)freadResult);
+      snprintf(string, buflen, "fread() failed to read %s. Expected %d got %d", message, (int)expectedNum, (int)freadResult);
       bail_out(string);
     }
 exit(1);
@@ -62,11 +65,12 @@ exit(1);
 
 /*....................................................................*/
 void checkFwrite(const size_t fwriteResult, const size_t expectedNum, char *message){
-  char string[80];
+  const size_t buflen=80;
+  char string[buflen];
 
   if(fwriteResult!=expectedNum){
     if(!silent){
-      sprintf(string, "fwrite() failed to write %s. Expected %d got %d", message, (int)expectedNum, (int)fwriteResult);
+      snprintf(string, buflen, "fwrite() failed to write %s. Expected %d got %d", message, (int)expectedNum, (int)fwriteResult);
       bail_out(string);
     }
 exit(1);

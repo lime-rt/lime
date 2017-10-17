@@ -229,6 +229,7 @@ void	distCalc(configInfo*, struct grid*);
 double	dotProduct3D(const double*, const double*);
 double	FastExp(const float);
 void	fillErfTable(void);
+void	freeArrayOfStrings(char **arrayOfStrings, const int numStrings);
 void	freeConfigInfo(configInfo*);
 void	freeGrid(const unsigned int, const unsigned short, struct grid*);
 void	freeImgInfo(const int, imageInfo*);

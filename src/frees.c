@@ -11,6 +11,19 @@
 
 /*....................................................................*/
 void
+freeArrayOfStrings(char **arrayOfStrings, const int numStrings){
+  int i;
+
+  if(arrayOfStrings==NULL)
+return;
+
+  for(i=0;i<numStrings;i++){
+    free(arrayOfStrings[i]);
+  }
+}
+
+/*....................................................................*/
+void
 freeConfigInfo(configInfo *par){
   int i;
 
@@ -76,6 +89,10 @@ freeGrid(const unsigned int numPoints, const unsigned short numSpecies\
 void
 freeImgInfo(const int nImages, imageInfo *img){
   int i,id;
+
+  if(img==NULL)
+return;
+
   for(i=0;i<nImages;i++){
     for(id=0;id<(img[i].pxls*img[i].pxls);id++){
       free( img[i].pixel[id].intense );

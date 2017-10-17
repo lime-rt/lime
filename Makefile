@@ -126,7 +126,7 @@ docclean::
 	rm -rf ${docdir}/_html
 
 objclean::
-	rm -f *~ ${srcdir}/*.o
+	rm -f ${srcdir}/*.o
 
 limeclean:: objclean
 	rm -f ${TARGET}

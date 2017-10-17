@@ -20,21 +20,19 @@ def raytrace(gridInFile,moldatfile,dust,filename,imgres,pxls,unit,freq,rotationS
 
   # Note: rotationStyle and doLine are defined at this level purely to define some logical constraints on the subset of parameters listed; tey are not passed directly to LIME.
 
-  casalog.origin('raytrace')
-
   import threading
   import time
 
   try:
     import modellib as ml
   except ImportError as err:
-    casalog.post("Cannot find module 'modellib'", priority='ERROR')
+    casalog.post("Cannot import module 'modellib'", priority='ERROR')
     return
 
   try:
     import lime
   except ImportError as err:
-    casalog.post("Cannot find module 'lime'", priority='ERROR')
+    casalog.post("Cannot import module 'lime'", priority='ERROR')
     return
 
   class LimeExistentialLog:
@@ -126,39 +124,39 @@ def raytrace(gridInFile,moldatfile,dust,filename,imgres,pxls,unit,freq,rotationS
   #^^^^^^^^^^^^^^^^^^^^^
 
   # Set input parameters for lime:
-  par = lime.createInputPars()
-#  par.radius            = 2000.0*macros["AU"]
-#  par.minScale          = 0.5*macros["AU"]
-#  par.pIntensity        = 4000
-#  par.sinkPoints        = 3000
-  par.dust              = dust
-#  par.outputfile        = "populations.pop"
-#  par.binoutputfile     = "restart.pop"
-#  par.gridfile          = "grid.vtk"
-#  par.pregrid           = "pregrid.asc"
-#  par.restart           = "restart.pop"
-  par.gridInFile        = gridInFile
-  par.collPartIds        = [1] # must be a list, even when there is only 1 item.
-  par.nMolWeights        = [1.0] # must be a list, even when there is only 1 item.
-#  par.collPartNames     = ["phlogiston"] # must be a list, even when there is only 1 item.
-#  par.collPartMolWeights = [2.0159] # must be a list, even when there is only 1 item.
-#  par.gridDensMaxValues = [1.0] # must be a list, even when there is only 1 item.
-#  par.gridDensMaxLoc    = [[0.0,0.0,0.0]] # must be a list, each element of which is also a list with 3 entries (1 for each spatial coordinate).
-#  par.tcmb              = 2.72548
-#  par.lte_only          = False
-#  par.init_lte          = False
-#  par.samplingAlgorithm = 0
-#  par.sampling          = 2 # Now only accessed if par.samplingAlgorithm==0 (the default).
-#  par.blend             = False
-  par.polarization      = polarization
-  par.nThreads          = nThreads
-  par.nSolveIters       = 0
-  par.traceRayAlgorithm = traceRayAlgorithm
-#  par.resetRNG          = False
-  par.doSolveRTE        = False
-#  par.gridOutFiles      = ['','','','',"grid_5.ds"]
-  par.moldatfile        = moldatfile[:]
-#  par.girdatfile        = ["myGIRs.dat"] # must be a list, even when there is only 1 item.
+  limepars = lime.createInputPars()
+#  limepars.radius            = 2000.0*macros["AU"]
+#  limepars.minScale          = 0.5*macros["AU"]
+#  limepars.pIntensity        = 4000
+#  limepars.sinkPoints        = 3000
+  limepars.dust              = dust
+#  limepars.outputfile        = "populations.pop"
+#  limepars.binoutputfile     = "restart.pop"
+#  limepars.gridfile          = "grid.vtk"
+#  limepars.pregrid           = "pregrid.asc"
+#  limepars.restart           = "restart.pop"
+  limepars.gridInFile        = gridInFile
+  limepars.collPartIds        = [1] # must be a list, even when there is only 1 item.
+  limepars.nMolWeights        = [1.0] # must be a list, even when there is only 1 item.
+#  limepars.collPartNames     = ["phlogiston"] # must be a list, even when there is only 1 item.
+#  limepars.collPartMolWeights = [2.0159] # must be a list, even when there is only 1 item.
+#  limepars.gridDensMaxValues = [1.0] # must be a list, even when there is only 1 item.
+#  limepars.gridDensMaxLoc    = [[0.0,0.0,0.0]] # must be a list, each element of which is also a list with 3 entries (1 for each spatial coordinate).
+#  limepars.tcmb              = 2.72548
+#  limepars.lte_only          = False
+#  limepars.init_lte          = False
+#  limepars.samplingAlgorithm = 0
+#  limepars.sampling          = 2 # Now only accessed if limepars.samplingAlgorithm==0 (the default).
+#  limepars.blend             = False
+  limepars.polarization      = polarization
+  limepars.nThreads          = nThreads
+  limepars.nSolveIters       = 0
+  limepars.traceRayAlgorithm = traceRayAlgorithm
+#  limepars.resetRNG          = False
+  limepars.doSolveRTE        = False
+#  limepars.gridOutFiles      = ['','','','',"grid_5.ds"]
+  limepars.moldatfile        = moldatfile[:]
+#  limepars.girdatfile        = ["myGIRs.dat"] # must be a list, even when there is only 1 item.
 
   # Define the images:
   images = []
@@ -192,10 +190,10 @@ def raytrace(gridInFile,moldatfile,dust,filename,imgres,pxls,unit,freq,rotationS
   lime.setSilent(False)
 
   # Run LIME in its own thread:
-  limeThread = LimeThread(par, images, limeLog)
+  limeThread = LimeThread(limepars, images, limeLog)
   limeThread.start()
 
-  casalog.post('Starting LIME run.')
+  casalog.post('Starting raytrace LIME run.')
 
   # Loop with delay - every so often, check LIME status and print it to the casa logger.
   while not limeLog.complete:
@@ -217,10 +215,10 @@ def raytrace(gridInFile,moldatfile,dust,filename,imgres,pxls,unit,freq,rotationS
           gridDoneMessageIsPrinted = True
           casalog.post('Grid is complete')
 
-      if nItersCounted<par.nSolveIters:
+      if nItersCounted<limepars.nSolveIters:
         while nItersCounted<=limeStatus.numberIterations:
           nItersCounted += 1
-          casalog.post('Iteration %d/%d' % (nItersCounted, par.nSolveIters))
+          casalog.post('Iteration %d/%d' % (nItersCounted, limepars.nSolveIters))
           casalog.post('Min SNR %e  median %e' % (limeStatus.minsnr, limeStatus.median))
 
     elif not raysDoneMessageIsPrinted:

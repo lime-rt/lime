@@ -41,8 +41,13 @@
 #define MSUN_cgs        (MSUN*1000.0)        /* Solar mass                   [g]		*/
 #define RSUN_cgs        (RSUN*100.0)         /* Solar radius                 [cm]		*/
 
-#define TRUE                   1
-#define FALSE                  0
+#ifndef TRUE
+#define TRUE                   (_Bool)1
+#endif
+
+#ifndef FALSE
+#define FALSE                  (_Bool)0
+#endif
 
 
 #endif /* CONSTANTS_H */

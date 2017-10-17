@@ -52,7 +52,6 @@ void	myStrCpy(const char source[], char destination[], const int strlenDest);
 int	getModuleFromName(char *moduleNameNoSuffix, PyObject **pModule);
 int	getParTemplates(PyObject *pParsClassOrInstance, parTemplateType **parTemplates, int *nPars);
 int	mallocInputParStrs(inputPars *par);
-//void	getPythonFunc(PyObject *pModule, const char *funcName, PyObject **pFunc);
 int	readParImg(PyObject *pPars, parTemplateType *parTemplates, const int nPars, parTemplateType *imgParTemplates, const int nImgPars, inputPars *par, image **img, int *nImages, void (*warning)(char *message));
 
 int	setMacros(void);
@@ -64,6 +63,7 @@ void	decrefAllUserFuncs(void);
 int	userFuncWrapper(PyObject *pFunc, const char *funcName\
   , double x, double y, double z, double *resultBuffer, int *numElemInUserFuncReturn);
 
+void	pyFreeInputImgPars(image *inimg, int nImages);
 
 #endif /* PY_UTILS_H */
 

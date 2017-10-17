@@ -504,6 +504,20 @@ Notes:
 }
 
 /*....................................................................*/
+void
+pyFreeInputImgPars(image *inimg, int nImages){
+  int i;
+
+  if(inimg!=NULL){
+    for(i=0;i<nImages;i++){
+      free(inimg[i].filename);
+      free(inimg[i].units);
+    }
+    free(inimg);
+  }
+}
+
+/*....................................................................*/
 int
 readParImg(PyObject *pPars, parTemplateType *parTemplates\
   , const int nPars, parTemplateType *imgParTemplates, const int nImgPars\

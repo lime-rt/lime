@@ -191,6 +191,11 @@ For a given image pixel position, this function evaluates the intensity of the t
 Note that the algorithm employed here is similar to that employed in the function calculateJBar() which calculates the average radiant flux impinging on a grid cell: namely the notional photon is started at the side of the model near the observer and 'propagated' in the receding direction until it 'reaches' the far side. This is rather non-physical in conception but it makes the calculation easier.
 
 Note that this is called from within the multi-threaded block.
+
+Reads gp attributes x, dir, numNeigh, neigh, cont
+if(par->polarization): B
+if(img[im].doline): mol[molI].binv, mol[molI].specNumDens
+if(!if(par->useVelFuncInRaytrace)): vel
   */
   int ichan,stokesId,di,i,posn,nposn,molI,lineI;
   double xp,yp,zp,x[DIM],dx[DIM],dist2,ndist2,col,ds,snu_pol[3],dtau;

@@ -27,8 +27,8 @@ void
 reportInfAtOrigin(const double value, const char *funcName){
   char message[STR_LEN_0];
 
-  if(isinf(value) && !silent){
-    sprintf(message, "You have a singularity at the origin of your %s() function.", funcName);
+  if((isinf(value) || isnan(value)) && !silent){
+    snprintf(message, STR_LEN_0, "You have a singularity at the origin of your %s() function.", funcName);
     warning(message);
   }
 }
@@ -40,14 +40,14 @@ reportInfsAtOrigin(const int numElements, const double *values, const char *func
   char message[STR_LEN_0];
 
   if(numElements<=0){
-    if(isinf(*values) && !silent){
-      sprintf(message, "You have a singularity at the origin of your %s() function.", funcName);
+    if((isinf(*values) || isnan(*values)) && !silent){
+      snprintf(message, STR_LEN_0, "You have a singularity at the origin of your %s() function.", funcName);
       warning(message);
     }
   }else{
     for(i=0;i<numElements;i++){
-      if(isinf(values[i]) && !silent){
-        sprintf(message, "You have a singularity at the origin in return %d of your %s() function.", i, funcName);
+      if((isinf(values[i]) || isnan(values[i])) && !silent){
+        snprintf(message, STR_LEN_0, "You have a singularity at the origin in return %d of your %s() function.", i, funcName);
         warning(message);
       }
     }
@@ -56,28 +56,188 @@ reportInfsAtOrigin(const int numElements, const double *values, const char *func
 
 /*....................................................................*/
 void
-parseInput(const inputPars inpar, image *inimg, const int nImages, configInfo *par, imageInfo **img, molData **md){
+_printInput(const inputPars inpars, image *inimg, const int nImages){
   /*
-The parameters visible to the user have now been strictly confined to members of the structs 'inputPars' and 'image', both of which are defined in inpars.h. There are however further internally-set values which is is convenient to bundle together with the user-set ones. At present we have a fairly clunky arrangement in which the user-set values are copied member-by-member from the user-dedicated structs to the generic internal structs 'configInfo' and 'imageInfo'. This is done in the present function, along with some checks and other initialization.
+This is intended purely as a diagnostic program to compare the parameter values passed in by the various wrappers to LIME.
   */
-  _Bool changedInterp;
-  int i,j,id,status=0,numGirDatFiles;
-  double BB[3],normBSquared,dens[MAX_N_COLL_PART],r[DIM];
-  FILE *fp;
-  char message[80];
-  _Bool doThetaPhi;
-  double cos_pa,sin_pa,cosPhi,sinPhi,cos_incl,sin_incl,cosTheta,sinTheta,cos_az,sin_az;
-  double tempRotMat[3][3],auxRotMat[3][3];
-  int row,col;
-  char *pch_sep = " ,:_", *pch, *pch_end, *units_str;
+  int i,j;
 
-  double *dummyDens = malloc(sizeof(double)*1);
+  printf("              radius = %e\n", inpars.radius);
+  printf("            minScale = %e\n", inpars.minScale);
+  printf("                tcmb = %e\n", inpars.tcmb);
+
+  for(i=0;i<MAX_N_COLL_PART;i++){
+    printf("       nMolWeights[%d] = %e\n", i, inpars.nMolWeights[i]);
+    printf("       dustWeights[%d] = %e\n", i, inpars.dustWeights[i]);
+    printf("collPartMolWeights[%d] = %e\n", i, inpars.collPartMolWeights[i]);
+    printf("       collPartIds[%d] = %d\n", i, inpars.collPartIds[i]);
+  }
+
+  for(i=0;i<MAX_N_HIGH;i++){
+    printf(" gridDensMaxValues[%d] = %e\n", i, inpars.gridDensMaxValues[i]);
+    printf("    gridDensMaxLoc[%d] = [", i);
+    for(j=0;j<DIM;j++){
+      printf("%e,", inpars.gridDensMaxLoc[i][j]);
+    }
+    printf("]\n");
+  }
+
+  printf("          sinkPoints = %d\n", inpars.sinkPoints);
+  printf("          pIntensity = %d\n", inpars.pIntensity);
+  printf("               blend = %d\n", inpars.blend);
+  printf("   traceRayAlgorithm = %d\n", inpars.traceRayAlgorithm);
+  printf("   samplingAlgorithm = %d\n", inpars.samplingAlgorithm);
+  printf("            sampling = %d\n", inpars.sampling);
+  printf("            lte_only = %d\n", inpars.lte_only);
+  printf("            init_lte = %d\n", inpars.init_lte);
+  printf("           antialias = %d\n", inpars.antialias);
+  printf("        polarization = %d\n", inpars.polarization);
+  printf("            nThreads = %d\n", inpars.nThreads);
+  printf("         nSolveIters = %d\n", inpars.nSolveIters);
+
+  if(inpars.moldatfile!=NULL && inpars.girdatfile!=NULL){
+    for(i=0;i<MAX_NSPECIES;i++){
+      if (inpars.moldatfile[i]!=NULL)
+        printf("        moldatfile[%d] = %s\n", i, inpars.moldatfile[i]);
+      else
+        printf("        moldatfile[%d] = NULL\n", i);
+
+      if (inpars.girdatfile[i]!=NULL)
+        printf("        girdatfile[%d] = %s\n", i, inpars.girdatfile[i]);
+      else
+        printf("        girdatfile[%d] = NULL\n", i);
+    }
+  }else{
+    if(inpars.moldatfile==NULL) printf("            moldatfile = NULL\n");
+    if(inpars.girdatfile==NULL) printf("            girdatfile = NULL\n");
+  }
+
+  if(inpars.collPartNames!=NULL){
+    for(i=0;i<MAX_N_COLL_PART;i++){
+      if (inpars.collPartNames[i]!=NULL)
+        printf("     collPartNames[%d] = %s\n", i, inpars.collPartNames[i]);
+      else
+        printf("     collPartNames[%d] = NULL\n", i);
+    }
+  }else
+    printf("         collPartNames = NULL\n");
+
+  if (   inpars.outputfile!=NULL)
+    printf("          outputfile = %s\n", inpars.outputfile);
+  else
+    printf("          outputfile = NULL\n");
+
+  if (inpars.binoutputfile!=NULL)
+    printf("       binoutputfile = %s\n", inpars.binoutputfile);
+  else
+    printf("       binoutputfile = NULL\n");
+
+  if (     inpars.gridfile!=NULL)
+    printf("            gridfile = %s\n", inpars.gridfile);
+  else
+    printf("            gridfile = NULL\n");
+
+  if (      inpars.pregrid!=NULL)
+    printf("             pregrid = %s\n", inpars.pregrid);
+  else
+    printf("             pregrid = NULL\n");
+
+  if (      inpars.restart!=NULL)
+    printf("             restart = %s\n", inpars.restart);
+  else
+    printf("             restart = NULL\n");
+
+  if (         inpars.dust!=NULL)
+    printf("                dust = %s\n", inpars.dust);
+  else
+    printf("                dust = NULL\n");
+
+  if (   inpars.gridInFile!=NULL)
+    printf("          gridInFile = %s\n", inpars.gridInFile);
+  else
+    printf("          gridInFile = NULL\n");
+
+  if(inpars.gridOutFiles!=NULL){
+    for(i=0;i<NUM_GRID_STAGES;i++){
+      if (inpars.gridOutFiles[i]!=NULL)
+        printf("    gridOutFiles[%d] = %s\n", i, inpars.gridOutFiles[i]);
+      else
+        printf("    gridOutFiles[%d] = NULL\n", i);
+    }
+  }else
+    printf("        gridOutFiles = NULL\n");
+
+  if(inpars.resetRNG)
+    printf("            resetRNG = TRUE\n");
+  else
+    printf("            resetRNG = FALSE\n");
+
+  if(inpars.doSolveRTE)
+    printf("          doSolveRTE = TRUE\n");
+  else
+    printf("          doSolveRTE = FALSE\n");
+
+  for(i=0;i<nImages;i++){
+    printf("\n");
+    printf("Image %d\n", i);
+    printf("\n");
+
+    printf("              velres = %e\n", inimg[i].velres);
+    printf("              imgres = %e\n", inimg[i].imgres);
+    printf("                freq = %e\n", inimg[i].freq);
+    printf("           bandwidth = %e\n", inimg[i].bandwidth);
+    printf("          source_vel = %e\n", inimg[i].source_vel);
+    printf("               theta = %e\n", inimg[i].theta);
+    printf("                 phi = %e\n", inimg[i].phi);
+    printf("                incl = %e\n", inimg[i].incl);
+    printf("              posang = %e\n", inimg[i].posang);
+    printf("             azimuth = %e\n", inimg[i].azimuth);
+
+    printf("               nchan = %d\n", inimg[i].nchan);
+    printf("               trans = %d\n", inimg[i].trans);
+    printf("                molI = %d\n", inimg[i].molI);
+    printf("                pxls = %d\n", inimg[i].pxls);
+    printf("                unit = %d\n", inimg[i].unit);
+
+    if (   inimg[i].units!=NULL)
+      printf("               units = %s\n", inimg[i].units);
+    else
+      printf("               units = NULL\n");
+
+    if (inimg[i].filename!=NULL)
+      printf("            filename = %s\n", inimg[i].filename);
+    else
+      printf("            filename = NULL\n");
+
+    if(inimg[i].doInterpolateVels)
+      printf("   doInterpolateVels = TRUE\n");
+    else
+      printf("   doInterpolateVels = FALSE\n");
+  }
+}
+
+/*....................................................................*/
+int
+checkUserFunctions(configInfo *par, _Bool checkForSingularities){
+  /*
+Run through all the user functions and set flags in the global defaultFuncFlags for those which have defaulted. NOTE however that we will not check which of these functions the user has provided until readOrBuildGrid(), because this will depend on the appropriate data being present or not in any grid file we read in. There are two exceptions to this:
+
+	- The velocity() function, because this is not only called within readOrBuildGrid() to calculate velocities at the grid node positions and at sample locations along the edges between grids, but also potentially within raytrace() to calculate velocities along ray paths through cells. Therefore we perform extra tests for the presence of a user-supplied velocity function near the end of the present function.
+
+	- The density() function, because we need to know the number of densities early on, in case we need to call the default gridDensity() function. Thus we test for this below.
+  */
+
+  double x,y,z;
+  double *dummyDens = malloc(sizeof(double)*MAX_N_COLL_PART);
   double *dummyAbun = malloc(sizeof(double)*1);
   double *dummyNmol = malloc(sizeof(double)*1);
-  double dummyT[2],dummyTurbDop,dummyVel[DIM],dummyB[3],dummyG2d,dummyR[]={0.0,0.0,0.0},dummyNdens;
+  double dummyT[2],dummyTurbDop,dummyVel[DIM],dummyB[3],dummyG2d,dummyR[3],dummyNdens;
+  int numDensities=0,i;
+
+//**** should give them all values because you don't know what some screwy user routine might return.
 
   /* just to stop compiler warnings because this return value is currently unused. */
-  (void)dummyDens;
+//  (void)dummyDens;
   (void)dummyAbun;
   (void)dummyNmol;
   (void)dummyT;
@@ -88,40 +248,111 @@ The parameters visible to the user have now been strictly confined to members of
   (void)dummyR;
   (void)dummyNdens;
 
+  if(checkForSingularities){
+    x = 0.0;
+    y = 0.0;
+    z = 0.0;
+  }else{
+    x = par->minScale;
+    y = par->minScale;
+    z = par->minScale;
+  }
+
+  dummyR[0] = x;
+  dummyR[1] = y;
+  dummyR[2] = z;
+
+  for(i=0;i<MAX_N_COLL_PART;i++) dummyDens[i] = -1.0; /* We expect that no real function will return such values, so this may be used as an indicator for the number of values returned. */
+
+  density(      x, y, z, dummyDens);
+  temperature(  x, y, z, dummyT);
+  abundance(    x, y, z, dummyAbun);
+  molNumDensity(x, y, z, dummyNmol);
+  doppler(      x, y, z, &dummyTurbDop);
+  velocity(     x, y, z, dummyVel);
+  magfield(     x, y, z, dummyB);
+  gasIIdust(    x, y, z, &dummyG2d);
+
+  dummyNdens = gridDensity(par, dummyR);
+
+  if(checkForSingularities){ /* The default functions have no singulaties so we needn't bother with them. */
+    if(!bitIsSet(defaultFuncFlags, USERFUNC_density))       reportInfsAtOrigin(1, dummyDens, "density");
+    if(!bitIsSet(defaultFuncFlags, USERFUNC_temperature))   reportInfsAtOrigin(1, dummyT, "temperature");
+    if(!bitIsSet(defaultFuncFlags, USERFUNC_abundance))     reportInfsAtOrigin(1, dummyAbun, "abundance");
+    if(!bitIsSet(defaultFuncFlags, USERFUNC_molNumDensity)) reportInfsAtOrigin(1, dummyNmol, "molNumDensity");
+    if(!bitIsSet(defaultFuncFlags, USERFUNC_doppler))       reportInfsAtOrigin(0, &dummyTurbDop, "doppler");
+    if(!bitIsSet(defaultFuncFlags, USERFUNC_velocity))      reportInfsAtOrigin(3, dummyVel, "velocity");
+    if(!bitIsSet(defaultFuncFlags, USERFUNC_magfield))      reportInfsAtOrigin(3, dummyB, "magfield");
+    if(!bitIsSet(defaultFuncFlags, USERFUNC_gasIIdust))     reportInfsAtOrigin(0, &dummyG2d, "gasIIdust");
+  }
+
+  /* Calculate the number of density values returned:
+  */
+  for(i=0;i<MAX_N_COLL_PART;i++){
+    if(dummyDens[i]<0){ /* Note that NaNs test negative for everything, thus even singular-valued density functions will return the right number of density elements set. */
+      break;
+    }
+  }
+  numDensities = i;
+
+  free(dummyNmol);
+  free(dummyAbun);
+  free(dummyDens);
+
+  return numDensities;
+}
+
+/*....................................................................*/
+void
+parseInput(const inputPars inpars, image *inimg, const int nImages\
+  , configInfo *par, imageInfo **img, molData **md, _Bool checkForSingularities){
+  /*
+The parameters visible to the user have now been strictly confined to members of the structs 'inputPars' and 'image', both of which are defined in inpars.h. There are however further internally-set values which is is convenient to bundle together with the user-set ones. At present we have a fairly clunky arrangement in which the user-set values are copied member-by-member from the user-dedicated structs to the generic internal structs 'configInfo' and 'imageInfo'. This is done in the present function, along with some checks and other initialization.
+  */
+  _Bool changedInterp;
+  int i,j,id,status=0,numGirDatFiles,numFuncDensities;
+  FILE *fp;
+  char message[STR_LEN_0];
+  _Bool doThetaPhi;
+  double cos_pa,sin_pa,cosPhi,sinPhi,cos_incl,sin_incl,cosTheta,sinTheta,cos_az,sin_az;
+  double tempRotMat[3][3],auxRotMat[3][3],r[3];
+  int row,col;
+  char *pch_sep = " ,:_", *pch, *pch_end, *units_str;
+
   /* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 Copy over user-set parameters to the configInfo versions. (This seems like duplicated effort but it is a good principle to separate the two structs, for several reasons, as follows. (i) We will usually want more config parameters than user-settable ones. The separation leaves it clearer which things the user needs to (or can) set. (ii) The separation allows checking and screening out of impossible combinations of parameters. (iii) We can adopt new names (for clarity) for config parameters without bothering the user with a changed interface.)
   */
-  par->radius       = inpar.radius;
-  par->minScale     = inpar.minScale;
-  par->pIntensity   = inpar.pIntensity;
-  par->sinkPoints   = inpar.sinkPoints;
-  par->samplingAlgorithm=inpar.samplingAlgorithm;
-  par->sampling     = inpar.sampling;
-  par->tcmb         = inpar.tcmb;
-  par->lte_only     = inpar.lte_only;
-  par->init_lte     = inpar.init_lte;
-  par->blend        = inpar.blend;
-  par->antialias    = inpar.antialias;
-  par->polarization = inpar.polarization;
-  par->nThreads     = inpar.nThreads;
-  par->nSolveIters  = inpar.nSolveIters;
-  par->traceRayAlgorithm = inpar.traceRayAlgorithm;
-  par->resetRNG     = inpar.resetRNG;
-  par->doSolveRTE   = inpar.doSolveRTE;
+  par->radius            = inpars.radius;
+  par->minScale          = inpars.minScale;
+  par->pIntensity        = inpars.pIntensity;
+  par->sinkPoints        = inpars.sinkPoints;
+  par->samplingAlgorithm = inpars.samplingAlgorithm;
+  par->sampling          = inpars.sampling;
+  par->tcmb              = inpars.tcmb;
+  par->lte_only          = inpars.lte_only;
+  par->init_lte          = inpars.init_lte;
+  par->blend             = inpars.blend;
+  par->antialias         = inpars.antialias;
+  par->polarization      = inpars.polarization;
+  par->nThreads          = inpars.nThreads;
+  par->nSolveIters       = inpars.nSolveIters;
+  par->traceRayAlgorithm = inpars.traceRayAlgorithm;
+  par->resetRNG          = inpars.resetRNG;
+  par->doSolveRTE        = inpars.doSolveRTE;
 
   /* Somewhat more carefully copy over the strings:
   */
-  copyInparStr(inpar.dust,          &(par->dust));
-  copyInparStr(inpar.outputfile,    &(par->outputfile));
-  copyInparStr(inpar.binoutputfile, &(par->binoutputfile));
-  copyInparStr(inpar.restart,       &(par->restart));
-  copyInparStr(inpar.gridfile,      &(par->gridfile));
-  copyInparStr(inpar.pregrid,       &(par->pregrid));
-  copyInparStr(inpar.gridInFile,    &(par->gridInFile));
+  copyInparStr(inpars.dust,          &(par->dust));
+  copyInparStr(inpars.outputfile,    &(par->outputfile));
+  copyInparStr(inpars.binoutputfile, &(par->binoutputfile));
+  copyInparStr(inpars.restart,       &(par->restart));
+  copyInparStr(inpars.gridfile,      &(par->gridfile));
+  copyInparStr(inpars.pregrid,       &(par->pregrid));
+  copyInparStr(inpars.gridInFile,    &(par->gridInFile));
 
   par->gridOutFiles = malloc(sizeof(char *)*NUM_GRID_STAGES);
   for(i=0;i<NUM_GRID_STAGES;i++)
-    copyInparStr(inpar.gridOutFiles[i], &(par->gridOutFiles[i]));
+    copyInparStr(inpars.gridOutFiles[i], &(par->gridOutFiles[i]));
 
   for(i=0;i<NUM_GRID_STAGES;i++)
     par->writeGridAtStage[i] = 0;
@@ -133,11 +364,11 @@ Copy over user-set parameters to the configInfo versions. (This seems like dupli
     /* If the user has provided a list of moldatfile names, the corresponding elements of par->moldatfile will be non-NULL. Thus we can deduce the number of files (species) from the number of non-NULL elements.
     */
     par->nSpecies=0;
-    while(par->nSpecies<MAX_NSPECIES && inpar.moldatfile[par->nSpecies]!=NULL && strlen(inpar.moldatfile[par->nSpecies])>0)
+    while(par->nSpecies<MAX_NSPECIES && inpars.moldatfile[par->nSpecies]!=NULL && strlen(inpars.moldatfile[par->nSpecies])>0)
     par->nSpecies++;
 
     numGirDatFiles=0;
-    while(numGirDatFiles<MAX_NSPECIES && inpar.girdatfile[numGirDatFiles]!=NULL && strlen(inpar.girdatfile[numGirDatFiles])>0)
+    while(numGirDatFiles<MAX_NSPECIES && inpars.girdatfile[numGirDatFiles]!=NULL && strlen(inpars.girdatfile[numGirDatFiles])>0)
       numGirDatFiles++;
 
     if(numGirDatFiles<=0)
@@ -148,7 +379,7 @@ exit(1);
     }else{
       par->girdatfile=malloc(sizeof(char *)*par->nSpecies);
       for(id=0;id<par->nSpecies;id++){
-        copyInparStr(inpar.girdatfile[id], &(par->girdatfile[id]));
+        copyInparStr(inpars.girdatfile[id], &(par->girdatfile[id]));
       }
     }
   }
@@ -161,14 +392,14 @@ exit(1);
   } else {
     par->moldatfile=malloc(sizeof(char *)*par->nSpecies);
     for(id=0;id<par->nSpecies;id++){
-      copyInparStr(inpar.moldatfile[id], &(par->moldatfile[id]));
+      copyInparStr(inpars.moldatfile[id], &(par->moldatfile[id]));
     }
 
     /* Check if files exist. */
     for(id=0;id<par->nSpecies;id++){
       if((fp=fopen(par->moldatfile[id], "r"))==NULL){
         if(!silent){
-          sprintf(message, "Moldat file %s not found locally - fetching it from LAMDA", par->moldatfile[id]);
+          snprintf(message, STR_LEN_0, "Moldat file %s not found locally - fetching it from LAMDA", par->moldatfile[id]);
           printMessage(message);
         }
         openSocket(par->moldatfile[id]);
@@ -182,21 +413,21 @@ exit(1);
   /* Copy over the collision-partner pointers:
   */
   par->collPartIds  = malloc(sizeof(int   )*MAX_N_COLL_PART);
-  for(i=0;i<MAX_N_COLL_PART;i++) par->collPartIds[i] = inpar.collPartIds[i];
+  for(i=0;i<MAX_N_COLL_PART;i++) par->collPartIds[i] = inpars.collPartIds[i];
   par->nMolWeights  = malloc(sizeof(double)*MAX_N_COLL_PART);
-  for(i=0;i<MAX_N_COLL_PART;i++) par->nMolWeights[i] = inpar.nMolWeights[i];
+  for(i=0;i<MAX_N_COLL_PART;i++) par->nMolWeights[i] = inpars.nMolWeights[i];
   par->collPartNames = malloc(sizeof(char*)*MAX_N_COLL_PART);
-  for(i=0;i<MAX_N_COLL_PART;i++) copyInparStr(inpar.collPartNames[i], &(par->collPartNames[i]));
+  for(i=0;i<MAX_N_COLL_PART;i++) copyInparStr(inpars.collPartNames[i], &(par->collPartNames[i]));
   par->collPartMolWeights = malloc(sizeof(double)*MAX_N_COLL_PART);
-  for(i=0;i<MAX_N_COLL_PART;i++) par->collPartMolWeights[i] = inpar.collPartMolWeights[i];
+  for(i=0;i<MAX_N_COLL_PART;i++) par->collPartMolWeights[i] = inpars.collPartMolWeights[i];
 
   /* Copy over the grid-density-maximum data and find out how many were set:
   */
   par->gridDensMaxValues = malloc(sizeof(*(par->gridDensMaxValues))*MAX_N_HIGH);
   par->gridDensMaxLoc    = malloc(sizeof(*(par->gridDensMaxLoc))*MAX_N_HIGH);
   for(i=0;i<MAX_N_HIGH;i++){
-    par->gridDensMaxValues[i] = inpar.gridDensMaxValues[i];
-    for(j=0;j<DIM;j++) par->gridDensMaxLoc[i][j] = inpar.gridDensMaxLoc[i][j];
+    par->gridDensMaxValues[i] = inpars.gridDensMaxValues[i];
+    for(j=0;j<DIM;j++) par->gridDensMaxLoc[i][j] = inpars.gridDensMaxLoc[i][j];
   }
   i = 0;
   while(i<MAX_N_HIGH && par->gridDensMaxValues[i]>=0) i++;
@@ -234,37 +465,9 @@ exit(1);
     }
   }
 
-  /*
-Run through all the user functions and set flags in the global defaultFuncFlags for those which have defaulted. NOTE however that we will not check which of these functions the user has provided until readOrBuildGrid(), because this will depend on the appropriate data being present or not in any grid file we read in. There are two exceptions to this:
-
-	- The velocity() function, because this is not only called within readOrBuildGrid() to calculate velocities at the grid node positions and at sample locations along the edges between grids, but also potentially within raytrace() to calculate velocities along ray paths through cells. Therefore we perform extra tests for the presence of a user-supplied velocity function near the end of the present function.
-
-	- The density() function, because we need to know the number of densities early on, in case we need to call the default gridDensity() function. Thus we test for this below.
-  */
-  density(      0.0,0.0,0.0, dummyDens);
-  if(!bitIsSet(defaultFuncFlags, USERFUNC_density))       reportInfsAtOrigin(1, dummyDens, "density");
-  temperature(  0.0,0.0,0.0, dummyT);
-  if(!bitIsSet(defaultFuncFlags, USERFUNC_temperature))   reportInfsAtOrigin(2, dummyT, "temperature");
-  abundance(    0.0,0.0,0.0, dummyAbun);
-  if(!bitIsSet(defaultFuncFlags, USERFUNC_abundance))     reportInfsAtOrigin(1, dummyAbun, "abundance");
-  molNumDensity(0.0,0.0,0.0, dummyNmol);
-  if(!bitIsSet(defaultFuncFlags, USERFUNC_molNumDensity)) reportInfsAtOrigin(1, dummyNmol, "molNumDensity");
-  doppler(      0.0,0.0,0.0, &dummyTurbDop);
-  if(!bitIsSet(defaultFuncFlags, USERFUNC_doppler))       reportInfsAtOrigin(0, &dummyTurbDop, "doppler");
-  velocity(     0.0,0.0,0.0, dummyVel);
-  if(!bitIsSet(defaultFuncFlags, USERFUNC_velocity))      reportInfsAtOrigin(3, dummyVel, "velocity");
-  magfield(     0.0,0.0,0.0, dummyB);
-  if(!bitIsSet(defaultFuncFlags, USERFUNC_magfield))      reportInfsAtOrigin(3, dummyB, "magfield");
-  gasIIdust(    0.0,0.0,0.0, &dummyG2d);
-  if(!bitIsSet(defaultFuncFlags, USERFUNC_gasIIdust))     reportInfsAtOrigin(0, &dummyG2d, "gasIIdust");
-
-  free(dummyNmol);
-  free(dummyAbun);
-  free(dummyDens);
-
   par->gridDensGlobalMax = 1.0; /* Dummy value, needed in case the default gridDensity() is called. */
   par->numDensities = 0; /* Ditto. */
-  dummyNdens = gridDensity(par, dummyR);
+  numFuncDensities = checkUserFunctions(par, checkForSingularities);
 
   /* Calculate par->numDensities.
   */
@@ -274,7 +477,7 @@ Run through all the user functions and set flags in the global defaultFuncFlags 
       status = countDensityCols(par->gridInFile, &(par->numDensities));
       if (status){
         if(!silent){
-          printf(message, "countDensityCols() status return %d", status);
+          snprintf(message, STR_LEN_0, "countDensityCols() status return %d", status);
           bail_out(message);
         }
 exit(1);
@@ -287,14 +490,7 @@ exit(1);
 exit(1);
       }
 
-      /* Find out how many density functions we have (which sets par->numDensities).
-      */
-      for(i=0;i<MAX_N_COLL_PART;i++) dens[i] = -1.0;
-      density(0.0,0.0,0.0,dens);
-      /* Testing for a singularity in the density function at the origin has already been done, just a little above here. */
-      i = 0;
-      while(i<MAX_N_COLL_PART && dens[i]>=0) i++;
-      par->numDensities = i;
+      par->numDensities = numFuncDensities;
 
       if(par->numDensities<=0){
         if(!silent) bail_out("No density values returned.");
@@ -317,12 +513,21 @@ exit(1);
       par->gridDensGlobalMax = 1.0;
       for(i=0;i<DIM;i++) r[i] = 0.0;
       par->gridDensGlobalMax = gridDensity(par, r);
-      if(isinf(par->gridDensGlobalMax)){
-        if(!silent) bail_out("There is a singularity at the origin of the gridDensity() function.");
-exit(1);
+
+      if(isinf(par->gridDensGlobalMax) || isnan(par->gridDensGlobalMax)){
+        if(!silent) warning("There is a singularity at the origin of the gridDensity() function.");
       }else if(par->gridDensGlobalMax<=0.0){
-        if(!silent) bail_out("Zero values of the gridDensity() function are not permitted.");
+        if(!silent) warning("The gridDensity() function returns zero at the origin.");
+      }
+
+      if(isinf(par->gridDensGlobalMax) || isnan(par->gridDensGlobalMax) || par->gridDensGlobalMax<=0.0){
+        par->gridDensGlobalMax = 1.0;
+        for(i=0;i<DIM;i++) r[i] = par->minScale;
+        par->gridDensGlobalMax = gridDensity(par, r);
+        if(isinf(par->gridDensGlobalMax) || isnan(par->gridDensGlobalMax) || par->gridDensGlobalMax<=0.0){
+          if(!silent) bail_out("Can't find non-pathological values of the gridDensity() function.");
 exit(1);
+        }
       }
 
       /* Test now any maxima the user has provided:
@@ -408,7 +613,7 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
         }
         (*img)[i].imgunits[j-1] = (int)strtol(pch, &pch_end, 0);
         if(*pch_end){
-          sprintf(message, "Image %d: units string contains '%s' which could not be converted to an integer", i, pch_end);
+          snprintf(message, STR_LEN_0, "Image %d: units string contains '%s' which could not be converted to an integer", i, pch_end);
           if(!silent) bail_out(message);
 exit(1);
         }
@@ -423,26 +628,23 @@ exit(1);
       if(par->polarization){
         (*img)[i].nchan=3;
 
-        if(!silent){
-          /* Do a sketchy check which might indicate if the user has forgotten to supply a magfield function, and warn if this comes up positive. Note: there is no really robust way at present to distinguish the default magfield function (which, if called, indicates that the user forgot to supply their own) from one the user has supplied but which happens to set the B field to 0 at the origin.
-          */
-          magfield(par->minScale,par->minScale,par->minScale,BB);
-          normBSquared = BB[0]*BB[0] + BB[1]*BB[1] + BB[2]*BB[2];
-          if(normBSquared <= 0.) warning("Zero B field - did you remember to supply a magfield function?");
+        if(!silent && bitIsSet(defaultFuncFlags, USERFUNC_magfield)){
+          warning("You need to supply a magfield function for a polarized image.");
+//***** NOTE that this test is incomplete because the values might be supplied via the gridInFile.
         }
       }else
         (*img)[i].nchan=1;
 
       if((*img)[i].freq<0){
         if(!silent){
-          sprintf(message, "Image %d: you must set freq for a continuum image.", i);
+          snprintf(message, STR_LEN_0, "Image %d: you must set freq for a continuum image.", i);
           bail_out(message);
         }
 exit(1);
       }
 
       if(!silent && ((*img)[i].trans>-1 || (*img)[i].bandwidth>-1.0)){
-        sprintf(message, "Image %d: bandwidth and trans are ignored for a continuum image.", i);
+        snprintf(message, STR_LEN_0, "Image %d: bandwidth and trans are ignored for a continuum image.", i);
         warning(message);
       }
       (*img)[i].doline=0;
@@ -460,13 +662,13 @@ The presence of one of these combinations at least is checked here, although the
       */
       if((*img)[i].bandwidth > 0 && (*img)[i].velres > 0){
         if(!silent && (*img)[i].nchan > 0){
-          sprintf(message, "Image %d: your nchan value will be overwritten.", i);
+          snprintf(message, STR_LEN_0, "Image %d: your nchan value will be overwritten.", i);
           warning(message);
         }
 
       }else if((*img)[i].nchan <= 0 || ((*img)[i].bandwidth <= 0 && (*img)[i].velres <= 0)) {
         if(!silent){
-          sprintf(message, "Image %d: insufficient info to calculate nchan, velres and bandwidth.", i);
+          snprintf(message, STR_LEN_0, "Image %d: insufficient info to calculate nchan, velres and bandwidth.", i);
           bail_out(message);
         }
 exit(1);
@@ -476,20 +678,20 @@ exit(1);
       */
       if((*img)[i].trans>-1){ /* => user has set trans, possibly also freq. */
         if(!silent && (*img)[i].freq > 0){
-          sprintf(message, "Image %d: you set trans, so I'm ignoring freq.", i);
+          snprintf(message, STR_LEN_0, "Image %d: you set trans, so I'm ignoring freq.", i);
           warning(message);
         }
 
         if((*img)[i].molI < 0){
           if(!silent && par->nSpecies>1){
-            sprintf(message, "Image %d: you did not set molI, so I'm assuming the 1st molecule.", i);
+            snprintf(message, STR_LEN_0, "Image %d: you did not set molI, so I'm assuming the 1st molecule.", i);
             warning(message);
           }
           (*img)[i].molI = 0;
         }
       }else if((*img)[i].freq<0){ /* => user has set neither trans nor freq. */
         if(!silent){
-          sprintf(message, "Image %d: you must set either freq or trans (plus optionally molI).", i);
+          snprintf(message, STR_LEN_0, "Image %d: you must set either freq or trans (plus optionally molI).", i);
           bail_out(message);
         }
 exit(1);
@@ -500,7 +702,7 @@ exit(1);
 
     if((*img)[i].imgres<0.0){
       if(!silent){
-        sprintf(message, "Image %d: you must set imgres.", i);
+        snprintf(message, STR_LEN_0, "Image %d: you must set imgres.", i);
         bail_out(message);
       }
 exit(1);
@@ -508,7 +710,7 @@ exit(1);
 
     if((*img)[i].pxls<0){
       if(!silent){
-        sprintf(message, "Image %d: you must set pxls.", i);
+        snprintf(message, STR_LEN_0, "Image %d: you must set pxls.", i);
         bail_out(message);
       }
 exit(1);
@@ -516,7 +718,7 @@ exit(1);
 
     if((*img)[i].distance<0.0){
       if(!silent){
-        sprintf(message, "Image %d: you must set distance.", i);
+        snprintf(message, STR_LEN_0, "Image %d: you must set distance.", i);
         bail_out(message);
       }
 exit(1);
@@ -705,7 +907,7 @@ exit(1);
     }else{
       if((fp=fopen(par->dust, "r"))==NULL){
         if(!silent){
-          sprintf(message, "Couldn't open dust opacity data file %s", par->dust);
+          snprintf(message, STR_LEN_0, "Couldn't open dust opacity data file %s", par->dust);
           bail_out(message);
         }
 exit(1);
@@ -756,11 +958,40 @@ void gridPopsInit(configInfo *par, molData *md, struct grid *gp){
   for(i=0;i<par->nSpecies;i++){
     /* Allocate space for populations etc */
     for(id=0;id<par->ncell; id++){
+      free(gp[id].mol[i].pops);
       gp[id].mol[i].pops = malloc(sizeof(double)*md[i].nlev);
       for(ilev=0;ilev<md[i].nlev;ilev++)
         gp[id].mol[i].pops[ilev] = 0.0;
     }
   }
+}
+
+/*....................................................................*/
+void _printTestGridOutput(struct grid *gp, const int id, const int i, const int ilev){
+  if(gp[id].mol==NULL){
+    printf("gp[%d].mol==NULL!\n", id);
+  }else{
+    printf("gp[%d].mol[%d].binv=%e\n", id, i, gp[id].mol[i].binv);
+    printf("gp[%d].mol[%d].nmol=%e\n", id, i, gp[id].mol[i].nmol);
+
+    if(gp[id].mol[i].pops==NULL)
+      printf("gp[%d].mol[%d].pops==NULL\n", id, i);
+    else
+      printf("gp[%d].mol[%d].pops[%d]=%e\n", id, i, ilev, gp[id].mol[i].pops[ilev]);
+
+    if(gp[id].mol[i].specNumDens==NULL)
+      printf("gp[%d].mol[%d].specNumDens==NULL\n", id, i);
+    else
+      printf("gp[%d].mol[%d].specNumDens[%d]=%e\n", id, i, ilev, gp[id].mol[i].specNumDens[ilev]);
+
+    if(gp[id].mol[i].cont==NULL)
+      printf("gp[%d].mol[%d].cont==NULL\n", id, i);
+    else{
+      printf("gp[%d].mol[%d].cont[%d].dust=%e\n", id, i, ilev, gp[id].mol[i].cont[ilev].dust);
+      printf("gp[%d].mol[%d].cont[%d].knu=%e\n",  id, i, ilev, gp[id].mol[i].cont[ilev].knu);
+    }
+  }
+  printf("\n");
 }
 
 /*....................................................................*/
@@ -772,14 +1003,14 @@ run(inputPars inpars, image *inimg, const int nImages){
      programs. In this case, inpars and img must be specified by the
      external program.
   */
-  int i,gi,si,status=0,sigactionStatus=0;
+  int i,gi,si,ei,status=0,sigactionStatus=0;
   int initime=time(0);
   int popsdone=0,nExtraSolverIters=0;
   molData *md=NULL;
   configInfo par;
   imageInfo *img=NULL;
   struct grid *gp=NULL;
-  char message[80];
+  char message[STR_LEN_0];
   int nEntries=0;
   double *lamtab=NULL,*kaptab=NULL;
 
@@ -787,7 +1018,7 @@ run(inputPars inpars, image *inimg, const int nImages){
   sigactionStatus = sigaction(SIGINT, &sigact, NULL);
   if(sigactionStatus){
     if(!silent){
-      sprintf(message, "Call to sigaction() returned with status %d", sigactionStatus);
+      snprintf(message, STR_LEN_0, "Call to sigaction() returned with status %d", sigactionStatus);
       bail_out(message);
     }
 exit(1);
@@ -804,7 +1035,7 @@ exit(1);
 #endif
   fillErfTable();
 
-  parseInput(inpars, inimg, nImages, &par, &img, &md); /* Sets par.numDensities for !(par.doPregrid || par.restart) */
+  parseInput(inpars, inimg, nImages, &par, &img, &md, TRUE); /* Sets par.numDensities for !(par.doPregrid || par.restart) */
 
   if(par.restart){
     par.doSolveRTE = FALSE;
@@ -830,7 +1061,7 @@ exit(1);
   }
 
   if(!silent && par.nThreads>1){
-    sprintf(message, "Number of threads used: %d", par.nThreads);
+    snprintf(message, STR_LEN_0, "Number of threads used: %d", par.nThreads);
     printMessage(message);
   }
 
@@ -870,15 +1101,18 @@ exit(1);
       calcGridMolDensities(&par, &gp);
 
     for(gi=0;gi<par.ncell;gi++){
-      for(si=0;si<par.nSpecies;si++)
+      for(si=0;si<par.nSpecies;si++){
         gp[gi].mol[si].specNumDens = malloc(sizeof(double)*md[si].nlev);
+        for(ei=0;ei<md[si].nlev;ei++){
+          gp[gi].mol[si].specNumDens[ei] = 0.0;
+        }
+      }
     }
 
-    if(!popsdone)
+    if(par.doSolveRTE){
       gridPopsInit(&par,md,gp);
-
-    if(par.doSolveRTE)
       nExtraSolverIters = levelPops(md, &par, gp, &popsdone, lamtab, kaptab, nEntries);
+    }
 
     calcGridMolSpecNumDens(&par,md,gp);
 
@@ -890,7 +1124,7 @@ exit(1);
   else if(onlyBitsSet(par.dataFlags & DS_mask_all_but_mag, DS_mask_5)){
     writeGridIfRequired(&par, gp, md, 5);
   }else if(!silent){
-    sprintf(message, "Data flags %x match neither mask 3 %x (cont.) or 5 %x (line).", par.dataFlags, DS_mask_3, DS_mask_5);
+    snprintf(message, STR_LEN_0, "Data flags %x match neither mask 3 %x (cont.) or 5 %x (line).", par.dataFlags, DS_mask_3, DS_mask_5);
     warning(message);
   }
 
@@ -924,5 +1158,4 @@ exit(1);
 
   return status; /* This is a bit of a placeholder for now. Ideally we would like all the functions called to return status values rather than exiting. This would allow python-calling versions of Lime to exit 'nicely' at the top level. */
 }
-
 

@@ -15,11 +15,11 @@ except ImportError:
   casalog = DummyCasaLog()
 
 def limesolver(radius,minScale,tcmb,sinkPoints,pIntensity,samplingAlgorithm,sampling
-  ,lte_only,init_lte,nThreads,nSolveIters,moldatfile,dust,gridInFile,gridOutFiles,resetRNG
+  ,lte_only,init_lte,nThreads,nSolveIters,moldatfile,dust,gridInFile,gridOutFile,resetRNG
   ,modelID,T,rhoc,Mstar,Rstar,Tstar,bgdens,hph,plsig1,rin,rout,sig0,mdisk,cs,h0,ab0,mdot
-  ,tin,ve,mdota,mu,nu,rc,Tcloud,age,Rn):
-
-  casalog.origin('limesolver')
+  ,tin,ve,mdota,mu,nu,rc,Tcloud,age,Rn,userModelPath,abundance,abundance_args
+    ,bmag,bmag_args,density,density_args,doppler,doppler_args,tdust,tdust_args
+    ,temperature,temperature_args,velocity,velocity_args):
 
   import threading
   import time
@@ -27,13 +27,13 @@ def limesolver(radius,minScale,tcmb,sinkPoints,pIntensity,samplingAlgorithm,samp
   try:
     import modellib as ml
   except ImportError as err:
-    casalog.post("Cannot find module 'modellib'", priority='ERROR')
+    casalog.post("Cannot import module 'modellib'", priority='ERROR')
     return
 
   try:
     import lime
   except ImportError as err:
-    casalog.post("Cannot find module 'lime'", priority='ERROR')
+    casalog.post("Cannot import module 'lime'", priority='ERROR')
     return
 
   class LimeExistentialLog:
@@ -81,6 +81,9 @@ def limesolver(radius,minScale,tcmb,sinkPoints,pIntensity,samplingAlgorithm,samp
         casalog.post("Cannot find moldatfile[%d] file %s" % (i, fileName), priority='ERROR')
         return
 
+  if (not userModelPath is None) and userModelPath!='':
+    casalog.post("Supply of a user model is not yet supported.", priority='Warning')
+
   if not ml.isRegisteredModel(modelID):
     errStr = '%s is not a registered model' % modelID
     casalog.post(errStr, priority='ERROR')
@@ -116,7 +119,7 @@ def limesolver(radius,minScale,tcmb,sinkPoints,pIntensity,samplingAlgorithm,samp
 
   elif modelID=='LiShu96':
     ml.setParamDouble('cs', cs)
-    ml.setParamDouble('h0', h0)
+    ml.setParamEnumIndex('h0', h0)
 
   elif modelID=='Mamon88':
     ml.setParamDouble('ab0',  ab0)
@@ -133,8 +136,8 @@ def limesolver(radius,minScale,tcmb,sinkPoints,pIntensity,samplingAlgorithm,samp
     ml.setParamDouble('rc',    rc)
 
   elif modelID=='Shu77':
-    ml.setParamDouble('Tcloud', Tcloud)
-    ml.setParamDouble('time',   age)
+    ml.setParamDouble('T',    Tcloud)
+    ml.setParamDouble('time', age)
 
   elif modelID=='Ulrich76':
     ml.setParamDouble('mdot',  mdota)
@@ -154,32 +157,62 @@ def limesolver(radius,minScale,tcmb,sinkPoints,pIntensity,samplingAlgorithm,samp
 
   # Now set some of the functions which were not included in the model:
   #
-  if modelID=='Mendoza09' or modelID=='Ulrich76':
-    # Constant temperature:
-    ml.setFunction('temperature', 'scalarConst')
-    ml.setFunctionParamDouble('temperature', 'val', 2.72)
+  funcDict = {
+     'abundance'   :{'func':abundance,    'args':abundance_args}
+    ,'bmag'        :{'func':bmag,         'args':bmag_args}
+    ,'density'     :{'func':density,      'args':density_args}
+    ,'doppler'     :{'func':doppler,      'args':doppler_args}
+    ,'tdust'       :{'func':tdust,        'args':tdust_args}
+    ,'temperature' :{'func':temperature,  'args':temperature_args}
+    ,'velocity'    :{'func':velocity,     'args':velocity_args}
+             }
 
-#********* gas vs dust temps???
+  for resultID in funcDict.keys():
+    functionID = funcDict[resultID]['func']
+    if functionID=='': continue
 
-  if modelID=='CG97':
+    if not ml.isRegisteredFunction(functionID):
+      errStr = 'Function %s is not recognized.' % functionID
+      casalog.post(errStr, priority='ERROR')
+      return
+
+    if not ml.isResultFunction(resultID, functionID):
+      errStr = 'Function %s cannot be linked with result %s.' % (functionID, resultID)
+      casalog.post(errStr, priority='ERROR')
+      return
+
+    if ml.isCurrentResultModel(resultID):
+      errStr = "Result %s is provided by the current model. Choosing a function for this result will overwrite the model value." #******** Will it? Should be tested.
+      casalog.post(errStr, priority='Warning')
+
+    argsRequired = ml.getFunctionParamIDs(functionID)
+    numArgsRequired = len(argsRequired)
+    reqArgsStr = '[%s]' % ','.join(argsRequired)
+
+    numArgsSupplied = len(funcDict[resultID]['args'])
+
+    if numArgsSupplied!=numArgsRequired:
+      errStr = 'Function %s requires %d arguments but you have supplied %d.' % (functionID, numArgsRequired, numArgsSupplied)
+      casalog.post(errStr, priority='ERROR')
+      return
+
+    errStr = 'Loading function %s for result %s. Argument names:' % (functionID, resultID)
+    casalog.post(errStr)
+    casalog.post('  %s' % reqArgsStr)
+
+    ml.setFunction(resultID, functionID)
+
+    for i in range(numArgsRequired):
+      ml.setFunctionParamDouble(resultID, argsRequired[i], funcDict[resultID]['args'][i])
+  # End loop over results.
+
+  if modelID=='CG97' or modelID=='DDN01':
     # Set temperature identical to t_dust:
     ml.setTempIdentTdust()
 
-  if modelID!='Mamon88':
-    # Constant abundance:
-    ml.setFunction('abundance', 'scalarConst')
-    ml.setFunctionParamDouble('abundance', 'val', 1.e-9)
-
-  # Constant doppler (100 m/s):
-  ml.setFunction('doppler', 'scalarConst')
-  ml.setFunctionParamDouble('doppler', 'val', 100.)
-
-  if modelID!='LiShu96' and modelID!='allen03a':
-    # Zero bmag:
-    ml.setFunction('bmag', 'vectorConstR')
-    ml.setFunctionParamDouble('bmag', 'val', 0.)
-
-  # The remainder we will leave at defaults.
+  if not ml.isConfigurationComplete():
+    casalog.post("Not all results have been linked to models or functions.", priority='ERROR')
+    return
 
   # Done:
   ml.finalizeConfiguration()
@@ -188,38 +221,38 @@ def limesolver(radius,minScale,tcmb,sinkPoints,pIntensity,samplingAlgorithm,samp
     return
 
   # Set input parameters for lime:
-  par = lime.createInputPars()
-  par.radius            = radius
-  par.minScale          = minScale
-  par.tcmb              = tcmb
-  par.sinkPoints        = sinkPoints
-  par.pIntensity        = pIntensity
-  par.samplingAlgorithm = samplingAlgorithm
-  par.sampling          = sampling
-  par.lte_only          = lte_only
-  par.init_lte          = init_lte
-  par.nThreads          = nThreads
-  par.nSolveIters       = nSolveIters
-  par.moldatfile        = moldatfile[:]
-  par.dust              = dust
-#  par.outputfile        = "populations.pop"
-#  par.binoutputfile     = "restart.pop"
-#  par.gridfile          = "grid.vtk"
-#  par.pregrid           = "pregrid.asc"
-#  par.restart           = "restart.pop"
-  par.gridInFile        = gridInFile
-  par.collPartIds        = [1]#[macros["CP_H2"]] # must be a list, even when there is only 1 item.
-  par.nMolWeights        = [1.0] # must be a list, even when there is only 1 item.
-#  par.collPartNames     = ["phlogiston"] # must be a list, even when there is only 1 item.
-#  par.collPartMolWeights = [2.0159] # must be a list, even when there is only 1 item.
-#  par.gridDensMaxValues = [1.0] # must be a list, even when there is only 1 item.
-#  par.gridDensMaxLoc    = [[0.0,0.0,0.0]] # must be a list, each element of which is also a list with 3 entries (1 for each spatial coordinate).
-  par.gridOutFiles      = gridOutFiles[:]
-  par.resetRNG          = resetRNG
-  if par.moldatfile is None or par.moldatfile=='' or len(par.moldatfile)<=0:
-    par.doSolveRTE = False
+  limepars = lime.createInputPars()
+  limepars.radius            = radius
+  limepars.minScale          = minScale
+  limepars.tcmb              = tcmb
+  limepars.sinkPoints        = sinkPoints
+  limepars.pIntensity        = pIntensity
+  limepars.samplingAlgorithm = samplingAlgorithm
+  limepars.sampling          = sampling
+  limepars.lte_only          = lte_only
+  limepars.init_lte          = init_lte
+  limepars.nThreads          = nThreads
+  limepars.nSolveIters       = nSolveIters
+  limepars.moldatfile        = moldatfile[:]
+  limepars.dust              = dust
+#  limepars.outputfile        = "populations.pop"
+#  limepars.binoutputfile     = "restart.pop"
+#  limepars.gridfile          = "grid.vtk"
+#  limepars.pregrid           = "pregrid.asc"
+#  limepars.restart           = "restart.pop"
+  limepars.gridInFile        = gridInFile
+  limepars.collPartIds        = [1]#[macros["CP_H2"]] # must be a list, even when there is only 1 item.
+  limepars.nMolWeights        = [1.0] # must be a list, even when there is only 1 item.
+  limepars.collPartNames      = ["H2"] # must be a list, even when there is only 1 item.
+  limepars.collPartMolWeights = [2.0159] # must be a list, even when there is only 1 item.
+#  limepars.gridDensMaxValues = [1.0] # must be a list, even when there is only 1 item.
+#  limepars.gridDensMaxLoc    = [[0.0,0.0,0.0]] # must be a list, each element of which is also a list with 3 entries (1 for each spatial coordinate).
+  limepars.gridOutFiles      = ['','','','',gridOutFile]
+  limepars.resetRNG          = resetRNG
+  if limepars.moldatfile is None or limepars.moldatfile=='' or len(limepars.moldatfile)<=0:
+    limepars.doSolveRTE = False
   else:
-    par.doSolveRTE = True
+    limepars.doSolveRTE = True
 
   # Define an empty set of images:
   images = []
@@ -229,10 +262,10 @@ def limesolver(radius,minScale,tcmb,sinkPoints,pIntensity,samplingAlgorithm,samp
   lime.setSilent(False)
 
   # Run LIME in its own thread:
-  limeThread = LimeThread(par, images, limeLog)
+  limeThread = LimeThread(limepars, images, limeLog)
   limeThread.start()
 
-  casalog.post('Starting LIME run.')
+  casalog.post('Starting limesolver LIME run.')
 
   # Loop with delay - every so often, check LIME status and print it to the casa logger.
   while not limeLog.complete:
@@ -254,10 +287,10 @@ def limesolver(radius,minScale,tcmb,sinkPoints,pIntensity,samplingAlgorithm,samp
           gridDoneMessageIsPrinted = True
           casalog.post('Grid is complete. Starting solution.')
 
-      if nItersCounted<par.nSolveIters:
+      if nItersCounted<limepars.nSolveIters:
         while nItersCounted<=limeStatus.numberIterations:
           nItersCounted += 1
-          casalog.post('Iteration %d/%d' % (nItersCounted, par.nSolveIters))
+          casalog.post('Iteration %d/%d' % (nItersCounted, limepars.nSolveIters))
           casalog.post('Min SNR %e  median %e' % (limeStatus.minsnr, limeStatus.median))
 
   limeStatus = lime.getStatus()

@@ -17,6 +17,139 @@ TODO:
 
 /*....................................................................*/
 void
+sanityCheckOfRead(const int status, configInfo *par, struct gridInfoType gridInfoRead){
+  char message[STR_LEN_0];
+
+  if(status){
+    if(!silent){
+      snprintf(message, STR_LEN_0, "Read of grid file failed with status return %d", status);
+      bail_out(message);
+    }
+exit(1);
+  }
+
+  /* Test that dataFlags obeys the rules. */
+  /* No other bit may be set if DS_bit_x is not: */
+  if(anyBitSet(par->dataFlags, (DS_mask_all & ~(1 << DS_bit_x))) && !bitIsSet(par->dataFlags, DS_bit_x)){
+    if(!silent) bail_out("You may not read a grid file without X, ID or IS_SINK data.");
+exit(1);
+  }
+
+  /* DS_bit_ACOEFF may not be set if either DS_bit_neighbours or DS_bit_velocity is not: */
+  if(bitIsSet(par->dataFlags, DS_bit_ACOEFF)\
+  && !(bitIsSet(par->dataFlags, DS_bit_neighbours) && bitIsSet(par->dataFlags, DS_bit_velocity))){
+    if(!silent) bail_out("You may not read a grid file with ACOEFF but no VEL or neighbour data.");
+exit(1);
+  }
+
+  /* DS_bit_populations may not be set unless all the others (except DS_bit_magfield) are set as well: */
+  if(bitIsSet(par->dataFlags, DS_bit_populations)\
+  && !allBitsSet(par->dataFlags & DS_mask_all_but_mag, DS_mask_populations)){
+    if(!silent) bail_out("You may not read a grid file with pop data unless all other data is present.");
+exit(1);
+  }
+
+  /* Test gridInfoRead values against par values and overwrite the latter, with a warning, if necessary.
+  */
+  if(gridInfoRead.nSinkPoints>0 && par->sinkPoints>0){
+    if((int)gridInfoRead.nSinkPoints!=par->sinkPoints){
+      if(!silent) warning("par->sinkPoints will be overwritten");
+    }
+    if((int)gridInfoRead.nInternalPoints!=par->pIntensity){
+      if(!silent) warning("par->pIntensity will be overwritten");
+    }
+  }
+  par->sinkPoints = (int)gridInfoRead.nSinkPoints;
+  par->pIntensity = (int)gridInfoRead.nInternalPoints;
+  par->ncell = par->sinkPoints + par->pIntensity;
+
+  if(gridInfoRead.nDims!=DIM){ /* At present this situation is already detected and handled inside readGridExtFromFits(), but it may not be in future. The test here has no present functionality but saves trouble later if we change grid.x from an array to a pointer. */
+    if(!silent){
+      snprintf(message, STR_LEN_0, "Grid file had %d dimensions but there should be %d.", (int)gridInfoRead.nDims, DIM);
+      bail_out(message);
+    }
+exit(1);
+  }
+  if(gridInfoRead.nSpecies > 0){
+    if((int)gridInfoRead.nSpecies!=par->nSpecies && par->doMolCalcs){
+      if(!silent){
+        snprintf(message, STR_LEN_0, "Grid file had %d species but you have provided moldata files for %d."\
+          , (int)gridInfoRead.nSpecies, par->nSpecies);
+        bail_out(message);
+      }
+exit(1);
+/**** should compare name to name - at some later time after we have read these from the moldata files? */
+    }
+  }
+  if(gridInfoRead.nDensities>0 && par->numDensities>0 && (int)gridInfoRead.nDensities!=par->numDensities){
+    if(!silent){
+      snprintf(message, STR_LEN_0, "Grid file had %d densities but you have provided %d."\
+        , (int)gridInfoRead.nDensities, par->numDensities);
+      bail_out(message);
+    }
+exit(1);
+  }
+
+  if(par->nSolveItersDone>0 && (par->init_lte || par->lte_only)){
+    if(!silent)
+      warning("Your choice of LTE calculation will erase the RTE solution you read from file.");
+  }
+
+  if(allBitsSet(par->dataFlags, DS_mask_populations) && par->nSolveItersDone<=0){
+    if(!silent)
+      bail_out("Populations were read but par->nSolveItersDone<=0.");
+exit(1);
+  }
+}
+
+/*....................................................................*/
+void
+readGridWrapper(configInfo *par, struct grid **gp, char ***collPartNames, int *numCollPartRead){
+
+  const int numDesiredKwds=3;
+  struct keywordType *desiredKwds=malloc(sizeof(struct keywordType)*numDesiredKwds);
+  int i,status=0;
+  struct gridInfoType gridInfoRead;
+
+  i = 0;
+  initializeKeyword(&desiredKwds[i]);
+  desiredKwds[i].datatype = lime_DOUBLE;
+  snprintf(desiredKwds[i].keyname, STRLEN_KNAME, "RADIUS  ");
+
+  i++;
+  initializeKeyword(&desiredKwds[i]);
+  desiredKwds[i].datatype = lime_DOUBLE;
+  snprintf(desiredKwds[i].keyname, STRLEN_KNAME, "MINSCALE");
+
+  i++;
+  initializeKeyword(&desiredKwds[i]);
+  desiredKwds[i].datatype = lime_INT;
+  snprintf(desiredKwds[i].keyname, STRLEN_KNAME, "NSOLITER");
+
+  status = readGrid(par->gridInFile, &gridInfoRead, desiredKwds\
+    , numDesiredKwds, gp, collPartNames, numCollPartRead, &(par->dataFlags));
+
+  par->radius          = desiredKwds[0].doubleValue;
+  par->minScale        = desiredKwds[1].doubleValue;
+  par->nSolveItersDone = desiredKwds[2].intValue;
+
+  par->radiusSqu   = par->radius*par->radius;
+  par->minScaleSqu = par->minScale*par->minScale;
+
+  sanityCheckOfRead(status, par, gridInfoRead);
+
+  freeKeywords(desiredKwds, numDesiredKwds);
+  freeGridInfo(&gridInfoRead);
+
+/*
+**** Ideally we should also have a test on nACoeffs.
+
+**** Ideally we should also have a test on the mols entries - at some later time after we have read the corresponding values from the moldata files?
+*/
+}
+
+/*....................................................................*/
+void
 dumpGrid(configInfo *par, struct grid *g){
   if(par->gridfile) write_VTK_unstructured_Points(par, g);
 }
@@ -45,7 +178,7 @@ void randomsViaRejection(configInfo *par, const unsigned int desiredNumPoints, g
   double x[DIM];
   const int maxNumAttempts=1000;
   int numRandomsThisPoint,numSecondRandoms=0;
-  char errStr[80];
+  char errStr[STR_LEN_0];
 
   lograd=log10(par->radius);
   logmin=log10(par->minScale);
@@ -107,95 +240,8 @@ void randomsViaRejection(configInfo *par, const unsigned int desiredNumPoints, g
   }
 
   if(!silent && numSecondRandoms>0){
-    sprintf(errStr, ">1 random point needed for %d grid points out of %u.", numSecondRandoms, desiredNumPoints);
+    snprintf(errStr, STR_LEN_0, ">1 random point needed for %d grid points out of %u.", numSecondRandoms, desiredNumPoints);
     warning(errStr);
-  }
-}
-
-/*....................................................................*/
-void
-sanityCheckOfRead(const int status, configInfo *par, struct gridInfoType gridInfoRead){
-  char message[STR_LEN_0];
-
-  if(status){
-    if(!silent){
-      sprintf(message, "Read of grid file failed with status return %d", status);
-      bail_out(message);
-    }
-exit(1);
-  }
-
-  /* Test that dataFlags obeys the rules. */
-  /* No other bit may be set if DS_bit_x is not: */
-  if(anyBitSet(par->dataFlags, (DS_mask_all & ~(1 << DS_bit_x))) && !bitIsSet(par->dataFlags, DS_bit_x)){
-    if(!silent) bail_out("You may not read a grid file without X, ID or IS_SINK data.");
-exit(1);
-  }
-
-  /* DS_bit_ACOEFF may not be set if either DS_bit_neighbours or DS_bit_velocity is not: */
-  if(bitIsSet(par->dataFlags, DS_bit_ACOEFF)\
-  && !(bitIsSet(par->dataFlags, DS_bit_neighbours) && bitIsSet(par->dataFlags, DS_bit_velocity))){
-    if(!silent) bail_out("You may not read a grid file with ACOEFF but no VEL or neighbour data.");
-exit(1);
-  }
-
-  /* DS_bit_populations may not be set unless all the others (except DS_bit_magfield) are set as well: */
-  if(bitIsSet(par->dataFlags, DS_bit_populations)\
-  && !allBitsSet(par->dataFlags & DS_mask_all_but_mag, DS_mask_populations)){
-    if(!silent) bail_out("You may not read a grid file with pop data unless all other data is present.");
-exit(1);
-  }
-
-  /* Test gridInfoRead values against par values and overwrite the latter, with a warning, if necessary.
-  */
-  if(gridInfoRead.nSinkPoints>0 && par->sinkPoints>0){
-    if((int)gridInfoRead.nSinkPoints!=par->sinkPoints){
-      if(!silent) warning("par->sinkPoints will be overwritten");
-    }
-    if((int)gridInfoRead.nInternalPoints!=par->pIntensity){
-      if(!silent) warning("par->pIntensity will be overwritten");
-    }
-  }
-  par->sinkPoints = (int)gridInfoRead.nSinkPoints;
-  par->pIntensity = (int)gridInfoRead.nInternalPoints;
-  par->ncell = par->sinkPoints + par->pIntensity;
-
-  if(gridInfoRead.nDims!=DIM){ /* At present this situation is already detected and handled inside readGridExtFromFits(), but it may not be in future. The test here has no present functionality but saves trouble later if we change grid.x from an array to a pointer. */
-    if(!silent){
-      sprintf(message, "Grid file had %d dimensions but there should be %d.", (int)gridInfoRead.nDims, DIM);
-      bail_out(message);
-    }
-exit(1);
-  }
-  if(gridInfoRead.nSpecies > 0){
-    if((int)gridInfoRead.nSpecies!=par->nSpecies && par->doMolCalcs){
-      if(!silent){
-        sprintf(message, "Grid file had %d species but you have provided moldata files for %d."\
-          , (int)gridInfoRead.nSpecies, par->nSpecies);
-        bail_out(message);
-      }
-exit(1);
-/**** should compare name to name - at some later time after we have read these from the moldata files? */
-    }
-  }
-  if(gridInfoRead.nDensities>0 && par->numDensities>0 && (int)gridInfoRead.nDensities!=par->numDensities){
-    if(!silent){
-      sprintf(message, "Grid file had %d densities but you have provided %d."\
-        , (int)gridInfoRead.nDensities, par->numDensities);
-      bail_out(message);
-    }
-exit(1);
-  }
-
-  if(par->nSolveItersDone>0 && (par->init_lte || par->lte_only)){
-    if(!silent)
-      warning("Your choice of LTE calculation will erase the RTE solution you read from file.");
-  }
-
-  if(allBitsSet(par->dataFlags, DS_mask_populations) && par->nSolveItersDone<=0){
-    if(!silent)
-      bail_out("Populations were read but par->nSolveItersDone<=0.");
-exit(1);
   }
 }
 
@@ -214,7 +260,7 @@ return;
   else if(status==TREE_MSG_ERROR)
     bail_out((char*)message);
   else{
-    sprintf(errStr, "Message status %d not understood.\n", status);
+    snprintf(errStr, STR_LEN_0, "Message status %d not understood.\n", status);
     bail_out(errStr);
 exit(1);
   }
@@ -224,7 +270,7 @@ exit(1);
 void
 readOrBuildGrid(configInfo *par, struct grid **gp){
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
-  int i,j,k,di,si,status=0,numCollPartRead=0;
+  int i,j,k,di,si,numCollPartRead=0;
   double theta,semiradius,z,dummyT[2],dummyScalar;
   double *outRandDensities=NULL,*dummyPointer=NULL,x[DIM];
   double (*outRandLocations)[DIM]=NULL;
@@ -232,49 +278,11 @@ readOrBuildGrid(configInfo *par, struct grid **gp){
   gsl_rng *randGen;
   struct cell *dc=NULL; /* Not used at present. */
   unsigned long numCells;
-  struct gridInfoType gridInfoRead;
   char **collPartNames=NULL,message[STR_LEN_0];
 
   par->dataFlags = 0;
   if(par->gridInFile!=NULL){
-    const int numDesiredKwds=3;
-    struct keywordType *desiredKwds=malloc(sizeof(struct keywordType)*numDesiredKwds);
-
-    i = 0;
-    initializeKeyword(&desiredKwds[i]);
-    desiredKwds[i].datatype = lime_DOUBLE;
-    sprintf(desiredKwds[i].keyname, "RADIUS  ");
-
-    i++;
-    initializeKeyword(&desiredKwds[i]);
-    desiredKwds[i].datatype = lime_DOUBLE;
-    sprintf(desiredKwds[i].keyname, "MINSCALE");
-
-    i++;
-    initializeKeyword(&desiredKwds[i]);
-    desiredKwds[i].datatype = lime_INT;
-    sprintf(desiredKwds[i].keyname, "NSOLITER");
-
-    status = readGrid(par->gridInFile, &gridInfoRead, desiredKwds\
-      , numDesiredKwds, gp, &collPartNames, &numCollPartRead, &(par->dataFlags));
-
-    par->radius          = desiredKwds[0].doubleValue;
-    par->minScale        = desiredKwds[1].doubleValue;
-    par->nSolveItersDone = desiredKwds[2].intValue;
-
-    par->radiusSqu   = par->radius*par->radius;
-    par->minScaleSqu = par->minScale*par->minScale;
-
-    sanityCheckOfRead(status, par, gridInfoRead);
-
-    freeKeywords(desiredKwds, numDesiredKwds);
-    freeGridInfo(&gridInfoRead);
-
-/*
-**** Ideally we should also have a test on nACoeffs.
-
-**** Ideally we should also have a test on the mols entries - at some later time after we have read the corresponding values from the moldata files?
-*/
+    readGridWrapper(par, gp, &collPartNames, &numCollPartRead);
   } /* End of read grid file. Whether and what we subsequently calculate will depend on the value of par->dataStageI returned. */
 
   /* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
@@ -343,7 +351,7 @@ I don't understand the basis of the commented-out variant (e.g. we certainly won
       */
       if(par->nSolveIters<=par->nSolveItersDone){
         if(!silent){
-          sprintf(message, "par->nSolveIters %d must be > par->nSolveItersDone %d", par->nSolveIters, par->nSolveItersDone);
+          snprintf(message, STR_LEN_0, "par->nSolveIters %d must be > par->nSolveItersDone %d", par->nSolveIters, par->nSolveItersDone);
           bail_out(message);
         }
 exit(1);
@@ -650,11 +658,7 @@ exit(1);
   dumpGrid(par,*gp);
   free(dc);
 
-  if(collPartNames != NULL){
-    for(i=0;i<numCollPartRead;i++)
-      free(collPartNames[i]);
-    free(collPartNames);
-  }
+  freeArrayOfStrings(collPartNames, numCollPartRead);
 }
 
 

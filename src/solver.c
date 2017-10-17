@@ -215,6 +215,36 @@ void calcGridCollRates(configInfo *par, molData *md, struct grid *gp){
 }
 
 /*....................................................................*/
+void mallocGridCont(configInfo *par, molData *md, struct grid *gp){
+  int id,si,li;
+
+  for(id=0;id<par->ncell;id++){
+    for(si=0;si<par->nSpecies;si++){
+      gp[id].mol[si].cont = malloc(sizeof(*(gp[id].mol[si].cont))*md[si].nline);
+      for(li=0;li<md[si].nline;li++){
+        gp[id].mol[si].cont[li].dust = 0.0;
+        gp[id].mol[si].cont[li].knu  = 0.0;
+      }
+    }
+  }
+}
+
+/*....................................................................*/
+void freeGridCont(configInfo *par, struct grid *gp){
+  int id,si;
+
+  for(id=0;id<par->ncell;id++){
+    if(gp[id].mol==NULL)
+      continue;
+
+    for(si=0;si<par->nSpecies;si++){
+      free(gp[id].mol[si].cont);
+      gp[id].mol[si].cont = NULL;
+    }
+  }
+}
+
+/*....................................................................*/
 void calcGridLinesDustOpacity(configInfo *par, molData *md, double *lamtab\
   , double *kaptab, const int nEntries, struct grid *gp){
 
@@ -228,13 +258,6 @@ void calcGridLinesDustOpacity(configInfo *par, molData *md, double *lamtab\
     acc = gsl_interp_accel_alloc();
     spline = gsl_spline_alloc(gsl_interp_cspline,nEntries);
     gsl_spline_init(spline,lamtab,kaptab,nEntries);
-  }
-
-  for(id=0;id<par->ncell;id++){
-    for(si=0;si<par->nSpecies;si++){
-      free(gp[id].mol[si].cont);
-      gp[id].mol[si].cont = malloc(sizeof(*(gp[id].mol[si].cont))*md[si].nline);
-    }
   }
 
   for(si=0;si<par->nSpecies;si++){
@@ -912,6 +935,8 @@ levelPops(molData *md, configInfo *par, struct grid *gp, int *popsdone, double *
     }
 
     calcGridCollRates(par,md,gp);
+    freeGridCont(par, gp);
+    mallocGridCont(par, md, gp);
     calcGridLinesDustOpacity(par, md, lamtab, kaptab, nEntries, gp);
 
     /* Check for blended lines */
@@ -1050,6 +1075,7 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
     nExtraSolverIters = nItersDone - par->nSolveItersDone;
 
     freeMolsWithBlends(blends.mols, blends.numMolsWithBlends);
+    freeGridCont(par, gp);
 
     for (i=0;i<par->nThreads;i++){
       gsl_rng_free(threadRans[i]);

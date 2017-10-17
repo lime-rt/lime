@@ -87,11 +87,9 @@ file:///opt/casa/code/xmlcasa/xml/casa.xsd">
       <description>Input file with previously calculated model grid</description>
       <value></value>
     </param>
-    <param type="stringArray" name="gridOutFiles">
-      <description>Output files to contain model grid information at one of 5 stages</description>
-      <value type="vector">
-        <value></value>
-      </value>
+    <param type="string" name="gridOutFile">
+      <description>Output file to contain the model grid information</description>
+      <value></value>
     </param>
     <param type="bool" name="resetRNG">
       <description>Whether to use the same random number seeds for each solution iteration</description>
@@ -170,16 +168,9 @@ file:///opt/casa/code/xmlcasa/xml/casa.xsd">
       <value>1000.0</value>
       <allowed kind="range"><value range="min">0</value></allowed>
     </param>
-    <param type="double" name="h0" subparam="true">
-      <description>Mass flux ratio parameter</description>
-      <value>0.75</value>
-      <allowed kind="enum">
-        <value>0.125</value>
-        <value>0.5</value>
-        <value>0.75</value>
-        <value>1.0</value>
-        <value>1.25</value>
-      </allowed>
+    <param type="int" name="h0" subparam="true">
+      <description>Index (from zero) to mass flux ratio list [0.125,0.5,0.75,1.0,1.25])</description>
+      <value>2</value>
     </param>
 
     <param type="double" name="ab0" subparam="true">
@@ -247,6 +238,82 @@ file:///opt/casa/code/xmlcasa/xml/casa.xsd">
       <allowed kind="range"><value range="min">0</value></allowed>
     </param>
 
+    <param type="string" name="userModelPath">
+      <description>Path of a bespoke model file (not yet available).</description>
+      <value></value>
+    </param>
+
+
+    <param type="string" name="abundance">
+      <description>Name of special function to use for this result.</description>
+      <value></value>
+    </param>
+    <param type="doubleArray" name="abundance_args">
+      <description>Arguments to supply to that function.</description>
+      <value type="vector">
+        <value></value>
+      </value>
+    </param>
+    <param type="string" name="bmag">
+      <description>Name of special function to use for this result.</description>
+      <value></value>
+    </param>
+    <param type="doubleArray" name="bmag_args">
+      <description>Arguments to supply to that function.</description>
+      <value type="vector">
+        <value></value>
+      </value>
+    </param>
+    <param type="string" name="density">
+      <description>Name of special function to use for this result.</description>
+      <value></value>
+    </param>
+    <param type="doubleArray" name="density_args">
+      <description>Arguments to supply to that function.</description>
+      <value type="vector">
+        <value></value>
+      </value>
+    </param>
+    <param type="string" name="doppler">
+      <description>Name of special function to use for this result.</description>
+      <value></value>
+    </param>
+    <param type="doubleArray" name="doppler_args">
+      <description>Arguments to supply to that function.</description>
+      <value type="vector">
+        <value></value>
+      </value>
+    </param>
+    <param type="string" name="tdust">
+      <description>Name of special function to use for this result.</description>
+      <value></value>
+    </param>
+    <param type="doubleArray" name="tdust_args">
+      <description>Arguments to supply to that function.</description>
+      <value type="vector">
+        <value></value>
+      </value>
+    </param>
+    <param type="string" name="temperature">
+      <description>Name of special function to use for this result.</description>
+      <value></value>
+    </param>
+    <param type="doubleArray" name="temperature_args">
+      <description>Arguments to supply to that function.</description>
+      <value type="vector">
+        <value></value>
+      </value>
+    </param>
+    <param type="string" name="velocity">
+      <description>Name of special function to use for this result.</description>
+      <value></value>
+    </param>
+    <param type="doubleArray" name="velocity_args">
+      <description>Arguments to supply to that function.</description>
+      <value type="vector">
+        <value></value>
+      </value>
+    </param>
 
 
     <constraints>
@@ -258,6 +325,13 @@ file:///opt/casa/code/xmlcasa/xml/casa.xsd">
       </when>
 
       <when param="modelID">
+        <equals type="string" value='allen03a'>
+          <default param="Rn"><value     type="double">1.0</value></default>
+          <default param="Tcloud"><value type="double">30.0</value></default>
+          <default param="age"><value    type="double">100000.0</value></default>
+          <default param="cs"><value     type="double">1000.0</value></default>
+        </equals>
+
         <equals type="string" value='BonnorEbert56'>
           <default param="T"><value    type="double">10.0</value></default>
           <default param="rhoc"><value type="double">1.0e6</value></default>
@@ -288,7 +362,7 @@ file:///opt/casa/code/xmlcasa/xml/casa.xsd">
 
         <equals type="string" value='LiShu96'>
           <default param="cs"><value type="double">1000.0</value></default>
-          <default param="h0"><value type="double">0.75</value></default>
+          <default param="h0"><value type="int">2</value></default>
         </equals>
 
         <equals type="string" value='Mamon88'>
@@ -316,13 +390,6 @@ file:///opt/casa/code/xmlcasa/xml/casa.xsd">
           <default param="mdota"><value type="double">1e-6</value></default>
           <default param="Mstar"><value type="double">0.1</value></default>
           <default param="rc"><value    type="double">60.0</value></default>
-        </equals>
-
-        <equals type="string" value='allen03a'>
-          <default param="Rn"><value     type="double">1.0</value></default>
-          <default param="Tcloud"><value type="double">30.0</value></default>
-          <default param="age"><value    type="double">100000.0</value></default>
-          <default param="cs"><value     type="double">1000.0</value></default>
         </equals>
       </when>
     </constraints>
