@@ -513,18 +513,9 @@ exit(1);
 exit(1);
       }
 
-      /* See if we can deduce a global maximum for the grid point number density function. Set the starting value of par->gridDensGlobalMax from any values the user has supplied; to unity otherwise. We need some sort of >0 value for par->gridDensGlobalMax before we call the default gridDensity().
-      */
-      if(par->numGridDensMaxima>0){
-        /* Test any maxima the user has provided:
-        */
-        par->gridDensGlobalMax = par->gridDensMaxValues[0];
-        for(i=1;i<par->numGridDensMaxima;i++)
-          if(par->gridDensMaxValues[i]>par->gridDensGlobalMax) par->gridDensGlobalMax = par->gridDensMaxValues[i];
-      }else
-        par->gridDensGlobalMax = 1.0;
+      par->gridDensGlobalMax = 1.0; /* We need some sort of >0 value for par->gridDensGlobalMax before we call the default gridDensity(). */
 
-      /* Now try gridDensity() at the origin of coordinates, where the density is often highest:
+      /* First try gridDensity() at the origin of coordinates, where the density is often highest:
       */
       for(i=0;i<DIM;i++) r[i] = 0.0;
       tempPointDensity = gridDensity(par, r);
@@ -541,7 +532,11 @@ exit(1);
         */
         for(i=0;i<DIM;i++) r[i] = par->minScale;
         tempPointDensity = gridDensity(par, r);
-        if(isinf(tempPointDensity) || isnan(tempPointDensity) || tempPointDensity<=0.0){
+
+        if(!isinf(tempPointDensity) && !isnan(tempPointDensity) && tempPointDensity>0.0)
+          par->gridDensGlobalMax = tempPointDensity;
+
+        else{
           /* Hmm ok, let's try a spread of random locations!
           */
           randGen = gsl_rng_alloc(ranNumGenType);	/* Random number generator */
@@ -563,6 +558,13 @@ exit(1);
           if(foundGoodValue){
             if (tempPointDensity>par->gridDensGlobalMax)
               par->gridDensGlobalMax = tempPointDensity;
+
+          }else if(par->numGridDensMaxima>0){
+            /* Test any maxima the user has provided:
+            */
+            par->gridDensGlobalMax = par->gridDensMaxValues[0];
+            for(i=1;i<par->numGridDensMaxima;i++)
+              if(par->gridDensMaxValues[i]>par->gridDensGlobalMax) par->gridDensGlobalMax = par->gridDensMaxValues[i];
           }else{
 #ifdef KLUDGE_FOR_BAD_DENS
             /* This has been added under protest to cope with modellib's crappy density functions. */
@@ -573,8 +575,7 @@ exit(1);
 exit(1);
 #endif
           }
-        }else if (tempPointDensity>par->gridDensGlobalMax)
-          par->gridDensGlobalMax = tempPointDensity;
+        }
       }
     }
   }

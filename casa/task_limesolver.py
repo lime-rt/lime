@@ -254,16 +254,6 @@ def limesolver(radius,minScale,tcmb,sinkPoints,pIntensity,samplingAlgorithm,samp
   else:
     limepars.doSolveRTE = True
 
-  if modelID=='Mamon88':
-    # Get the density at a point just outside rin and set gridDensMaxValues to that.
-    AU = 1.495978707e11
-    x = rin*AU
-    y = 0.01*x
-    z = 0.01*x
-    dens = ml.density(x,y,z)
-    limepars.gridDensMaxValues = [dens]
-    limepars.gridDensMaxLoc    = [[x,y,z]]
-
   # Define an empty set of images:
   images = []
 
