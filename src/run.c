@@ -67,13 +67,20 @@ This is intended purely as a diagnostic program to compare the parameter values 
   printf("                tcmb = %e\n", inpars.tcmb);
 
   for(i=0;i<MAX_N_COLL_PART;i++){
-    printf("       nMolWeights[%d] = %e\n", i, inpars.nMolWeights[i]);
-    printf("       dustWeights[%d] = %e\n", i, inpars.dustWeights[i]);
-    printf("collPartMolWeights[%d] = %e\n", i, inpars.collPartMolWeights[i]);
-    printf("       collPartIds[%d] = %d\n", i, inpars.collPartIds[i]);
+    if(inpars.nMolWeights[i]>=0.0)
+      printf("       nMolWeights[%d] = %e\n", i, inpars.nMolWeights[i]);
+    if(inpars.dustWeights[i]>=0.0)
+      printf("       dustWeights[%d] = %e\n", i, inpars.dustWeights[i]);
+    if(inpars.collPartMolWeights[i]>=0.0)
+      printf("collPartMolWeights[%d] = %e\n", i, inpars.collPartMolWeights[i]);
+    if(inpars.collPartIds[i]>0)
+      printf("       collPartIds[%d] = %d\n", i, inpars.collPartIds[i]);
   }
 
   for(i=0;i<MAX_N_HIGH;i++){
+    if(inpars.gridDensMaxValues[i]<0.0)
+      break;
+
     printf(" gridDensMaxValues[%d] = %e\n", i, inpars.gridDensMaxValues[i]);
     printf("    gridDensMaxLoc[%d] = [", i);
     for(j=0;j<DIM;j++){
@@ -81,6 +88,8 @@ This is intended purely as a diagnostic program to compare the parameter values 
     }
     printf("]\n");
   }
+
+  if(i<=0) printf(" gridDensMaxValues unset.\n");
 
   printf("          sinkPoints = %d\n", inpars.sinkPoints);
   printf("          pIntensity = %d\n", inpars.pIntensity);
@@ -97,15 +106,11 @@ This is intended purely as a diagnostic program to compare the parameter values 
 
   if(inpars.moldatfile!=NULL && inpars.girdatfile!=NULL){
     for(i=0;i<MAX_NSPECIES;i++){
-      if (inpars.moldatfile[i]!=NULL)
+      if(!charPtrIsNullOrEmpty(inpars.moldatfile[i]))
         printf("        moldatfile[%d] = %s\n", i, inpars.moldatfile[i]);
-      else
-        printf("        moldatfile[%d] = NULL\n", i);
 
-      if (inpars.girdatfile[i]!=NULL)
+      if (!charPtrIsNullOrEmpty(inpars.girdatfile[i]))
         printf("        girdatfile[%d] = %s\n", i, inpars.girdatfile[i]);
-      else
-        printf("        girdatfile[%d] = NULL\n", i);
     }
   }else{
     if(inpars.moldatfile==NULL) printf("            moldatfile = NULL\n");
@@ -114,10 +119,8 @@ This is intended purely as a diagnostic program to compare the parameter values 
 
   if(inpars.collPartNames!=NULL){
     for(i=0;i<MAX_N_COLL_PART;i++){
-      if (inpars.collPartNames[i]!=NULL)
+      if (!charPtrIsNullOrEmpty(inpars.collPartNames[i]))
         printf("     collPartNames[%d] = %s\n", i, inpars.collPartNames[i]);
-      else
-        printf("     collPartNames[%d] = NULL\n", i);
     }
   }else
     printf("         collPartNames = NULL\n");
@@ -313,11 +316,13 @@ The parameters visible to the user have now been strictly confined to members of
   int i,j,id,status=0,numGirDatFiles,numFuncDensities;
   FILE *fp;
   char message[STR_LEN_0];
-  _Bool doThetaPhi;
+  _Bool doThetaPhi,foundGoodValue;
   double cos_pa,sin_pa,cosPhi,sinPhi,cos_incl,sin_incl,cosTheta,sinTheta,cos_az,sin_az;
-  double tempRotMat[3][3],auxRotMat[3][3],r[3];
+  double tempRotMat[3][3],auxRotMat[3][3],r[3],tempPointDensity;
   int row,col;
   char *pch_sep = " ,:_", *pch, *pch_end, *units_str;
+  const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
+  gsl_rng *randGen;
 
   /* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 Copy over user-set parameters to the configInfo versions. (This seems like duplicated effort but it is a good principle to separate the two structs, for several reasons, as follows. (i) We will usually want more config parameters than user-settable ones. The separation leaves it clearer which things the user needs to (or can) set. (ii) The separation allows checking and screening out of impossible combinations of parameters. (iii) We can adopt new names (for clarity) for config parameters without bothering the user with a changed interface.)
@@ -364,11 +369,11 @@ Copy over user-set parameters to the configInfo versions. (This seems like dupli
     /* If the user has provided a list of moldatfile names, the corresponding elements of par->moldatfile will be non-NULL. Thus we can deduce the number of files (species) from the number of non-NULL elements.
     */
     par->nSpecies=0;
-    while(par->nSpecies<MAX_NSPECIES && inpars.moldatfile[par->nSpecies]!=NULL && strlen(inpars.moldatfile[par->nSpecies])>0)
+    while(par->nSpecies<MAX_NSPECIES && !charPtrIsNullOrEmpty(inpars.moldatfile[par->nSpecies]))
     par->nSpecies++;
 
     numGirDatFiles=0;
-    while(numGirDatFiles<MAX_NSPECIES && inpars.girdatfile[numGirDatFiles]!=NULL && strlen(inpars.girdatfile[numGirDatFiles])>0)
+    while(numGirDatFiles<MAX_NSPECIES && !charPtrIsNullOrEmpty(inpars.girdatfile[numGirDatFiles]))
       numGirDatFiles++;
 
     if(numGirDatFiles<=0)
@@ -508,32 +513,69 @@ exit(1);
 exit(1);
       }
 
-      /* See if we can deduce a global maximum for the grid point number density function. Set the starting value from the unnormalized number density at the origin of coordinates:
+      /* See if we can deduce a global maximum for the grid point number density function. Set the starting value of par->gridDensGlobalMax from any values the user has supplied; to unity otherwise. We need some sort of >0 value for par->gridDensGlobalMax before we call the default gridDensity().
       */
-      par->gridDensGlobalMax = 1.0;
-      for(i=0;i<DIM;i++) r[i] = 0.0;
-      par->gridDensGlobalMax = gridDensity(par, r);
-
-      if(isinf(par->gridDensGlobalMax) || isnan(par->gridDensGlobalMax)){
-        if(!silent) warning("There is a singularity at the origin of the gridDensity() function.");
-      }else if(par->gridDensGlobalMax<=0.0){
-        if(!silent) warning("The gridDensity() function returns zero at the origin.");
-      }
-
-      if(isinf(par->gridDensGlobalMax) || isnan(par->gridDensGlobalMax) || par->gridDensGlobalMax<=0.0){
+      if(par->numGridDensMaxima>0){
+        /* Test any maxima the user has provided:
+        */
+        par->gridDensGlobalMax = par->gridDensMaxValues[0];
+        for(i=1;i<par->numGridDensMaxima;i++)
+          if(par->gridDensMaxValues[i]>par->gridDensGlobalMax) par->gridDensGlobalMax = par->gridDensMaxValues[i];
+      }else
         par->gridDensGlobalMax = 1.0;
-        for(i=0;i<DIM;i++) r[i] = par->minScale;
-        par->gridDensGlobalMax = gridDensity(par, r);
-        if(isinf(par->gridDensGlobalMax) || isnan(par->gridDensGlobalMax) || par->gridDensGlobalMax<=0.0){
-          if(!silent) bail_out("Can't find non-pathological values of the gridDensity() function.");
-exit(1);
-        }
-      }
 
-      /* Test now any maxima the user has provided:
+      /* Now try gridDensity() at the origin of coordinates, where the density is often highest:
       */
-      for(i=0;i<par->numGridDensMaxima;i++)
-        if(par->gridDensMaxValues[i]>par->gridDensGlobalMax) par->gridDensGlobalMax = par->gridDensMaxValues[i];
+      for(i=0;i<DIM;i++) r[i] = 0.0;
+      tempPointDensity = gridDensity(par, r);
+
+      if(isinf(tempPointDensity) || isnan(tempPointDensity)){
+        if(!silent) warning("There is a singularity at the origin of the gridDensity() function.");
+      }else if(tempPointDensity<=0.0){
+        if(!silent) warning("The gridDensity() function returns zero at the origin.");
+      }else if (tempPointDensity>par->gridDensGlobalMax)
+        par->gridDensGlobalMax = tempPointDensity;
+
+      if(isinf(tempPointDensity) || isnan(tempPointDensity) || tempPointDensity<=0.0){
+        /* Try gridDensity() a little offset from the origin.
+        */
+        for(i=0;i<DIM;i++) r[i] = par->minScale;
+        tempPointDensity = gridDensity(par, r);
+        if(isinf(tempPointDensity) || isnan(tempPointDensity) || tempPointDensity<=0.0){
+          /* Hmm ok, let's try a spread of random locations!
+          */
+          randGen = gsl_rng_alloc(ranNumGenType);	/* Random number generator */
+          if(fixRandomSeeds)
+            gsl_rng_set(randGen,140978);
+          else
+            gsl_rng_set(randGen,time(0));
+
+          foundGoodValue = FALSE; /* the default. */
+          for(j=0;j<NUM_RAN_DENS;j++){
+            for(i=0;i<DIM;i++) r[i] = par->radius*(2.0*gsl_rng_uniform(randGen) - 1.0);
+            tempPointDensity = gridDensity(par, r);
+            if(!isinf(tempPointDensity) && !isnan(tempPointDensity) && tempPointDensity>0.0){
+              foundGoodValue = TRUE;
+          break;
+            }
+          }
+
+          if(foundGoodValue){
+            if (tempPointDensity>par->gridDensGlobalMax)
+              par->gridDensGlobalMax = tempPointDensity;
+          }else{
+#ifdef KLUDGE_FOR_BAD_DENS
+            /* This has been added under protest to cope with modellib's crappy density functions. */
+            defaultDensyPower = 1.0;
+            par->gridDensGlobalMax = 1.0;
+#else
+            if(!silent) bail_out("Can't find non-pathological values of the gridDensity() function.");
+exit(1);
+#endif
+          }
+        }else if (tempPointDensity>par->gridDensGlobalMax)
+          par->gridDensGlobalMax = tempPointDensity;
+      }
     }
   }
 
@@ -1067,14 +1109,14 @@ exit(1);
 
   if(par.doPregrid){
     mallocAndSetDefaultGrid(&gp, (size_t)par.ncell, (size_t)par.nSpecies);
-    predefinedGrid(&par,gp); /* Sets par.numDensities */
-    checkUserDensWeights(&par); /* Needs par.numDensities */
+    predefinedGrid(&par,gp); /* Sets par.numDensities. */
+    checkUserDensWeights(&par); /* In collparts.c. Needs par.numDensities. */
 
   }else if(par.restart){
     popsin(&par,&gp,&md,&popsdone);
 
   }else{
-    checkUserDensWeights(&par); /* Needs par.numDensities */
+    checkUserDensWeights(&par); /* In collparts.c. Needs par.numDensities. */
     readOrBuildGrid(&par,&gp);
   }
 

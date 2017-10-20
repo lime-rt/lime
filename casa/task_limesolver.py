@@ -182,7 +182,7 @@ def limesolver(radius,minScale,tcmb,sinkPoints,pIntensity,samplingAlgorithm,samp
       return
 
     if ml.isCurrentResultModel(resultID):
-      errStr = "Result %s is provided by the current model. Choosing a function for this result will overwrite the model value." #******** Will it? Should be tested.
+      errStr = "Result %s is provided by the current model. Choosing a function for this result will overwrite the model value." % (resultID)
       casalog.post(errStr, priority='Warning')
 
     argsRequired = ml.getFunctionParamIDs(functionID)
@@ -241,10 +241,10 @@ def limesolver(radius,minScale,tcmb,sinkPoints,pIntensity,samplingAlgorithm,samp
 #  limepars.pregrid           = "pregrid.asc"
 #  limepars.restart           = "restart.pop"
   limepars.gridInFile        = gridInFile
-  limepars.collPartIds        = [1]#[macros["CP_H2"]] # must be a list, even when there is only 1 item.
-  limepars.nMolWeights        = [1.0] # must be a list, even when there is only 1 item.
-  limepars.collPartNames      = ["H2"] # must be a list, even when there is only 1 item.
-  limepars.collPartMolWeights = [2.0159] # must be a list, even when there is only 1 item.
+#  limepars.collPartIds        = [1]#[macros["CP_H2"]] # must be a list, even when there is only 1 item.
+#  limepars.nMolWeights        = [1.0] # must be a list, even when there is only 1 item.
+#  limepars.collPartNames      = ["H2"] # must be a list, even when there is only 1 item.
+#  limepars.collPartMolWeights = [2.0159] # must be a list, even when there is only 1 item.
 #  limepars.gridDensMaxValues = [1.0] # must be a list, even when there is only 1 item.
 #  limepars.gridDensMaxLoc    = [[0.0,0.0,0.0]] # must be a list, each element of which is also a list with 3 entries (1 for each spatial coordinate).
   limepars.gridOutFiles      = ['','','','',gridOutFile]
@@ -253,6 +253,16 @@ def limesolver(radius,minScale,tcmb,sinkPoints,pIntensity,samplingAlgorithm,samp
     limepars.doSolveRTE = False
   else:
     limepars.doSolveRTE = True
+
+  if modelID=='Mamon88':
+    # Get the density at a point just outside rin and set gridDensMaxValues to that.
+    AU = 1.495978707e11
+    x = rin*AU
+    y = 0.01*x
+    z = 0.01*x
+    dens = ml.density(x,y,z)
+    limepars.gridDensMaxValues = [dens]
+    limepars.gridDensMaxLoc    = [[x,y,z]]
 
   # Define an empty set of images:
   images = []

@@ -60,7 +60,7 @@ void calcGridContDustOpacity(configInfo *par, const double freq\
 
   for(id=0;id<par->ncell;id++){
     gasIIdust(gp[id].x[0],gp[id].x[1],gp[id].x[2],&gtd);
-    calcDustData(par, gp[id].dens, freqs, gtd, kappatab, 1, gp[id].t, knus, dusts);
+    calcDustData(par, gp[id].dens, freqs, gtd, kappatab, 1, gp[id].t, knus, dusts); /* in aux.c. */
     gp[id].cont.knu = knus[0];
     gp[id].cont.dust = dusts[0];
   }
