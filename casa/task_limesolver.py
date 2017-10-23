@@ -212,6 +212,9 @@ def limesolver(radius,minScale,tcmb,sinkPoints,pIntensity,samplingAlgorithm,samp
 
   if not ml.isConfigurationComplete():
     casalog.post("Not all results have been linked to models or functions.", priority='ERROR')
+    for resultID in ml.getResultIDs():
+      if not (ml.isCurrentResultModel(resultID) or ml.isCurrentResultFunction(resultID)):
+        casalog.post("Result %s is provided neither by the model nor any function." % resultID, priority='ERROR')
     return
 
   # Done:
