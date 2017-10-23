@@ -9,12 +9,14 @@ import task_raytrace as lray
 AU = 1.49598e11    # AU to m
 PC = 3.08568025e16 # PC to m
 
-doSolve=True
-doRay=True
+doSolve = True
+#doSolve = False
+doRay   = True
+#doRay   = False
 
 radius                  = 800 * AU
 minScale                = 1. * AU
-tcmb                    = 2.7
+tcmb                    = 2.728
 sinkPoints              = 1000
 pIntensity              = 1000
 samplingAlgorithm       = 0
@@ -26,7 +28,7 @@ nSolveIters             = 12
 moldatfile              = ['hco+@xpol.dat'] # must be a list, even when there is only 1 item.
 dust                    = 'jena_thin_e6.tab'
 gridInFile              = ''
-gridOutFiles            = ['','','','','grid_5.ds']
+gridOutFile             = 'grid_5_CG97.ds'
 resetRNG                = False
 
 modelID			= 'CG97'
@@ -56,18 +58,36 @@ Tcloud			= None
 age			= None
 Rn			= None
 
+userModelPath = '' # Not yet used.
+
+abundance          = 'scalarConst'
+abundance_args     = [1.0e-9]
+bmag               = 'vectorConstR'
+bmag_args          = [0.0]
+density            = ''
+density_args       = []
+doppler            = 'scalarConst'
+doppler_args       = [100.0]
+tdust              = ''
+tdust_args         = []
+temperature        = ''
+temperature_args   = []
+velocity           = ''
+velocity_args      = []
 
 if doSolve:
   lsol.limesolver(radius,minScale,tcmb,sinkPoints,pIntensity,samplingAlgorithm,sampling
-    ,lte_only,init_lte,nThreads,nSolveIters,moldatfile,dust,gridInFile,gridOutFiles,resetRNG
+    ,lte_only,init_lte,nThreads,nSolveIters,moldatfile,dust,gridInFile,gridOutFile,resetRNG
     ,modelID,T,rhoc,Mstar,Rstar,Tstar,bgdens,hph,plsig1,rin,rout,sig0,mdisk,cs,h0,ab0,mdot
-    ,tin,ve,mdota,mu,nu,rc,Tcloud,age,Rn)
+    ,tin,ve,mdota,mu,nu,rc,Tcloud,age,Rn,userModelPath,abundance,abundance_args
+    ,bmag,bmag_args,density,density_args,doppler,doppler_args,tdust,tdust_args
+    ,temperature,temperature_args,velocity,velocity_args)
 
-gridInFile              = 'grid_5.ds'
+gridInFile              = 'grid_5_CG97.ds'
 moldatfile              = ['hco+@xpol.dat'] # must be a list, even when there is only 1 item.
 dust                    = 'jena_thin_e6.tab'
 
-filename                = 'image0_casa.fits'
+filename                = 'image0_CG97.fits'
 imgres                  = 0.02
 pxls                    = 101
 unit                    = 0
