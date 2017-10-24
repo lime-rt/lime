@@ -37,7 +37,7 @@ The functionality is currently distributed between 2 packages, LIME and ARTIST, 
 How to install, configure and run the code.
 ===========================================
 
-The CASA interface to LIME is contained in the Artist package, which should be available as a tarball. In the description below I'll assume the user has unpacked this tarball into a directory ARTISTROOT/.
+The CASA interface to LIME is contained in the ARTIST package, which should be available as a tarball. In the description below I'll assume the user has unpacked this tarball into a directory ARTISTROOT/.
 
 ARTIST:
 -------
@@ -79,4 +79,77 @@ or
   https://readthedocs.org/projects/lime/
 
 but it is also expected to be available in HTML form under ARTISTROOT/packages/lime/lime/doc/_html/. The advantage of the latter is that it refers to the version of LIME which comes bundled with ARTIST, whereas the former describes the latest version of LIME, which may be in advance of the ARTIST one.
+
+
+A quick cookbook to get started:
+================================
+# This is meant to be a quick cookbook on setting up, installing and running the CASA interface to ARTIST/LIME. In the following I have designated <artist root> as the directory ARTIST unpacks into and <artist install dir> as the one it installs into. (Note that the default setting is that these directories are the same.)
+#
+# All commands assume a user shell of tcsh. I've included bash variants in brackets where appropriate.
+
+  cd <artist root>
+
+  cd install
+
+# Copy the correct Makefile.defs_<OS> to Makefile.defs.
+
+  cd ../
+
+  make
+
+  make install
+
+  source ./artistrc.csh
+  (. ./artistrc.sh)
+
+# For testing:
+
+  cd test
+
+  python testModels.py
+
+# You'll see quite a few warnings. These are nearly all due to unrealistic expectations in some of the model recipes. They are not things you need to do anything about. LIME works around the problems, and in future we will clean up the models so these warnings no longer occur.
+#
+# Preparing the CASA interface: copy the XML files and the task_*.py wrapper scripts to a directory of your choice - let's call it <wrapper dir>:
+
+  cd <wrapper dir>
+  cp <artist root>/packages/lime/lime/casa/task_*.py ./
+  cp <artist root>/packages/lime/lime/casa/*.xml ./
+
+# then compile these via
+
+  <casa root>/bin/buildmytasks
+
+# For CASA runs: note firstly that you will need to do the following before starting:
+
+  source <artist root>/artistrc.csh
+  (. <artist root>/artistrc.sh)
+
+# You might find it convenient to put the command in your ~/.cshrc (~/.bashrc).
+#
+# Now cd to where you want to run CASA, and run it:
+
+  <casa root>/bin/casa
+
+# You will need to tell CASA where you compiled the wrapper scripts. Do this via the CASA command
+
+  execfile('<wrapper dir>/mytasks.py')
+
+# (You might find it more convenient to put this command in your ~/.casa/init.py.) After you have done this, the CASA task 'tasklist' should then list the two tasks 'limesolver' and 'raytrace'.
+#
+# A good elementary test to do now on the CASA command line is
+
+  import modellib
+  import lime
+
+# If both of them import ok then you are unlikely to have further problems. You can go on to do
+
+  inp limesolver
+
+# set the parameters you need, then type
+
+  go
+
+# Then when that has finished, do the same with raytrace.
+
 
