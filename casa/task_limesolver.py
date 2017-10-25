@@ -63,7 +63,7 @@ def limesolver(radius,minScale,tcmb,sinkPoints,pIntensity,samplingAlgorithm,samp
   raysDoneMessageIsPrinted = False
   nItersCounted = 0
 
-  fnDict = {'dust':dust,'gridInFile':gridInFile}
+  fnDict = {'dust':dust,'gridInFile':gridInFile,'moldatfile':moldatfile}
   for variableName in fnDict.keys():
     fileName = fnDict[variableName]
     if not fileName is None and fileName!='':
@@ -71,15 +71,7 @@ def limesolver(radius,minScale,tcmb,sinkPoints,pIntensity,samplingAlgorithm,samp
         casalog.post("Cannot find %s file %s" % (variableName, fileName), priority='ERROR')
         return
 
-  if not isinstance(moldatfile, list):
-    moldatfile = [moldatfile]
-
-  for i in range(len(moldatfile)):
-    fileName = moldatfile[i]
-    if not fileName is None and fileName!='':
-      if not os.path.exists(fileName):
-        casalog.post("Cannot find moldatfile[%d] file %s" % (i, fileName), priority='ERROR')
-        return
+  moldatfile = [moldatfile]
 
   if (not userModelPath is None) and userModelPath!='':
     casalog.post("Supply of a user model is not yet supported.", priority='Warning')
@@ -189,7 +181,13 @@ def limesolver(radius,minScale,tcmb,sinkPoints,pIntensity,samplingAlgorithm,samp
     numArgsRequired = len(argsRequired)
     reqArgsStr = '[%s]' % ','.join(argsRequired)
 
-    numArgsSupplied = len(funcDict[resultID]['args'])
+    try:
+      numArgsSupplied = len(funcDict[resultID]['args'])
+    except TypeError: # presumably because user has supplied a scalar for this value rather than a list.
+      if not(functionID=='scalarConst' or functionID=='vectorConstR'):
+        raise # we need a list.
+      funcDict[resultID]['args'] = [funcDict[resultID]['args']]
+      numArgsSupplied = len(funcDict[resultID]['args'])
 
     if numArgsSupplied!=numArgsRequired:
       errStr = 'Function %s requires %d arguments but you have supplied %d.' % (functionID, numArgsRequired, numArgsSupplied)

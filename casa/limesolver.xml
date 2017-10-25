@@ -73,11 +73,9 @@ file:///opt/casa/code/xmlcasa/xml/casa.xsd">
       <value>17</value>
       <allowed kind="range"><value range="min">0</value></allowed>
     </param>
-    <param type="stringArray" name="moldatfile">
-      <description>Input files with transition rates for radiating molecules</description>
-      <value type="vector">
-        <value></value>
-      </value>
+    <param type="string" name="moldatfile">
+      <description>Input file with transition rates for the radiating molecule</description>
+      <value></value>
     </param>
     <param type="string" name="dust">
       <description>Input file with dust opacity data</description>

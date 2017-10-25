@@ -10,14 +10,14 @@
 #include "lime.h"
 
 void
-writeWCS(fitsfile *fptr, const int i, int axesOrder[4], double cdelt[4], double crpix[4], double crval[4], char ctype[4][9], char cunit[4][9]){
+writeWCS(fitsfile *fptr, const int i, int axesOrder[4], float cdelt[4], double crpix[4], double crval[4], char ctype[4][9], char cunit[4][9]){
   char myStr[9];
   int status = 0;
 
   sprintf(myStr, "CTYPE%d  ", i+1);
   fits_write_key(fptr, TSTRING, myStr, &ctype[axesOrder[i]], "", &status);
   sprintf(myStr, "CDELT%d  ", i+1);
-  fits_write_key(fptr, TDOUBLE, myStr, &cdelt[axesOrder[i]], "", &status);
+  fits_write_key(fptr, TFLOAT, myStr, &cdelt[axesOrder[i]], "", &status);
   sprintf(myStr, "CRPIX%d  ", i+1);
   fits_write_key(fptr, TDOUBLE, myStr, &crpix[axesOrder[i]], "", &status);
   sprintf(myStr, "CRVAL%d  ", i+1);
@@ -35,7 +35,8 @@ Users have complained that downstream packages (produced by lazy coders >:8) wil
   double bscale,bzero,epoch,lonpole,equinox,restfreq;
   int axesOrder[] = {0,1,2,3};
   char ctype[numAxes][9],cunit[numAxes][9];
-  double cdelt[numAxes],crpix[numAxes],crval[numAxes];
+  double crpix[numAxes],crval[numAxes];
+  float cdelt[numAxes];
   double ru3,scale=1.0;
   int velref,unitI,i;
   float *row;
@@ -82,20 +83,20 @@ Users have complained that downstream packages (produced by lazy coders >:8) wil
   velref  =257;
 
   sprintf(ctype[axesOrder[0]], "RA---SIN");
-  cdelt[axesOrder[0]] = -1.8e2*img[im].imgres/M_PI;
+  cdelt[axesOrder[0]] = -1.8e2*(float)(img[im].imgres/M_PI);
   crpix[axesOrder[0]] = ((double)img[im].pxls)/2.0 + 0.5;
   crval[axesOrder[0]] = 0.0e0;
   sprintf(cunit[axesOrder[0]], "DEG    ");
 
   sprintf(ctype[axesOrder[1]], "DEC--SIN");
-  cdelt[axesOrder[1]] = 1.8e2*img[im].imgres/M_PI;
+  cdelt[axesOrder[1]] = 1.8e2*(float)(img[im].imgres/M_PI);
   crpix[axesOrder[1]] = ((double)img[im].pxls)/2.0 + 0.5;
   crval[axesOrder[1]] = 0.0e0;
   sprintf(cunit[axesOrder[1]], "DEG    ");
 
   sprintf(ctype[axesOrder[2]], "VELO-LSR");
   if(img[im].doline)
-    cdelt[axesOrder[2]] = img[im].velres;
+    cdelt[axesOrder[2]] = (float)img[im].velres;
   else
     cdelt[axesOrder[2]] = 1.0;
   crpix[axesOrder[2]] = (double) (naxes[axesOrder[2]]-1)/2.+1;
@@ -105,7 +106,7 @@ Users have complained that downstream packages (produced by lazy coders >:8) wil
   sprintf(ctype[axesOrder[3]], "STOKES  ");
   cdelt[axesOrder[3]] = 1.0;
   crpix[axesOrder[3]] = (double) (naxes[axesOrder[3]]-1)/2.+1;
-  crval[axesOrder[3]] = 0.0e0;
+  crval[axesOrder[3]] = 1.0e0;
   sprintf(cunit[axesOrder[3]], "       ");
 
   bscale  =1.0e0;
