@@ -17,11 +17,9 @@ file:///opt/casa/code/xmlcasa/xml/casa.xsd">
       <description>Input FITS file</description>
       <value></value>
     </param>
-    <param type="stringArray" name="moldatfile">
-      <description>Input files with transition rates for radiating molecules</description>
-      <value type="vector">
-        <value></value>
-      </value>
+    <param type="string" name="moldatfile">
+      <description>Input file with transition rates for the radiating molecule</description>
+      <value></value>
     </param>
     <param type="string" name="dust">
       <description>Input file containing paired wavelength/opacity values.</description>

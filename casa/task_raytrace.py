@@ -62,7 +62,7 @@ def raytrace(gridInFile,moldatfile,dust,filename,imgres,pxls,unit,freq,rotationS
   raysDoneMessageIsPrinted = False
   nItersCounted = 0
 
-  fnDict = {'dust':dust,'gridInFile':gridInFile}
+  fnDict = {'dust':dust,'gridInFile':gridInFile,'moldatfile':moldatfile}
   for variableName in fnDict.keys():
     fileName = fnDict[variableName]
     if not fileName is None and fileName!='':
@@ -70,15 +70,7 @@ def raytrace(gridInFile,moldatfile,dust,filename,imgres,pxls,unit,freq,rotationS
         casalog.post("Cannot find %s file %s" % (variableName, fileName), priority='ERROR')
         return
 
-  if not isinstance(moldatfile, list):
-    moldatfile = [moldatfile]
-
-  for i in range(len(moldatfile)):
-    fileName = moldatfile[i]
-    if not fileName is None and fileName!='':
-      if not os.path.exists(fileName):
-        casalog.post("Cannot find moldatfile[%d] file %s" % (i, fileName), priority='ERROR')
-        return
+  moldatfile = [moldatfile]
 
   #vvvvvvvvvvvvvvvvvvvv
   # Bodging up a dummy modellib setting, since Lime won't run without it.
