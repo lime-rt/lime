@@ -52,13 +52,12 @@ include Makefile.srcs
 ##
 
 TARGET  = lime.x # Overwritten in usual practice by the value passed in by the 'lime' script.
-PYTARGET = pylime
 CC	= gcc -fopenmp
 MODELS  = model.c # Overwritten in usual practice by the value passed in by the 'lime' script.
 MODELO 	= ${srcdir}/model.o
 
-CCFLAGS = -O3 -falign-loops=16 -fno-strict-aliasing
-LDFLAGS = -lgsl -lgslcblas -l${LIB_QHULL} -lcfitsio -lncurses -lm 
+CCFLAGS += -O3 -falign-loops=16 -fno-strict-aliasing
+LDFLAGS += -lgsl -lgslcblas -l${LIB_QHULL} -lcfitsio -lncurses -lm 
 
 ifeq (${DOTEST},yes)
   CCFLAGS += -DTEST
@@ -81,13 +80,15 @@ endif
 
 SRCS = ${CORESOURCES} ${STDSOURCES}
 INCS = ${COREINCLUDES}
+OBJS = $(SRCS:.c=.o)
+
 PYSRCS = ${CORESOURCES} ${PYSOURCES}
 PYINCS = ${COREINCLUDES} ${PYINCLUDES}
-OBJS = $(SRCS:.c=.o)
 PYOBJS = $(PYSRCS:.c=.o)
+
 CONV_OBJS = $(CONVSOURCES:.c=.o)
 
-.PHONY: all doc docclean objclean limeclean clean distclean pyclean python
+.PHONY: all doc docclean objclean limeclean clean distclean pyclean
 
 all:: ${TARGET} 
 
@@ -99,18 +100,17 @@ ${TARGET}: ${OBJS} ${MODELO}
 	${CC} -o $@ $^ ${LIBS} ${LDFLAGS}
 
 ${OBJS} : ${INCS}
-${CONV_OBJS} : ${CONVINCLUDES}
 ${PYOBJS} : ${PYINCS}
+${CONV_OBJS} : ${CONVINCLUDES}
 
 ${MODELO}: ${INCS}
 	${CC} ${CCFLAGS} ${CPPFLAGS} -o ${MODELO} -c ${MODELS}
 
-python: CCFLAGS += ${PYCCFLAGS}
-python: CPPFLAGS += -DNO_NCURSES -DIS_PYTHON
-python: LDFLAGS += ${PYLDFLAGS}
-python: ${PYTARGET}
+pylime: CCFLAGS += ${PYCCFLAGS}
+pylime: CPPFLAGS += -DNO_NCURSES -DIS_PYTHON
+pylime: LDFLAGS += ${PYLDFLAGS}
 
-${PYTARGET}: ${PYOBJS}
+pylime: ${PYOBJS}
 	${CC} -o $@ $^ ${LIBS} ${LDFLAGS}
 
 gridconvert : CPPFLAGS += -DNO_NCURSES
@@ -126,16 +126,17 @@ docclean::
 	rm -rf ${docdir}/_html
 
 objclean::
-	rm -f *~ ${srcdir}/*.o
+	rm -f ${srcdir}/*.o
 
 limeclean:: objclean
 	rm -f ${TARGET}
 
 pyclean:: objclean
-	rm -f ${pydir}/*.pyc ${PYTARGET}
+	rm -f ${pydir}/*.pyc pylime
 
 clean:: objclean pyclean
 	rm -f gridconvert
+	rm -f *~ ${srcdir}/*~
 
 distclean:: clean docclean limeclean
 	rm Makefile.defs

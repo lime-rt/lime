@@ -60,7 +60,7 @@ void calcGridContDustOpacity(configInfo *par, const double freq\
 
   for(id=0;id<par->ncell;id++){
     gasIIdust(gp[id].x[0],gp[id].x[1],gp[id].x[2],&gtd);
-    calcDustData(par, gp[id].dens, freqs, gtd, kappatab, 1, gp[id].t, knus, dusts);
+    calcDustData(par, gp[id].dens, freqs, gtd, kappatab, 1, gp[id].t, knus, dusts); /* in aux.c. */
     gp[id].cont.knu = knus[0];
     gp[id].cont.dust = dusts[0];
   }
@@ -191,6 +191,11 @@ For a given image pixel position, this function evaluates the intensity of the t
 Note that the algorithm employed here is similar to that employed in the function calculateJBar() which calculates the average radiant flux impinging on a grid cell: namely the notional photon is started at the side of the model near the observer and 'propagated' in the receding direction until it 'reaches' the far side. This is rather non-physical in conception but it makes the calculation easier.
 
 Note that this is called from within the multi-threaded block.
+
+Reads gp attributes x, dir, numNeigh, neigh, cont
+if(par->polarization): B
+if(img[im].doline): mol[molI].binv, mol[molI].specNumDens
+if(!if(par->useVelFuncInRaytrace)): vel
   */
   int ichan,stokesId,di,i,posn,nposn,molI,lineI;
   double xp,yp,zp,x[DIM],dx[DIM],dist2,ndist2,col,ds,snu_pol[3],dtau;
@@ -235,7 +240,7 @@ Note that this is called from within the multi-threaded block.
   do{
     ds=-2.*zp-col; /* This default value is chosen to be as large as possible given the spherical model boundary. */
     nposn=-1;
-    line_plane_intersect(gp,&ds,posn,&nposn,dx,x,cutoff); /* Returns a new ds equal to the distance to the next Voronoi face, and nposn, the ID of the grid cell that abuts that face. */
+    line_plane_intersect(gp,&ds,posn,&nposn,dx,x,cutoff); /* Reads gp attributes numNeigh, x, dir, neigh. Returns a new ds equal to the distance to the next Voronoi face, and nposn, the ID of the grid cell that abuts that face. */
 
     if(par->polarization){ /* Should also imply img[im].doline==0. */
       sourceFunc_pol(gp[posn].B, gp[posn].cont, img[im].rotMat, snu_pol, &alpha);
@@ -1217,7 +1222,7 @@ Note that the argument 'md', and the grid element '.mol', are only accessed for 
   struct cell *dc=NULL;
   struct simplex *cells=NULL;
   unsigned long numCells,dci,numPointsInAnnulus;
-  double local_cmb,cmbFreq,circleSpacing,scale,angle,rSqu;
+  double local_cmb,cmbFreq,circleSpacing,scale,angle,rSqu,progFraction;
   double *vertexCoords=NULL;
   gsl_error_handler_t *defaultErrorHandler=NULL;
   struct baryVelBuffType velBuff,*ptrToBuff=NULL;
@@ -1280,7 +1285,7 @@ At the present point in the code, for line images, instead of calculating the 'c
   }
 
   local_cmb = planckfunc(cmbFreq,LOCAL_CMB_TEMP);
-  calcGridContDustOpacity(par, cmbFreq, lamtab, kaptab, nEntries, gp);
+  calcGridContDustOpacity(par, cmbFreq, lamtab, kaptab, nEntries, gp); /* Reads gp attributes x, dens, and t and writes attributes cont.dust and cont.knu. */
 
   for(ppi=0;ppi<totalNumImagePixels;ppi++){
     for(ichan=0;ichan<img[im].nchan;ichan++){
@@ -1346,6 +1351,17 @@ How to calculate this distance? Well if we have N points randomly but evenly dis
 
   if(par->traceRayAlgorithm==1){
     delaunay(DIM, gp, (unsigned long)par->ncell, 1, 0, &dc, &numCells); /* mallocs dc if getCells==T */
+    /*
+Required elements of gp:
+		.id
+		.x
+
+Sets elements of gp:
+		.sink
+		.numNeigh
+		.neigh
+    */
+
 //**** Actually we can figure out the cell geometry from the grid neighbours.
 
     /* We need to process the list of cells a bit further - calculate their centres, and reset the id values to be the same as the index of the cell in the list. (This last because we are going to construct other lists to indicate which cells have been visited etc.)
@@ -1362,8 +1378,8 @@ How to calculate this distance? Well if we have N points randomly but evenly dis
       dc[dci].id = dci;
     }
 
-    vertexCoords = extractGridXs(DIM, (unsigned long)par->ncell, gp);
-    cells = convertCellType(DIM, numCells, dc, gp);
+    vertexCoords = extractGridXs(DIM, (unsigned long)par->ncell, gp); /* Reads gp[*].x */
+    cells = convertCellType(DIM, numCells, dc, gp); /* Reads gp[*].x */
     free(dc);
 
     if(img[im].doline && img[im].doInterpolateVels){
@@ -1455,7 +1471,8 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
           , numSegments, oneOnNumSegments);
 
       if (threadI == 0){ /* i.e., is master thread */
-        if(!silent) progressbar((double)(ri)*oneOnNumActiveRaysMinus1, 13);
+        progFraction = (double)(ri)*oneOnNumActiveRaysMinus1;
+        if(!silent) progressbar(progFraction, 13);
       }
     }
 

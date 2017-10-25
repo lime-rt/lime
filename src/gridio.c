@@ -128,7 +128,7 @@ See the comment at the beginning of the present module for a description of how 
   */
 
   const unsigned int totalNumGridPoints = gridInfo.nInternalPoints+gridInfo.nSinkPoints;
-  unsigned int li,ni,idA,idB,trialIdA,linkId,i_ui,gi0,gi1;
+  unsigned int li,ni,idA,idB,trialIdA,linkId=0,i_ui,gi0,gi1;
   unsigned short i_us,j_us;
   int jA,jB,k,nearI;
   _Bool *pointIsDone=NULL, linkNotFound;

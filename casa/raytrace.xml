@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" ?>
+<casaxml xmlns="http://casa.nrao.edu/schema/psetTypes.html"
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xsi:schemaLocation="http://casa.nrao.edu/schema/casa.xsd
+file:///opt/casa/code/xmlcasa/xml/casa.xsd">
+
+<task type="function" name="raytrace" category="editing">
+
+  <shortdescription>Makes FITS images/cubes from models created by LIME.</shortdescription>
+      
+  <description>The LIne Modelling Engine (LIME) outputs a set of spatial locations, being the vertices of a set of abutting tetrahedral cells, at which energy level populations, linewidths and bulk velocities are known. The present task solves the equations of radiative transfer for a grid of rays passing through this multi-cell model, to produce an image of the model, optionally at several frequencies. The image, which is stored in FITS format, is suitable as an input to an interferometry simulator.
+  </description>
+
+  <input>
+    <param type="string" name="gridInFile">
+      <description>Input FITS file</description>
+      <value></value>
+    </param>
+    <param type="stringArray" name="moldatfile">
+      <description>Input files with transition rates for radiating molecules</description>
+      <value type="vector">
+        <value></value>
+      </value>
+    </param>
+    <param type="string" name="dust">
+      <description>Input file containing paired wavelength/opacity values.</description>
+      <value></value>
+    </param>
+    <param type="string" name="filename">
+      <description>Output FITS file</description>
+      <value></value>
+    </param>
+    <param type="double" name="imgres">
+      <description>Image resolution in arc seconds (same for X and Y).</description>
+      <value>0.0</value>
+      <allowed kind="range"><value range="min">0.0</value></allowed>
+    </param>
+    <param type="int" name="pxls">
+      <description>Pixels per dimension (same for X and Y).</description>
+      <value>1</value>
+      <allowed kind="range"><value range="min">1</value></allowed>
+    </param>
+    <param type="int" name="unit">
+      <description>0:Kelvin 1:Jansky/pixel 2:SI 3:Lsun/pixel 4:tau</description>
+      <value>0</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+    <param type="int" name="rotationStyle">
+      <description>Style of input of model rotations.</description>
+      <value>0</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+    <param type="double" name="freq">
+      <description>Nominal image frequency in Hz.</description>
+      <value>0.0</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+    <param type="double" name="theta" subparam="true">
+      <description>Rotation angle (deg).</description>
+      <value>0.0</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+    <param type="double" name="phi" subparam="true">
+      <description>Rotation angle (deg).</description>
+      <value>0.0</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+    <param type="double" name="incl" subparam="true">
+      <description>Rotation angle (deg).</description>
+      <value>0.0</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+    <param type="double" name="posang" subparam="true">
+      <description>Rotation angle (deg).</description>
+      <value>0.0</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+    <param type="double" name="azimuth" subparam="true">
+      <description>Rotation angle (deg).</description>
+      <value>0.0</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+    <param type="double" name="distance">
+      <description>Distance of source in m.</description>
+      <value>0.0</value>
+      <allowed kind="range"><value range="min">0.0</value></allowed>
+    </param>
+    <param type="int" name="nThreads">
+      <description>Number of threads when running in parallel.</description>
+      <value>1</value>
+      <allowed kind="range"><value range="min">1</value></allowed>
+    </param>
+    <param type="int" name="traceRayAlgorithm">
+      <description>Choice of raytrace algorithm.</description>
+      <value>1</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+
+    <param type="bool" name="doLine">
+      <description>Whether to image line emission or not.</description>
+      <value>False</value>
+    </param>
+
+    <param type="int" name="nchan" subparam="true">
+      <description>Number of velocity channels in the output cube.</description>
+      <value>1</value>
+      <allowed kind="range"><value range="min">1</value></allowed>
+    </param>
+    <param type="double" name="velres" subparam="true">
+      <description>Channel resolution in m/s.</description>
+      <value>0.0</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+    <param type="int" name="trans" subparam="true">
+      <description>Zero-indexed J quantum number.</description>
+      <value>0</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+    <param type="int" name="molI" subparam="true">
+      <description>Index of the molecule to image (supposing more than 1 radiating molecule contributes in the model).</description>
+      <value>0</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+    <param type="double" name="bandwidth" subparam="true">
+      <description>Cube bandwidth in m/s.</description>
+      <value>0.0</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+    <param type="double" name="source_vel" subparam="true">
+      <description>Source velocity in m/s (receding +ve).</description>
+      <value>0.0</value>
+      <allowed kind="range"><value range="min">0</value></allowed>
+    </param>
+    <param type="bool" name="doInterpolateVels" subparam="true">
+      <description>Velocity function needed if not.</description>
+      <value>False</value>
+    </param>
+    <param type="bool" name="polarization" subparam="true">
+      <description>Whether to include continuum polarization</description>
+      <value>False</value>
+    </param>
+
+    <constraints>
+      <when param="doLine">
+        <equals type="bool" value="False">
+          <default param="polarization"><value type="bool">False</value></default>
+        </equals>
+        <equals type="bool" value="True">
+          <default param="nchan">            <value type="int">1</value></default>
+          <default param="velres">           <value type="double">0.0</value></default>
+          <default param="trans">            <value type="int">0</value></default>
+          <default param="molI">             <value type="int">0</value></default>
+          <default param="bandwidth">        <value type="double">0.0</value></default>
+          <default param="source_vel">       <value type="double">0.0</value></default>
+          <default param="doInterpolateVels"><value type="bool">True</value></default>
+        </equals>
+      </when>
+
+      <when param="rotationStyle">
+        <equals type="int" value="0">
+          <default param="theta">   <value type="double">0.0</value></default>
+          <default param="phi">     <value type="double">0.0</value></default>
+        </equals>
+        <equals type="int" value="1">
+          <default param="incl">    <value type="double">0.0</value></default>
+          <default param="posang">  <value type="double">0.0</value></default>
+          <default param="azimuth"> <value type="double">0.0</value></default>
+        </equals>
+      </when>
+    </constraints>
+
+  </input>
+
+  <returns type="void"/>
+
+</task>
+
+</casaxml>

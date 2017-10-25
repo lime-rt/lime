@@ -36,7 +36,7 @@ Users have complained that downstream packages (produced by lazy coders >:8) wil
   int axesOrder[] = {0,1,2,3};
   char ctype[numAxes][9],cunit[numAxes][9];
   double cdelt[numAxes],crpix[numAxes],crval[numAxes];
-  double ru3,scale;
+  double ru3,scale=1.0;
   int velref,unitI,i;
   float *row;
   int px,py,ichan;
@@ -203,7 +203,7 @@ Users have complained that downstream packages (produced by lazy coders >:8) wil
     }
 
     if(par->polarization){ /* ichan should have run from 0 to 2 in this case. Stokes I, Q and U but no V. Load zeros into the last pol channel: */
-      if(ichan<img[im].nchan!=3){
+      if(img[im].nchan!=3){
         if(!silent){
           sprintf(message, "%d pol channels found but %d expected.", img[im].nchan, 3);
           bail_out(message);

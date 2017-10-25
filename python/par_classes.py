@@ -40,8 +40,8 @@ This is to define the complete list of 'image' parameters which the user can set
   _listOfAttrs.append(('distance',         'float', False, True,  -1.0))
   _listOfAttrs.append(('doInterpolateVels','bool',  False, False, False))
 
-  _listOfAttrs.append(('filename',         'str',   False, True,  ''))
-  _listOfAttrs.append(('units',            'str',   False, False, ''))
+  _listOfAttrs.append(('filename',         'str',   False, True,  None))
+  _listOfAttrs.append(('units',            'str',   False, False, None))
 
 for attr in ImageParameters._listOfAttrs:
   ImageParameters.__dict__[attr[0]] = attr[4]
@@ -59,13 +59,13 @@ This is to define the complete list of 'ordinary' parameters which the user can 
   _listOfAttrs.append(('pIntensity',        'int',  False, True,  0))
   _listOfAttrs.append(('sinkPoints',        'int',  False, True,  0))
 
-  _listOfAttrs.append(('dust',              'str',  False, False, ''))
-  _listOfAttrs.append(('outputfile',        'str',  False, False, ''))
-  _listOfAttrs.append(('binoutputfile',     'str',  False, False, ''))
-  _listOfAttrs.append(('gridfile',          'str',  False, False, ''))
-  _listOfAttrs.append(('pregrid',           'str',  False, False, ''))
-  _listOfAttrs.append(('restart',           'str',  False, False, ''))
-  _listOfAttrs.append(('gridInFile',        'str',  False, False, ''))
+  _listOfAttrs.append(('dust',              'str',  False, False, None))
+  _listOfAttrs.append(('outputfile',        'str',  False, False, None))
+  _listOfAttrs.append(('binoutputfile',     'str',  False, False, None))
+  _listOfAttrs.append(('gridfile',          'str',  False, False, None))
+  _listOfAttrs.append(('pregrid',           'str',  False, False, None))
+  _listOfAttrs.append(('restart',           'str',  False, False, None))
+  _listOfAttrs.append(('gridInFile',        'str',  False, False, None))
 
   _listOfAttrs.append(('collPartIds',       'int',  True,  False, []))
   _listOfAttrs.append(('nMolWeights',       'float',True,  False, []))

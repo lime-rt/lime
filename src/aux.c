@@ -23,11 +23,12 @@ exit(1);
 
 /*....................................................................*/
 void checkFgets(char *fgetsResult, char *message){
-  char string[80];
+  const size_t buflen=80;
+  char string[buflen];
 
   if(fgetsResult==NULL){
     if(!silent){
-      sprintf(string, "fgets() failed to read %s", message);
+      snprintf(string, buflen, "fgets() failed to read %s", message);
       bail_out(string);
     }
 exit(1);
@@ -36,11 +37,12 @@ exit(1);
 
 /*....................................................................*/
 void checkFscanf(const int fscanfResult, const int expectedNum, char *message){
-  char string[80];
+  const size_t buflen=80;
+  char string[buflen];
 
   if(fscanfResult!=expectedNum){
     if(!silent){
-      sprintf(string, "fscanf() failed to read %s - read %d bytes when %d expected.", message, fscanfResult, expectedNum);
+      snprintf(string, buflen, "fscanf() failed to read %s - read %d bytes when %d expected.", message, fscanfResult, expectedNum);
       bail_out(string);
     }
 exit(1);
@@ -49,11 +51,26 @@ exit(1);
 
 /*....................................................................*/
 void checkFread(const size_t freadResult, const size_t expectedNum, char *message){
-  char string[80];
+  const size_t buflen=80;
+  char string[buflen];
 
   if(freadResult!=expectedNum){
     if(!silent){
-      sprintf(string, "fread() failed to read %s", message);
+      snprintf(string, buflen, "fread() failed to read %s. Expected %d got %d", message, (int)expectedNum, (int)freadResult);
+      bail_out(string);
+    }
+exit(1);
+  }
+}
+
+/*....................................................................*/
+void checkFwrite(const size_t fwriteResult, const size_t expectedNum, char *message){
+  const size_t buflen=80;
+  char string[buflen];
+
+  if(fwriteResult!=expectedNum){
+    if(!silent){
+      snprintf(string, buflen, "fwrite() failed to write %s. Expected %d got %d", message, (int)expectedNum, (int)fwriteResult);
       bail_out(string);
     }
 exit(1);
@@ -120,15 +137,15 @@ void calcSourceFn(double dTau, const configInfo *par, double *remnantSnu, double
 }
 
 /*....................................................................*/
-double planckfunc(const double freq, const double temp){
+double planckfunc(const double freq, const double tKelvin){
   double bb=10.,wn;
-  if(temp<EPS) bb = 0.0;
+  if(tKelvin<EPS) bb = 0.0;
   else {
     wn=freq/CLIGHT;
-    if (HPLANCK*freq>100.*KBOLTZ*temp) 
-      bb=2.*HPLANCK*wn*wn*freq*exp(-HPLANCK*freq/KBOLTZ/temp);
+    if (HPLANCK*freq>100.*KBOLTZ*tKelvin) 
+      bb=2.*HPLANCK*wn*wn*freq*exp(-HPLANCK*freq/KBOLTZ/tKelvin);
     else 
-      bb=2.*HPLANCK*wn*wn*freq/(exp(HPLANCK*freq/KBOLTZ/temp)-1);
+      bb=2.*HPLANCK*wn*wn*freq/(exp(HPLANCK*freq/KBOLTZ/tKelvin)-1);
   }
   return bb;
 }
@@ -160,6 +177,15 @@ copyInparStr(const char *inStr, char **outStr){
     *outStr = malloc(sizeof(**outStr)*(STR_LEN_0+1));
     strcpy(*outStr, inStr);
   }
+}
+
+/*....................................................................*/
+_Bool
+charPtrIsNullOrEmpty(const char *inStr){
+  if(inStr==NULL || strlen(inStr)<=0)
+    return TRUE;
+  else
+    return FALSE;
 }
 
 /*....................................................................*/
@@ -228,17 +254,17 @@ double interpolateKappa(const double freq, double *lamtab, double *kaptab\
 
 /*....................................................................*/
 void calcDustData(configInfo *par, double *dens, double *freqs\
-  , const double gtd, double *kappatab, const int numLines, const double ts[]\
+  , const double gtd, double *kappatab, const int numLines, const double tsKelvin[]\
   , double *knus, double *dusts){
 
-  double t,gasMassDensityAMUs,dustToGas;
+  double tKelvin,gasMassDensityAMUs,dustToGas;
   int di,iline;
 
   /* Check if input model supplies a dust temperature. Otherwise use the kinetic temperature. */
-  if(ts[1]<=0.0) { /* Flags that the user has not set it. */
-    t = ts[0];
+  if(tsKelvin[1]<=0.0) { /* Flags that the user has not set it. */
+    tKelvin = tsKelvin[0];
   } else {
-    t = ts[1];
+    tKelvin = tsKelvin[1];
   }
 
   if(par->collPartUserSetFlags==0){ /* this means the user did not set any of the collision-partner-related parameters. Use the old formula. */
@@ -253,7 +279,7 @@ void calcDustData(configInfo *par, double *dens, double *freqs\
 
   for(iline=0;iline<numLines;iline++){
     knus[iline] = kappatab[iline]*dustToGas;
-    dusts[iline] = planckfunc(freqs[iline],t);
+    dusts[iline] = planckfunc(freqs[iline],tKelvin);
   }
 }
 

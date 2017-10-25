@@ -25,18 +25,8 @@
 #include <gsl/gsl_spline.h>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_linalg.h>
-
-#ifdef FUNNY_QHULL
-#include <libqhull/qhull_a.h>
-#else
-#include <qhull/qhull_a.h>
-#endif
-
-#ifdef OLD_FITSIO
-#include <cfitsio/fitsio.h>
-#else
+#include <qhull_a.h>
 #include <fitsio.h>
-#endif
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -48,60 +38,38 @@
 
 #include "dims.h"
 
-#define VERSION "1.8"
+#define VERSION "1.9"
 #define DEFAULT_NTHREADS 1
 #ifndef NTHREADS /* Value passed from the LIME script */
 #define NTHREADS DEFAULT_NTHREADS
 #endif
 
-/* Physical constants */
-/* - NIST values as of 23 Sept 2015: */
-#define AMU             1.66053904e-27       /* atomic mass unit             [kg]	*/
-#define CLIGHT          2.99792458e8         /* speed of light in vacuum     [m / s]	*/
-#define HPLANCK         6.626070040e-34      /* Planck constant              [J * s]	*/
-#define KBOLTZ          1.38064852e-23       /* Boltzmann constant           [J / K]	*/
+#include "constants.h"
 
-/* From IAU 2009: */
-#define GRAV            6.67428e-11          /* gravitational constant       [m^3 / kg / s^2]	*/
-#define AU              1.495978707e11       /* astronomical unit            [m]               */
-
-#define LOCAL_CMB_TEMP  2.72548              /* local mean CMB temperature from Fixsen (2009) [K] */
-
-/* Derived: */
-#define PC              3.08567758e16        /* parsec (~3600*180*AU/PI)     [m]	*/
 #define HPIP            8.918502221e-27      /* HPLANCK*CLIGHT/4.0/PI/SPI	*/
 #define HCKB            1.43877735           /* 100.*HPLANCK*CLIGHT/KBOLTZ	*/
 
 /* Other constants */
-#define SQRT_PI                 (sqrt(M_PI))           /* sqrt(pi)	*/
-#define ARCSEC_TO_RAD           (M_PI/180.0/3600.0)
 #define NITERATIONS             16
 #define MAX_RAYS_PER_POINT      10000
 #define RAYS_PER_POINT          200
-#define EPS                     1.0e-30                /* general use small number */
 #define IMG_MIN_ALLOWED         1.0e-30
 #define TOL                     1e-6
 #define MAXITER                 50
 #define maxBlendDeltaV          1.e4                   /* m/s */
-#define MAX_NSPECIES            100
-#define MAX_NIMAGES             100
 #define N_RAN_PER_SEGMENT       3
 #define FAST_EXP_MAX_TAYLOR     3
 #define FAST_EXP_NUM_BITS       8
-#define NUM_GRID_STAGES         5
-#define MAX_N_COLL_PART         20
 #define N_SMOOTH_ITERS          5                      /* number of smoothing iterations if using  par->samplingAlgorithm=0 */
-#define TYPICAL_ISM_DENS        1000.0
-#define STR_LEN_0               80
-#define DENSITY_POWER           0.2
 #define TREE_POWER              2.0
-#define MAX_N_HIGH              10
 #define ERF_TABLE_LIMIT         6.0                    /* For x>6 erf(x)-1<double precision machine epsilon, so no need to store the values for larger x. */
 #define ERF_TABLE_SIZE          6145
 #define BIN_WIDTH               (ERF_TABLE_LIMIT/(ERF_TABLE_SIZE-1.))
 #define IBIN_WIDTH              (1./BIN_WIDTH)
 #define N_VEL_SEG_PER_HALF      1
 #define NUM_VEL_COEFFS          (1+2*N_VEL_SEG_PER_HALF) /* This is the number of velocity samples per edge (not including the grid vertices at each end of the edge). Currently this is elsewhere hard-wired at 3, the macro just being used in the file I/O modules. Note that we want an odd number of velocity samples per edge if we want to have the ability to do 2nd-order interpolation of velocity within Delaunay tetrahedra. */
+#define MAX_NEG_OPT_DEPTH	30.0			/* 30 was the original value in LIME. */
+#define NUM_RAN_DENS		100
 
 /* Bit locations for the grid data-stage mask, that records the information which is present in the grid struct: */
 #define DS_bit_x             0	/* id, x, sink */
@@ -134,41 +102,11 @@
 #define DS_mask_all          (DS_mask_populations | DS_mask_magfield)
 #define DS_mask_all_but_mag  DS_mask_all & ~(1<<DS_bit_magfield)
 
-#define FUNC_BIT_density       0
-#define FUNC_BIT_temperature   1
-#define FUNC_BIT_abundance     2
-#define FUNC_BIT_molNumDensity 3
-#define FUNC_BIT_doppler       4
-#define FUNC_BIT_velocity      5
-#define FUNC_BIT_magfield      6
-#define FUNC_BIT_gasIIdust     7
-#define FUNC_BIT_gridDensity   8
 
-#define TRUE                   1
-#define FALSE                  0
-
+#include "ufunc_types.h"
 #include "collparts.h"
 #include "inpars.h"
-
-typedef struct {
-  /* Elements also present in struct inpars: */
-  double radius,minScale,tcmb,*nMolWeights;
-  double (*gridDensMaxLoc)[DIM],*gridDensMaxValues,*collPartMolWeights;
-  int sinkPoints,pIntensity,blend,*collPartIds,traceRayAlgorithm,samplingAlgorithm;
-  int sampling,lte_only,init_lte,antialias,polarization,nThreads,nSolveIters;
-  int collPartUserSetFlags;
-  char **girdatfile,**moldatfile,**collPartNames;
-  char *outputfile,*binoutputfile,*gridfile,*pregrid,*restart,*dust;
-  char *gridInFile,**gridOutFiles;
-  _Bool resetRNG,doSolveRTE;
-
-  /* New elements: */
-  double radiusSqu,minScaleSqu,taylorCutoff,gridDensGlobalMax;
-  int ncell,nImages,nSpecies,numDensities,doPregrid,numGridDensMaxima,numDims;
-  int nLineImages,nContImages,dataFlags,nSolveItersDone;
-  _Bool doInterpolateVels,useAbun,doMolCalcs;
-  _Bool writeGridAtStage[NUM_GRID_STAGES],useVelFuncInRaytrace,edgeVelsAvailable;
-} configInfo;
+#include "defaults.h" /* includes lime_config.h */
 
 struct cpData {
   double *down,*temp;
@@ -262,20 +200,7 @@ struct cell {
 };
 
 /* Some global variables */
-extern int silent,defaultFuncFlags;
-extern double defaultDensyPower;
 extern _Bool fixRandomSeeds;
-
-/* User-specifiable functions */
-void	density(double,double,double,double *);
-void	temperature(double,double,double,double *);
-void	abundance(double,double,double,double *);
-void	molNumDensity(double,double,double,double *);
-void	doppler(double,double,double, double *);
-void	velocity(double,double,double,double *);
-void	magfield(double,double,double,double *);
-void	gasIIdust(double,double,double,double *);
-double	gridDensity(configInfo*, double*);
 
 /* More functions */
 int	run(inputPars, image*, const int);
@@ -292,10 +217,12 @@ void	calcGridMolDensities(configInfo*, struct grid**);
 void	calcGridMolDoppler(configInfo*, molData*, struct grid*);
 void	calcGridMolSpecNumDens(configInfo*, molData*, struct grid*);
 void	calcSourceFn(double, const configInfo*, double*, double*);
+_Bool	charPtrIsNullOrEmpty(const char *inStr);
 void	checkFirstLineMolDat(FILE *fp, char *moldatfile);
 void	checkFgets(char *fgetsResult, char *message);
 void	checkFscanf(const int fscanfResult, const int expectedNum, char *message);
 void	checkFread(const size_t freadResult, const size_t expectedNum, char *message);
+void	checkFwrite(const size_t fwriteResult, const size_t expectedNum, char *message);
 void	checkGridDensities(configInfo*, struct grid*);
 void	checkUserDensWeights(configInfo*);
 void	copyInparStr(const char*, char**);
@@ -303,10 +230,12 @@ void	delaunay(const int, struct grid*, const unsigned long, const _Bool, const _
 void	distCalc(configInfo*, struct grid*);
 double	dotProduct3D(const double*, const double*);
 double	FastExp(const float);
-void	fillErfTable();
+void	fillErfTable(void);
+void	freeArrayOfStrings(char **arrayOfStrings, const int numStrings);
 void	freeConfigInfo(configInfo*);
 void	freeGrid(const unsigned int, const unsigned short, struct grid*);
 void	freeImgInfo(const int, imageInfo*);
+void	freeInputPars(inputPars *par);
 void	freeMolData(const int, molData*);
 void	freePopulation(const unsigned short, struct populations*);
 void	freeSomeGridFields(const unsigned int, const unsigned short, struct grid*);

@@ -12,7 +12,141 @@ TODO:
 #include "lime.h"
 #include "tree_random.h"
 #include "gridio.h"
+#include "defaults.h"
 
+
+/*....................................................................*/
+void
+sanityCheckOfRead(const int status, configInfo *par, struct gridInfoType gridInfoRead){
+  char message[STR_LEN_0];
+
+  if(status){
+    if(!silent){
+      snprintf(message, STR_LEN_0, "Read of grid file failed with status return %d", status);
+      bail_out(message);
+    }
+exit(1);
+  }
+
+  /* Test that dataFlags obeys the rules. */
+  /* No other bit may be set if DS_bit_x is not: */
+  if(anyBitSet(par->dataFlags, (DS_mask_all & ~(1 << DS_bit_x))) && !bitIsSet(par->dataFlags, DS_bit_x)){
+    if(!silent) bail_out("You may not read a grid file without X, ID or IS_SINK data.");
+exit(1);
+  }
+
+  /* DS_bit_ACOEFF may not be set if either DS_bit_neighbours or DS_bit_velocity is not: */
+  if(bitIsSet(par->dataFlags, DS_bit_ACOEFF)\
+  && !(bitIsSet(par->dataFlags, DS_bit_neighbours) && bitIsSet(par->dataFlags, DS_bit_velocity))){
+    if(!silent) bail_out("You may not read a grid file with ACOEFF but no VEL or neighbour data.");
+exit(1);
+  }
+
+  /* DS_bit_populations may not be set unless all the others (except DS_bit_magfield) are set as well: */
+  if(bitIsSet(par->dataFlags, DS_bit_populations)\
+  && !allBitsSet(par->dataFlags & DS_mask_all_but_mag, DS_mask_populations)){
+    if(!silent) bail_out("You may not read a grid file with pop data unless all other data is present.");
+exit(1);
+  }
+
+  /* Test gridInfoRead values against par values and overwrite the latter, with a warning, if necessary.
+  */
+  if(gridInfoRead.nSinkPoints>0 && par->sinkPoints>0){
+    if((int)gridInfoRead.nSinkPoints!=par->sinkPoints){
+      if(!silent) warning("par->sinkPoints will be overwritten");
+    }
+    if((int)gridInfoRead.nInternalPoints!=par->pIntensity){
+      if(!silent) warning("par->pIntensity will be overwritten");
+    }
+  }
+  par->sinkPoints = (int)gridInfoRead.nSinkPoints;
+  par->pIntensity = (int)gridInfoRead.nInternalPoints;
+  par->ncell = par->sinkPoints + par->pIntensity;
+
+  if(gridInfoRead.nDims!=DIM){ /* At present this situation is already detected and handled inside readGridExtFromFits(), but it may not be in future. The test here has no present functionality but saves trouble later if we change grid.x from an array to a pointer. */
+    if(!silent){
+      snprintf(message, STR_LEN_0, "Grid file had %d dimensions but there should be %d.", (int)gridInfoRead.nDims, DIM);
+      bail_out(message);
+    }
+exit(1);
+  }
+  if(gridInfoRead.nSpecies > 0){
+    if((int)gridInfoRead.nSpecies!=par->nSpecies && par->doMolCalcs){
+      if(!silent){
+        snprintf(message, STR_LEN_0, "Grid file had %d species but you have provided moldata files for %d."\
+          , (int)gridInfoRead.nSpecies, par->nSpecies);
+        bail_out(message);
+      }
+exit(1);
+/**** should compare name to name - at some later time after we have read these from the moldata files? */
+    }
+  }
+  if(gridInfoRead.nDensities>0 && par->numDensities>0 && (int)gridInfoRead.nDensities!=par->numDensities){
+    if(!silent){
+      snprintf(message, STR_LEN_0, "Grid file had %d densities but you have provided %d."\
+        , (int)gridInfoRead.nDensities, par->numDensities);
+      bail_out(message);
+    }
+exit(1);
+  }
+
+  if(par->nSolveItersDone>0 && (par->init_lte || par->lte_only)){
+    if(!silent)
+      warning("Your choice of LTE calculation will erase the RTE solution you read from file.");
+  }
+
+  if(allBitsSet(par->dataFlags, DS_mask_populations) && par->nSolveItersDone<=0){
+    if(!silent)
+      bail_out("Populations were read but par->nSolveItersDone<=0.");
+exit(1);
+  }
+}
+
+/*....................................................................*/
+void
+readGridWrapper(configInfo *par, struct grid **gp, char ***collPartNames, int *numCollPartRead){
+
+  const int numDesiredKwds=3;
+  struct keywordType *desiredKwds=malloc(sizeof(struct keywordType)*numDesiredKwds);
+  int i,status=0;
+  struct gridInfoType gridInfoRead;
+
+  i = 0;
+  initializeKeyword(&desiredKwds[i]);
+  desiredKwds[i].datatype = lime_DOUBLE;
+  snprintf(desiredKwds[i].keyname, STRLEN_KNAME, "RADIUS  ");
+
+  i++;
+  initializeKeyword(&desiredKwds[i]);
+  desiredKwds[i].datatype = lime_DOUBLE;
+  snprintf(desiredKwds[i].keyname, STRLEN_KNAME, "MINSCALE");
+
+  i++;
+  initializeKeyword(&desiredKwds[i]);
+  desiredKwds[i].datatype = lime_INT;
+  snprintf(desiredKwds[i].keyname, STRLEN_KNAME, "NSOLITER");
+
+  status = readGrid(par->gridInFile, &gridInfoRead, desiredKwds\
+    , numDesiredKwds, gp, collPartNames, numCollPartRead, &(par->dataFlags));
+
+  par->radius          = desiredKwds[0].doubleValue;
+  par->minScale        = desiredKwds[1].doubleValue;
+  par->nSolveItersDone = desiredKwds[2].intValue;
+
+  par->radiusSqu   = par->radius*par->radius;
+  par->minScaleSqu = par->minScale*par->minScale;
+
+  sanityCheckOfRead(status, par, gridInfoRead);
+
+  freeKeywords(desiredKwds, numDesiredKwds);
+  freeGridInfo(&gridInfoRead);
+
+/*
+**** Ideally we should also have a test on nACoeffs.
+
+**** Ideally we should also have a test on the mols entries - at some later time after we have read the corresponding values from the moldata files?
+*/
+}
 
 /*....................................................................*/
 void
@@ -36,7 +170,7 @@ void randomsViaRejection(configInfo *par, const unsigned int desiredNumPoints, g
 
   double lograd; /* The logarithm of the model radius. */
   double logmin; /* Logarithm of par->minScale. */
-  double r,theta,phi,sinPhi,z,semiradius;
+  double r,theta,phi,sinPhi,z,semiradius,progFraction;
   double uniformRandom;
   int j,di;
   unsigned int i_u;
@@ -44,7 +178,7 @@ void randomsViaRejection(configInfo *par, const unsigned int desiredNumPoints, g
   double x[DIM];
   const int maxNumAttempts=1000;
   int numRandomsThisPoint,numSecondRandoms=0;
-  char errStr[80];
+  char errStr[STR_LEN_0];
 
   lograd=log10(par->radius);
   logmin=log10(par->minScale);
@@ -101,92 +235,14 @@ void randomsViaRejection(configInfo *par, const unsigned int desiredNumPoints, g
     for(di=0;di<DIM;di++)
       outRandLocations[i_u][di]=x[di];
 
-    if(!silent) progressbar((double)i_u/((double)desiredNumPoints-1), 4);
+    progFraction = (double)i_u/((double)desiredNumPoints-1);
+    if(!silent) progressbar(progFraction, 4);
   }
 
   if(!silent && numSecondRandoms>0){
-    sprintf(errStr, ">1 random point needed for %d grid points out of %u.", numSecondRandoms, desiredNumPoints);
+    snprintf(errStr, STR_LEN_0, ">1 random point needed for %d grid points out of %u.", numSecondRandoms, desiredNumPoints);
     warning(errStr);
   }
-}
-
-/*....................................................................*/
-void
-sanityCheckOfRead(const int status, configInfo *par, struct gridInfoType gridInfoRead){
-  char message[STR_LEN_0];
-
-  if(status){
-    if(!silent){
-      sprintf(message, "Read of grid file failed with status return %d", status);
-      bail_out(message);
-    }
-exit(1);
-  }
-
-  /* Test that dataFlags obeys the rules. */
-  /* No other bit may be set if DS_bit_x is not: */
-  if(anyBitSet(par->dataFlags, (DS_mask_all & ~(1 << DS_bit_x))) && !bitIsSet(par->dataFlags, DS_bit_x)){
-    if(!silent) bail_out("You may not read a grid file without X, ID or IS_SINK data.");
-exit(1);
-  }
-
-  /* DS_bit_ACOEFF may not be set if either DS_bit_neighbours or DS_bit_velocity is not: */
-  if(bitIsSet(par->dataFlags, DS_bit_ACOEFF)\
-  && !(bitIsSet(par->dataFlags, DS_bit_neighbours) && bitIsSet(par->dataFlags, DS_bit_velocity))){
-    if(!silent) bail_out("You may not read a grid file with ACOEFF but no VEL or neighbour data.");
-exit(1);
-  }
-
-  /* DS_bit_populations may not be set unless all the others (except DS_bit_magfield) are set as well: */
-  if(bitIsSet(par->dataFlags, DS_bit_populations)\
-  && !allBitsSet(par->dataFlags & DS_mask_all_but_mag, DS_mask_populations)){
-    if(!silent) bail_out("You may not read a grid file with pop data unless all other data is present.");
-exit(1);
-  }
-
-  /* Test gridInfoRead values against par values and overwrite the latter, with a warning, if necessary.
-  */
-  if(gridInfoRead.nSinkPoints>0 && par->sinkPoints>0){
-    if((int)gridInfoRead.nSinkPoints!=par->sinkPoints){
-      if(!silent) warning("par->sinkPoints will be overwritten");
-    }
-    if((int)gridInfoRead.nInternalPoints!=par->pIntensity){
-      if(!silent) warning("par->pIntensity will be overwritten");
-    }
-  }
-  par->sinkPoints = (int)gridInfoRead.nSinkPoints;
-  par->pIntensity = (int)gridInfoRead.nInternalPoints;
-  par->ncell = par->sinkPoints + par->pIntensity;
-
-  if(gridInfoRead.nDims!=DIM){ /* At present this situation is already detected and handled inside readGridExtFromFits(), but it may not be in future. The test here has no present functionality but saves trouble later if we change grid.x from an array to a pointer. */
-    if(!silent){
-      sprintf(message, "Grid file had %d dimensions but there should be %d.", (int)gridInfoRead.nDims, DIM);
-      bail_out(message);
-    }
-exit(1);
-  }
-  if(gridInfoRead.nSpecies > 0){
-    if((int)gridInfoRead.nSpecies!=par->nSpecies && par->doMolCalcs){
-      if(!silent){
-        sprintf(message, "Grid file had %d species but you have provided moldata files for %d."\
-          , (int)gridInfoRead.nSpecies, par->nSpecies);
-        bail_out(message);
-      }
-exit(1);
-/**** should compare name to name - at some later time after we have read these from the moldata files? */
-    }
-  }
-  if(gridInfoRead.nDensities>0 && par->numDensities>0 && (int)gridInfoRead.nDensities!=par->numDensities){
-    if(!silent){
-      sprintf(message, "Grid file had %d densities but you have provided %d."\
-        , (int)gridInfoRead.nDensities, par->numDensities);
-      bail_out(message);
-    }
-exit(1);
-  }
-
-  if(!silent && par->nSolveItersDone>0 && (par->init_lte || par->lte_only))
-    warning("Your choice of LTE calculation will erase the RTE solution you read from file.");
 }
 
 /*....................................................................*/
@@ -204,7 +260,7 @@ return;
   else if(status==TREE_MSG_ERROR)
     bail_out((char*)message);
   else{
-    sprintf(errStr, "Message status %d not understood.\n", status);
+    snprintf(errStr, STR_LEN_0, "Message status %d not understood.\n", status);
     bail_out(errStr);
 exit(1);
   }
@@ -214,73 +270,35 @@ exit(1);
 void
 readOrBuildGrid(configInfo *par, struct grid **gp){
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
-  int i,j,k,di,si,status=0,numCollPartRead=0;
-  double theta,semiradius,z;
+  int i,j,k,di,si,numCollPartRead=0;
+  double theta,semiradius,z,dummyT[2],dummyScalar;
   double *outRandDensities=NULL,*dummyPointer=NULL,x[DIM];
   double (*outRandLocations)[DIM]=NULL;
   treeRandConstType rinc;
   gsl_rng *randGen;
   struct cell *dc=NULL; /* Not used at present. */
   unsigned long numCells;
-  struct gridInfoType gridInfoRead;
   char **collPartNames=NULL,message[STR_LEN_0];
 
   par->dataFlags = 0;
   if(par->gridInFile!=NULL){
-    const int numDesiredKwds=3;
-    struct keywordType *desiredKwds=malloc(sizeof(struct keywordType)*numDesiredKwds);
-
-    i = 0;
-    initializeKeyword(&desiredKwds[i]);
-    desiredKwds[i].datatype = lime_DOUBLE;
-    sprintf(desiredKwds[i].keyname, "RADIUS  ");
-
-    i++;
-    initializeKeyword(&desiredKwds[i]);
-    desiredKwds[i].datatype = lime_DOUBLE;
-    sprintf(desiredKwds[i].keyname, "MINSCALE  ");
-
-    i++;
-    initializeKeyword(&desiredKwds[i]);
-    desiredKwds[i].datatype = lime_INT;
-    sprintf(desiredKwds[i].keyname, "NSOLITER");
-
-    status = readGrid(par->gridInFile, &gridInfoRead, desiredKwds\
-      , numDesiredKwds, gp, &collPartNames, &numCollPartRead, &(par->dataFlags));
-
-    par->radius          = desiredKwds[0].doubleValue;
-    par->minScale        = desiredKwds[1].doubleValue;
-    par->nSolveItersDone = desiredKwds[2].intValue;
-
-    par->radiusSqu   = par->radius*par->radius;
-    par->minScaleSqu = par->minScale*par->minScale;
-
-    sanityCheckOfRead(status, par, gridInfoRead);
-
-    freeKeywords(desiredKwds, numDesiredKwds);
-    freeGridInfo(&gridInfoRead);
-
-/*
-**** Ideally we should also have a test on nACoeffs.
-
-**** Ideally we should also have a test on the mols entries - at some later time after we have read the corresponding values from the moldata files?
-*/
+    readGridWrapper(par, gp, &collPartNames, &numCollPartRead);
   } /* End of read grid file. Whether and what we subsequently calculate will depend on the value of par->dataStageI returned. */
 
   /* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
-Check for the existence of any mandatory functions we have not supplied grid values for. (Test for singularities at the origin at the same time.)
+Check for the existence of any mandatory functions we have not supplied grid values for.
 
 Note that we need density and temperature values whether par->doMolCalcs or not.
   */
   if(!allBitsSet(par->dataFlags, DS_mask_density)){
-    if(bitIsSet(defaultFuncFlags, FUNC_BIT_density)){
+    if(bitIsSet(defaultFuncFlags, USERFUNC_density)){
       if(!silent) bail_out("You need to supply a density() function.");
 exit(1);
     }
   }
 
   if(!allBitsSet(par->dataFlags, DS_mask_temperatures)){
-    if(bitIsSet(defaultFuncFlags, FUNC_BIT_temperature)){
+    if(bitIsSet(defaultFuncFlags, USERFUNC_temperature)){
       if(!silent) bail_out("You need to supply a temperature() function.");
 exit(1);
     }
@@ -289,8 +307,8 @@ exit(1);
   par->useAbun = 1; /* This will remain so if the abun values have been read from file. */
   if(par->doMolCalcs){
     if(!allBitsSet(par->dataFlags, DS_mask_abundance)){
-      if(bitIsSet(defaultFuncFlags, FUNC_BIT_abundance)){
-        if(bitIsSet(defaultFuncFlags, FUNC_BIT_molNumDensity)){
+      if(bitIsSet(defaultFuncFlags, USERFUNC_abundance)){
+        if(bitIsSet(defaultFuncFlags, USERFUNC_molNumDensity)){
           if(!silent) bail_out("You must provide either an abundance() or a molNumDensity() function.");
 exit(1);
         }
@@ -298,7 +316,7 @@ exit(1);
         par->useAbun = 0;
 
       }else{
-        if(!bitIsSet(defaultFuncFlags, FUNC_BIT_molNumDensity)){
+        if(!bitIsSet(defaultFuncFlags, USERFUNC_molNumDensity)){
           if(!silent) warning("abundance() function takes precendence, molNumDensity() ignored.");
         }
 
@@ -307,30 +325,33 @@ exit(1);
     }
 
     if(!allBitsSet(par->dataFlags, DS_mask_turb_doppler)){
-      if(bitIsSet(defaultFuncFlags, FUNC_BIT_doppler)){
+      if(bitIsSet(defaultFuncFlags, USERFUNC_doppler)){
         if(!silent) bail_out("You need to supply a doppler() function.");
 exit(1);
       }
     }
 
     if(!allBitsSet(par->dataFlags, DS_mask_velocity)){
-      if(bitIsSet(defaultFuncFlags, FUNC_BIT_velocity)){
+      if(bitIsSet(defaultFuncFlags, USERFUNC_velocity)){
         if(!silent) bail_out("You need to supply a velocity() function.");
 exit(1);
       }
     }
 
     if(!allBitsSet(par->dataFlags, DS_mask_ACOEFF)){
-      if(bitIsSet(defaultFuncFlags, FUNC_BIT_velocity)){
+      if(bitIsSet(defaultFuncFlags, USERFUNC_velocity)){
         if(!silent) warning("There were no edge velocities in the file, and you haven't supplied a velocity() function.");
       }
     }
 
-    if(!par->restart && !(par->lte_only && !allBitsSet(par->dataFlags, DS_mask_populations))){
+//    if(!par->restart && !(par->lte_only && !allBitsSet(par->dataFlags, DS_mask_populations))){
+    if(!par->lte_only && allBitsSet(par->dataFlags, DS_mask_populations) && par->doSolveRTE){
+      /*
+I don't understand the basis of the commented-out variant (e.g. we certainly won't arrive at this point if par->restart==TRUE), thus I can't be certain if it was right to modify it or not.
+      */
       if(par->nSolveIters<=par->nSolveItersDone){
-        /* Under these conditions, gp[].mol[].pops will not be allocated, and calcGridMolSpecNumDens() will fail. */
         if(!silent){
-          sprintf(message, "You requested %d par->nSolveIters but this should be > the number %d already done.", par->nSolveIters, par->nSolveItersDone);
+          snprintf(message, STR_LEN_0, "par->nSolveIters %d must be > par->nSolveItersDone %d", par->nSolveIters, par->nSolveItersDone);
           bail_out(message);
         }
 exit(1);
@@ -447,7 +468,7 @@ exit(1);
     writeGridIfRequired(par, *gp, NULL, 1);
 
   /* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
-Generate the remaining values if needed.
+Generate the remaining values if needed. **Note** that we check a few of them to make sure the user has set the appropriate values.
   */
   if(!allBitsSet(par->dataFlags, DS_mask_neighbours)){
     unsigned long nExtraSinks;
@@ -468,6 +489,7 @@ Generate the remaining values if needed.
     writeGridIfRequired(par, *gp, NULL, 2);
 
   if(!allBitsSet(par->dataFlags, DS_mask_density)){
+    /* Note that we have checked in parseInput() that the user has defined sufficient values. */
     for(i=0;i<par->ncell; i++)
       (*gp)[i].dens = malloc(sizeof(double)*par->numDensities);
     for(i=0;i<par->pIntensity;i++)
@@ -484,6 +506,17 @@ Generate the remaining values if needed.
     checkGridDensities(par, *gp); /* Check that none of the density samples is too small. */
 
   if(!allBitsSet(par->dataFlags, DS_mask_temperatures)){
+    if(!bitIsSet(defaultFuncFlags, USERFUNC_temperature)){
+      /* Check that the user has defined gas temperatures at least (if the dust temp was not defined, it is taken to be the same as the gas temp).
+      */
+      dummyT[0] = -1.0; /* a non-physical temperature. */
+      temperature(0.0,0.0,0.0, dummyT);
+      if(dummyT[0]<0.0){
+        if(!silent) bail_out("You need to set gas temperatures in your model.");
+exit(1);
+      }
+    }
+
     for(i=0;i<par->pIntensity;i++)
       temperature((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],(*gp)[i].t);
     for(i=par->pIntensity;i<par->ncell;i++){
@@ -502,6 +535,20 @@ Generate the remaining values if needed.
       /* Means we didn't read abun values from file, we have to calculate them via the user-supplied fuction. */
       dummyPointer = malloc(sizeof(*dummyPointer)*par->nSpecies);
       if(par->useAbun){
+        if(!bitIsSet(defaultFuncFlags, USERFUNC_abundance)){
+          /* Check that the user set reasonable values for all species.
+          */
+          for(si=0;si<par->nSpecies;si++)
+            dummyPointer[si] = -1.0; /* non-physical values. */
+          abundance(0.0,0.0,0.0, dummyPointer);
+          for(si=0;si<par->nSpecies;si++){
+            if(dummyPointer[si]<0.0){
+              if(!silent) bail_out("You need to set abundances for all species in your model.");
+exit(1);
+            }
+          }
+        }
+
         for(i=0;i<par->pIntensity;i++){
           abundance((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],dummyPointer);
           for(si=0;si<par->nSpecies;si++)
@@ -512,6 +559,20 @@ Generate the remaining values if needed.
             (*gp)[i].mol[si].abun = 0.0;
         }
       }else{
+        if(!bitIsSet(defaultFuncFlags, USERFUNC_molNumDensity)){
+          /* Check that the user set reasonable values for all species.
+          */
+          for(si=0;si<par->nSpecies;si++)
+            dummyPointer[si] = -1.0; /* non-physical values. */
+          molNumDensity(0.0,0.0,0.0, dummyPointer);
+          for(si=0;si<par->nSpecies;si++){
+            if(dummyPointer[si]<0.0){
+              if(!silent) bail_out("You need to set molNumDensity for all species in your model.");
+exit(1);
+            }
+          }
+        }
+
         for(i=0;i<par->pIntensity;i++){
           molNumDensity((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],dummyPointer);
           for(si=0;si<par->nSpecies;si++)
@@ -528,6 +589,17 @@ Generate the remaining values if needed.
     }
 
     if(!allBitsSet(par->dataFlags, DS_mask_turb_doppler)){
+      if(!bitIsSet(defaultFuncFlags, USERFUNC_doppler)){
+        /* Check that the user set reasonable values.
+        */
+        dummyScalar = -1.0; /* a non-physical value. */
+        doppler(0.0,0.0,0.0, &dummyScalar);
+        if(dummyScalar<0.0){
+          if(!silent) bail_out("You need to set gas turbulence doppler values in your model.");
+exit(1);
+        }
+      }
+
       for(i=0;i<par->pIntensity;i++)
         doppler((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],&(*gp)[i].dopb_turb);	
       for(i=par->pIntensity;i<par->ncell;i++)
@@ -537,6 +609,7 @@ Generate the remaining values if needed.
     }
 
     if(!allBitsSet(par->dataFlags, DS_mask_velocity)){
+      /* There seems to be no way we can test if the user has set velocities properly because -ve component values are of course possible. */
       for(i=0;i<par->pIntensity;i++)
         velocity((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],(*gp)[i].vel);
 
@@ -548,7 +621,7 @@ Generate the remaining values if needed.
     }
 
     if(!allBitsSet(par->dataFlags, DS_mask_ACOEFF)){
-      if(!bitIsSet(defaultFuncFlags, FUNC_BIT_velocity)){
+      if(!bitIsSet(defaultFuncFlags, USERFUNC_velocity)){
         getEdgeVelocities(par,*gp); /* Mallocs and sets .v1, .v2, .v3, which are only used within calculateJBar(), which is only called if par->doMolCalcs. This also sets par->edgeVelsAvailable. */
 
         par->dataFlags |= DS_mask_ACOEFF;
@@ -558,6 +631,7 @@ Generate the remaining values if needed.
 
   if(!allBitsSet(par->dataFlags, DS_mask_magfield)){
     if(par->polarization){
+      /* There seems to be no way we can test if the user has set B field values properly because -ve component values are of course possible. */
       for(i=0;i<par->pIntensity;i++)
         magfield((*gp)[i].x[0],(*gp)[i].x[1],(*gp)[i].x[2],(*gp)[i].B);
 
@@ -584,11 +658,7 @@ Generate the remaining values if needed.
   dumpGrid(par,*gp);
   free(dc);
 
-  if(collPartNames != NULL){
-    for(i=0;i<numCollPartRead;i++)
-      free(collPartNames[i]);
-    free(collPartNames);
-  }
+  freeArrayOfStrings(collPartNames, numCollPartRead);
 }
 
 

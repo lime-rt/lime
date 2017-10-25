@@ -6,7 +6,7 @@
  *  Copyright (C) 2015-2017 The LIME development team
  *
 TODO:
-	- Get rid of, or regularize somehow, the printf statements (change to printMessage()?) - and clean up all the other new messages which are going to dick with the stdout when curses are selected? (Sigh.)
+	- Clean up all the new messages which are going to dick with the stdout when curses are selected? (Sigh.)
  */
 
 #include "lime.h"
@@ -174,12 +174,14 @@ exit(1);
         }
       }
 
-      /* Look for this CP in par->collPartIds
+      /* Look for this CP in par->collPartIds. Note that since we have already called collparts.checkUserDensWeights() by this stage, therefore either we have 1 par->collPartIds entry per density function return, or par->collPartIds==NULL.
       */
       cpWasFoundInUserList = 0;
       if(par->collPartIds!=NULL){
         for(j=0;j<par->numDensities;j++)
           if(collPartId==par->collPartIds[j]) cpWasFoundInUserList = 1;
+
+//**** Won't this go wrong when the user has supplied par->collPartNames but not par->collPartIds? See collparts.checkUserDensWeights().
       }
 
       if(par->collPartIds==NULL || cpWasFoundInUserList){
@@ -259,11 +261,6 @@ exit(1);
 
     fclose(fp);
   } /* end loop over molecule index i */
-
-  if((*numUniqueCollPartsFound)<=0){
-    if(!silent) bail_out("No recognized collision partners read from file.");
-exit(1);
-  }
 }
 
 /*....................................................................*/
@@ -272,6 +269,7 @@ void assignMolCollPartsToDensities(configInfo *par, molData *md){
 If we have reached this point, par->collPartIds (and par->nMolWeights) should have been malloc'd and filled with sensible values. Here we set up indices which allow us to associate a density function with each collision partner of each radiating molecule. This information is made use of in solver.c.
   */
   int i,j,ipart;
+  char message[STR_LEN_0];
 
   for(i=0;i<par->nSpecies;i++){
     for(ipart=0;ipart<md[i].npart;ipart++){
@@ -282,8 +280,10 @@ If we have reached this point, par->collPartIds (and par->nMolWeights) should ha
         }
       }
       if(md[i].part[ipart].densityIndex==-1){
-        if(!silent) bail_out("No density function has been found for molecule/coll. part. combination.");
-exit(1);
+        if(!silent){
+          snprintf(message, STR_LEN_0, "No density function found for molecule %d coll. part. %d.", i, ipart);
+          warning(message);
+        }
       }
     }
   }
@@ -334,7 +334,7 @@ void molInit(configInfo *par, molData *md){
   int numUniqueCollPartsFound;
 
   readMolData(par, md, &allUniqueCollPartIds, &numUniqueCollPartsFound);
-  setUpDensityAux(par, allUniqueCollPartIds, numUniqueCollPartsFound);
+  setUpDensityAux(par, allUniqueCollPartIds, numUniqueCollPartsFound); /* In collparts.c */
   free(allUniqueCollPartIds);
 
   if(par->girdatfile!=NULL){

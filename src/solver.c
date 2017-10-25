@@ -215,6 +215,36 @@ void calcGridCollRates(configInfo *par, molData *md, struct grid *gp){
 }
 
 /*....................................................................*/
+void mallocGridCont(configInfo *par, molData *md, struct grid *gp){
+  int id,si,li;
+
+  for(id=0;id<par->ncell;id++){
+    for(si=0;si<par->nSpecies;si++){
+      gp[id].mol[si].cont = malloc(sizeof(*(gp[id].mol[si].cont))*md[si].nline);
+      for(li=0;li<md[si].nline;li++){
+        gp[id].mol[si].cont[li].dust = 0.0;
+        gp[id].mol[si].cont[li].knu  = 0.0;
+      }
+    }
+  }
+}
+
+/*....................................................................*/
+void freeGridCont(configInfo *par, struct grid *gp){
+  int id,si;
+
+  for(id=0;id<par->ncell;id++){
+    if(gp[id].mol==NULL)
+      continue;
+
+    for(si=0;si<par->nSpecies;si++){
+      free(gp[id].mol[si].cont);
+      gp[id].mol[si].cont = NULL;
+    }
+  }
+}
+
+/*....................................................................*/
 void calcGridLinesDustOpacity(configInfo *par, molData *md, double *lamtab\
   , double *kaptab, const int nEntries, struct grid *gp){
 
@@ -228,13 +258,6 @@ void calcGridLinesDustOpacity(configInfo *par, molData *md, double *lamtab\
     acc = gsl_interp_accel_alloc();
     spline = gsl_spline_alloc(gsl_interp_cspline,nEntries);
     gsl_spline_init(spline,lamtab,kaptab,nEntries);
-  }
-
-  for(id=0;id<par->ncell;id++){
-    for(si=0;si<par->nSpecies;si++){
-      free(gp[id].mol[si].cont);
-      gp[id].mol[si].cont = malloc(sizeof(*(gp[id].mol[si].cont))*md[si].nline);
-    }
   }
 
   for(si=0;si<par->nSpecies;si++){
@@ -280,8 +303,8 @@ The idea here is to select for the next grid point, that one which lies closest 
 
 Note that this is called from within the multi-threaded block.
   */
-  int i,ni,niOfSmallest=-1,niOfNextSmallest;
-  double dirCos,distAlongTrack,dirFromStart[3],coord,distToTrackSquared,smallest,nextSmallest;
+  int i,ni,niOfSmallest=-1,niOfNextSmallest=-1;
+  double dirCos,distAlongTrack,dirFromStart[3],coord,distToTrackSquared,smallest=0.0,nextSmallest=0.0;
   const static double scatterReduction = 0.4;
   /*
 This affects the ratio of N_2/N_1, where N_2 is the number of times the edge giving the 2nd-smallest distance from the photon track is chosen and N_1 ditto the smallest. Some ratio values obtained from various values of scatterReduction:
@@ -419,17 +442,18 @@ Note that this is called from within the multi-threaded block.
 void
 calculateJBar(int id, struct grid *gp, molData *md, const gsl_rng *ran\
   , configInfo *par, const int nlinetot, struct blendInfo blends\
-  , gridPointData *mp, double *halfFirstDs){
+  , gridPointData *mp, double *halfFirstDs, int *nMaserWarnings){
   /*
 Note that this is called from within the multi-threaded block.
   */
 
-  int iphot,iline,here,there,firststep,neighI;
+  int iphot,iline,here,there,firststep,neighI,numLinks=0;
   int nextMolWithBlend, nextLineWithBlend, molI, lineI, molJ, lineJ, bi;
   double segment,vblend_in,vblend_out,dtau,expDTau,ds_in=0.0,ds_out=0.0,pt_theta,pt_z,semiradius;
   double deltav[par->nSpecies],vfac_in[par->nSpecies],vfac_out[par->nSpecies],vfac_inprev[par->nSpecies];
   double expTau[nlinetot],inidir[3];
   double remnantSnu,velProj;
+  char message[STR_LEN_0];
 
   for(iphot=0;iphot<gp[id].nphot;iphot++){
     firststep=1;
@@ -472,7 +496,17 @@ Note that this is called from within the multi-threaded block.
     here = gp[id].id;
 
     /* Photon propagation loop */
+    numLinks=0;
     while(!gp[here].sink){ /* Testing for sink at loop start is redundant for the first step, since we only start photons from non-sink points, but it makes for simpler code. */
+      numLinks++;
+      if(numLinks>par->ncell){
+        if(!silent){
+          snprintf(message, STR_LEN_0, "Bad grid? Too many links in photon path, point %d photon %d", id, iphot);
+          bail_out(message);
+        }
+exit(1);
+      }
+
       neighI = getNextEdge(inidir,id,here,gp,ran);
 
       there=gp[here].neigh[neighI]->id;
@@ -556,22 +590,22 @@ Note that this is called from within the multi-threaded block.
 	  /* as said above, out-in split should be done also for blended lines... */
 
 	  dtau=(alpha_line_out+alpha_cont+alpha_blend)*ds_out;
-          if(dtau < -30.) dtau = -30.;
+          if(dtau < -MAX_NEG_OPT_DEPTH) dtau = -MAX_NEG_OPT_DEPTH;
           calcSourceFn(dtau, par, &remnantSnu, &expDTau);
           remnantSnu *= (jnu_line_out+jnu_cont+jnu_blend)*ds_out;
           mp[molI].phot[lineI+iphot*md[molI].nline]+=expTau[iline]*remnantSnu;
 	  expTau[iline]*=expDTau;
 
 	  dtau=(alpha_line_in+alpha_cont+alpha_blend)*ds_in;
-          if(dtau < -30.) dtau = -30.;
+          if(dtau < -MAX_NEG_OPT_DEPTH) dtau = -MAX_NEG_OPT_DEPTH;
           calcSourceFn(dtau, par, &remnantSnu, &expDTau);
           remnantSnu *= (jnu_line_in+jnu_cont+jnu_blend)*ds_in;
           mp[molI].phot[lineI+iphot*md[molI].nline]+=expTau[iline]*remnantSnu;
 	  expTau[iline]*=expDTau;
 
-          if(expTau[iline] > exp(30.)){
-            if(!silent) warning("Maser warning: optical depth has dropped below -30");
-            expTau[iline]=exp(30.);
+          if(expTau[iline] > exp(MAX_NEG_OPT_DEPTH)){
+            (*nMaserWarnings)++;
+            expTau[iline]=exp(MAX_NEG_OPT_DEPTH);
           }
 
           iline++;
@@ -872,37 +906,22 @@ Note that this is called from within the multi-threaded block.
 }
 
 /*....................................................................*/
-void gridPopsInit(configInfo *par, molData *md, struct grid *gp){
-  int i,id,ilev;
-
-  for(i=0;i<par->nSpecies;i++){
-    /* Allocate space for populations etc */
-    for(id=0;id<par->ncell; id++){
-      gp[id].mol[i].pops = malloc(sizeof(double)*md[i].nlev);
-      for(ilev=0;ilev<md[i].nlev;ilev++)
-        gp[id].mol[i].pops[ilev] = 0.0;
-    }
-  }
-}
-
-/*....................................................................*/
 int
 levelPops(molData *md, configInfo *par, struct grid *gp, int *popsdone, double *lamtab, double *kaptab, const int nEntries){
   int id,iter,ilev,ispec,c=0,n,i,threadI,nVerticesDone,nItersDone,nlinetot,nExtraSolverIters=0;
-  double percent=0.,*median,result1=0,result2=0,snr,delta_pop;
-  int nextMolWithBlend;
+  double percent=0.,*median,result1=0,result2=0,snr,delta_pop,progFraction;
+  int nextMolWithBlend,nMaserWarnings=0,totalNMaserWarnings=0;
   struct statistics { double *pop, *ave, *sigma; } *stat;
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
   struct blendInfo blends;
   _Bool luWarningGiven=0;
   gsl_error_handler_t *defaultErrorHandler=NULL;
   int RNG_seeds[par->nThreads];
+  char message[STR_LEN_0];
 
   nlinetot = 0;
   for(ispec=0;ispec<par->nSpecies;ispec++)
     nlinetot += md[ispec].nline;
-
-  gridPopsInit(par,md,gp);
 
   if(par->lte_only){
     LTE(par,gp,md);
@@ -928,6 +947,8 @@ levelPops(molData *md, configInfo *par, struct grid *gp, int *popsdone, double *
     }
 
     calcGridCollRates(par,md,gp);
+    freeGridCont(par, gp);
+    mallocGridCont(par, md, gp);
     calcGridLinesDustOpacity(par, md, lamtab, kaptab, nEntries, gp);
 
     /* Check for blended lines */
@@ -970,9 +991,10 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
       }
       calcGridMolSpecNumDens(par,md,gp);
 
+      totalNMaserWarnings = 0;
       nVerticesDone=0;
       omp_set_dynamic(0);
-#pragma omp parallel private(id,ispec,threadI,nextMolWithBlend) num_threads(par->nThreads)
+#pragma omp parallel private(id,ispec,threadI,nextMolWithBlend,nMaserWarnings) num_threads(par->nThreads)
       {
         threadI = omp_get_thread_num();
 
@@ -987,6 +1009,8 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
 #pragma omp atomic
           ++nVerticesDone;
 
+          nMaserWarnings = 0;
+
           for (ispec=0;ispec<par->nSpecies;ispec++){
             mp[ispec].jbar = malloc(sizeof(double)*md[ispec].nline);
             mp[ispec].phot = malloc(sizeof(double)*md[ispec].nline*gp[id].nphot);
@@ -996,10 +1020,11 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
           halfFirstDs = malloc(sizeof(*halfFirstDs)*gp[id].nphot);
 
           if (threadI == 0){ /* i.e., is master thread. */
-            if(!silent) progressbar(nVerticesDone/(double)par->pIntensity,10);
+            progFraction = nVerticesDone/(double)par->pIntensity;
+            if(!silent) progressbar(progFraction,10);
           }
           if(gp[id].dens[0] > 0 && gp[id].t[0] > 0){
-            calculateJBar(id,gp,md,threadRans[threadI],par,nlinetot,blends,mp,halfFirstDs);
+            calculateJBar(id,gp,md,threadRans[threadI],par,nlinetot,blends,mp,halfFirstDs,&nMaserWarnings);
             nextMolWithBlend = 0;
             for(ispec=0;ispec<par->nSpecies;ispec++){
               solveStatEq(id,gp,md,ispec,par,blends,nextMolWithBlend,mp,halfFirstDs,&luWarningGiven);
@@ -1012,9 +1037,17 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
           }
           freeGridPointData(par->nSpecies, mp);
           free(halfFirstDs);
+
+#pragma omp atomic
+          totalNMaserWarnings += nMaserWarnings;
         }
         free(mp);
       } /* end parallel block. */
+
+      if(!silent && totalNMaserWarnings>0){
+        snprintf(message, STR_LEN_0, "Maser warning: optical depth dropped below -%4.1f %d times this iteration.", MAX_NEG_OPT_DEPTH, totalNMaserWarnings);
+        warning(message);
+      }
 
       for(id=0;id<par->pIntensity;id++){
         snr=0;
@@ -1065,6 +1098,7 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
     nExtraSolverIters = nItersDone - par->nSolveItersDone;
 
     freeMolsWithBlends(blends.mols, blends.numMolsWithBlends);
+    freeGridCont(par, gp);
 
     for (i=0;i<par->nThreads;i++){
       gsl_rng_free(threadRans[i]);

@@ -129,7 +129,7 @@ void
 writeKeywordsToHDF5(hid_t parent, struct keywordType *kwds\
   , const int numKeywords){
 
-  hid_t kwdSpace,datatype,kwdAttr;
+  hid_t kwdSpace,datatype=0,kwdAttr;
   herr_t status=0;
   int i;
   char message[80];
