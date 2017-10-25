@@ -9,6 +9,20 @@
 
 #include "lime.h"
 
+/*....................................................................*/
+void
+freeArrayOfStrings(char **arrayOfStrings, const int numStrings){
+  int i;
+
+  if(arrayOfStrings==NULL)
+return;
+
+  for(i=0;i<numStrings;i++){
+    free(arrayOfStrings[i]);
+  }
+}
+
+/*....................................................................*/
 void
 freeConfigInfo(configInfo *par){
   int i;
@@ -48,20 +62,7 @@ freeConfigInfo(configInfo *par){
   }
 }
 
-void
-freeInputPars(inputPars *par){
-  free(par->collPartIds);
-  free(par->nMolWeights);
-  free(par->dustWeights);
-  free(par->collPartMolWeights);
-  free(par->moldatfile);
-  free(par->girdatfile);
-  free(par->collPartNames);
-  free(par->gridOutFiles);
-  free(par->gridDensMaxValues);
-  free(par->gridDensMaxLoc);
-}
-
+/*....................................................................*/
 void
 freeGrid(const unsigned int numPoints, const unsigned short numSpecies\
   , struct grid *gp){
@@ -84,22 +85,14 @@ freeGrid(const unsigned int numPoints, const unsigned short numSpecies\
   }
 }
 
-void
-freeGridPointData(const int nSpecies, gridPointData *mol){
-  int i;
-  if(mol!= NULL){
-    for(i=0;i<nSpecies;i++){
-      free(mol[i].jbar);
-      free(mol[i].phot);
-      free(mol[i].vfac);
-      free(mol[i].vfac_loc);
-    }
-  }
-}
-
+/*....................................................................*/
 void
 freeImgInfo(const int nImages, imageInfo *img){
   int i,id;
+
+  if(img==NULL)
+return;
+
   for(i=0;i<nImages;i++){
     for(id=0;id<(img[i].pxls*img[i].pxls);id++){
       free( img[i].pixel[id].intense );
@@ -112,6 +105,22 @@ freeImgInfo(const int nImages, imageInfo *img){
   free(img);
 }
 
+/*....................................................................*/
+void
+freeInputPars(inputPars *par){
+  free(par->collPartIds);
+  free(par->nMolWeights);
+  free(par->dustWeights);
+  free(par->collPartMolWeights);
+  free(par->moldatfile);
+  free(par->girdatfile);
+  free(par->collPartNames);
+  free(par->gridOutFiles);
+  free(par->gridDensMaxValues);
+  free(par->gridDensMaxLoc);
+}
+
+/*....................................................................*/
 void
 freeMolData(const int nSpecies, molData *md){
   int i,j;
@@ -142,22 +151,7 @@ freeMolData(const int nSpecies, molData *md){
   }
 }
 
-void
-freeMolsWithBlends(struct molWithBlends *mols, const int numMolsWithBlends){
-  int mi, li;
-
-  if(mols != NULL){
-    for(mi=0;mi<numMolsWithBlends;mi++){
-      if(mols[mi].lines != NULL){
-        for(li=0;li<mols[mi].numLinesWithBlends;li++)
-          free(mols[mi].lines[li].blends);
-        free(mols[mi].lines);
-      }
-    }
-    free(mols);
-  }
-}
-
+/*....................................................................*/
 void
 freePopulation(const unsigned short numSpecies, struct populations *pop){
   if(pop != NULL){
@@ -172,6 +166,7 @@ freePopulation(const unsigned short numSpecies, struct populations *pop){
   }
 }
 
+/*....................................................................*/
 void
 freeSomeGridFields(const unsigned int numPoints, const unsigned short numSpecies\
   , struct grid *gp){

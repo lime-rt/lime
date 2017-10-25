@@ -9,51 +9,85 @@
 CORESOURCES = \
 	src/aux.c\
 	src/collparts.c\
+	src/defaults.c\
 	src/fastexp.c\
 	src/frees.c\
-	src/getclosest.c\
 	src/grid2fits.c\
 	src/grid.c\
 	src/gridio.c\
-	src/LTEsolution.c\
-	src/magfieldfit.c\
-	src/messages.c\
+	src/grid_aux.c\
 	src/molinit.c\
-	src/photon.c\
 	src/popsin.c\
 	src/popsout.c\
 	src/predefgrid.c\
-	src/ratranInput.c\
 	src/raythrucells.c\
 	src/raytrace.c\
-	src/report.c\
+	src/run.c\
 	src/smooth.c\
+	src/solver.c\
 	src/sourcefunc.c\
-	src/stateq.c\
-	src/statistics.c\
-	src/stokesangles.c\
 	src/tcpsocket.c\
 	src/tree_random.c\
-	src/velospline.c\
-	src/writefits.c\
+	src/writefits.c
 
 STDSOURCES = \
-	src/defaults.c\
+	src/lime_defaults.c\
 	src/main.c\
+	src/messages.c
 
 HDF5SOURCES = \
 	src/grid2hdf5.c
 
+CONVSOURCES = \
+	src/aux.c\
+	src/collparts.c\
+	src/defaults.c\
+	src/frees.c\
+	src/grid2fits.c\
+	src/gridconvert.c\
+	src/gridio.c\
+	src/grid_aux.c\
+	src/messages.c\
+	src/molinit.c\
+	src/popsin.c\
+	src/popsout.c\
+	src/predefgrid.c
+
+PYSOURCES = \
+	src/messages.c\
+	src/py_main.c\
+	src/py_messages.c\
+	src/py_models.c\
+	src/py_utils.c
+
 COREINCLUDES = \
+	src/collparts.h\
+	src/constants.h\
+	src/defaults.h\
+	src/dims.h\
+	src/grid2fits.h\
+	src/grid2hdf5.h\
+	src/gridio.h\
+	src/inpars.h\
+	src/lime_config.h\
+	src/lime.h\
+	src/raythrucells.h\
+	src/tree_random.h\
+	src/ufunc_types.h
+
+HDF5INCLUDES = \
+	src/grid2hdf5.h
+
+CONVINCLUDES = \
 	src/dims.h\
 	src/collparts.h\
 	src/grid2fits.h\
 	src/gridio.h\
 	src/inpars.h\
-	src/lime.h\
-	src/raythrucells.h\
-	src/tree_random.h\
+	src/lime.h
 
-HDF5INCLUDES = \
-	src/grid2hdf5.h
+PYINCLUDES = \
+	src/error_codes.h\
+	src/py_lime.h\
+	src/py_utils.h
 

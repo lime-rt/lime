@@ -1,0 +1,40 @@
+#! /bin/bash
+
+defsfile="./Makefile.defs"
+
+[ -e $defsfile ] && rm $defsfile
+touch $defsfile
+
+echo "LIB_QHULL = qhull" >> $defsfile
+
+qhull_incs=( "/usr/include/libqhull" "/usr/include/qhull" "/opt/local/include/qhull" "/sw/include/qhull" )
+
+for incdir in ${qhull_incs[@]}
+do
+  if [ -e $incdir/qhull_a.h ]
+  then
+    echo "CCFLAGS += -I$incdir" >> $defsfile
+    break
+  fi
+done 
+
+fitsio_incs=( "/usr/include/cfitsio" "/usr/include/libcfitsio0" )
+
+for incdir in ${fitsio_incs[@]}
+do
+  if [ -e $incdir/fitsio.h ]
+  then
+    echo "CCFLAGS += -I$incdir" >> $defsfile
+    break
+  fi
+done 
+
+pybin="python"
+pyconf="$pybin-config"
+command -v $pyconf >/dev/null 2>&1 || ! echo "oops" || exit 3
+
+PYCCFLAGS=`$pyconf --cflags`
+PYLDFLAGS=`$pyconf --ldflags`
+echo "PYCCFLAGS = $PYCCFLAGS" >> $defsfile
+echo "PYLDFLAGS = $PYLDFLAGS" >> $defsfile
+

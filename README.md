@@ -83,23 +83,19 @@ top of the LIME Makefile accordingly. Also, the newest versions of
 qhull does not include a configure script.
 
 LIME is automatically compiled at runtime so there is no installation
-required and also no configure script. Do not try to `make` or `make
-install` LIME as this will produce an error.
+required. Do not try to `make` or `make install` LIME as this will produce an error.
 
-### Older versions of qhull or cfitsio
+Configuring LIME
+----------------
 
-LIME needs to be able to find both shared-object libraries (files which usually reside in /usr/lib, have names starting with 'lib' and ending with '.so') and header files (usually or at least often in /usr/include, ending in '.h') for both qhull and cfitsio. Unfortunately, different versions of these packages use slightly different locations/names, as follows:
+We added a configure script with LIME version 1.9 to avoid the necessity to set extra environment variables or hack the Makefile etc. in order to deal with different names for cfitsio/qhull headers and libraries on different systems. You should run this script once after you install LIME on your machine, viz:
 
-- qhull
-  * old: libqhull.so, qhull/qhull_a.h
-  * new: libqhullstatic.so, libqhull/qhull_a.h
+```
+ $ cd <LIME directory>
+ $ ./configure
+```
 
-- cfitsio
-  * old: cfitsio/fitsio.h
-  * new: /fitsio.h
-
-If you have the older version of either qhull or cfitsio, set the respective environment variables OLD_QHULL and/or OLD_FITSIO to T.
-
+Doing this generates a file `Makefile.defs`, without which LIME will not compile.
 
 
 Running the code
@@ -125,7 +121,7 @@ To find out whether you use bash or csh, do
 $ echo $SHELL
 ```
 
-The code runs simply by typing
+The code runs simply by typing (for example)
 
 ```
 $ cd example/
@@ -139,5 +135,18 @@ with the standards of linking C and Fortran. See [this
 page](http://tinyurl.com/y6sddr) for information on how to link C and
 Fortran. If Fortran subroutines are used, the linking of LIME needs to
 be done with the Fortran compiler. Modify the Makefile accordingly.
+
+Note that with version 1.9, a model file can be written in python; however to use this you will need to compile LIME specially. Go to the LIME parent directory and type
+
+```
+ $ make python
+```
+
+This generates an executable named `pylime`. You run this with your python module as (for example)
+
+```
+ $ cd example
+ $ ../pylime model.py
+```
 
 [![Build Status](https://travis-ci.org/lime-rt/lime.svg?branch=master)](https://travis-ci.org/lime-rt/lime) [![Documentation Status](https://readthedocs.org/projects/lime/badge/?version=latest)](https://readthedocs.org/projects/lime/?badge=latest)

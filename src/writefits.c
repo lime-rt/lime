@@ -36,7 +36,7 @@ Users have complained that downstream packages (produced by lazy coders >:8) wil
   int axesOrder[] = {0,1,2,3};
   char ctype[numAxes][9],cunit[numAxes][9];
   double cdelt[numAxes],crpix[numAxes],crval[numAxes];
-  double ru3,scale;
+  double ru3,scale=1.0;
   int velref,unitI,i;
   float *row;
   int px,py,ichan;
@@ -82,13 +82,13 @@ Users have complained that downstream packages (produced by lazy coders >:8) wil
   velref  =257;
 
   sprintf(ctype[axesOrder[0]], "RA---SIN");
-  cdelt[axesOrder[0]] = -1.8e2*img[im].imgres/PI;
+  cdelt[axesOrder[0]] = -1.8e2*img[im].imgres/M_PI;
   crpix[axesOrder[0]] = ((double)img[im].pxls)/2.0 + 0.5;
   crval[axesOrder[0]] = 0.0e0;
   sprintf(cunit[axesOrder[0]], "DEG    ");
 
   sprintf(ctype[axesOrder[1]], "DEC--SIN");
-  cdelt[axesOrder[1]] = 1.8e2*img[im].imgres/PI;
+  cdelt[axesOrder[1]] = 1.8e2*img[im].imgres/M_PI;
   crpix[axesOrder[1]] = ((double)img[im].pxls)/2.0 + 0.5;
   crval[axesOrder[1]] = 0.0e0;
   sprintf(cunit[axesOrder[1]], "DEG    ");
@@ -118,11 +118,12 @@ Users have complained that downstream packages (produced by lazy coders >:8) wil
   fits_write_key(fptr, TSTRING, "SPECSYS ", &"LSRK    ",    "", &status);
   fits_write_key(fptr, TDOUBLE, "RESTFREQ", &restfreq,      "", &status);
   fits_write_key(fptr, TINT,    "VELREF  ", &velref,        "", &status);
-  fits_write_key(fptr, TDOUBLE, "BSCALE  ", &bscale,        "", &status);
-  fits_write_key(fptr, TDOUBLE, "BZERO   ", &bzero,         "", &status);
 
   for(i=0;i<numAxes;i++)
     writeWCS(fptr, i, axesOrder, cdelt, crpix, crval, ctype, cunit);
+
+  fits_write_key(fptr, TDOUBLE, "BSCALE  ", &bscale,        "", &status);
+  fits_write_key(fptr, TDOUBLE, "BZERO   ", &bzero,         "", &status);
 
   if(unitI==0) fits_write_key(fptr, TSTRING, "BUNIT", &"K       ", "", &status);
   if(unitI==1) fits_write_key(fptr, TSTRING, "BUNIT", &"JY/PIXEL", "", &status);
@@ -138,7 +139,7 @@ Users have complained that downstream packages (produced by lazy coders >:8) wil
     scale=1.0;
   else if(unitI==3) {
     ru3 = img[im].distance/1.975e13;
-    scale=4.*PI*ru3*ru3*img[im].freq*img[im].imgres*img[im].imgres;
+    scale=4.*M_PI*ru3*ru3*img[im].freq*img[im].imgres*img[im].imgres;
   }
   else if(unitI!=4) {
     if(!silent) bail_out("Image unit number invalid");
@@ -202,7 +203,7 @@ Users have complained that downstream packages (produced by lazy coders >:8) wil
     }
 
     if(par->polarization){ /* ichan should have run from 0 to 2 in this case. Stokes I, Q and U but no V. Load zeros into the last pol channel: */
-      if(ichan<img[im].nchan!=3){
+      if(img[im].nchan!=3){
         if(!silent){
           sprintf(message, "%d pol channels found but %d expected.", img[im].nchan, 3);
           bail_out(message);
@@ -229,8 +230,6 @@ exit(1);
   fits_close_file(fptr, &status);
 
   free(row);
-
-  if(!silent) printDone(13);
 }
 
 void writeFits(const int i, const int unit_index, configInfo *par, imageInfo *img){

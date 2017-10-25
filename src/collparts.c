@@ -6,6 +6,56 @@
  *  Copyright (C) 2015-2017 The LIME development team
  *
 TODO:
+
+Some explanation:
+=================
+We have three sources of information about the density and type of bulk gas (a.k.a. collision partner) species: (i) the number of elements returned by the density() function; (ii) the list par->collPartIds; (iii) and the transition rate values supplied in the moldatfiles. What we want to do is associate density functions with collision partners given in the moldatfiles. We would like to do this if possible without deviating from the original assumptions made in the earliest versions of LIME, and without loading the user down with too much crud.
+
+Below is given a typical timeline of processing within LIME, showing for each stage the questions which the code asks about par->collPartIds and the moldatfiles, and the decisions taken in response.
+
+main.initParImg():
+------------------
+
+  - inpars->collPartIds (i.e. a struct of type 'inputPars') is malloc'd to size MAX_N_COLL_PART and all the entries are set to 0. Zero does not correspond with any LAMDA species and can therefore be used to flag that the user has not reset the value to something sensible.
+
+User's model file:
+------------------
+
+  - (optionally) some enties of inpars->collPartIds are set to >0 values.
+
+run.parseInput():
+-----------------
+
+  par->collPartIds (a struct of type 'configInfo') is malloc'd to size MAX_N_COLL_PART and the inpars values are copied over.
+
+collparts.checkUserDensWeights():
+---------------------------------
+
+  - The number of >0 (therefore user-set) values of par->collPartIds are counted. Counting starts from the 0th element and stops as soon as the first <=0 value is found.
+
+  - The number of user-set values of par->collPartIds is compared to the number of density() function returns (by now stored in par->numDensities). If the numbers are unequal, par->collPartIds is freed and set to NULL (a warning is issued if the user set some values). If the numbers match, par->collPartIds is reallocated in size to that number (this is possibly unnecessary).
+
+  - If the user has supplied par->collPartNames, with the number of entries correctly matching the number of density() returns (par->numDensities), in the case that par->collPartIds was set to NULL just above, then par->collPartIds is malloc'd to size par->numDensities; it is loaded then with an increasing sequence of integers.
+
+  - par->collPartIds, if set, are checked for uniqueness.
+
+molinit.readMolData():
+----------------------
+
+  - The collision partners listed in the set of moldatfiles are read from file. Here we first want to compile a list of unique (that is, without repetition) collision partners that occur in the files. We will only do this however if either (i) the user has supplied no values of par->collPartIds or (ii) the collision partner matches one supplied in par->collPartIds.
+
+  - Note that ALL collision partners read from the ith file are stored in md[i].part.
+
+collparts.setUpDensityAux():
+----------------------------
+
+  - The processing in this looks quite complicated, but the only thing that is done to par->collPartIds is if it ==NULL: it is then malloc'd to size par->numDensities and, under limited circumstances, its values are set to those read from the moldatfiles.
+
+molinit.assignMolCollPartsToDensities():
+----------------------------------------
+
+  - par->collPartIds is compared here to the collision partner IDs in md[i].part[ipart].collPartId. If a CP is found in par->collPartIds but not in md[i].part, no action is taken. If any md[i].part[ipart].collPartId is not found in par->collPartIds, md[i].part[ipart].densityIndex is set to -1. This flags to solver.getFixedMatrix() to ignore the respective transition rates.
+
  */
 
 #include "lime.h"
@@ -137,10 +187,11 @@ This deals with four user-settable list parameters which relate to collision par
     }
     par->collPartNames = realloc(par->collPartNames, sizeof(*(par->collPartNames))*par->numDensities);
 
-    if(numUserSetCPIds<=0){
+    if(numUserSetCPIds<=0){ /* This implies that we must have set par->collPartIds=NULL a little above here. */
       par->collPartIds = malloc(sizeof(*(par->collPartIds))*par->numDensities);
       for(i=0;i<par->numDensities;i++)
         par->collPartIds[i] = i+1;
+//**** Won't this go wrong when the collPartIds read from moldatfiles are compared to par->collPartIds in molinit.readMolData()??
       numUserSetCPIds = par->numDensities;
     }
   }
@@ -154,10 +205,11 @@ This deals with four user-settable list parameters which relate to collision par
     /* numUserSetCPWeights==0 is ok, this just means the user has not set the parameter at all, but for other values we should issue some warnings, because if the user sets any at all, they should set the same number as there are returns from density():
     */
     if(numUserSetCPWeights > 0){
-      if(numUserSetCPNames <= 0)
+      if(numUserSetCPNames <= 0){
         if(!silent) warning("par->collPartMolWeights will be ignored - you must also set par->collPartNames.");
-      else
+      }else{
         if(!silent) warning("par->collPartMolWeights will be ignored - there should be 1 for each density() return.");
+      }
       numUserSetCPWeights = 0;
     }
 
@@ -207,6 +259,7 @@ allUniqueCollPartIds is the list of all unique CP ID integers detected in the su
   */
   double lamdaMolWeights[] = {2.0159,2.0159,2.0159,5.486e-4,1.00794,4.0026,1.00739};
   char *lamdaNames[] = {"H2","p-H2","o-H2","electrons","H","He","H+"};
+  char message[STR_LEN_0];
   int i;
 
   if(par->collPartIds==NULL){ /* For this to happen means that the user set neither par->collPartIds nor par->collPartNames. */
@@ -255,12 +308,15 @@ To preserve backward compatibility I am going to try to make the same guesses as
     }
 
     if(!silent) {
-      warning("User didn't set par.collPartIds, I'm having to guess them. Guessed:");
 #ifdef NO_NCURSES
+      printMessage("User didn't set par.collPartIds, I'm having to guess them. Guessed:");
       for(i=0;i<par->numDensities;i++){
-        printf("  Collision partner %d assigned code %d (=%s)\n", i, par->collPartIds[i], lamdaNames[par->collPartIds[i]-1]);
+        snprintf(message, STR_LEN_0, "  Collision partner %d assigned code %d (=%s)\n", i, par->collPartIds[i], lamdaNames[par->collPartIds[i]-1]);
+        printMessage(message);
       }
-      printf("\n");
+      printMessage("\n");
+#else
+      printMessage("User didn't set par.collPartIds, I'm having to guess them.");
 #endif
     }
 
@@ -334,6 +390,7 @@ The same backward-compatible guesses are made here as for par->collPartIds in th
 
   /* If we get to here then par->collPartIds has definitely been malloc'd and its values set.
   */
+//*** check that no par->collPartIds[i] are out of lamda range.
   if(par->collPartNames==NULL){ /* Then load it from the LAMDA names. */
     par->collPartNames=malloc(sizeof(*par->collPartNames)*par->numDensities);
     for(i=0;i<par->numDensities;i++)

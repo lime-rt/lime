@@ -10,28 +10,23 @@
 #ifndef LIME_H
 #define LIME_H
 
+#ifdef IS_PYTHON
+#include <Python.h>
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include <signal.h>
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_spline.h>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_linalg.h>
-
-#ifdef OLD_QHULL
-#include <qhull/qhull_a.h>
-#else
-#include <libqhull/qhull_a.h>
-#endif
-
-#ifdef OLD_FITSIO
-#include <cfitsio/fitsio.h>
-#else
+#include <qhull_a.h>
 #include <fitsio.h>
-#endif
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -43,62 +38,38 @@
 
 #include "dims.h"
 
-#define VERSION	"1.8.2"
+#define VERSION "1.9"
 #define DEFAULT_NTHREADS 1
 #ifndef NTHREADS /* Value passed from the LIME script */
 #define NTHREADS DEFAULT_NTHREADS
 #endif
 
-/* Physical constants */
-/* - NIST values as of 23 Sept 2015: */
-#define AMU             1.66053904e-27		/* atomic mass unit             [kg]	*/
-#define CLIGHT          2.99792458e8		/* speed of light in vacuum     [m / s]	*/
-#define HPLANCK         6.626070040e-34		/* Planck constant              [J * s]	*/
-#define KBOLTZ          1.38064852e-23		/* Boltzmann constant           [J / K]	*/
+#include "constants.h"
 
-/* From IAU 2009: */
-#define GRAV            6.67428e-11		/* gravitational constant       [m^3 / kg / s^2]	*/
-#define AU              1.495978707e11		/* astronomical unit            [m]	*/
-
-/* Derived: */
-#define PC              3.08567758e16		/* parsec (~3600*180*AU/PI)     [m]	*/
-#define HPIP            8.918502221e-27		/* HPLANCK*CLIGHT/4.0/PI/SPI	*/
-#define HCKB            1.43877735		/* 100.*HPLANCK*CLIGHT/KBOLTZ	*/
+#define HPIP            8.918502221e-27      /* HPLANCK*CLIGHT/4.0/PI/SPI	*/
+#define HCKB            1.43877735           /* 100.*HPLANCK*CLIGHT/KBOLTZ	*/
 
 /* Other constants */
-#define PI                      3.14159265358979323846	/* pi	*/
-#define SPI                     1.77245385091		/* sqrt(pi)	*/
-#define maxp                    0.15
 #define NITERATIONS             16
 #define MAX_RAYS_PER_POINT      10000
 #define RAYS_PER_POINT          200
-#define minpop                  1.e-6
-#define eps                     1.0e-30
 #define IMG_MIN_ALLOWED         1.0e-30
 #define TOL                     1e-6
 #define MAXITER                 50
-#define goal                    50
-#define fixset                  1e-6
-#define maxBlendDeltaV          1.e4		/* m/s */
-#define MAX_NSPECIES            100
-#define MAX_NIMAGES             100
+#define maxBlendDeltaV          1.e4                   /* m/s */
 #define N_RAN_PER_SEGMENT       3
 #define FAST_EXP_MAX_TAYLOR     3
 #define FAST_EXP_NUM_BITS       8
-#define NUM_GRID_STAGES         5
-#define MAX_N_COLL_PART         20
-#define N_SMOOTH_ITERS          20
-#define TYPICAL_ISM_DENS        1000.0
-#define STR_LEN_0               80
-#define DENSITY_POWER           0.2
+#define N_SMOOTH_ITERS          5                      /* number of smoothing iterations if using  par->samplingAlgorithm=0 */
 #define TREE_POWER              2.0
-#define MAX_N_HIGH              10
-#define ERF_TABLE_LIMIT         6.0             /* For x>6 erf(x)-1<double precision machine epsilon, so no need to store the values for larger x. */
+#define ERF_TABLE_LIMIT         6.0                    /* For x>6 erf(x)-1<double precision machine epsilon, so no need to store the values for larger x. */
 #define ERF_TABLE_SIZE          6145
 #define BIN_WIDTH               (ERF_TABLE_LIMIT/(ERF_TABLE_SIZE-1.))
 #define IBIN_WIDTH              (1./BIN_WIDTH)
 #define N_VEL_SEG_PER_HALF      1
 #define NUM_VEL_COEFFS          (1+2*N_VEL_SEG_PER_HALF) /* This is the number of velocity samples per edge (not including the grid vertices at each end of the edge). Currently this is elsewhere hard-wired at 3, the macro just being used in the file I/O modules. Note that we want an odd number of velocity samples per edge if we want to have the ability to do 2nd-order interpolation of velocity within Delaunay tetrahedra. */
+#define MAX_NEG_OPT_DEPTH	30.0			/* 30 was the original value in LIME. */
+#define NUM_RAN_DENS		100
 
 /* Bit locations for the grid data-stage mask, that records the information which is present in the grid struct: */
 #define DS_bit_x             0	/* id, x, sink */
@@ -131,38 +102,11 @@
 #define DS_mask_all          (DS_mask_populations | DS_mask_magfield)
 #define DS_mask_all_but_mag  DS_mask_all & ~(1<<DS_bit_magfield)
 
-#define FUNC_BIT_density       0
-#define FUNC_BIT_temperature   1
-#define FUNC_BIT_abundance     2
-#define FUNC_BIT_molNumDensity 3
-#define FUNC_BIT_doppler       4
-#define FUNC_BIT_velocity      5
-#define FUNC_BIT_magfield      6
-#define FUNC_BIT_gasIIdust     7
-#define FUNC_BIT_gridDensity   8
 
+#include "ufunc_types.h"
 #include "collparts.h"
 #include "inpars.h"
-
-typedef struct {
-  /* Elements also present in struct inpars: */
-  double radius,minScale,tcmb,*nMolWeights;
-  double (*gridDensMaxLoc)[DIM],*gridDensMaxValues,*collPartMolWeights;
-  int sinkPoints,pIntensity,blend,*collPartIds,traceRayAlgorithm,samplingAlgorithm;
-  int sampling,lte_only,init_lte,antialias,polarization,nThreads,nSolveIters;
-  int collPartUserSetFlags;
-  char **girdatfile,**moldatfile,**collPartNames;
-  char *outputfile,*binoutputfile,*gridfile,*pregrid,*restart,*dust;
-  char *gridInFile,**gridOutFiles;
-  _Bool resetRNG,doSolveRTE;
-
-  /* New elements: */
-  double radiusSqu,minScaleSqu,taylorCutoff,gridDensGlobalMax;
-  int ncell,nImages,nSpecies,numDensities,doPregrid,numGridDensMaxima,numDims;
-  int nLineImages,nContImages,dataFlags,nSolveItersDone;
-  _Bool doInterpolateVels,useAbun,doMolCalcs;
-  _Bool writeGridAtStage[NUM_GRID_STAGES],useVelFuncInRaytrace,edgeVelsAvailable;
-} configInfo;
+#include "defaults.h" /* includes lime_config.h */
 
 struct cpData {
   double *down,*temp;
@@ -180,16 +124,10 @@ typedef struct {
   char molName[80];
 } molData;
 
-/* Data concerning a single grid vertex which is passed from photon() to stateq(). This data needs to be thread-safe. */
-typedef struct {
-  double *jbar,*phot,*vfac,*vfac_loc;
-} gridPointData;
-
-/* Point coordinate */
-typedef struct {
+struct point {
   double x[DIM];
   double xn[DIM];
-} point;
+};
 
 struct rates {
   int t_binlow;
@@ -213,7 +151,7 @@ struct grid {
   double x[DIM], vel[DIM], B[3]; /* B field only makes physical sense in 3 dimensions. */
   double *v1,*v2,*v3;
   int numNeigh;
-  point *dir;
+  struct point *dir;
   struct grid **neigh;
   double *w;
   int sink;
@@ -225,24 +163,18 @@ struct grid {
   struct continuumLine cont;
 };
 
-typedef struct{
-  double x[DIM], xCmpntRay, B[3];
-  struct populations *mol;
-  struct continuumLine cont;
-} gridInterp;
-
-typedef struct {
+struct spec {
   double *intense;
   double *tau;
   double stokes[3];
   int numRays;
-} spec;
+};
 
 /* Image information */
 typedef struct {
   int doline;
   int nchan,trans,molI;
-  spec *pixel;
+  struct spec *pixel;
   double velres;
   double imgres;
   int pxls;
@@ -258,26 +190,6 @@ typedef struct {
   _Bool doInterpolateVels;
 } imageInfo;
 
-struct blend{
-  int molJ, lineJ;
-  double deltaV;
-};
-
-struct lineWithBlends{
-  int lineI, numBlends;
-  struct blend *blends;
-};
-
-struct molWithBlends{
-  int molI, numLinesWithBlends;
-  struct lineWithBlends *lines;
-};
-
-struct blendInfo{
-  int numMolsWithBlends;
-  struct molWithBlends *mols;
-};
-
 /* NOTE that it is assumed that vertx[i] is opposite the face that abuts with neigh[i] for all i.
 */ 
 struct cell {
@@ -288,22 +200,10 @@ struct cell {
 };
 
 /* Some global variables */
-extern int silent,defaultFuncFlags;
-extern double defaultDensyPower;
-
-/* User-specifiable functions */
-void	density(double,double,double,double *);
-void	temperature(double,double,double,double *);
-void	abundance(double,double,double,double *);
-void	molNumDensity(double,double,double,double *);
-void	doppler(double,double,double, double *);
-void	velocity(double,double,double,double *);
-void	magfield(double,double,double,double *);
-void	gasIIdust(double,double,double,double *);
-double	gridDensity(configInfo*, double*);
+extern _Bool fixRandomSeeds;
 
 /* More functions */
-void	run(inputPars, image*, const int);
+int	run(inputPars, image*, const int);
 
 _Bool	allBitsSet(const int flags, const int mask);
 _Bool	anyBitSet(const int flags, const int mask);
@@ -311,85 +211,66 @@ _Bool	bitIsSet(const int flags, const int bitI);
 _Bool	onlyBitsSet(const int flags, const int mask);
 
 void	binpopsout(configInfo*, struct grid*, molData*);
-void	calcFastExpRange(const int, const int, int*, int*, int*);
-void	calcGridCollRates(configInfo*, molData*, struct grid*);
-void	calcGridContDustOpacity(configInfo*, const double, double*, double*, const int, struct grid*);
-void	calcGridLinesDustOpacity(configInfo*, molData*, double*, double*, const int, struct grid*);
+void	calcDustData(configInfo*, double*, double*, const double, double*, const int, const double ts[], double*, double*);
+void	calcExpTableEntries(const int, const int);
 void	calcGridMolDensities(configInfo*, struct grid**);
 void	calcGridMolDoppler(configInfo*, molData*, struct grid*);
 void	calcGridMolSpecNumDens(configInfo*, molData*, struct grid*);
-void	calcInterpCoeffs(configInfo*, struct grid*);
-void	calcInterpCoeffs_lin(configInfo*, struct grid*);
 void	calcSourceFn(double, const configInfo*, double*, double*);
-void	calcTableEntries(const int, const int);
+_Bool	charPtrIsNullOrEmpty(const char *inStr);
 void	checkFirstLineMolDat(FILE *fp, char *moldatfile);
+void	checkFgets(char *fgetsResult, char *message);
+void	checkFscanf(const int fscanfResult, const int expectedNum, char *message);
+void	checkFread(const size_t freadResult, const size_t expectedNum, char *message);
+void	checkFwrite(const size_t fwriteResult, const size_t expectedNum, char *message);
 void	checkGridDensities(configInfo*, struct grid*);
 void	checkUserDensWeights(configInfo*);
 void	copyInparStr(const char*, char**);
 void	delaunay(const int, struct grid*, const unsigned long, const _Bool, const _Bool, struct cell**, unsigned long*);
 void	distCalc(configInfo*, struct grid*);
 double	dotProduct3D(const double*, const double*);
-int	factorial(const int);
 double	FastExp(const float);
-void	fillErfTable();
-void	fit_d1fi(double, double, double*);
-void	fit_fi(double, double, double*);
-void	fit_rr(double, double, double*);
+void	fillErfTable(void);
+void	freeArrayOfStrings(char **arrayOfStrings, const int numStrings);
 void	freeConfigInfo(configInfo*);
 void	freeGrid(const unsigned int, const unsigned short, struct grid*);
-void	freeGridPointData(const int, gridPointData*);
 void	freeImgInfo(const int, imageInfo*);
-void	freeInputPars(inputPars*);
+void	freeInputPars(inputPars *par);
 void	freeMolData(const int, molData*);
-void	freeMolsWithBlends(struct molWithBlends*, const int);
 void	freePopulation(const unsigned short, struct populations*);
 void	freeSomeGridFields(const unsigned int, const unsigned short, struct grid*);
 double	gaussline(const double, const double);
-void	getArea(configInfo*, struct grid*, const gsl_rng*);
-void	getclosest(double, double, double, long*, long*, double*, double*, double*);
 double	geterf(const double, const double);
-void	getjbar(int, molData*, struct grid*, const int, configInfo*, struct blendInfo, int, gridPointData*, double*);
-void	getMass(configInfo*, struct grid*, const gsl_rng*);
-void	getVelocities(configInfo *, struct grid *);
-void	getVelocities_pregrid(configInfo *, struct grid *);
-void	gridPopsInit(configInfo*, molData*, struct grid*);
+void	getEdgeVelocities(configInfo *, struct grid *);
 void	input(inputPars*, image*);
-void	levelPops(molData*, configInfo*, struct grid*, int*, double*, double*, const int);
-void	lineBlend(molData*, configInfo*, struct blendInfo*);
-void	LTE(configInfo*, struct grid*, molData*);
-void	lteOnePoint(molData*, const int, const double, double*);
+double	interpolateKappa(const double, double*, double*, const int, gsl_spline*, gsl_interp_accel*);
+int	levelPops(molData*, configInfo*, struct grid*, int*, double*, double*, const int);
 void	mallocAndSetDefaultGrid(struct grid**, const size_t, const size_t);
+void	mallocAndSetDefaultMolData(const int, molData**);
 void	molInit(configInfo*, molData*);
 void	openSocket(char*);
-void	parseInput(inputPars, image*, const int, configInfo*, imageInfo**, molData**);
-void	photon(int, struct grid*, molData*, const gsl_rng*, configInfo*, const int, struct blendInfo, gridPointData*, double*);
 double	planckfunc(const double, const double);
-int	pointEvaluation(configInfo*, const double, double*);
 void	popsin(configInfo*, struct grid**, molData**, int*);
 void	popsout(configInfo*, struct grid*, molData*);
 void	predefinedGrid(configInfo*, struct grid*);
 void	processFitsError(int);
-double	ratranInput(char*, char*, double, double, double);
 void	raytrace(int, configInfo*, struct grid*, molData*, imageInfo*, double*, double*, const int);
 void	readDustFile(char*, double**, double**, int*);
+void	readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *numUniqueCollPartsFound);
 void	readOrBuildGrid(configInfo*, struct grid**);
-void	readUserInput(inputPars*, imageInfo**, int*, int*);
 unsigned long reorderGrid(const unsigned long, struct grid*);
-void	report(int, configInfo*, struct grid*);
 void	reportInfsAtOrigin(const int, const double*, const char*);
 void	setCollPartsDefaults(struct cpData*);
-void	setUpConfig(configInfo*, imageInfo**, molData**);
+int	setupAndWriteGrid(configInfo *par, struct grid *gp, molData *md, char *outFileName);
 void	setUpDensityAux(configInfo*, int*, const int);
+void	sigintHandler(int sigI);
 void	smooth(configInfo*, struct grid*);
 void	sourceFunc_line(const molData*, const double, const struct populations*, const int, double*, double*);
 void	sourceFunc_cont(const struct continuumLine, double*, double*);
 void	sourceFunc_pol(double*, const struct continuumLine, double (*rotMat)[3], double*, double*);
-void	stateq(int, struct grid*, molData*, const int, configInfo*, struct blendInfo, int, gridPointData*, double*, _Bool*);
-void	statistics(int, molData*, struct grid*, int*, double*, double*, int*);
-void	stokesangles(double*, double (*rotMat)[3], double*);
-double	taylor(const int, const float);
 void	writeFitsAllUnits(const int, configInfo*, imageInfo*);
 void	writeGridIfRequired(configInfo*, struct grid*, molData*, const int);
+void	writeGridToAscii(char *outFileName, struct grid *gp, const unsigned int nInternalPoints, const int dataFlags);
 void	write_VTK_unstructured_Points(configInfo*, struct grid*);
 
 
@@ -400,6 +281,7 @@ void	casaStyleProgressBar(const int, int);
 void	collpartmesg(char*, int);
 void	collpartmesg2(char*);
 void	collpartmesg3(int, int);
+void	error(char*);
 void	goodnight(int);
 void	greetings(void);
 void	greetings_parallel(int);
@@ -408,20 +290,16 @@ void	printMessage(char *);
 void	progressbar(double, int);
 void	progressbar2(configInfo*, int, int, double, double, double);
 void	reportOutput(char*);
-void	quotemass(double);
 void	screenInfo(void);
 void	warning(char*);
 
 #ifdef FASTEXP
 extern double EXP_TABLE_2D[128][10];
 extern double EXP_TABLE_3D[256][2][10];
-#else
-extern double EXP_TABLE_2D[1][1]; /* nominal definitions so the fastexp.c module will compile. */
-extern double EXP_TABLE_3D[1][1][1];
+extern double oneOver_i[FAST_EXP_MAX_TAYLOR+1];
 #endif
 
 extern double ERF_TABLE[ERF_TABLE_SIZE];
-extern double oneOver_i[FAST_EXP_MAX_TAYLOR+1];
 
 #endif /* LIME_H */
 

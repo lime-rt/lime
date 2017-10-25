@@ -5,8 +5,11 @@
 # Copyright (C) 2006-2014 Christian Brinch
 # Copyright (C) 2015-2017 The LIME development team
 
+export PATHTOLIME=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+vernum=`grep VERSION ${PATHTOLIME}/src/lime.h` | awk '{print $3}' | sed s/\"//g
+
 function version {
-    echo "This is LIME, The versatile line modeling engine, version 1.6.1"
+    echo "This is LIME, The versatile line modeling engine, version $vernum"
     echo "Copyright (C) 2006-2014 Christian Brinch"
     echo "Copyright (C) 2015-2017 The LIME development team"
 }
@@ -21,6 +24,7 @@ function usage {
     echo "   -V           Display version information"
     echo "   -h           Display this message"
     echo "   -f           Use fast exponential computation"
+    echo "   -s           Suppress output messages"
     echo "   -t           Compile with debugging and fixed RNG seeds"
     echo "   -n           Turn off ncurses output"
     echo "   -p NTHREADS  Run in parallel with NTHREADS threads (default: 1)"
@@ -33,8 +37,9 @@ function tip {
     echo "Try 'lime -h' for more information."
 }
 
-options=":Vfntp:h"
+options=":Vfnstp:h"
 cpp_flags=""
+verbose="yes"
 do_test="no"
 
 while getopts ${options} opt; do
@@ -63,6 +68,9 @@ while getopts ${options} opt; do
 		exit 1
 	    fi
 	    ;;
+	s)
+	    verbose="no"
+	    ;;
 	t)
 	    do_test="yes"
 	    ;;
@@ -83,15 +91,14 @@ if [ $# -ne 1 ]; then
 fi
 
 # Set up the PATHTOLIME, LD_LIBRARY_PATH and WORKDIR variables
-export PATHTOLIME=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${PATHTOLIME}/lib
 export WORKDIR=$PWD
 
 # Compile the code
 pushd ${PATHTOLIME} >> /dev/null
-make -s EXTRACPPFLAGS="${cpp_flags}" MODELS=$WORKDIR/$1 TARGET=$WORKDIR/lime_$$.x DOTEST=$do_test
+make -s EXTRACPPFLAGS="${cpp_flags}" MODELS=$WORKDIR/$1 TARGET=$WORKDIR/lime_$$.x DOTEST=$do_test VERBOSE=$verbose
 # USEHDF5="yes"
-make -s clean
+make -s limeclean
 
 # Run the code
 popd >> /dev/null

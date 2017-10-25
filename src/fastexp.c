@@ -9,14 +9,53 @@
 
 #include "lime.h"
 
+#ifdef FASTEXP
+double EXP_TABLE_2D[128][10];
+double EXP_TABLE_3D[256][2][10];
+/* I've hard-wired the dimensions of these arrays, but it would be better perhaps to declare them as pointers, and calculate the dimensions with the help of the function call:
+  calcFastExpRange(FAST_EXP_MAX_TAYLOR, FAST_EXP_NUM_BITS, &numMantissaFields, &lowestExponent, &numExponentsUsed)
+*/
+
+double oneOver_i[FAST_EXP_MAX_TAYLOR+1];
+#endif
+
+double ERF_TABLE[ERF_TABLE_SIZE];
+
+/*....................................................................*/
 void fillErfTable() {
   int i;
   for (i=0;i<ERF_TABLE_SIZE;i++) {
-    ERF_TABLE[i]=(SPI/2.)*erf(i*ERF_TABLE_LIMIT/(ERF_TABLE_SIZE-1.));
+    ERF_TABLE[i]=(SQRT_PI/2.)*erf(i*ERF_TABLE_LIMIT/(ERF_TABLE_SIZE-1.));
   }
 }
 
+/*....................................................................*/
+double
+geterf(const double x0, const double x1) {
+  /* table lookup erf thingy */
 
+  double val0=0.,val1=0.;
+  
+  if (fabs(x0)>=ERF_TABLE_LIMIT) val0=(SQRT_PI/2.);
+  else {
+    int index = (int)(fabs(x0*IBIN_WIDTH));
+    double inter_coeff = (fabs(x0*IBIN_WIDTH)-index);
+    val0=(1-inter_coeff)*ERF_TABLE[index]+inter_coeff*ERF_TABLE[index+1];
+  }
+  if (x0<0.) val0=-val0;
+ 
+  if (fabs(x1)>=ERF_TABLE_LIMIT) val1=(SQRT_PI/2.);
+  else {
+    int index = (int)(fabs(x1*IBIN_WIDTH));
+    double inter_coeff = (fabs(x1*IBIN_WIDTH)-index);
+    val1=(1-inter_coeff)*ERF_TABLE[index]+inter_coeff*ERF_TABLE[index+1];
+  }
+  if (x1<0.) val1=-val1;
+
+  return fabs((val1-val0)/(x1-x0));
+}
+
+/*....................................................................*/
 int factorial(const int n){
   int i, result;
 
@@ -27,6 +66,7 @@ int factorial(const int n){
   return result;
 }
 
+/*....................................................................*/
 double taylor(const int maxOrder, const float x){
   double result=1.0;
   int i;
@@ -38,7 +78,7 @@ double taylor(const int maxOrder, const float x){
   return result;
 }
 
-
+/*....................................................................*/
 void calcFastExpRange(const int maxTaylorOrder, const int maxNumBitsPerMantField, int *numMantissaFields, int *lowestExponent, int *numExponentsUsed){
   /*
 We want to approximate an exponential call exp(-|x|) (where x is a standard, i.e. IEEE 754-format, float) by a look-up table. The scheme proposed makes use of two arrays: a 2D one of shape (J=2^{B-B0},L) and a 3D one of shape (J=2^B,K-1,L), where B is the input argument maxNumBitsPerMantField. The purpose of the present function is to calculate and return B0, K and L, as well as the value of lowestExponent (explained in section 2 below).
@@ -134,7 +174,9 @@ thus
   *numExponentsUsed = 1+nHi-nLo;
 }
 
-void calcTableEntries(const int maxTaylorOrder, const int maxNumBitsPerMantField){
+#ifdef FASTEXP
+/*....................................................................*/
+void calcExpTableEntries(const int maxTaylorOrder, const int maxNumBitsPerMantField){
   /*
 See description of the lookup algorithm in function calcFastExpRange().
   */
@@ -190,10 +232,11 @@ See description of the lookup algorithm in function calcFastExpRange().
   for (j=1;j<=FAST_EXP_MAX_TAYLOR;j++) oneOver_i[j]=1.0/(1.0*j);
 }
 
+/*....................................................................*/
 double
 FastExp(const float negarg){
   /*
-See description of the lookup algorithm in function calcFastExpRange(). ****NOTE!**** Most numbers here are hard-wired for the sake of speed. If need be, they can be verified (or recalculated for different conditions) via calcTableEntries().
+See description of the lookup algorithm in function calcFastExpRange(). ****NOTE!**** Most numbers here are hard-wired for the sake of speed. If need be, they can be verified (or recalculated for different conditions) via calcExpTableEntries().
   */
   int exponentMask=0x7f800000,ieee754NumMantBits=23;
   int exponentOffset=122,numExponentsUsed=10;
@@ -240,5 +283,6 @@ This value should be calculated from 127+lowestExponent, where 127 is the offset
           EXP_TABLE_3D[j1][0][l]*
           EXP_TABLE_3D[j2][1][l]);
 }
+#endif
 
 
