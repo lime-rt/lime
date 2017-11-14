@@ -11,6 +11,38 @@ TODO:
 #include "lime.h"
 
 /*....................................................................*/
+void
+reportInfAtOrigin(const double value, const char *funcName){
+  char message[STR_LEN_0];
+
+  if((isinf(value) || isnan(value)) && !silent){
+    snprintf(message, STR_LEN_0, "You have a singularity at the origin of your %s() function.", funcName);
+    warning(message);
+  }
+}
+
+/*....................................................................*/
+void
+reportInfsAtOrigin(const int numElements, const double *values, const char *funcName){
+  int i;
+  char message[STR_LEN_0];
+
+  if(numElements<=0){
+    if((isinf(*values) || isnan(*values)) && !silent){
+      snprintf(message, STR_LEN_0, "You have a singularity at the origin of your %s() function.", funcName);
+      warning(message);
+    }
+  }else{
+    for(i=0;i<numElements;i++){
+      if((isinf(values[i]) || isnan(values[i])) && !silent){
+        snprintf(message, STR_LEN_0, "You have a singularity at the origin in return %d of your %s() function.", i, funcName);
+        warning(message);
+      }
+    }
+  }
+}
+
+/*....................................................................*/
 void sigintHandler(int sigI){
 #ifdef IS_PYTHON
   Py_Finalize();

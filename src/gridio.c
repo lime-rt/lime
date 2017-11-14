@@ -11,6 +11,8 @@ TODO:
 #include "lime.h"
 #include "gridio.h"
 
+_Bool _gio_doTest=TRUE;
+
 /*
 This module contains generic routines for writing grid data to, and reading it from, a file on disk. The problem with doing this is that the grid struct contains different amounts of information at different times in the running of the code. In order to quantify and regulate this, a dataFlags integer is used to record the presence or absence (as indicated by the value of the appropriate bit in the mask) of particular types of information. The bits associated with certain fields of struct grid are given in the lime.h header.
 
@@ -737,6 +739,8 @@ NOTE that collPartNames and its components must be freed after use.
   struct linkType *links=NULL, **nnLinks=NULL;
   char message[80];
 
+if(_gio_doTest) printf("    >>> Entering gridio.readGrid().\n");
+
   sprintf(message, "Reading grid-point list from file %s", inFileName);
   if(!silent) printMessage(message);
 
@@ -886,6 +890,7 @@ NOTE that collPartNames and its components must be freed after use.
   }
 
   closeAndFree(fptr, firstNearNeigh, nnLinks, links, gridInfoRead->nLinks);
+if(_gio_doTest) printf("    <<< Leaving gridio.readGrid().\n");
   return 0;
 }
 
@@ -902,4 +907,157 @@ countDensityCols(char *inFileName, int *numDensities){
 
   return status;
 }
+
+/*....................................................................*/
+void
+sanityCheckOfRead(const int status, configInfo *par, struct gridInfoType gridInfoRead){
+  char message[STR_LEN_0];
+
+if(_gio_doTest) printf("    >>> Entering gridio.sanityCheckOfRead_new().\n");
+
+  if(status){
+    if(!silent){
+      snprintf(message, STR_LEN_0, "Read of grid file failed with status return %d", status);
+      bail_out(message);
+    }
+exit(1);
+  }
+
+  /* Test that dataFlags obeys the rules. */
+  /* No other bit may be set if DS_bit_x is not: */
+  if(anyBitSet(par->dataFlags, (DS_mask_all & ~(1 << DS_bit_x))) && !bitIsSet(par->dataFlags, DS_bit_x)){
+    if(!silent) bail_out("You may not read a grid file without X, ID or IS_SINK data.");
+exit(1);
+  }
+
+  /* DS_bit_ACOEFF may not be set if either DS_bit_neighbours or DS_bit_velocity is not: */
+  if(bitIsSet(par->dataFlags, DS_bit_ACOEFF)\
+  && !(bitIsSet(par->dataFlags, DS_bit_neighbours) && bitIsSet(par->dataFlags, DS_bit_velocity))){
+    if(!silent) bail_out("You may not read a grid file with ACOEFF but no VEL or neighbour data.");
+exit(1);
+  }
+
+  /* DS_bit_populations may not be set unless all the others (except DS_bit_magfield) are set as well: */
+  if(bitIsSet(par->dataFlags, DS_bit_populations)\
+  && !allBitsSet(par->dataFlags & DS_mask_all_but_mag, DS_mask_populations)){
+    if(!silent) bail_out("You may not read a grid file with pop data unless all other data is present.");
+exit(1);
+  }
+
+  /* Test gridInfoRead values against par values and overwrite the latter, with a warning, if necessary.
+  */
+  if(gridInfoRead.nSinkPoints>0 && par->sinkPoints>0){
+    if((int)gridInfoRead.nSinkPoints!=par->sinkPoints){
+      if(!silent) warning("par->sinkPoints will be overwritten");
+    }
+    if((int)gridInfoRead.nInternalPoints!=par->pIntensity){
+      if(!silent) warning("par->pIntensity will be overwritten");
+    }
+  }
+  par->sinkPoints = (int)gridInfoRead.nSinkPoints;
+  par->pIntensity = (int)gridInfoRead.nInternalPoints;
+  par->ncell = par->sinkPoints + par->pIntensity;
+
+  if(gridInfoRead.nDims!=DIM){ /* At present this situation is already detected and handled inside readGridExtFromFits(), but it may not be in future. The test here has no present functionality but saves trouble later if we change grid.x from an array to a pointer. */
+    if(!silent){
+      snprintf(message, STR_LEN_0, "Grid file had %d dimensions but there should be %d.", (int)gridInfoRead.nDims, DIM);
+      bail_out(message);
+    }
+exit(1);
+  }
+  if(gridInfoRead.nSpecies > 0){
+    if((int)gridInfoRead.nSpecies!=par->nSpecies && par->doMolCalcs){
+      if(!silent){
+        snprintf(message, STR_LEN_0, "Grid file had %d species but you have provided moldata files for %d."\
+          , (int)gridInfoRead.nSpecies, par->nSpecies);
+        bail_out(message);
+      }
+exit(1);
+/**** should compare name to name - at some later time after we have read these from the moldata files? */
+    }
+  }
+  if(gridInfoRead.nDensities>0 && par->numDensities>0 && (int)gridInfoRead.nDensities!=par->numDensities){
+    if(!silent){
+      snprintf(message, STR_LEN_0, "Grid file had %d densities but you have provided %d."\
+        , (int)gridInfoRead.nDensities, par->numDensities);
+      bail_out(message);
+    }
+exit(1);
+  }
+  par->numDensities = gridInfoRead.nDensities;
+
+  if(par->radius>0){ /* means the user has set it to something in the model file. */
+    if(!silent)
+      warning("Your value of par->radius will be overwritten by that read from file.");
+  }
+
+  if(par->minScale>0){ /* means the user has set it to something in the model file. */
+    if(!silent)
+      warning("Your value of par->minScale will be overwritten by that read from file.");
+  }
+
+  if(par->nSolveItersDone>0 && (par->init_lte || par->lte_only)){
+    if(!silent)
+      warning("Your choice of LTE calculation will erase the RTE solution you read from file.");
+  }
+
+  if(allBitsSet(par->dataFlags, DS_mask_populations) && par->nSolveItersDone<=0){
+    if(!silent)
+      bail_out("Populations were read but par->nSolveItersDone<=0.");
+exit(1);
+  }
+if(_gio_doTest) printf("    <<< Leaving gridio.sanityCheckOfRead_new().\n");
+}
+
+/*....................................................................*/
+void
+readGridWrapper(configInfo *par, struct grid **gp, char ***collPartNames, int *numCollPartRead){
+
+  const int numDesiredKwds=3;
+  struct keywordType *desiredKwds=malloc(sizeof(struct keywordType)*numDesiredKwds);
+  int i,status=0;
+  struct gridInfoType gridInfoRead;
+
+if(_gio_doTest) printf("  >>> Entering gridio.readGridWrapper_new().\n");
+
+  i = 0;
+  initializeKeyword(&desiredKwds[i]);
+  desiredKwds[i].datatype = lime_DOUBLE;
+  snprintf(desiredKwds[i].keyname, STRLEN_KNAME, "RADIUS  ");
+
+  i++;
+  initializeKeyword(&desiredKwds[i]);
+  desiredKwds[i].datatype = lime_DOUBLE;
+  snprintf(desiredKwds[i].keyname, STRLEN_KNAME, "MINSCALE");
+
+  i++;
+  initializeKeyword(&desiredKwds[i]);
+  desiredKwds[i].datatype = lime_INT;
+  snprintf(desiredKwds[i].keyname, STRLEN_KNAME, "NSOLITER");
+
+  status = readGrid(par->gridInFile, &gridInfoRead, desiredKwds\
+    , numDesiredKwds, gp, collPartNames, numCollPartRead, &(par->dataFlags));
+
+  par->nSolveItersDone = desiredKwds[2].intValue;
+
+  sanityCheckOfRead(status, par, gridInfoRead);
+
+  par->radius          = desiredKwds[0].doubleValue;
+  par->minScale        = desiredKwds[1].doubleValue;
+
+  par->radiusSqu   = par->radius*par->radius;
+  par->minScaleSqu = par->minScale*par->minScale;
+
+  freeKeywords(desiredKwds, numDesiredKwds);
+  freeGridInfo(&gridInfoRead);
+
+if(_gio_doTest) printf("  <<< Leaving gridio.readGridWrapper_new().\n");
+
+/*
+**** Ideally we should also have a test on nACoeffs.
+
+**** Ideally we should also have a test on the mols entries - at some later time after we have read the corresponding values from the moldata files?
+*/
+}
+
 
