@@ -52,6 +52,7 @@ include Makefile.srcs
 ##
 
 TARGET  = lime.x # Overwritten in usual practice by the value passed in by the 'lime' script.
+CASATARGET = casaray.so
 CC	= gcc -fopenmp
 MODELS  = model.c # Overwritten in usual practice by the value passed in by the 'lime' script.
 MODELO 	= ${srcdir}/model.o
@@ -75,11 +76,15 @@ ifeq (${USEHDF5},yes)
   LDFLAGS += -lhdf5_hl -lhdf5 -lz
   CORESOURCES += ${HDF5SOURCES}
   CONVSOURCES += ${HDF5SOURCES}
+  CASASOURCES += ${HDF5SOURCES}
   COREINCLUDES += ${HDF5INCLUDES}
+#  CASAINCLUDES += ${HDF5INCLUDES}
 else
   CORESOURCES += ${FITSSOURCES}
   CONVSOURCES += ${FITSSOURCES}
+  CASASOURCES += ${FITSSOURCES}
   COREINCLUDES += ${FITSINCLUDES}
+#  CASAINCLUDES += ${FITSINCLUDES}
 endif
 
 SRCS = ${CORESOURCES} ${STDSOURCES}
@@ -90,9 +95,14 @@ PYSRCS = ${CORESOURCES} ${PYSOURCES}
 PYINCS = ${COREINCLUDES} ${PYINCLUDES}
 PYOBJS = $(PYSRCS:.c=.o)
 
+CASASRCS = ${CASASOURCES}
+#CASAINCS = ${CASAINCLUDES}
+CASAINCS = ${COREINCLUDES}
+CASAOBJS = $(CASASRCS:.c=.o)
+
 CONV_OBJS = $(CONVSOURCES:.c=.o)
 
-.PHONY: all doc docclean objclean limeclean clean distclean pyclean
+.PHONY: all doc docclean objclean limeclean clean distclean pyclean casa
 
 all:: ${TARGET} 
 
@@ -115,6 +125,14 @@ pylime: CPPFLAGS += -DNO_NCURSES -DIS_PYTHON
 pylime: LDFLAGS += ${PYLDFLAGS}
 
 pylime: ${PYOBJS}
+	${CC} -o $@ $^ ${LIBS} ${LDFLAGS}
+
+casa: CCFLAGS += ${PYCCFLAGS} -fPIC
+casa: CPPFLAGS += -DNO_NCURSES -DIS_PYTHON -DCASARAY
+casa: LDFLAGS += ${PYLDFLAGS} -shared
+casa: ${CASATARGET}
+
+${CASATARGET}: ${CASAOBJS}
 	${CC} -o $@ $^ ${LIBS} ${LDFLAGS}
 
 gridconvert : CPPFLAGS += -DNO_NCURSES
@@ -140,7 +158,7 @@ pyclean:: objclean
 
 clean:: objclean pyclean
 	rm -f gridconvert
-	rm -f *~ ${srcdir}/*~
+	rm -f *~ ${srcdir}/*~ ${CASATARGET}
 
 distclean:: clean docclean limeclean
 	rm Makefile.defs

@@ -25,7 +25,7 @@ lte_only                = False
 init_lte                = False
 nThreads                = 1
 nSolveIters             = 12
-moldatfile              = ['hco+@xpol.dat'] # must be a list, even when there is only 1 item.
+moldatfile              = 'hco+@xpol.dat'
 dust                    = 'jena_thin_e6.tab'
 gridInFile              = ''
 gridOutFile             = 'grid_5_CG97.ds'
@@ -84,7 +84,7 @@ if doSolve:
     ,temperature,temperature_args,velocity,velocity_args)
 
 gridInFile              = 'grid_5_CG97.ds'
-moldatfile              = ['hco+@xpol.dat'] # must be a list, even when there is only 1 item.
+moldatfile              = 'hco+@xpol.dat'
 dust                    = 'jena_thin_e6.tab'
 
 filename                = 'image0_CG97.fits'

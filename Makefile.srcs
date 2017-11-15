@@ -62,6 +62,26 @@ PYSOURCES = \
 	src/py_models.c\
 	src/py_utils.c
 
+CASASOURCES = \
+	src/aux.c\
+	src/casaray.c\
+	src/casa_messages.c\
+	src/collparts.c\
+	src/defaults.c\
+	src/fastexp.c\
+	src/frees.c\
+	src/gridio.c\
+	src/grid_aux.c\
+	src/lime_defaults.c\
+	src/molinit.c\
+	src/py_utils.c\
+	src/raythrucells.c\
+	src/raytrace.c\
+	src/run_new.c\
+	src/sourcefunc.c\
+	src/tcpsocket.c\
+	src/writefits.c
+
 COREINCLUDES = \
 	src/collparts.h\
 	src/constants.h\

@@ -249,6 +249,12 @@ void	writeGridIfRequired(configInfo*, struct grid*, molData*, const int);
 void	writeGridToAscii(char *outFileName, struct grid *gp, const unsigned int nInternalPoints, const int dataFlags);
 void	write_VTK_unstructured_Points(configInfo*, struct grid*);
 
+/* Extra definitions needed by casaray:
+*/
+void 	write4Dfits(int im, int unit_index, configInfo *par, imageInfo *img);
+int	copyInpars(const inputPars inpars, image *inimg, const int nImages, configInfo *par, imageInfo **img);
+void	setOtherEasyConfigValues(const int nImages, configInfo *par, imageInfo **img);
+void	parseInput_new(configInfo *par, imageInfo **img, _Bool checkForSingularities);
 
 /* Curses functions */
 
