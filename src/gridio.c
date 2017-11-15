@@ -1018,7 +1018,7 @@ readGridWrapper(configInfo *par, struct grid **gp, char ***collPartNames, int *n
   int i,status=0;
   struct gridInfoType gridInfoRead;
 
-if(_gio_doTest) printf("  >>> Entering gridio.readGridWrapper_new().\n");
+if(_gio_doTest) printf("  >>> Entering gridio.readGridWrapper().\n");
 
   i = 0;
   initializeKeyword(&desiredKwds[i]);
@@ -1051,7 +1051,7 @@ if(_gio_doTest) printf("  >>> Entering gridio.readGridWrapper_new().\n");
   freeKeywords(desiredKwds, numDesiredKwds);
   freeGridInfo(&gridInfoRead);
 
-if(_gio_doTest) printf("  <<< Leaving gridio.readGridWrapper_new().\n");
+if(_gio_doTest) printf("  <<< Leaving gridio.readGridWrapper().\n");
 
 /*
 **** Ideally we should also have a test on nACoeffs.

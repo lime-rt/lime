@@ -823,7 +823,7 @@ run(inputPars inpars, image *inimg, const int nImages){
   int nEntries=0;
   double *lamtab=NULL,*kaptab=NULL;
 
-  if(!par.doPregrid && !par.restart){
+  if(inpars.pregrid==NULL && inpars.restart==NULL){
     return run_new(inpars, inimg, nImages);
   }
 
