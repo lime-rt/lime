@@ -80,9 +80,13 @@ file:///opt/casa/code/xmlcasa/xml/casa.xsd">
       <allowed kind="range"><value range="min">0</value></allowed>
     </param>
     <param type="double" name="distance">
-      <description>Distance of source in m.</description>
+      <description>Distance of source (distUnit).</description>
       <value>0.0</value>
       <allowed kind="range"><value range="min">0.0</value></allowed>
+    </param>
+    <param type="string" name="distUnit">
+      <description>Unit of distance ('m', 'pc' or 'au')</description>
+      <value></value>
     </param>
     <param type="int" name="nThreads">
       <description>Number of threads when running in parallel.</description>

@@ -14,7 +14,7 @@ except ImportError:
 
   casalog = DummyCasaLog()
 
-def limesolver(radius,minScale,tcmb,sinkPoints,pIntensity,samplingAlgorithm,sampling
+def limesolver(radius,minScale,distUnit,tcmb,sinkPoints,pIntensity,samplingAlgorithm,sampling
   ,lte_only,init_lte,nThreads,nSolveIters,moldatfile,dust,gridInFile,gridOutFile,resetRNG
   ,modelID,T,rhoc,Mstar,Rstar,Tstar,bgdens,hph,plsig1,rin,rout,sig0,mdisk,cs,h0,ab0,mdot
   ,tin,ve,mdota,mu,nu,rc,Tcloud,age,Rn,userModelPath,abundance,abundance_args
@@ -57,7 +57,10 @@ def limesolver(radius,minScale,tcmb,sinkPoints,pIntensity,samplingAlgorithm,samp
 
       self._limeLog.complete = True
 
-  sleepSec = 2#10
+  AU = 1.49598e11    # AU to m
+  PC = 3.08568025e16 # PC to m
+
+  sleepSec = 1
   gridDoneMessageIsPrinted = False
   mainDoneMessageIsPrinted = False
   raysDoneMessageIsPrinted = False
@@ -72,6 +75,10 @@ def limesolver(radius,minScale,tcmb,sinkPoints,pIntensity,samplingAlgorithm,samp
         return
 
   moldatfile = [moldatfile]
+
+  if not(distUnit=='m' or distUnit=='pc' or distUnit=='au'):
+    casalog.post("Distance unit %s not recognized." % (distUnit), priority='ERROR')
+    return
 
   if (not userModelPath is None) and userModelPath!='':
     casalog.post("Supply of a user model is not yet supported.", priority='Warning')
@@ -223,8 +230,17 @@ def limesolver(radius,minScale,tcmb,sinkPoints,pIntensity,samplingAlgorithm,samp
 
   # Set input parameters for lime:
   limepars = lime.createInputPars()
-  limepars.radius            = radius
-  limepars.minScale          = minScale
+
+  if distUnit=='pc':
+    limepars.radius          = radius*PC
+    limepars.minScale        = minScale*PC
+  elif distUnit=='au':
+    limepars.radius          = radius*AU
+    limepars.minScale        = minScale*AU
+  else:
+    limepars.radius          = radius
+    limepars.minScale        = minScale
+
   limepars.tcmb              = tcmb
   limepars.sinkPoints        = sinkPoints
   limepars.pIntensity        = pIntensity

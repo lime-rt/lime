@@ -14,14 +14,18 @@ file:///opt/casa/code/xmlcasa/xml/casa.xsd">
 
   <input>
     <param type="double" name="radius">
-      <description>Radius of the model sphere (m)</description>
+      <description>Radius of the model sphere (distUnit)</description>
       <value>0.0</value>
       <allowed kind="range"><value range="min">0.0</value></allowed>
     </param>
     <param type="double" name="minScale">
-      <description>Minimum spatial model scale (m)</description>
+      <description>Minimum spatial model scale (distUnit)</description>
       <value>0.0</value>
       <allowed kind="range"><value range="min">0.0</value></allowed>
+    </param>
+    <param type="string" name="distUnit">
+      <description>Unit of radius and minScale ('m', 'pc' or 'au')</description>
+      <value></value>
     </param>
     <param type="double" name="tcmb">
       <description>Temperature of CMB (K)</description>
