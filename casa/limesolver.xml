@@ -24,7 +24,7 @@ file:///opt/casa/code/xmlcasa/xml/casa.xsd">
       <allowed kind="range"><value range="min">0.0</value></allowed>
     </param>
     <param type="string" name="distUnit">
-      <description>Unit of radius and minScale ('m', 'pc' or 'au')</description>
+      <description>Unit of radius and minScale ("m", "pc" or "au")</description>
       <value></value>
     </param>
     <param type="double" name="tcmb">
@@ -165,7 +165,7 @@ file:///opt/casa/code/xmlcasa/xml/casa.xsd">
       <allowed kind="range"><value range="min">0</value></allowed>
     </param>
 
-    <param type="double" name="cs" subparam="true">
+    <param type="double" name="soundspeed" subparam="true">
       <description>Sound speed (m/s)</description>
       <value>1000.0</value>
       <allowed kind="range"><value range="min">0</value></allowed>

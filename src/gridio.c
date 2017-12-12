@@ -11,7 +11,7 @@ TODO:
 #include "lime.h"
 #include "gridio.h"
 
-_Bool _gio_doTest=TRUE;
+_Bool _gio_doTest=FALSE;
 
 /*
 This module contains generic routines for writing grid data to, and reading it from, a file on disk. The problem with doing this is that the grid struct contains different amounts of information at different times in the running of the code. In order to quantify and regulate this, a dataFlags integer is used to record the presence or absence (as indicated by the value of the appropriate bit in the mask) of particular types of information. The bits associated with certain fields of struct grid are given in the lime.h header.

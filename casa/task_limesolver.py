@@ -16,7 +16,7 @@ except ImportError:
 
 def limesolver(radius,minScale,distUnit,tcmb,sinkPoints,pIntensity,samplingAlgorithm,sampling
   ,lte_only,init_lte,nThreads,nSolveIters,moldatfile,dust,gridInFile,gridOutFile,resetRNG
-  ,modelID,T,rhoc,Mstar,Rstar,Tstar,bgdens,hph,plsig1,rin,rout,sig0,mdisk,cs,h0,ab0,mdot
+  ,modelID,T,rhoc,Mstar,Rstar,Tstar,bgdens,hph,plsig1,rin,rout,sig0,mdisk,soundspeed,h0,ab0,mdot
   ,tin,ve,mdota,mu,nu,rc,Tcloud,age,Rn,userModelPath,abundance,abundance_args
     ,bmag,bmag_args,density,density_args,doppler,doppler_args,tdust,tdust_args
     ,temperature,temperature_args,velocity,velocity_args):
@@ -117,7 +117,7 @@ def limesolver(radius,minScale,distUnit,tcmb,sinkPoints,pIntensity,samplingAlgor
     ml.setParamDouble('rout',           rout)
 
   elif modelID=='LiShu96':
-    ml.setParamDouble('cs', cs)
+    ml.setParamDouble(   'cs', soundspeed)
     ml.setParamEnumIndex('h0', h0)
 
   elif modelID=='Mamon88':
@@ -147,7 +147,7 @@ def limesolver(radius,minScale,distUnit,tcmb,sinkPoints,pIntensity,samplingAlgor
     ml.setParamDouble('Rn',  Rn)
     ml.setParamDouble('T',   Tcloud)
     ml.setParamDouble('age', age)
-    ml.setParamDouble('cs',  cs)
+    ml.setParamDouble('cs',  soundspeed)
 
   else:
     errStr = 'Model %s cannot yet be processed.' % modelID
