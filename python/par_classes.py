@@ -18,7 +18,7 @@ class ImageParameters:
   """
 This is to define the complete list of 'image' parameters which the user can set for each image. Although the parameters are set up as class attributes when the module is imported, the fundamental definition is via the 'hidden' attribute _listOfAttrs. This list includes a tuple element for each parameter. Each tuple has 5 elements: the parameter name, its type (one of ['int','float','bool','str','obj']), whether it is a list, whether it is mandatory, and the default value.
 
-***NOTE*** that the ordering of the elements in _listOfAttrs is important - the code in pymain.initParImg() depends on it. Don't change it without also changing the relevant code.
+***NOTE*** that the ordering of the elements in _listOfAttrs is important - the code in py_utils.c:initParImg() depends on it. Don't change the order here without also changing the relevant C code.
   """
   _listOfAttrs = []
   #                     name                type    list?  mand?  default
@@ -43,14 +43,23 @@ This is to define the complete list of 'image' parameters which the user can set
   _listOfAttrs.append(('filename',         'str',   False, True,  None))
   _listOfAttrs.append(('units',            'str',   False, False, None))
 
+  def __str__(self, spaces=''):
+    myStr  = spaces+'<%s instance.\n' % (self.__class__.__name__)
+    for attr in self._listOfAttrs:
+      paddedName = '%s%s' % (attr[0], ' '*(17-len(attr[0])))
+      myStr += spaces+'  %s = %s\n' % (paddedName, str(getattr(self,attr[0])))
+    myStr += spaces+'>\n'
+    return myStr
+
 for attr in ImageParameters._listOfAttrs:
   ImageParameters.__dict__[attr[0]] = attr[4]
+
 
 class ModelParameters:
   """
 This is to define the complete list of 'ordinary' parameters which the user can set. Although the parameters are set up as class attributes when the module is imported, the fundamental definition is via the 'hidden' attribute _listOfAttrs. This list includes a tuple element for each parameter. Each tuple has 5 elements: the parameter name, its type (one of ['int','float','bool','str','obj']), whether it is a list, whether it is mandatory, and the default value. 
 
-***NOTE*** that the ordering of the elements in _listOfAttrs is important - the code in pymain.initParImg() depends on it. Don't change it without also changing the relevant code.
+***NOTE*** that the ordering of the elements in _listOfAttrs is important - the code in py_utils.c:initParImg() depends on it. Don't change the order here without also changing the relevant C code.
   """
   _listOfAttrs = []
   #                     name                 type   list?  mand?  default
@@ -96,18 +105,66 @@ This is to define the complete list of 'ordinary' parameters which the user can 
 
   _listOfAttrs.append(('img',              'obj',  True,  False, []))
 
+  def __str__(self, spaces=''):
+    myStr  = spaces+'<%s instance.\n' % (self.__class__.__name__)
+    for attr in self._listOfAttrs:
+      if attr[0]=='img':
+        myStr += spaces+'  img:\n'
+        for i in range(len(self.img)):
+          myStr += spaces+'    image %d:\n' % i
+          myStr += self.img[i].__str__(spaces+'    ')
+
+      else:
+        paddedName = '%s%s' % (attr[0], ' '*(17-len(attr[0])))
+        myStr += spaces+'  %s = %s\n' % (paddedName, str(getattr(self,attr[0])))
+    myStr += spaces+'>\n'
+    return myStr
+
 for attr in ModelParameters._listOfAttrs:
   ModelParameters.__dict__[attr[0]] = attr[4]
 
+def loadTestParValues(inGridFileName, outImageName):
+  limepars = ModelParameters()
+
+  limepars.gridInFile         =  inGridFileName
+  limepars.moldatfile         =  ['hco+@xpol.dat']
+  limepars.dust               =  "jena_thin_e6.tab"
+  limepars.traceRayAlgorithm  =  1
+  limepars.polarization       =  False
+  limepars.collPartIds        = [1]
+  limepars.nMolWeights        = [1.0]
+  limepars.nThreads           = 1
+  limepars.nSolveIters        = 0
+  limepars.doSolveRTE         = False
+
+  impars = ImageParameters()
+
+  impars.filename           =  outImageName
+  impars.imgres             =  0.02
+  impars.pxls               =  101
+  impars.unit               =  0
+  impars.freq               =  0.0
+  impars.theta              =  30.0
+  impars.phi                =  0.0
+  impars.incl               =  0.0
+  impars.posang             =  0.0
+  impars.azimuth            =  0.0
+  impars.distance           =  4.31995235e+18
+  impars.nThreads           =  1
+  impars.doLine             =  True
+  impars.nchan              =  60
+  impars.velres             =  100.0
+  impars.trans              =  3
+  impars.molI               =  0
+  impars.bandwidth          =  0.0
+  impars.source_vel         =  0.0
+  impars.doInterpolateVels    =  True
+
+  limepars.img = [impars]
+
+  return limepars
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 if __name__ == '__main__':
-
-  fred = ModelParameters()
-
-  print fred.sampling
-
-  print fred._listOfAttrs[16][0]
-
-
+  pass
 

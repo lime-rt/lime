@@ -48,5 +48,36 @@ typedef struct {
   _Bool writeGridAtStage[NUM_GRID_STAGES],useVelFuncInRaytrace,edgeVelsAvailable;
 } configInfo;
 
+struct spec {
+  double *intense;
+  double *tau;
+  double stokes[3];
+  int numRays;
+};
+
+/* Image information */
+typedef struct {
+  /* Elements also present in struct image: */
+  int nchan,trans,molI;
+  double velres;
+  double imgres;
+  int pxls;
+  int unit;
+  char *units;
+  double freq,bandwidth;
+  char *filename;
+  double source_vel;
+  double theta,phi,incl,posang,azimuth;
+  double distance;
+  _Bool doInterpolateVels;
+
+  /* New elements: */
+  struct spec *pixel;
+  int *imgunits;
+  int numunits;
+  double rotMat[3][3];
+  int doline;
+} imageInfo;
+
 #endif /* LIME_CONFIG_H */
 
