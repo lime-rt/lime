@@ -44,6 +44,22 @@ static struct argp_option options[] = {
   { 0 }
 };
 
+/* Used by main to communicate with parse_opt. */
+struct arguments
+{
+  _Bool fitsIsTheInput,popsNotPre;
+  char *inFile,*outFile,*bulkSpeciesName,*moldatfile;
+  int numInternalPoints,numBoundaryPoints;
+  double modelRadius,tempCMB;
+};
+
+#ifdef TEST
+_Bool fixRandomSeeds = TRUE;
+#else
+_Bool fixRandomSeeds = FALSE;
+#endif
+
+/*....................................................................*/
 void myPrintUsage(){
   const int maxNumOptions=20,maxOptFieldLen=28;
   int i,numSpaces;
@@ -74,15 +90,7 @@ void myPrintUsage(){
   }
 }
 
-/* Used by main to communicate with parse_opt. */
-struct arguments
-{
-  _Bool fitsIsTheInput,popsNotPre;
-  char *inFile,*outFile,*bulkSpeciesName,*moldatfile;
-  int numInternalPoints,numBoundaryPoints;
-  double modelRadius,tempCMB;
-};
-
+/*....................................................................*/
 /* Parse a single option. */
 static error_t
 parse_opt (int key, char *arg, struct argp_state *state)
