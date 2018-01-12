@@ -10,6 +10,7 @@ CORESOURCES = \
 	src/aux.c\
 	src/collparts.c\
 	src/defaults.c\
+	src/dust.c\
 	src/fastexp.c\
 	src/frees.c\
 	src/grid.c\
@@ -63,12 +64,13 @@ PYSOURCES = \
 	src/py_models.c\
 	src/py_utils.c
 
-CASASOURCES = \
+CRSOURCES = \
 	src/aux.c\
 	src/casaray.c\
 	src/casa_messages.c\
 	src/collparts.c\
 	src/defaults.c\
+	src/dust.c\
 	src/fastexp.c\
 	src/frees.c\
 	src/gridio.c\

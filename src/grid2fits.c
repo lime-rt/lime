@@ -76,6 +76,28 @@ Note that at present the data in the 'partner' element of grid.mol is *NOT* bein
 */
 
 /*....................................................................*/
+void
+processFitsError(int status){
+  /*****************************************************/
+  /* Print out cfitsio error messages and exit program */
+  /*****************************************************/
+
+  if(status){
+    if(!silent){
+#ifdef NO_NCURSES
+      fits_report_error(stderr, status); /* print error report */
+#else
+      char message[STR_LEN_0];
+      sprintf(message, "Error in cfitsio: status=%d", status);
+      bail_out(message);
+#endif
+    }
+    exit( status );    /* terminate the program, returning error status */
+  }
+  return;
+}
+
+/*....................................................................*/
 fitsfile *
 openFITSFileForWrite(char *outFileName){
   fitsfile *fptr=NULL;
@@ -413,7 +435,7 @@ Note that data types in all capitals are defined in fitsio.h.
   int status=0, colI=0, i, di, maxNumCols;
   LONGLONG firstRow=1, firstElem=1;
   char genericComment[80];
-  char genericKwd[numKwdChars], message[80];
+  char genericKwd[numKwdChars], message[STR_LEN_0];
   char colName[numColNameChars];
   char **allColNames=NULL;
   int *allColNumbers=NULL, *colDataTypes=NULL;
@@ -615,7 +637,7 @@ Ok we have a bit of a tricky situation here in that the number of columns we wri
   if(collPartNames!=NULL){
     if(gridInfo.nDensities>maxNumCollPart){
       if(!silent){
-        sprintf(message, "There seem to be %d collision partners but keywords can only be written for %d.", (int)gridInfo.nDensities, (int)maxNumCollPart);
+        snprintf(message, STR_LEN_0, "There seem to be %d collision partners but keywords can only be written for %d.", (int)gridInfo.nDensities, (int)maxNumCollPart);
         warning(message);
       }
       localNumCollPart = maxNumCollPart;
@@ -820,7 +842,7 @@ Note that data types in all capitals are defined in fitsio.h.
   const unsigned int totalNumGridPoints = gridInfo.nInternalPoints+gridInfo.nSinkPoints;
   unsigned int i_ui;
   int status=0, xi;
-  char extname[13];
+  char extname[14];
   float *row=NULL;
   int bitpix = FLOAT_IMG;
   const long naxis = 2;  /* i.e. 2-dimensional image */    
@@ -828,7 +850,8 @@ Note that data types in all capitals are defined in fitsio.h.
   long naxes[] = { (long)numEnergyLevels, (long)totalNumGridPoints };
   long fpixels[naxis],lpixels[naxis];
 
-  sprintf(extname, "LEVEL_POPS_%d", (int)speciesI+1);
+//**** should check that speciesI<99.
+  sprintf(extname, "LEVEL_POPS_%2d", (int)speciesI+1);
 
   fits_create_img(fptr, bitpix, naxis, naxes, &status);
   processFitsError(status);
@@ -1495,7 +1518,7 @@ _Bool
 checkPopsFITSExtExists(fitsfile *fptr, const unsigned short speciesI){
   const unsigned short maxNumSpecies = 9;
   char message[80];
-  char extname[13];
+  char extname[14];
   int status=0;
 
   if(speciesI+1>maxNumSpecies){
@@ -1506,7 +1529,8 @@ checkPopsFITSExtExists(fitsfile *fptr, const unsigned short speciesI){
     exit(1);
   }
 
-  sprintf(extname, "LEVEL_POPS_%d", (int)speciesI+1);
+//**** should check that speciesI<99.
+  sprintf(extname, "LEVEL_POPS_%2d", (int)speciesI+1);
 
   /* Try to move to extension LEVEL_POPS_<speciesI>:
   */
@@ -1542,7 +1566,7 @@ long naxes[2];
   long inc[2] = {1,1};
   char molNameRead[maxLenMolName+1];
   char message[80];
-  char extname[13];
+  char extname[14];
   unsigned int numGridPoints, i_ui;
 
   if(speciesI+1>maxNumSpecies){
@@ -1552,7 +1576,8 @@ long naxes[2];
     }
     exit(1);
   }
-  sprintf(extname, "LEVEL_POPS_%d", (int)speciesI+1);
+//**** should check that speciesI<99.
+  sprintf(extname, "LEVEL_POPS_%2d", (int)speciesI+1);
 
   /* Try to move to extension LEVEL_POPS_<speciesI>:
   */

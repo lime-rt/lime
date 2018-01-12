@@ -42,6 +42,41 @@ struct blendInfo{
 };
 
 /*....................................................................*/
+void calcSourceFn(double dTau, const configInfo *par, double *remnantSnu, double *expDTau){
+  /*
+  The source function S is defined as j_nu/alpha, which is clearly not
+  defined for alpha==0. However S is used in the algorithm only in the
+  term (1-exp[-alpha*ds])*S, which is defined for all values of alpha.
+  The present function calculates this term and returns it in the
+  argument remnantSnu. For values of abs(alpha*ds) less than a pre-
+  calculated cutoff supplied in configInfo, a Taylor approximation is
+  used.
+
+  Note that the same cutoff condition holds for replacement of
+  exp(-dTau) by its Taylor expansion to 3rd order.
+
+  Note that this is called from within the multi-threaded block.
+  */
+
+#ifdef FASTEXP
+  *expDTau = FastExp(dTau);
+  if (fabs(dTau)<par->taylorCutoff){
+    *remnantSnu = 1. - dTau*(1. - dTau*(1./3.))*(1./2.);
+  } else {
+    *remnantSnu = (1.-(*expDTau))/dTau;
+  }
+#else
+  if (fabs(dTau)<par->taylorCutoff){
+    *remnantSnu = 1. - dTau*(1. - dTau*(1./3.))*(1./2.);
+    *expDTau = 1. - dTau*(*remnantSnu);
+  } else {
+    *expDTau = exp(-dTau);
+    *remnantSnu = (1.-(*expDTau))/dTau;
+  }
+#endif
+}
+
+/*....................................................................*/
 void
 freeMolsWithBlends(struct molWithBlends *mols, const int numMolsWithBlends){
   int mi, li;
@@ -977,7 +1012,7 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
 
     nItersDone = par->nSolveItersDone;
     while(nItersDone < par->nSolveIters){ /* Not a 'for' loop because we will probably later want to add a convergence criterion. */
-      if(!silent) progressbar2(par, 0, nItersDone, 0, result1, result2);
+      if(!silent) progressbar2(par->nSolveIters, 0, nItersDone, 0, result1, result2);
 
       for(id=0;id<par->pIntensity;id++){
         for(ilev=0;ilev<md[0].nlev;ilev++) {
@@ -1086,7 +1121,7 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
       }
       free(median);
 
-      if(!silent) progressbar2(par, 1, nItersDone, percent, result1, result2);
+      if(!silent) progressbar2(par->nSolveIters, 1, nItersDone, percent, result1, result2);
       if(par->outputfile != NULL) popsout(par,gp,md);
       nItersDone++;
     }

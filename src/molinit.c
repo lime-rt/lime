@@ -12,6 +12,30 @@ TODO:
 #include "lime.h"
 
 /*....................................................................*/
+void mallocAndSetDefaultMolData(const int nSpecies, molData **md){
+  int i;
+
+  (*md)=malloc(sizeof(molData)*nSpecies);
+  for(i=0;i<nSpecies;i++){
+    (*md)[i].nlev  = -1;
+    (*md)[i].nline = -1;
+    (*md)[i].npart = -1;
+    (*md)[i].amass = -1.0;
+    (*md)[i].part    = NULL;
+    (*md)[i].lal     = NULL;
+    (*md)[i].lau     = NULL;
+    (*md)[i].aeinst  = NULL;
+    (*md)[i].gir     = NULL;
+    (*md)[i].freq    = NULL;
+    (*md)[i].beinstu = NULL;
+    (*md)[i].beinstl = NULL;
+    (*md)[i].eterm   = NULL;
+    (*md)[i].gstat   = NULL;
+    (*md)[i].cmb     = NULL;
+  }
+}
+
+/*....................................................................*/
 void readDummyCollPart(FILE *fp, const int strLen){
   char string[strLen];
   int ntrans=0,ntemp=0,itemp,itrans,idummy,dummyLcu,dummyLcl;
@@ -290,7 +314,7 @@ If we have reached this point, par->collPartIds (and par->nMolWeights) should ha
 }
 
 /*....................................................................*/
-void calcMolCMBs(configInfo *par, molData *md){
+void _calcMolCMBs(configInfo *par, molData *md){
   int si, iline;
 
   for(si=0;si<par->nSpecies;si++){
@@ -380,6 +404,6 @@ void molInit(configInfo *par, molData *md){
     } /* end loop over molecule index i */
   }
 
-  calcMolCMBs(par, md);
+  _calcMolCMBs(par, md);
 }
 

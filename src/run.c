@@ -840,7 +840,7 @@ exit(1);
   /*Set locale to avoid trouble when reading files*/
   setlocale(LC_ALL, "C");
 
-  if(!silent) greetings();
+  if(!silent) greetings(VERSION);
   if(!silent) screenInfo();
 
 #ifdef FASTEXP

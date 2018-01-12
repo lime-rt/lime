@@ -147,7 +147,7 @@ Elements of structs are set as follows:
   facetT *facet, *neighbor, **neighborp;
   int curlong, totlong;
   _Bool neighbourNotFound;
-  char message[80];
+  char message[STR_LEN_0];
 
   /* pt_array contains the grid point locations in the format required by qhull.
   */
@@ -193,7 +193,7 @@ Elements of structs are set as follows:
 
     if(gp[id].numNeigh<=0){
       if(!silent){
-        sprintf(message, "qhull failed silently, grid point %lu has 0 neighbours. Smoother gridDensity() might help.", id);
+        snprintf(message, STR_LEN_0, "qhull failed silently, grid point %lu has 0 neighbours. Smoother gridDensity() might help.", id);
         bail_out(message);
       }
 exit(1);
@@ -275,7 +275,7 @@ exit(1);
             }
             if(ffi>=(*numCells) && neighbourNotFound){
               if(!silent){
-                sprintf(message, "Something weird going on. Cannot find a cell with ID %lu", (unsigned long)(neighbor->id));
+                snprintf(message, STR_LEN_0, "Something weird going on. Cannot find a cell with ID %lu", (unsigned long)(neighbor->id));
                 bail_out(message);
               }
 exit(1);
