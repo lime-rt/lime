@@ -1495,7 +1495,7 @@ _Bool
 checkPopsFITSExtExists(fitsfile *fptr, const unsigned short speciesI){
   const unsigned short maxNumSpecies = 9;
   char message[80];
-  char extname[13];
+  char extname[STR_LEN_0];//***[13];
   int status=0;
 
   if(speciesI+1>maxNumSpecies){
@@ -1542,7 +1542,7 @@ long naxes[2];
   long inc[2] = {1,1};
   char molNameRead[maxLenMolName+1];
   char message[80];
-  char extname[13];
+  char extname[STR_LEN_1];//***[13];
   unsigned int numGridPoints, i_ui;
 
   if(speciesI+1>maxNumSpecies){

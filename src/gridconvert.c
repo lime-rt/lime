@@ -149,7 +149,7 @@ Options:
   */
 
   struct arguments arguments;
-  char message[STR_LEN_0];
+  char message[STR_LEN_1];
   FILE *fp;
   struct grid *gp=NULL;
   configInfo par;
@@ -178,7 +178,7 @@ exit(1);
   /* Do some checks of the arguments. I'm doing this here rather than using the argp machinery because the latter does not seem well adjusted to the situation we have here in which the expected number of arguments depends on the values of some of them.
   */
   if(arguments.inFile==NULL || arguments.outFile==NULL){
-    sprintf(message, "You must invoke this as '%s <options> <infile> <outfile>", programName);
+    snprintf(message, STR_LEN_1, "You must invoke this as '%s <options> <infile> <outfile>", programName);
     bail_out(message);
 exit(1);
   }
@@ -225,7 +225,7 @@ exit(1);
   /* Check that the infile exists:
   */
   if((fp=fopen(arguments.inFile, "r"))==NULL) {
-    sprintf(message, "Input file %s not found.", arguments.inFile);
+    snprintf(message, STR_LEN_1, "Input file %s not found.", arguments.inFile);
     bail_out(message);
 exit(1);
   }
@@ -242,7 +242,7 @@ exit(1);
 
     if(status){
       if(!silent){
-        sprintf(message, "Read of grid file from FITS failed with status return %d", status);
+        snprintf(message, STR_LEN_1, "Read of grid file from FITS failed with status return %d", status);
         bail_out(message);
       }
 exit(1);
@@ -260,11 +260,11 @@ exit(1);
       }
 
       if(gridInfo.nSpecies>1){
-        sprintf(message, "There was data on %d species in your input file, but we can only handle 1.", gridInfo.nSpecies);
+        snprintf(message, STR_LEN_1, "There was data on %d species in your input file, but we can only handle 1.", gridInfo.nSpecies);
         warning(message);
       }
       if(gridInfo.nDensities>1){
-        sprintf(message, "There was data on %d coll. parts. in your input file, but we can only handle 1.", gridInfo.nDensities);
+        snprintf(message, STR_LEN_1, "There was data on %d coll. parts. in your input file, but we can only handle 1.", gridInfo.nDensities);
         warning(message);
       }
 
@@ -351,7 +351,7 @@ exit(1);
 
     if(status){
       if(!silent){
-        sprintf(message, "Write of grid file to FITS failed with status return %d", status);
+        snprintf(message, STR_LEN_1, "Write of grid file to FITS failed with status return %d", status);
         bail_out(message);
       }
 exit(1);
