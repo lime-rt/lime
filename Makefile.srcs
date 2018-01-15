@@ -47,6 +47,7 @@ CONVSOURCES = \
 	src/gridconvert.c\
 	src/gridio.c\
 	src/grid_aux.c\
+	src/lime_defaults.c\
 	src/messages.c\
 	src/molinit.c\
 	src/popsin.c\

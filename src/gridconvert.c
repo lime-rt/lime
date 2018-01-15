@@ -23,6 +23,12 @@ int silent = 0;
 int defaultFuncFlags = 0;
 double defaultDensyPower = DENSITY_POWER;
 
+#ifdef TEST
+_Bool fixRandomSeeds = TRUE;
+#else
+_Bool fixRandomSeeds = FALSE;
+#endif
+
 const char *argp_program_version = VERSION;
 const char *argp_program_bug_address = "https://github.com/lime-rt/lime";
 /* Program documentation. */
