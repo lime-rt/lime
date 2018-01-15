@@ -163,33 +163,6 @@ struct grid {
   struct continuumLine cont;
 };
 
-struct spec {
-  double *intense;
-  double *tau;
-  double stokes[3];
-  int numRays;
-};
-
-/* Image information */
-typedef struct {
-  int doline;
-  int nchan,trans,molI;
-  struct spec *pixel;
-  double velres;
-  double imgres;
-  int pxls;
-  char *units;
-  int *imgunits;
-  int numunits;
-  double freq,bandwidth;
-  char *filename;
-  double source_vel;
-  double theta,phi,incl,posang,azimuth;
-  double distance;
-  double rotMat[3][3];
-  _Bool doInterpolateVels;
-} imageInfo;
-
 /* NOTE that it is assumed that vertx[i] is opposite the face that abuts with neigh[i] for all i.
 */ 
 struct cell {
@@ -204,6 +177,7 @@ extern _Bool fixRandomSeeds;
 
 /* More functions */
 int	run(inputPars, image*, const int);
+int	run_new(inputPars, image*, const int);
 
 _Bool	allBitsSet(const int flags, const int mask);
 _Bool	anyBitSet(const int flags, const int mask);
@@ -211,6 +185,7 @@ _Bool	bitIsSet(const int flags, const int bitI);
 _Bool	onlyBitsSet(const int flags, const int mask);
 
 void	binpopsout(configInfo*, struct grid*, molData*);
+void	buildGrid(configInfo*, struct grid**);
 void	calcDustData(configInfo*, double*, double*, const double, double*, const int, const double ts[], double*, double*);
 void	calcExpTableEntries(const int, const int);
 void	calcGridMolDensities(configInfo*, struct grid**);
@@ -256,9 +231,10 @@ void	predefinedGrid(configInfo*, struct grid*);
 void	processFitsError(int);
 void	raytrace(int, configInfo*, struct grid*, molData*, imageInfo*, double*, double*, const int);
 void	readDustFile(char*, double**, double**, int*);
+void	readGridWrapper(configInfo *par, struct grid **gp, char ***collPartNames, int *numCollPartRead);
 void	readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *numUniqueCollPartsFound);
-void	readOrBuildGrid(configInfo*, struct grid**);
 unsigned long reorderGrid(const unsigned long, struct grid*);
+void	reportInfAtOrigin(const double, const char*);
 void	reportInfsAtOrigin(const int, const double*, const char*);
 void	setCollPartsDefaults(struct cpData*);
 int	setupAndWriteGrid(configInfo *par, struct grid *gp, molData *md, char *outFileName);
@@ -273,6 +249,12 @@ void	writeGridIfRequired(configInfo*, struct grid*, molData*, const int);
 void	writeGridToAscii(char *outFileName, struct grid *gp, const unsigned int nInternalPoints, const int dataFlags);
 void	write_VTK_unstructured_Points(configInfo*, struct grid*);
 
+/* Extra definitions needed by casaray:
+*/
+void 	write4Dfits(int im, int unit_index, configInfo *par, imageInfo *img);
+int	copyInpars(const inputPars inpars, image *inimg, const int nImages, configInfo *par, imageInfo **img);
+void	setOtherEasyConfigValues(const int nImages, configInfo *par, imageInfo **img);
+void	parseInput_new(configInfo *par, imageInfo **img, _Bool checkForSingularities);
 
 /* Curses functions */
 
@@ -292,6 +274,11 @@ void	progressbar2(configInfo*, int, int, double, double, double);
 void	reportOutput(char*);
 void	screenInfo(void);
 void	warning(char*);
+
+/* Diagnostic functions */
+
+void	diagPrintInput(const inputPars, image*, const int);
+void	diagPrintTestGridOutput(struct grid*, const int, const int, const int);
 
 #ifdef FASTEXP
 extern double EXP_TABLE_2D[128][10];

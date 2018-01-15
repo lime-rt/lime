@@ -718,8 +718,8 @@ Note that this is called from within the multi-threaded block.
       double up = down*md[ispec].gstat[part.lcu[ti]]/md[ispec].gstat[part.lcl[ti]]\
                 *exp(-HCKB*(md[ispec].eterm[part.lcu[ti]]-md[ispec].eterm[part.lcl[ti]])/gp[id].t[0]);
 
-      gsl_matrix_set(colli, part.lcu[ti], part.lcl[ti], gsl_matrix_get(colli, part.lcu[ti], part.lcl[ti]) - down*gp[id].dens[di]);
-      gsl_matrix_set(colli, part.lcl[ti], part.lcu[ti], gsl_matrix_get(colli, part.lcl[ti], part.lcu[ti]) - up*gp[id].dens[di]);
+      gsl_matrix_set(colli, part.lcl[ti], part.lcu[ti], gsl_matrix_get(colli, part.lcl[ti], part.lcu[ti]) - down*gp[id].dens[di]);
+      gsl_matrix_set(colli, part.lcu[ti], part.lcl[ti], gsl_matrix_get(colli, part.lcu[ti], part.lcl[ti]) - up*gp[id].dens[di]);
     }
 
   }
@@ -733,10 +733,6 @@ Note that this is called from within the multi-threaded block.
     gsl_matrix_set(colli,k,k,gsl_matrix_get(colli,k,k) - ctot[k]);
   }
   free(ctot);
-
-  /* For some reason collision matrix as constructed above is transposed.
-  Someone who is not this lazy could fix the loops instead of using gsl_matrix_transpose. */
-  gsl_matrix_transpose(colli);
 
   double *girtot = malloc(sizeof(double)*md[ispec].nlev);
   if(par->girdatfile!=NULL){

@@ -12,7 +12,6 @@ CORESOURCES = \
 	src/defaults.c\
 	src/fastexp.c\
 	src/frees.c\
-	src/grid2fits.c\
 	src/grid.c\
 	src/gridio.c\
 	src/grid_aux.c\
@@ -23,6 +22,7 @@ CORESOURCES = \
 	src/raythrucells.c\
 	src/raytrace.c\
 	src/run.c\
+	src/run_new.c\
 	src/smooth.c\
 	src/solver.c\
 	src/sourcefunc.c\
@@ -35,6 +35,9 @@ STDSOURCES = \
 	src/main.c\
 	src/messages.c
 
+FITSSOURCES = \
+	src/grid2fits.c
+
 HDF5SOURCES = \
 	src/grid2hdf5.c
 
@@ -43,7 +46,6 @@ CONVSOURCES = \
 	src/collparts.c\
 	src/defaults.c\
 	src/frees.c\
-	src/grid2fits.c\
 	src/gridconvert.c\
 	src/gridio.c\
 	src/grid_aux.c\
@@ -61,13 +63,31 @@ PYSOURCES = \
 	src/py_models.c\
 	src/py_utils.c
 
+CASASOURCES = \
+	src/aux.c\
+	src/casaray.c\
+	src/casa_messages.c\
+	src/collparts.c\
+	src/defaults.c\
+	src/fastexp.c\
+	src/frees.c\
+	src/gridio.c\
+	src/grid_aux.c\
+	src/lime_defaults.c\
+	src/molinit.c\
+	src/py_utils.c\
+	src/raythrucells.c\
+	src/raytrace.c\
+	src/run_new.c\
+	src/sourcefunc.c\
+	src/tcpsocket.c\
+	src/writefits.c
+
 COREINCLUDES = \
 	src/collparts.h\
 	src/constants.h\
 	src/defaults.h\
 	src/dims.h\
-	src/grid2fits.h\
-	src/grid2hdf5.h\
 	src/gridio.h\
 	src/inpars.h\
 	src/lime_config.h\
@@ -76,13 +96,15 @@ COREINCLUDES = \
 	src/tree_random.h\
 	src/ufunc_types.h
 
+FITSINCLUDES =\
+	src/grid2fits.h
+
 HDF5INCLUDES = \
 	src/grid2hdf5.h
 
 CONVINCLUDES = \
 	src/dims.h\
 	src/collparts.h\
-	src/grid2fits.h\
 	src/gridio.h\
 	src/inpars.h\
 	src/lime.h
