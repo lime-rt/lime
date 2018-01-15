@@ -22,6 +22,7 @@
 #define MAX_N_COLL_PART         20
 #define TYPICAL_ISM_DENS        1000.0
 #define STR_LEN_0               80
+#define STR_LEN_1               127
 #define DENSITY_POWER           0.2
 #define MAX_N_HIGH              10
 
