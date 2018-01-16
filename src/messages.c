@@ -11,15 +11,14 @@ TODOs:
 	- Wouldn't it be better if 'silent' was tested inside these functions rather than at every single point in the rest of the code where they are called?
  */
 
-#include "lime.h"
-#include <curses.h>
-#include <time.h>
+#include "constants.h" // for STR_LEN_0 etc
+#include "messages.h"
 
 void
-greetings(){
+greetings(char *version){
 #ifdef NO_NCURSES
 
-  printf("*** LIME, The versatile line modeling engine, version %s\n", VERSION);
+  printf("*** LIME, The versatile line modeling engine, version %s\n", version);
 #ifdef TEST
   printf(">>> NOTE! Test flag is set in the Makefile. <<<\n");
 #endif
@@ -30,7 +29,7 @@ greetings(){
 #else
 
   initscr();
-  printw("*** LIME, The versatile line modeling engine, version %s\n", VERSION);
+  printw("*** LIME, The versatile line modeling engine, version %s\n", version);
 #ifdef TEST
   printw(">>> NOTE! Test flag is set in the Makefile. <<<\n");
 #endif
@@ -43,13 +42,13 @@ greetings(){
 }
 
 void
-greetings_parallel(int numThreads){
+greetings_parallel(int numThreads, char *version){
 #ifdef NO_NCURSES
 
   if (numThreads>1){
-    printf("*** LIME, The versatile line modeling engine, Ver. %s (parallel running, %d threads)\n", VERSION, numThreads);
+    printf("*** LIME, The versatile line modeling engine, Ver. %s (parallel running, %d threads)\n", version, numThreads);
   } else {
-    printf("*** LIME, The versatile line modeling engine, Ver. %s\n", VERSION);
+    printf("*** LIME, The versatile line modeling engine, Ver. %s\n", version);
   }
 #ifdef TEST
   printf(">>> NOTE! Test flag is set in the Makefile. <<<\n");
@@ -62,9 +61,9 @@ greetings_parallel(int numThreads){
 
   initscr();
   if (numThreads>1){
-    printw("*** LIME, The versatile line modeling engine, Ver. %s (parallel running, %d threads)\n", VERSION, numThreads);
+    printw("*** LIME, The versatile line modeling engine, Ver. %s (parallel running, %d threads)\n", version, numThreads);
   } else {
-    printw("*** LIME, The versatile line modeling engine, Ver. %s\n", VERSION);
+    printw("*** LIME, The versatile line modeling engine, Ver. %s\n", version);
   }
 #ifdef TEST
   printw(">>> NOTE! Test flag is set in the Makefile. <<<\n");
@@ -152,10 +151,10 @@ progressbar(double percent, int line){
 }
 
 void
-progressbar2(configInfo *par, int flag, int prog, double percent, double minsnr, double median){
+progressbar2(int nSolveIters, int flag, int prog, double percent, double minsnr, double median){
 #ifdef NO_NCURSES
   if (flag == 0) {
-    printf("  Iteration %i / max %i: Starting\n", prog + 1, par->nSolveIters);
+    printf("  Iteration %i / max %i: Starting\n", prog + 1, nSolveIters);
   } else if (flag == 1){
     if (minsnr < 1000)
       printf("      Statistics: Min(SNR)    %3.3f                     \n", minsnr); 
@@ -167,7 +166,7 @@ progressbar2(configInfo *par, int flag, int prog, double percent, double minsnr,
     else 
       printf("      Statistics: Median(SNR) %.3e                      \n", median);
 
-    printf("  Iteration %i / max %i: DONE\n\n", prog+1, par->nSolveIters);
+    printf("  Iteration %i / max %i: DONE\n\n", prog+1, nSolveIters);
   }
 
 #else
@@ -251,7 +250,8 @@ goodnight(int initime){
 }
 
 void
-printMessage(char message[STR_LEN_0]){
+printMessage(char *message){
+//printMessage(char message[STR_LEN_0]){
 #ifdef NO_NCURSES
   if(strlen(message)>0)
     {
@@ -264,7 +264,8 @@ printMessage(char message[STR_LEN_0]){
 }
 
 void
-warning(char message[STR_LEN_0]){
+warning(char *message){
+//warning(char message[STR_LEN_0]){
 #ifdef NO_NCURSES
   if(strlen(message)>0)
     {
@@ -282,7 +283,8 @@ void error(char message[STR_LEN_0]){
 }
 
 void
-bail_out(char message[STR_LEN_0]){
+bail_out(char *message){
+//bail_out(char message[STR_LEN_0]){
 #ifdef NO_NCURSES
   printf("Error: %s\n", message );
 #else
@@ -348,26 +350,5 @@ collpartmesg3(int number, int flag){
   }
   refresh();
 #endif
-}
-
-void
-processFitsError(int status){
-  /*****************************************************/
-  /* Print out cfitsio error messages and exit program */
-  /*****************************************************/
-
-  if(status){
-    if(!silent){
-#ifdef NO_NCURSES
-      fits_report_error(stderr, status); /* print error report */
-#else
-      char message[STR_LEN_0];
-      sprintf(message, "Error in cfitsio: status=%d", status);
-      bail_out(message);
-#endif
-    }
-    exit( status );    /* terminate the program, returning error status */
-  }
-  return;
 }
 

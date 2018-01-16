@@ -109,7 +109,7 @@ The parameters visible to the user have now been strictly confined to members of
   _Bool changedInterp;
   int i,j,id,status=0,numGirDatFiles,numFuncDensities;
   FILE *fp;
-  char message[STR_LEN_0];
+  char message[STR_LEN_1];
   _Bool doThetaPhi,foundGoodValue;
   double cos_pa,sin_pa,cosPhi,sinPhi,cos_incl,sin_incl,cosTheta,sinTheta,cos_az,sin_az;
   double tempRotMat[3][3],auxRotMat[3][3],r[3],tempPointDensity;
@@ -198,7 +198,7 @@ exit(1);
     for(id=0;id<par->nSpecies;id++){
       if((fp=fopen(par->moldatfile[id], "r"))==NULL){
         if(!silent){
-          snprintf(message, STR_LEN_0, "Moldat file %s not found locally - fetching it from LAMDA", par->moldatfile[id]);
+          snprintf(message, STR_LEN_1, "Moldat file %s not found locally - fetching it from LAMDA", par->moldatfile[id]);
           printMessage(message);
         }
         openSocket(par->moldatfile[id]);
@@ -276,7 +276,7 @@ exit(1);
       status = countDensityCols(par->gridInFile, &(par->numDensities));
       if (status){
         if(!silent){
-          snprintf(message, STR_LEN_0, "countDensityCols() status return %d", status);
+          snprintf(message, STR_LEN_1, "countDensityCols() status return %d", status);
           bail_out(message);
         }
 exit(1);
@@ -450,7 +450,7 @@ The cutoff will be the value of abs(x) for which the error in the exact expressi
         }
         (*img)[i].imgunits[j-1] = (int)strtol(pch, &pch_end, 0);
         if(*pch_end){
-          snprintf(message, STR_LEN_0, "Image %d: units string contains '%s' which could not be converted to an integer", i, pch_end);
+          snprintf(message, STR_LEN_1, "Image %d: units string contains '%s' which could not be converted to an integer", i, pch_end);
           if(!silent) bail_out(message);
 exit(1);
         }
@@ -474,14 +474,14 @@ exit(1);
 
       if((*img)[i].freq<0){
         if(!silent){
-          snprintf(message, STR_LEN_0, "Image %d: you must set freq for a continuum image.", i);
+          snprintf(message, STR_LEN_1, "Image %d: you must set freq for a continuum image.", i);
           bail_out(message);
         }
 exit(1);
       }
 
       if(!silent && ((*img)[i].trans>-1 || (*img)[i].bandwidth>-1.0)){
-        snprintf(message, STR_LEN_0, "Image %d: bandwidth and trans are ignored for a continuum image.", i);
+        snprintf(message, STR_LEN_1, "Image %d: bandwidth and trans are ignored for a continuum image.", i);
         warning(message);
       }
       (*img)[i].doline=0;
@@ -499,13 +499,13 @@ The presence of one of these combinations at least is checked here, although the
       */
       if((*img)[i].bandwidth > 0 && (*img)[i].velres > 0){
         if(!silent && (*img)[i].nchan > 0){
-          snprintf(message, STR_LEN_0, "Image %d: your nchan value will be overwritten.", i);
+          snprintf(message, STR_LEN_1, "Image %d: your nchan value will be overwritten.", i);
           warning(message);
         }
 
       }else if((*img)[i].nchan <= 0 || ((*img)[i].bandwidth <= 0 && (*img)[i].velres <= 0)) {
         if(!silent){
-          snprintf(message, STR_LEN_0, "Image %d: insufficient info to calculate nchan, velres and bandwidth.", i);
+          snprintf(message, STR_LEN_1, "Image %d: insufficient info to calculate nchan, velres and bandwidth.", i);
           bail_out(message);
         }
 exit(1);
@@ -515,20 +515,20 @@ exit(1);
       */
       if((*img)[i].trans>-1){ /* => user has set trans, possibly also freq. */
         if(!silent && (*img)[i].freq > 0){
-          snprintf(message, STR_LEN_0, "Image %d: you set trans, so I'm ignoring freq.", i);
+          snprintf(message, STR_LEN_1, "Image %d: you set trans, so I'm ignoring freq.", i);
           warning(message);
         }
 
         if((*img)[i].molI < 0){
           if(!silent && par->nSpecies>1){
-            snprintf(message, STR_LEN_0, "Image %d: you did not set molI, so I'm assuming the 1st molecule.", i);
+            snprintf(message, STR_LEN_1, "Image %d: you did not set molI, so I'm assuming the 1st molecule.", i);
             warning(message);
           }
           (*img)[i].molI = 0;
         }
       }else if((*img)[i].freq<0){ /* => user has set neither trans nor freq. */
         if(!silent){
-          snprintf(message, STR_LEN_0, "Image %d: you must set either freq or trans (plus optionally molI).", i);
+          snprintf(message, STR_LEN_1, "Image %d: you must set either freq or trans (plus optionally molI).", i);
           bail_out(message);
         }
 exit(1);
@@ -539,7 +539,7 @@ exit(1);
 
     if((*img)[i].imgres<0.0){
       if(!silent){
-        snprintf(message, STR_LEN_0, "Image %d: you must set imgres.", i);
+        snprintf(message, STR_LEN_1, "Image %d: you must set imgres.", i);
         bail_out(message);
       }
 exit(1);
@@ -547,7 +547,7 @@ exit(1);
 
     if((*img)[i].pxls<0){
       if(!silent){
-        snprintf(message, STR_LEN_0, "Image %d: you must set pxls.", i);
+        snprintf(message, STR_LEN_1, "Image %d: you must set pxls.", i);
         bail_out(message);
       }
 exit(1);
@@ -555,7 +555,7 @@ exit(1);
 
     if((*img)[i].distance<0.0){
       if(!silent){
-        snprintf(message, STR_LEN_0, "Image %d: you must set distance.", i);
+        snprintf(message, STR_LEN_1, "Image %d: you must set distance.", i);
         bail_out(message);
       }
 exit(1);
@@ -744,7 +744,7 @@ exit(1);
     }else{
       if((fp=fopen(par->dust, "r"))==NULL){
         if(!silent){
-          snprintf(message, STR_LEN_0, "Couldn't open dust opacity data file %s", par->dust);
+          snprintf(message, STR_LEN_1, "Couldn't open dust opacity data file %s", par->dust);
           bail_out(message);
         }
 exit(1);
@@ -840,7 +840,7 @@ exit(1);
   /*Set locale to avoid trouble when reading files*/
   setlocale(LC_ALL, "C");
 
-  if(!silent) greetings();
+  if(!silent) greetings(VERSION);
   if(!silent) screenInfo();
 
 #ifdef FASTEXP

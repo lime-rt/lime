@@ -69,7 +69,7 @@ myStrCpy(const char *source, char *destination, const int maxStrlenDest){
 /*....................................................................*/
 int
 getModuleFromName(char *moduleNameNoSuffix, PyObject **pModule){
-  /* Calling routine is expected to decref pModule */
+  /* Calling routine is expected to decref pModule if and only if the return status is != 0. */
 
   int status=0;
   PyObject *pName;

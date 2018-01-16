@@ -107,6 +107,8 @@
 #include "collparts.h"
 #include "inpars.h"
 #include "defaults.h" /* includes lime_config.h */
+#include "messages.h"
+#include "aux.h"
 
 struct cpData {
   double *down,*temp;
@@ -179,11 +181,6 @@ extern _Bool fixRandomSeeds;
 int	run(inputPars, image*, const int);
 int	run_new(inputPars, image*, const int);
 
-_Bool	allBitsSet(const int flags, const int mask);
-_Bool	anyBitSet(const int flags, const int mask);
-_Bool	bitIsSet(const int flags, const int bitI);
-_Bool	onlyBitsSet(const int flags, const int mask);
-
 void	binpopsout(configInfo*, struct grid*, molData*);
 void	buildGrid(configInfo*, struct grid**);
 void	calcDustData(configInfo*, double*, double*, const double, double*, const int, const double ts[], double*, double*);
@@ -192,18 +189,11 @@ void	calcGridMolDensities(configInfo*, struct grid**);
 void	calcGridMolDoppler(configInfo*, molData*, struct grid*);
 void	calcGridMolSpecNumDens(configInfo*, molData*, struct grid*);
 void	calcSourceFn(double, const configInfo*, double*, double*);
-_Bool	charPtrIsNullOrEmpty(const char *inStr);
 void	checkFirstLineMolDat(FILE *fp, char *moldatfile);
-void	checkFgets(char *fgetsResult, char *message);
-void	checkFscanf(const int fscanfResult, const int expectedNum, char *message);
-void	checkFread(const size_t freadResult, const size_t expectedNum, char *message);
-void	checkFwrite(const size_t fwriteResult, const size_t expectedNum, char *message);
 void	checkGridDensities(configInfo*, struct grid*);
 void	checkUserDensWeights(configInfo*);
-void	copyInparStr(const char*, char**);
 void	delaunay(const int, struct grid*, const unsigned long, const _Bool, const _Bool, struct cell**, unsigned long*);
 void	distCalc(configInfo*, struct grid*);
-double	dotProduct3D(const double*, const double*);
 double	FastExp(const float);
 void	fillErfTable(void);
 void	freeArrayOfStrings(char **arrayOfStrings, const int numStrings);
@@ -214,7 +204,6 @@ void	freeInputPars(inputPars *par);
 void	freeMolData(const int, molData*);
 void	freePopulation(const unsigned short, struct populations*);
 void	freeSomeGridFields(const unsigned int, const unsigned short, struct grid*);
-double	gaussline(const double, const double);
 double	geterf(const double, const double);
 void	getEdgeVelocities(configInfo *, struct grid *);
 void	input(inputPars*, image*);
@@ -228,18 +217,14 @@ double	planckfunc(const double, const double);
 void	popsin(configInfo*, struct grid**, molData**, int*);
 void	popsout(configInfo*, struct grid*, molData*);
 void	predefinedGrid(configInfo*, struct grid*);
-void	processFitsError(int);
 void	raytrace(int, configInfo*, struct grid*, molData*, imageInfo*, double*, double*, const int);
 void	readDustFile(char*, double**, double**, int*);
 void	readGridWrapper(configInfo *par, struct grid **gp, char ***collPartNames, int *numCollPartRead);
 void	readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *numUniqueCollPartsFound);
 unsigned long reorderGrid(const unsigned long, struct grid*);
-void	reportInfAtOrigin(const double, const char*);
-void	reportInfsAtOrigin(const int, const double*, const char*);
 void	setCollPartsDefaults(struct cpData*);
 int	setupAndWriteGrid(configInfo *par, struct grid *gp, molData *md, char *outFileName);
 void	setUpDensityAux(configInfo*, int*, const int);
-void	sigintHandler(int sigI);
 void	smooth(configInfo*, struct grid*);
 void	sourceFunc_line(const molData*, const double, const struct populations*, const int, double*, double*);
 void	sourceFunc_cont(const struct continuumLine, double*, double*);
@@ -255,25 +240,6 @@ void 	write4Dfits(int im, int unit_index, configInfo *par, imageInfo *img);
 int	copyInpars(const inputPars inpars, image *inimg, const int nImages, configInfo *par, imageInfo **img);
 void	setOtherEasyConfigValues(const int nImages, configInfo *par, imageInfo **img);
 void	parseInput_new(configInfo *par, imageInfo **img, _Bool checkForSingularities);
-
-/* Curses functions */
-
-void	bail_out(char*);
-void	casaStyleProgressBar(const int, int);
-void	collpartmesg(char*, int);
-void	collpartmesg2(char*);
-void	collpartmesg3(int, int);
-void	error(char*);
-void	goodnight(int);
-void	greetings(void);
-void	greetings_parallel(int);
-void	printDone(int);
-void	printMessage(char *);
-void	progressbar(double, int);
-void	progressbar2(configInfo*, int, int, double, double, double);
-void	reportOutput(char*);
-void	screenInfo(void);
-void	warning(char*);
 
 /* Diagnostic functions */
 

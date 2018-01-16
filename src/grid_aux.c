@@ -54,14 +54,14 @@ void checkGridDensities(configInfo *par, struct grid *gp){
   /* This checks that none of the density samples is too small. */
   int i;
   static _Bool warningAlreadyIssued=0;
-  char errStr[80];
+  char errStr[STR_LEN_1];
 
   if(!silent){ /* Warn if any densities too low. */
     i = 0;
     while(i<par->pIntensity && !warningAlreadyIssued){
       if(gp[i].dens[0]<TYPICAL_ISM_DENS){
         warningAlreadyIssued = 1;
-        sprintf(errStr, "gp[%d].dens[0] at %.1e is below typical values for the ISM (~%.1e).", i, gp[i].dens[0], TYPICAL_ISM_DENS);
+        snprintf(errStr, STR_LEN_1, "gp[%d].dens[0] at %.1e is below typical values for the ISM (~%.1e).", i, gp[i].dens[0], TYPICAL_ISM_DENS);
         warning(errStr);
         warning("This could give you convergence problems. NOTE: no further warnings will be issued.");
       }
@@ -147,7 +147,7 @@ Elements of structs are set as follows:
   facetT *facet, *neighbor, **neighborp;
   int curlong, totlong;
   _Bool neighbourNotFound;
-  char message[80];
+  char message[STR_LEN_1];//****[80];
 
   /* pt_array contains the grid point locations in the format required by qhull.
   */
@@ -193,7 +193,7 @@ Elements of structs are set as follows:
 
     if(gp[id].numNeigh<=0){
       if(!silent){
-        sprintf(message, "qhull failed silently, grid point %lu has 0 neighbours. Smoother gridDensity() might help.", id);
+        snprintf(message, STR_LEN_1, "qhull failed silently, grid point %lu has 0 neighbours. Smoother gridDensity() might help.", id);
         bail_out(message);
       }
 exit(1);
@@ -275,7 +275,7 @@ exit(1);
             }
             if(ffi>=(*numCells) && neighbourNotFound){
               if(!silent){
-                sprintf(message, "Something weird going on. Cannot find a cell with ID %lu", (unsigned long)(neighbor->id));
+                snprintf(message, STR_LEN_1, "Something weird going on. Cannot find a cell with ID %lu", (unsigned long)(neighbor->id));
                 bail_out(message);
               }
 exit(1);
