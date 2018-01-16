@@ -6,16 +6,17 @@ import math
 import task_limesolver as lsol
 import task_raytrace as lray
 
-AU = 1.49598e11    # AU to m
-PC = 3.08568025e16 # PC to m
+#AU = 1.49598e11    # AU to m
+#PC = 3.08568025e16 # PC to m
 
 doSolve = True
 #doSolve = False
 doRay   = True
 #doRay   = False
 
-radius                  = 800 * AU
-minScale                = 1. * AU
+radius                  = 800# * AU
+minScale                = 1.0# * AU
+distUnit                = 'au'
 tcmb                    = 2.728
 sinkPoints              = 1000
 pIntensity              = 1000
@@ -44,7 +45,7 @@ rin                     = 1.0
 rout                    = 100.0
 sig0                    = 0.01
 mdisk			= None
-cs			= None
+soundspeed		= None
 h0			= None
 ab0			= None
 mdot			= None
@@ -76,9 +77,9 @@ velocity           = ''
 velocity_args      = []
 
 if doSolve:
-  lsol.limesolver(radius,minScale,tcmb,sinkPoints,pIntensity,samplingAlgorithm,sampling
+  lsol.limesolver(radius,minScale,distUnit,tcmb,sinkPoints,pIntensity,samplingAlgorithm,sampling
     ,lte_only,init_lte,nThreads,nSolveIters,moldatfile,dust,gridInFile,gridOutFile,resetRNG
-    ,modelID,T,rhoc,Mstar,Rstar,Tstar,bgdens,hph,plsig1,rin,rout,sig0,mdisk,cs,h0,ab0,mdot
+    ,modelID,T,rhoc,Mstar,Rstar,Tstar,bgdens,hph,plsig1,rin,rout,sig0,mdisk,soundspeed,h0,ab0,mdot
     ,tin,ve,mdota,mu,nu,rc,Tcloud,age,Rn,userModelPath,abundance,abundance_args
     ,bmag,bmag_args,density,density_args,doppler,doppler_args,tdust,tdust_args
     ,temperature,temperature_args,velocity,velocity_args)
@@ -98,7 +99,8 @@ phi                     = 0.0
 incl                    = 0.0
 posang                  = 0.0
 azimuth                 = 0.0
-distance                = 140 * PC
+distance                = 140# * PC
+distUnit                = 'pc'
 nThreads                = 1
 traceRayAlgorithm       = 1
 doLine                  = True
@@ -113,6 +115,6 @@ polarization            = False
 
 if doRay:
   lray.raytrace(gridInFile,moldatfile,dust,filename,imgres,pxls,unit,freq,rotationStyle
-    ,theta,phi,incl,posang,azimuth,distance,nThreads,traceRayAlgorithm,doLine,nchan
+    ,theta,phi,incl,posang,azimuth,distance,distUnit,nThreads,traceRayAlgorithm,doLine,nchan
     ,velres,trans,molI,bandwidth,source_vel,doInterpolateVels,polarization)
 

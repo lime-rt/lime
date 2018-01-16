@@ -26,6 +26,7 @@ NOTE! This file is not stand-alone, in needs to be included in an environment wh
 #define lime_init	NULL
 #define _FAILED_TO_OPEN	==NULL
 
+void	processFitsError(int);
 _Bool	checkPopsFITSExtExists(fitsfile*, const unsigned short);
 void	closeFITSFile(fitsfile*);
 void	readGridExtFromFITS(fitsfile*, struct gridInfoType*, struct grid**, unsigned int**, char***, int*, int*);
