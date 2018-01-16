@@ -435,7 +435,7 @@ Note that data types in all capitals are defined in fitsio.h.
   int status=0, colI=0, i, di, maxNumCols;
   LONGLONG firstRow=1, firstElem=1;
   char genericComment[80];
-  char genericKwd[numKwdChars], message[STR_LEN_0];
+  char genericKwd[numKwdChars], message[STR_LEN_1];
   char colName[numColNameChars];
   char **allColNames=NULL;
   int *allColNumbers=NULL, *colDataTypes=NULL;
@@ -637,7 +637,7 @@ Ok we have a bit of a tricky situation here in that the number of columns we wri
   if(collPartNames!=NULL){
     if(gridInfo.nDensities>maxNumCollPart){
       if(!silent){
-        snprintf(message, STR_LEN_0, "There seem to be %d collision partners but keywords can only be written for %d.", (int)gridInfo.nDensities, (int)maxNumCollPart);
+        snprintf(message, STR_LEN_1, "There seem to be %d collision partners but keywords can only be written for %d.", (int)gridInfo.nDensities, (int)maxNumCollPart);
         warning(message);
       }
       localNumCollPart = maxNumCollPart;
@@ -842,7 +842,7 @@ Note that data types in all capitals are defined in fitsio.h.
   const unsigned int totalNumGridPoints = gridInfo.nInternalPoints+gridInfo.nSinkPoints;
   unsigned int i_ui;
   int status=0, xi;
-  char extname[14];
+  char extname[STR_LEN_0];//***[13];
   float *row=NULL;
   int bitpix = FLOAT_IMG;
   const long naxis = 2;  /* i.e. 2-dimensional image */    
@@ -850,8 +850,7 @@ Note that data types in all capitals are defined in fitsio.h.
   long naxes[] = { (long)numEnergyLevels, (long)totalNumGridPoints };
   long fpixels[naxis],lpixels[naxis];
 
-//**** should check that speciesI<99.
-  sprintf(extname, "LEVEL_POPS_%2d", (int)speciesI+1);
+  sprintf(extname, "LEVEL_POPS_%d", (int)speciesI+1);
 
   fits_create_img(fptr, bitpix, naxis, naxes, &status);
   processFitsError(status);
@@ -918,14 +917,14 @@ countColsBasePlusInt(fitsfile *fptr, char *baseName){
 /*....................................................................*/
 int
 countKeywords(fitsfile *fptr, char *baseName){
-  char kwdName[9];
+  char kwdName[STR_LEN_0];//***[9];
   int i, status;
-  char kwdValue[80];
+  char kwdValue[STR_LEN_0];
 
   i = 0;
   status = 0;
   while(!status){
-    sprintf(kwdName, "%s%d", baseName, i+1);
+    snprintf(kwdName, STR_LEN_0, "%s%d", baseName, i+1);
     fits_read_key(fptr, TSTRING, kwdName, kwdValue, NULL, &status);
     i++;
   }
@@ -941,7 +940,7 @@ readKeywordsFromFITS(fitsfile *fptr, struct keywordType *kwds\
   , const int numKeywords){
 
   int i, status;
-  char message[80];
+  char message[STR_LEN_0];
 
   for(i=0;i<numKeywords;i++){
     status = 0;
@@ -956,7 +955,7 @@ readKeywordsFromFITS(fitsfile *fptr, struct keywordType *kwds\
       fits_read_key(fptr, TDOUBLE, kwds[i].keyname, &kwds[i].doubleValue, kwds[i].comment, &status);
     else{
       if(!silent){
-        sprintf(message, "Keyword %d datatype %d is not currently accepted.", i, kwds[i].datatype);
+        snprintf(message, STR_LEN_0, "Keyword %d datatype %d is not currently accepted.", i, kwds[i].datatype);
         bail_out(message);
       }
       exit(1);
@@ -983,7 +982,7 @@ Note that the calling routine needs to free gp, firstNearNeigh and collPartNames
   int status=0, colNum, anynul=0, i;
   char colName[20];
   char genericKwd[9];
-  char message[80];
+  char message[STR_LEN_0];
   unsigned int *ids=NULL;
   double *xj=NULL;
   _Bool *sink=NULL;/* Probably should be char* but this seems to work. */
@@ -1038,7 +1037,7 @@ Note that the calling routine needs to free gp, firstNearNeigh and collPartNames
   */
   if(gridInfoRead->nDims!=DIM){
     if(!silent){
-      sprintf(message, "%d Xn columns read, but there should be %d.", (int)gridInfoRead->nDims, DIM);
+      snprintf(message, STR_LEN_0, "%d Xn columns read, but there should be %d.", (int)gridInfoRead->nDims, DIM);
       bail_out(message);
     }
     exit(1);
@@ -1517,20 +1516,19 @@ The function mallocs the pointer *nnLinks.
 _Bool
 checkPopsFITSExtExists(fitsfile *fptr, const unsigned short speciesI){
   const unsigned short maxNumSpecies = 9;
-  char message[80];
-  char extname[14];
+  char message[STR_LEN_0];
+  char extname[STR_LEN_0];//***[13];
   int status=0;
 
   if(speciesI+1>maxNumSpecies){
     if(!silent){
-      sprintf(message, "Species block %d is greater than the limit %d", (int)speciesI+1, (int)maxNumSpecies);
+      snprintf(message, STR_LEN_0, "Species block %d is greater than the limit %d", (int)speciesI+1, (int)maxNumSpecies);
       bail_out(message);
     }
     exit(1);
   }
 
-//**** should check that speciesI<99.
-  sprintf(extname, "LEVEL_POPS_%2d", (int)speciesI+1);
+  sprintf(extname, "LEVEL_POPS_%d", (int)speciesI+1);
 
   /* Try to move to extension LEVEL_POPS_<speciesI>:
   */
@@ -1565,19 +1563,18 @@ long naxes[2];
   long fpixels[2],lpixels[2];
   long inc[2] = {1,1};
   char molNameRead[maxLenMolName+1];
-  char message[80];
-  char extname[14];
+  char message[STR_LEN_0];
+  char extname[STR_LEN_0];//***[14];
   unsigned int numGridPoints, i_ui;
 
   if(speciesI+1>maxNumSpecies){
     if(!silent){
-      sprintf(message, "Species block %d is greater than the limit %d", (int)speciesI+1, (int)maxNumSpecies);
+      snprintf(message, STR_LEN_0, "Species block %d is greater than the limit %d", (int)speciesI+1, (int)maxNumSpecies);
       bail_out(message);
     }
     exit(1);
   }
-//**** should check that speciesI<99.
-  sprintf(extname, "LEVEL_POPS_%2d", (int)speciesI+1);
+  sprintf(extname, "LEVEL_POPS_%d", (int)speciesI+1);
 
   /* Try to move to extension LEVEL_POPS_<speciesI>:
   */

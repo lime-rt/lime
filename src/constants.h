@@ -47,7 +47,8 @@
 
 #define TYPICAL_ISM_DENS        1000.0
 #define STR_LEN_0               80
-#define STR_LEN_1               255
+#define STR_LEN_1               127
+#define STR_LEN_2               255
 
 #ifndef TRUE
 #define TRUE                   (_Bool)1
