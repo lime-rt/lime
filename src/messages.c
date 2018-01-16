@@ -250,7 +250,8 @@ goodnight(int initime){
 }
 
 void
-printMessage(char message[STR_LEN_0]){
+printMessage(char *message){
+//printMessage(char message[STR_LEN_0]){
 #ifdef NO_NCURSES
   if(strlen(message)>0)
     {
@@ -263,7 +264,8 @@ printMessage(char message[STR_LEN_0]){
 }
 
 void
-warning(char message[STR_LEN_0]){
+warning(char *message){
+//warning(char message[STR_LEN_0]){
 #ifdef NO_NCURSES
   if(strlen(message)>0)
     {
@@ -281,7 +283,8 @@ void error(char message[STR_LEN_0]){
 }
 
 void
-bail_out(char message[STR_LEN_0]){
+bail_out(char *message){
+//bail_out(char message[STR_LEN_0]){
 #ifdef NO_NCURSES
   printf("Error: %s\n", message );
 #else
