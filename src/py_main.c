@@ -164,6 +164,7 @@ getParTemplatesWrapper(const char *headerModuleName, parTemplateType **parTempla
   int status=0;
   char message[STR_LEN_0];
 
+//**** the next few lines are available in a single call py_utils.getModuleFromName().
   pName = PyString_FromString(headerModuleName);
   if(pName==NULL){
     _printOrClearPyError();

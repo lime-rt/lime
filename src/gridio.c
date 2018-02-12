@@ -11,8 +11,6 @@ TODO:
 #include "lime.h"
 #include "gridio.h"
 
-_Bool _gio_doTest=FALSE;
-
 /*
 This module contains generic routines for writing grid data to, and reading it from, a file on disk. The problem with doing this is that the grid struct contains different amounts of information at different times in the running of the code. In order to quantify and regulate this, a dataFlags integer is used to record the presence or absence (as indicated by the value of the appropriate bit in the mask) of particular types of information. The bits associated with certain fields of struct grid are given in the lime.h header.
 
@@ -739,8 +737,6 @@ NOTE that collPartNames and its components must be freed after use.
   struct linkType *links=NULL, **nnLinks=NULL;
   char message[80];
 
-if(_gio_doTest) printf("    >>> Entering gridio.readGrid().\n");
-
   sprintf(message, "Reading grid-point list from file %s", inFileName);
   if(!silent) printMessage(message);
 
@@ -890,7 +886,7 @@ if(_gio_doTest) printf("    >>> Entering gridio.readGrid().\n");
   }
 
   closeAndFree(fptr, firstNearNeigh, nnLinks, links, gridInfoRead->nLinks);
-if(_gio_doTest) printf("    <<< Leaving gridio.readGrid().\n");
+
   return 0;
 }
 
@@ -912,8 +908,6 @@ countDensityCols(char *inFileName, int *numDensities){
 void
 sanityCheckOfRead(const int status, configInfo *par, struct gridInfoType gridInfoRead){
   char message[STR_LEN_0];
-
-if(_gio_doTest) printf("    >>> Entering gridio.sanityCheckOfRead_new().\n");
 
   if(status){
     if(!silent){
@@ -1006,7 +1000,6 @@ exit(1);
       bail_out("Populations were read but par->nSolveItersDone<=0.");
 exit(1);
   }
-if(_gio_doTest) printf("    <<< Leaving gridio.sanityCheckOfRead_new().\n");
 }
 
 /*....................................................................*/
@@ -1017,8 +1010,6 @@ readGridWrapper(configInfo *par, struct grid **gp, char ***collPartNames, int *n
   struct keywordType *desiredKwds=malloc(sizeof(struct keywordType)*numDesiredKwds);
   int i,status=0;
   struct gridInfoType gridInfoRead;
-
-if(_gio_doTest) printf("  >>> Entering gridio.readGridWrapper().\n");
 
   i = 0;
   initializeKeyword(&desiredKwds[i]);
@@ -1051,13 +1042,10 @@ if(_gio_doTest) printf("  >>> Entering gridio.readGridWrapper().\n");
   freeKeywords(desiredKwds, numDesiredKwds);
   freeGridInfo(&gridInfoRead);
 
-if(_gio_doTest) printf("  <<< Leaving gridio.readGridWrapper().\n");
-
 /*
 **** Ideally we should also have a test on nACoeffs.
 
 **** Ideally we should also have a test on the mols entries - at some later time after we have read the corresponding values from the moldata files?
 */
 }
-
 

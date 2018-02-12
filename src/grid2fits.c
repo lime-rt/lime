@@ -76,6 +76,28 @@ Note that at present the data in the 'partner' element of grid.mol is *NOT* bein
 */
 
 /*....................................................................*/
+void
+processFitsError(int status){
+  /*****************************************************/
+  /* Print out cfitsio error messages and exit program */
+  /*****************************************************/
+
+  if(status){
+    if(!silent){
+#ifdef NO_NCURSES
+      fits_report_error(stderr, status); /* print error report */
+#else
+      char message[STR_LEN_0];
+      sprintf(message, "Error in cfitsio: status=%d", status);
+      bail_out(message);
+#endif
+    }
+    exit( status );    /* terminate the program, returning error status */
+  }
+  return;
+}
+
+/*....................................................................*/
 fitsfile *
 openFITSFileForWrite(char *outFileName){
   fitsfile *fptr=NULL;
@@ -1494,13 +1516,13 @@ The function mallocs the pointer *nnLinks.
 _Bool
 checkPopsFITSExtExists(fitsfile *fptr, const unsigned short speciesI){
   const unsigned short maxNumSpecies = 9;
-  char message[80];
+  char message[STR_LEN_0];
   char extname[STR_LEN_0];//***[13];
   int status=0;
 
   if(speciesI+1>maxNumSpecies){
     if(!silent){
-      sprintf(message, "Species block %d is greater than the limit %d", (int)speciesI+1, (int)maxNumSpecies);
+      snprintf(message, STR_LEN_0, "Species block %d is greater than the limit %d", (int)speciesI+1, (int)maxNumSpecies);
       bail_out(message);
     }
     exit(1);
@@ -1541,13 +1563,13 @@ long naxes[2];
   long fpixels[2],lpixels[2];
   long inc[2] = {1,1};
   char molNameRead[maxLenMolName+1];
-  char message[80];
-  char extname[STR_LEN_1];//***[13];
+  char message[STR_LEN_0];
+  char extname[STR_LEN_0];//***[14];
   unsigned int numGridPoints, i_ui;
 
   if(speciesI+1>maxNumSpecies){
     if(!silent){
-      sprintf(message, "Species block %d is greater than the limit %d", (int)speciesI+1, (int)maxNumSpecies);
+      snprintf(message, STR_LEN_0, "Species block %d is greater than the limit %d", (int)speciesI+1, (int)maxNumSpecies);
       bail_out(message);
     }
     exit(1);

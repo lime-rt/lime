@@ -41,6 +41,15 @@
 #define MSUN_cgs        (MSUN*1000.0)        /* Solar mass                   [g]		*/
 #define RSUN_cgs        (RSUN*100.0)         /* Solar radius                 [cm]		*/
 
+#define SQRT_PI                 (sqrt(M_PI))           /* sqrt(pi)	*/
+#define ARCSEC_TO_RAD           (M_PI/180.0/3600.0)
+#define EPS                     1.0e-30                /* general use small number */
+
+#define TYPICAL_ISM_DENS        1000.0
+#define STR_LEN_0               80
+#define STR_LEN_1               127
+#define STR_LEN_2               255
+
 #ifndef TRUE
 #define TRUE                   (_Bool)1
 #endif
@@ -49,6 +58,7 @@
 #define FALSE                  (_Bool)0
 #endif
 
+extern int silent;
 
 #endif /* CONSTANTS_H */
 
