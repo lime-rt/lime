@@ -139,7 +139,7 @@ be done with the Fortran compiler. Modify the Makefile accordingly.
 Note that with version 1.9, a model file can be written in python; however to use this you will need to compile LIME specially. Go to the LIME parent directory and type
 
 ```
- $ make python
+ $ make pylime
 ```
 
 This generates an executable named `pylime`. You run this with your python module as (for example)
