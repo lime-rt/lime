@@ -10,6 +10,7 @@
 #ifndef PY_LIME_H
 #define PY_LIME_H
 
+void	printOrClearPyError(void);
 void	pywarning(char *message);
 void	pyerror(char *message);
 

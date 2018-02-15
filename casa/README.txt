@@ -1,3 +1,10 @@
+20180108 IMS: There are 2 versions of task_limesolver.py in this directory, which are purposed as follows:
+
+task_limesolver_ARTIST.py: this is a version which is designed to work with the ARTIST package, i.e. for the case in which the modellib code is sourced/compiled in ARTIST. It is retained for the time being for purposes of backward comnpatibility.
+
+task_limesolver.py: this version allows LIME to be run on the CASA command line without using any code or other files from ARTIST.
+
+
 The CASA interface to LIME.
 +++++++++++++++++++++++++++
 
@@ -15,7 +22,7 @@ limesolver:
 -----------
 This interface allows the user to choose a model from a library (currently containing 9 choices), to adjust its parameters, and to compute the resulting spatial distribution of excited states by means of LIME. The output from this task is a FITS or HDF5 file (currently the software is configured for HDF5) which contains all the necessary information to construct an image cube from the solution. Note that limesolver itself does not construct any images. Most of the (non-image) LIME parameters may also be set via this interface.
 
-Note that there is currently no support to allow the user to supply their own bespoke model, as in 'traditional' LIME.
+Note that it is still possible for the user to supply their own bespoke model, as in 'traditional' LIME.
 
 raytrace:
 ---------
@@ -25,17 +32,19 @@ This task reads the output file from limesolver and creates a single image via t
 Code relationships
 ==================
 
-The functionality is currently distributed between 2 packages, LIME and ARTIST, which are under separate systems of development and version control. The relation between the packages may be envisaged in 3 tiers:
+The relation between the packages may be envisaged in 3 tiers:
 
-  CASA interface files (maintained as part of LIME)
-             |
-  Python modules to access respectively the LIME engine and the library of models (modellib) (part of ARTIST)
-        |                             |
-  The LIME engine (LIME)  <-  The modellib (ARTIST)
+  CASA interface files
+        |
+  Python modules to define various objects
+        |
+  The LIME engine + new added support for the model library.
 
 
 How to install, configure and run the code.
 ===========================================
+
+************************* change
 
 The CASA interface to LIME is contained in the ARTIST package, which should be available as a tarball. In the description below I'll assume the user has unpacked this tarball into a directory ARTISTROOT/.
 

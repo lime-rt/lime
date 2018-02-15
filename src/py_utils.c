@@ -11,6 +11,7 @@ TODO:
 #include "lime_config.h"
 #include "inpars.h" /* for inputPars */
 #include "error_codes.h"
+#include "py_lime.h"
 #include "py_utils.h"
 #include "constants.h"
 
@@ -45,31 +46,33 @@ setTemplateDefaults(void){
 }
 
 /*....................................................................*/
-void
-myStrCpy(const char *source, char *destination, const int maxStrlenDest){
+void myStrNCpy(char *destination, const char *source, const size_t maxStrlenDest){
   /*
+This is designed to behave like strncpy, i.e. to copy the first N characters contained in 'source' into 'destination', but to be a bit more forgiving. In particular it always returns 'destination' with '\0' somewhere in its N+1 allowed characters.
+
 **NOTE** that:
   - the source pointer must either be NULL or point to a 0-terminated series of characters in memory;
   - the destination pointer must either be allocated or a character array, with size maxStrlenDest+1.
   */
 
-  int strlenSrc;
+  size_t strlenSrc;
 
   if(source==NULL)
     destination[0] = '\0';
   else{
     strlenSrc = strlen(source);
-    if(strlenSrc>maxStrlenDest)
-      strncpy(destination, source, (size_t)maxStrlenDest); /* I expect this to write '\0' to destination[maxStrlenDest]. */
-    else
+    if(strlenSrc>maxStrlenDest){
+      strncpy(destination, source, maxStrlenDest);
+      destination[maxStrlenDest] = '\0';
+    }else
       strcpy(destination, source);
   }
 }
 
 /*....................................................................*/
 int
-getModuleFromName(char *moduleNameNoSuffix, PyObject **pModule){
-  /* Calling routine is expected to decref pModule if and only if the return status is != 0. */
+getModuleFromName(const char *moduleNameNoSuffix, PyObject **pModule){
+  /* Calling routine is expected to decref pModule if and only if the return status is == 0. */
 
   int status=0;
   PyObject *pName;
@@ -150,7 +153,7 @@ return GPT_MALLOC_FAIL;
   break;
     }
 
-    myStrCpy(tempStr, (*parTemplates)[i].name, PY_MAX_LEN_PAR_NAME);
+    myStrNCpy((*parTemplates)[i].name, tempStr, PY_MAX_LEN_PAR_NAME);
 
     pTupleItem = PyTuple_GetItem(pListItem, (Py_ssize_t)1);
     if(pTupleItem==NULL){
@@ -164,7 +167,7 @@ return GPT_MALLOC_FAIL;
   break;
     }
 
-    myStrCpy(tempStr, (*parTemplates)[i].type, PY_MAX_LEN_PAR_TYPE);
+    myStrNCpy((*parTemplates)[i].type, tempStr, PY_MAX_LEN_PAR_TYPE);
 
     pTupleItem = PyTuple_GetItem(pListItem, (Py_ssize_t)2);
     if(pTupleItem==NULL){
@@ -196,6 +199,75 @@ return GPT_MALLOC_FAIL;
   Py_DECREF(pListOfPars);
 
 return status;
+}
+
+/*....................................................................*/
+int
+getParTemplatesWrapper(const char *headerModuleName, parTemplateType **parTemplates\
+  , int *nPars, parTemplateType **imgParTemplates, int *nImgPars\
+  , char *errStr){
+
+  PyObject *pName,*pModule,*pParClass,*pImgParClass;
+  int status=0;
+
+//**** the next few lines are available in a single call py_utils.getModuleFromName().
+  pName = PyString_FromString(headerModuleName);
+  if(pName==NULL){
+    printOrClearPyError();
+    snprintf(errStr, STR_LEN_0, "Error in translating header name to python object.");
+return 1;
+  }
+
+  pModule = PyImport_Import(pName);
+  Py_DECREF(pName);
+  if(pModule==NULL){
+    printOrClearPyError();
+    snprintf(errStr, STR_LEN_0, "Import of module failed.");
+return 2;
+  }
+
+  /* Get the parameter templates:
+  */
+  pParClass = PyObject_GetAttrString(pModule, "ModelParameters");
+  if(pParClass==NULL){
+    Py_DECREF(pModule);
+    printOrClearPyError();
+    snprintf(errStr, STR_LEN_0, "Attribute 'ModelParameters' not found in module.");
+return 3;
+  }
+
+  status = getParTemplates(pParClass, parTemplates, nPars);
+  if(status){
+    Py_DECREF(pParClass);
+    Py_DECREF(pModule);
+    snprintf(errStr, STR_LEN_0, "getParTemplates() for pars returned status value %d", status);
+return 4;
+  }
+
+  Py_DECREF(pParClass);
+
+  /* Get the image parameter templates:
+  */
+  pImgParClass = PyObject_GetAttrString(pModule, "ImageParameters");
+  if(pImgParClass==NULL){
+    Py_DECREF(pModule);
+    printOrClearPyError();
+    snprintf(errStr, STR_LEN_0, "Attribute 'ImageParameters' not found in module.");
+return 5;
+  }
+
+  Py_DECREF(pModule);
+
+  status = getParTemplates(pImgParClass, imgParTemplates, nImgPars);
+  if(status){
+    Py_DECREF(pImgParClass);
+    snprintf(errStr, STR_LEN_0, "getParTemplates() for img pars returned status value %d", status);
+return 6;
+  }
+
+  Py_DECREF(pImgParClass);
+
+return 0;
 }
 
 /*....................................................................*/
@@ -327,7 +399,7 @@ int
 _checkAttributes(PyObject *pParInstance, parTemplateType *parTemplates\
   , const int nPars){
   /*
-The user should set and return both 'ordinary' and 'image' parameters as attributes of instances of par_classes.ModelParameters and par_classes.ImageParameters classes respectively. These classes define all the possible/permittable user-settable parameters, and are also used to set up the templates. The templates are used here basically to check that the user has not gone off and returned some object without some of the necessary parameters, or parameters of the wrong type.
+The user should set and return both 'ordinary' and 'image' parameters as attributes of instances of limepar_classes.ModelParameters and limepar_classes.ImageParameters classes respectively. These classes define all the possible/permittable user-settable parameters, and are also used to set up the templates. The templates are used here basically to check that the user has not gone off and returned some object without some of the necessary parameters, or parameters of the wrong type.
 
 Note that this routine can be, and is, used both for 'ordinary' and 'image' parameters.
   */
@@ -406,7 +478,7 @@ Note: type 'obj' is possible, but results in no action here. Such attributes nee
       (*tempValue).isNone = TRUE;
     else{
       (*tempValue).isNone = FALSE;
-      myStrCpy(PyString_AsString(pAttr), (*tempValue).strValue, PY_STR_LEN_0);
+      myStrNCpy((*tempValue).strValue, PyString_AsString(pAttr), PY_STR_LEN_0);
     }
   }
 }
@@ -504,20 +576,6 @@ Notes:
 }
 
 /*....................................................................*/
-void
-pyFreeInputImgPars(image *inimg, int nImages){
-  int i;
-
-  if(inimg!=NULL){
-    for(i=0;i<nImages;i++){
-      free(inimg[i].filename);
-      free(inimg[i].units);
-    }
-    free(inimg);
-  }
-}
-
-/*....................................................................*/
 int
 readParImg(PyObject *pPars, parTemplateType *parTemplates\
   , const int nPars, parTemplateType *imgParTemplates, const int nImgPars\
@@ -525,7 +583,7 @@ readParImg(PyObject *pPars, parTemplateType *parTemplates\
   /*
 Here we convert the 'ordinary' parameters from the supplied python object to its C struct form.
 
-***NOTE TO DEVELOPERS: the number, order and type of the parameters listed in the present function must be the same as given in ../python/par_classes.py.
+***NOTE TO DEVELOPERS: the number, order and type of the parameters listed in the present function must be the same as given in ../python/limepar_classes.py.
   */
 
   int status=0,i,j,k,nValues,dims[2];
@@ -582,8 +640,9 @@ return status;
   if(tempValue.isNone){
     free(inpar->dust);
     inpar->dust = NULL;
-  }else if(strlen(tempValue.strValue)>0) /* otherwise leave the destination string as initialized to point to '\0' */
+  }else if(strlen(tempValue.strValue)>0){ /* otherwise leave the destination string as initialized to point to '\0' */
     strcpy(inpar->dust,          tempValue.strValue);
+  }
 
   _extractScalarValue(pPars, "outputfile",        parTemplates[i++].type, &tempValue);
   if(tempValue.isNone){
@@ -852,7 +911,7 @@ return RPI_MALLOC_FAIL;
     Py_DECREF(pImgList);
   }
 
-  return status;
+return status;
 }
 
 /*....................................................................*/
@@ -1104,3 +1163,89 @@ return PY_NON_NUMERIC;
 return status;
 }
 
+/*....................................................................*/
+int
+getStringAttribute(PyObject *pInstance, char *attrName, const int maxStrLenAttr, char *attrStrValue){
+  PyObject *pAttr;
+
+  attrStrValue[0] = '\0';
+
+  pAttr = PyObject_GetAttrString(pInstance, attrName);
+  if(pAttr==NULL)
+return 1;
+
+  if(!PyString_CheckExact(pAttr)){
+    Py_DECREF(pAttr);
+return 2;
+  }
+
+  myStrNCpy(attrStrValue, PyString_AsString(pAttr), maxStrLenAttr);
+  Py_DECREF(pAttr);
+
+return 0;
+}
+
+/*....................................................................*/
+void
+pyFreeInputImgPars(image *inimg, const int nImages){
+  /*
+In 'standard' LIME the user copies the location of a (read-only) string to img[i].filename. Trying to free img[i].filename then results in an error. However the projected python version will malloc img[i].filename and copy string characters into that memory space. It is for this purpose that we preserve the present function.
+  */
+  int i;
+
+  if(inimg!=NULL){
+    for(i=0;i<nImages;i++){
+      free(inimg[i].filename);
+      free(inimg[i].units);
+    }
+    free(inimg);
+  }
+}
+
+/*....................................................................*/
+void
+pyFreeInputPars(inputPars *par){
+  /*
+In 'standard' LIME the user copies the location of a (read-only) string to each of the char* elements of inputPars. Trying to free that element then results in an error. However the projected python version will malloc these elements and copy string characters into that memory space. It is for this purpose that we preserve the present function.
+  */
+  int i;
+
+  free(par->collPartIds);
+  free(par->nMolWeights);
+  free(par->dustWeights);
+  free(par->collPartMolWeights);
+
+  free(par->gridDensMaxValues);
+  free(par->gridDensMaxLoc);
+
+  free(par->outputfile);
+  free(par->binoutputfile);
+  free(par->gridfile);
+  free(par->pregrid);
+  free(par->restart);
+  free(par->dust);
+  free(par->gridInFile);
+
+  if(par->moldatfile!= NULL){
+    for(i=0;i<MAX_NSPECIES;i++)
+      free(par->moldatfile[i]);
+    free(par->moldatfile);
+  }
+  if(par->girdatfile!= NULL){
+    for(i=0;i<MAX_NSPECIES;i++)
+      free(par->girdatfile[i]);
+    free(par->girdatfile);
+  }
+
+  if(par->gridOutFiles!= NULL){
+    for(i=0;i<NUM_GRID_STAGES;i++)
+      free(par->gridOutFiles[i]);
+    free(par->gridOutFiles);
+  }
+
+  if(par->collPartNames!= NULL){
+    for(i=0;i<MAX_N_COLL_PART;i++)
+      free(par->collPartNames[i]);
+    free(par->collPartNames);
+  }
+}

@@ -14,6 +14,9 @@ TODO:
 #include "gridio.h"
 #include "defaults.h"
 
+#ifdef NO_STDOUT
+#include "pyshared_io.h"
+#endif
 
 /*....................................................................*/
 void
@@ -103,7 +106,12 @@ void randomsViaRejection(configInfo *par, const unsigned int desiredNumPoints, g
       outRandLocations[i_u][di]=x[di];
 
     progFraction = (double)i_u/((double)desiredNumPoints-1);
+#ifndef NO_PROGBARS
     if(!silent) progressbar(progFraction, 4);
+#endif
+#ifdef NO_STDOUT
+    statusObj.progressGridBuilding = progFraction;
+#endif
   }
 
   if(!silent && numSecondRandoms>0){
@@ -321,6 +329,9 @@ exit(1);
     if(par->samplingAlgorithm==0){
       smooth(par,*gp);
       if(!silent) printDone(5);
+#ifdef NO_STDOUT
+      statusObj.statusGrid = 1;
+#endif
     }
 
     par->dataFlags |= DS_mask_1;

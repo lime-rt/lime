@@ -13,6 +13,10 @@ TODO:
 #include "lime.h"
 #include "raythrucells.h"
 
+#ifdef NO_STDOUT
+#include "pyshared_io.h"
+#endif
+
 typedef struct {
   double x,y, *intensity, *tau;
   unsigned int ppi;
@@ -1472,7 +1476,12 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
 
       if (threadI == 0){ /* i.e., is master thread */
         progFraction = (double)(ri)*oneOnNumActiveRaysMinus1;
+#ifndef NO_PROGBARS
         if(!silent) progressbar(progFraction, 13);
+#endif
+#ifdef NO_STDOUT
+        statusObj.progressRayTracing = progFraction;
+#endif
       }
     }
 
@@ -1484,6 +1493,9 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
 
   gsl_set_error_handler(defaultErrorHandler);
   if(!silent) printDone(13);
+#ifdef NO_STDOUT
+  statusObj.statusRayTracing = 1;
+#endif
 
   if(par->traceRayAlgorithm==1){
     free(cells);

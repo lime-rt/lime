@@ -22,54 +22,35 @@ def raytrace(gridInFile,moldatfile,dust,filename,imgres,pxls,unit,freq,rotationS
 
   _doTest = False
 
-  casalog.post('Entering casaray version of raytrace().')
-  if _doTest: print '>>> Entering casaray version of raytrace().'
+  if _doTest: print '>>> Entering task_raytrace.raytrace().'
 
-  import threading
+  import cPickle
+  import tempfile
+  import subprocess as sub
+  import signal
   import time
 
   try:
-    import casaray
+    import limepar_classes as pc
   except ImportError as err:
-    casalog.post("Cannot find module 'casaray'", priority='ERROR')
+    casalog.post("Could not import module 'limepar_classes'", priority='ERROR')
+    casalog.post("Error message: %s" % err, priority='ERROR')
     return
+
   if _doTest: print '+++ In casaray version of raytrace(). aaa'
-
-  try:
-    import par_classes as pc
-  except ImportError as err:
-    casalog.post("Cannot find module 'par_classes'", priority='ERROR')
-    return
-  if _doTest: print '+++ In casaray version of raytrace(). bbb'
-
-  class LimeExistentialLog:
-    complete   = False
-    errorState = False
-    errorMessage = ''
-
-  class LimeThread (threading.Thread):
-    def __init__(self, par, limeLog):
-      self._par = par
-      self._limeLog = limeLog
-      threading.Thread.__init__(self)
-
-    def run(self):
-      try:
-        casaray.run(self._par)
-      except Exception, e:
-        self._limeLog.errorState = True
-        self._limeLog.errorMessage = e
-
-      self._limeLog.complete = True
 
   AU = 1.49598e11    # AU to m
   PC = 3.08568025e16 # PC to m
+
+  if _doTest: print '+++ In casaray version of raytrace(). bbb'
 
   sleepSec = 1
   gridDoneMessageIsPrinted = False
   mainDoneMessageIsPrinted = False
   raysDoneMessageIsPrinted = False
   nItersCounted = 0
+
+  if _doTest: print '+++ In casaray version of raytrace(). ccc'
 
   fnDict = {'dust':dust,'gridInFile':gridInFile,'moldatfile':moldatfile}
   for variableName in fnDict.keys():
@@ -79,29 +60,26 @@ def raytrace(gridInFile,moldatfile,dust,filename,imgres,pxls,unit,freq,rotationS
         casalog.post("Cannot find %s file %s" % (variableName, fileName), priority='ERROR')
         return
 
-  if _doTest: print '+++ In casaray version of raytrace(). ccc'
+  if _doTest: print '+++ In casaray version of raytrace(). ddd'
 
   moldatfile = [moldatfile]
-  if _doTest: print '+++ In casaray version of raytrace(). ddd (there is no eee)'
-
-#  if _doTest: print '+++ In casaray version of raytrace(). eee'
 
   if not(distUnit=='m' or distUnit=='pc' or distUnit=='au'):
     casalog.post("Distance unit %s not recognized." % (distUnit), priority='ERROR')
     return
 
   # Set input parameters for lime:
-  limepar = pc.ModelParameters()
+  limepars = pc.ModelParameters()
   if _doTest: print '+++ In casaray version of raytrace(). fff'
 
-  limepar.dust              = dust
-  limepar.gridInFile        = gridInFile
-  limepar.polarization      = polarization
-  limepar.nThreads          = nThreads
-  limepar.nSolveIters       = 0
-  limepar.traceRayAlgorithm = traceRayAlgorithm
-  limepar.doSolveRTE        = False
-  limepar.moldatfile        = moldatfile[:]
+  limepars.dust              = dust
+  limepars.gridInFile        = gridInFile
+  limepars.polarization      = polarization
+  limepars.nThreads          = nThreads
+  limepars.nSolveIters       = 0
+  limepars.traceRayAlgorithm = traceRayAlgorithm
+  limepars.doSolveRTE        = False
+  limepars.moldatfile        = moldatfile[:]
   if _doTest: print '+++ In casaray version of raytrace(). ggg'
 
   # Define the images:
@@ -140,25 +118,48 @@ def raytrace(gridInFile,moldatfile,dust,filename,imgres,pxls,unit,freq,rotationS
 
   images.append(img)
 
-  limepar.img = images #**** rather images[:]??
+  limepars.img = images #**** rather images[:]??
 
-  limeLog = LimeExistentialLog()
+  tempFileObj = tempfile.NamedTemporaryFile(prefix='pars_', delete=False)
+  pklFileName = tempFileObj.name
+
+  outputFileHandle = open(pklFileName, 'wb')
+  cPickle.dump((None,'',0,limepars), outputFileHandle, -1)
+  outputFileHandle.close()
+
   if _doTest: print '+++ In casaray version of raytrace(). jjj'
 
-  # Run LIME in its own thread:
-  limeThread = LimeThread(limepar, limeLog)
-  if _doTest: print '+++ In casaray version of raytrace(). kkk'
-  limeThread.start()
-  if _doTest: print '+++ In casaray version of raytrace(). lll'
+  casalog.post('Starting raytrace LIME run.')
 
-  casalog.post('Starting LIME raytrace run.')
+  execName = "casalime"
 
-  # Loop with delay - every so often, check LIME status and print it to the casa logger.
-  while not limeLog.complete:
-    time.sleep(sleepSec)
+  sigInterp = dict((getattr(signal, n), n) for n in dir(signal) if n.startswith('SIG') and '_' not in n )
 
-  casalog.post('LIME raytrace run is complete')
+  try:
+    p = sub.Popen([execName, pklFileName], bufsize=0, stdout=sub.PIPE)
+  except OSError:
+    casalog.post('Cannot execute %s (not in PATH, or wrong permissions?)' % (execName), priority='ERROR')
+    return
 
-  # If we get to here, LIME is finished or has crashed, so return.
+  while True:
+    stdoutdata = p.stdout.readline()[:-1]
+    if not stdoutdata is None and stdoutdata!='':
+      casalog.post(stdoutdata)
+
+    status = p.poll()
+    if not status is None:
+      break
+
+  if status==0:
+    casalog.post('LIME raytrace run is complete.')
+  elif status<0:
+    casalog.post('LIME raytrace terminated by signal: %s' % sigInterp.get(-status, "unnamed signal: %d" % -status), priority='ERROR')
+  else:
+    casalog.post('LIME raytrace exited with nonzero status %s' % (status), priority='ERROR')
+
+  if os.path.exists(pklFileName):
+    os.unlink(pklFileName)
+
+  # If we get to here, raytrace is finished or has crashed, so return.
   return
 

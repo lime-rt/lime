@@ -1,5 +1,5 @@
 /*
- *  casalime.h
+ *  pyshared_io.h
  *  This file is part of LIME, the versatile line modeling engine
  *
  *  Copyright (C) 2006-2014 Christian Brinch
@@ -7,10 +7,11 @@
  *
  */
 
-#ifndef CASALIME_H
-#define CASALIME_H
+#ifndef CASA_IO_H
+#define CASA_IO_H
 
-#include "lime_config.h" /* for STR_LEN_0 */
+//#include "lime_config.h" /* for STR_LEN_0 */
+#include "constants.h" /* for STR_LEN_0 */
 
 #define STATUS_STR_LEN		STR_LEN_0+11
 
@@ -45,5 +46,5 @@ typedef struct {
 extern statusType statusObj;
 extern _Bool statusObjInitialized;
 
-#endif /* CASALIME_H */
+#endif /* CASA_IO_H */
 

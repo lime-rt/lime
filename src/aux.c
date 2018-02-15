@@ -8,6 +8,10 @@
 TODO:
  */
 
+#ifdef IS_PYTHON
+#include "lime.h" // actually just for Python.h
+#endif
+
 #include "constants.h" // for STR_LEN_0 etc
 #include "messages.h" // for warning(), bail_out() etc
 #include "aux.h"

@@ -15,6 +15,8 @@ int silent = 1;
 int silent = 0;
 #endif
 
+int defaultFuncFlags = 0;
+
 /*....................................................................*/
 int
 initParImg(inputPars *par, image **img)

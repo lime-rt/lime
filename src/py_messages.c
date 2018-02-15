@@ -12,6 +12,16 @@
 
 /*....................................................................*/
 void
+printOrClearPyError(void){
+  /* This can cause a problem if called when !PyErr_Occurred(). */
+  if(silent)
+    PyErr_Clear();
+  else
+    PyErr_Print(); /* Also clears. */
+}
+
+/*....................................................................*/
+void
 pywarning(char *message){
   if(!silent) warning(message);
   Py_Exit(1);

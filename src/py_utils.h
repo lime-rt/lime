@@ -48,9 +48,10 @@ extern PyObject *pModule_global;
 extern _Bool userFuncsInitialized;
 
 parTemplateType*	setTemplateDefaults(void);
-void	myStrCpy(const char source[], char destination[], const int strlenDest);
-int	getModuleFromName(char *moduleNameNoSuffix, PyObject **pModule);
+void	myStrNCpy(char *destination, const char *source, const size_t strlenDest);
+int	getModuleFromName(const char *moduleNameNoSuffix, PyObject **pModule);
 int	getParTemplates(PyObject *pParsClassOrInstance, parTemplateType **parTemplates, int *nPars);
+int	getParTemplatesWrapper(const char *headerModuleName, parTemplateType **parTemplates, int *nPars, parTemplateType **imgParTemplates, int *nImgPars, char *errStr);
 int	mallocInputParStrs(inputPars *par);
 int	readParImg(PyObject *pPars, parTemplateType *parTemplates, const int nPars, parTemplateType *imgParTemplates, const int nImgPars, inputPars *par, image **img, int *nImages, void (*warning)(char *message));
 
@@ -63,7 +64,10 @@ void	decrefAllUserFuncs(void);
 int	userFuncWrapper(PyObject *pFunc, const char *funcName\
   , double x, double y, double z, double *resultBuffer, int *numElemInUserFuncReturn);
 
+void	pyFreeInputPars(inputPars *par);
 void	pyFreeInputImgPars(image *inimg, int nImages);
+int	getStringAttribute(PyObject *pInstance, char *attrName, const int maxStrLenAttr, char *attrStrValue);
+
 
 #endif /* PY_UTILS_H */
 

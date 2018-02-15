@@ -20,80 +20,7 @@ int silent = 1;
 int silent = 0;
 #endif
 
-/*....................................................................*/
-void
-_printOrClearPyError(void){
-  /* This can cause a problem if called when !PyErr_Occurred(). */
-  if(silent)
-    PyErr_Clear();
-  else
-    PyErr_Print(); /* Also clears. */
-}
-
-/*....................................................................*/
-void
-_freeInputImg(const int nImages, image *img){
-  /*
-In 'standard' LIME the user copies the location of a (read-only) string to img[i].filename. Trying to free img[i].filename then results in an error. However the projected python version will malloc img[i].filename and copy string characters into that memory space. It is for this purpose that we preserve the present function.
-  */
-  int i;
-
-  if(img!=NULL){
-    for(i=0;i<nImages;i++){
-      free(img[i].filename);
-      free(img[i].units);
-    }
-    free(img);
-  }
-}
-
-/*....................................................................*/
-void
-_freeInputPars(inputPars *par){
-  /*
-In 'standard' LIME the user copies the location of a (read-only) string to each of the char* elements of inputPars. Trying to free that element then results in an error. However the projected python version will malloc these elements and copy string characters into that memory space. It is for this purpose that we preserve the present function.
-  */
-  int i;
-
-  free(par->collPartIds);
-  free(par->nMolWeights);
-  free(par->dustWeights);
-  free(par->collPartMolWeights);
-
-  free(par->gridDensMaxValues);
-  free(par->gridDensMaxLoc);
-
-  free(par->outputfile);
-  free(par->binoutputfile);
-  free(par->gridfile);
-  free(par->pregrid);
-  free(par->restart);
-  free(par->dust);
-  free(par->gridInFile);
-
-  if(par->moldatfile!= NULL){
-    for(i=0;i<MAX_NSPECIES;i++)
-      free(par->moldatfile[i]);
-    free(par->moldatfile);
-  }
-  if(par->girdatfile!= NULL){
-    for(i=0;i<MAX_NSPECIES;i++)
-      free(par->girdatfile[i]);
-    free(par->girdatfile);
-  }
-
-  if(par->gridOutFiles!= NULL){
-    for(i=0;i<NUM_GRID_STAGES;i++)
-      free(par->gridOutFiles[i]);
-    free(par->gridOutFiles);
-  }
-
-  if(par->collPartNames!= NULL){
-    for(i=0;i<MAX_N_COLL_PART;i++)
-      free(par->collPartNames[i]);
-    free(par->collPartNames);
-  }
-}
+int defaultFuncFlags = 0;
 
 const char *argp_program_version = VERSION;
 const char *argp_program_bug_address = "https://github.com/lime-rt/lime";
@@ -157,69 +84,6 @@ static struct argp argp = { options, parse_opt, args_doc, doc };
 
 /*....................................................................*/
 void
-getParTemplatesWrapper(const char *headerModuleName, parTemplateType **parTemplates, int *nPars\
-  , parTemplateType **imgParTemplates, int *nImgPars){
-
-  PyObject *pName,*pModule,*pParClass,*pImgParClass;
-  int status=0;
-  char message[STR_LEN_0];
-
-//**** the next few lines are available in a single call py_utils.getModuleFromName().
-  pName = PyString_FromString(headerModuleName);
-  if(pName==NULL){
-    _printOrClearPyError();
-pyerror("Error in translating header name to python object.");
-  }
-
-  pModule = PyImport_Import(pName);
-  Py_DECREF(pName);
-  if(pModule==NULL){
-    _printOrClearPyError();
-pyerror("Import of module failed.");
-  }
-
-  /* Get the parameter templates:
-  */
-  pParClass = PyObject_GetAttrString(pModule, "ModelParameters");
-  if(pParClass==NULL){
-    Py_DECREF(pModule);
-    _printOrClearPyError();
-pyerror("Attribute 'ModelParameters' not found in module.");
-  }
-
-  status = getParTemplates(pParClass, parTemplates, nPars);
-  if(status){
-    Py_DECREF(pParClass);
-    Py_DECREF(pModule);
-    sprintf(message, "getParTemplates() returned status value %d", status);
-pyerror(message);
-  }
-
-  Py_DECREF(pParClass);
-
-  /* Get the image parameter templates:
-  */
-  pImgParClass = PyObject_GetAttrString(pModule, "ImageParameters");
-  if(pImgParClass==NULL){
-    Py_DECREF(pModule);
-    _printOrClearPyError();
-pyerror("Attribute 'ImageParameters' not found in module.");
-  }
-
-  Py_DECREF(pModule);
-
-  status = getParTemplates(pImgParClass, imgParTemplates, nImgPars);
-  if(status){
-    Py_DECREF(pImgParClass);
-    sprintf(message, "getParTemplates() returned status value %d", status);
-pyerror(message);
-  }
-
-  Py_DECREF(pImgParClass);
-}
-
-/*....................................................................*/
-void
 readParImgWrapper(PyObject *pModule, parTemplateType *parTemplates\
   , const int nPars, parTemplateType *imgParTemplates, const int nImgPars\
   , inputPars *par, image **img, int *nImages){
@@ -230,7 +94,7 @@ readParImgWrapper(PyObject *pModule, parTemplateType *parTemplates\
 
   getPythonFunc(pModule, "input", &pUserInputFunc);
   if(pUserInputFunc==NULL){
-    _printOrClearPyError();
+    printOrClearPyError();
     sprintf(message, "getPythonFunc() didn't find the users input() function.");
 pyerror(message);
   }
@@ -239,17 +103,17 @@ pyerror(message);
   if(pMacroArgs==NULL){
     unsetMacros();
     Py_DECREF(pUserInputFunc);
-    _printOrClearPyError();
+    printOrClearPyError();
     sprintf(message, "blah");
 pyerror(message);
   }
 
-  pPars = PyObject_CallObject(pUserInputFunc, pMacroArgs); /* Should return an instance of a par_classes.ModelParameters object. */
+  pPars = PyObject_CallObject(pUserInputFunc, pMacroArgs); /* Should return an instance of a limepar_classes.ModelParameters object. */
   Py_DECREF(pMacroArgs);
   Py_DECREF(pUserInputFunc);
   if(pPars==NULL){
     unsetMacros();
-    _printOrClearPyError();
+    printOrClearPyError();
     sprintf(message, "User's input() function returned a NULL ModelParameters object.");
 pyerror(message);
   }
@@ -282,11 +146,11 @@ For pretty detailed documentation on embedding python in C, see
   */
 
   const int lenSuffix=3,maxLenNoSuffix=STR_LEN_0;
-  const char *nameOfExecutable="lime", *headerModuleName="par_classes";
+  const char *nameOfExecutable="pylime",*headerModuleName="limepar_classes";
   const char *oldModulePath;
   char *modelName,modelNameNoSuffix[maxLenNoSuffix+1],message[STR_LEN_0],*newModulePath;
   char suffix[lenSuffix+1];
-  int lenNoSuffix,nPars,nImgPars,nImages,status,strlenOMPath;
+  int lenNoSuffix,nPars,nImgPars,nImages,status=0,strlenOMPath;
   PyObject *pModule = NULL;
   inputPars par;
   image *img = NULL;
@@ -316,7 +180,7 @@ For pretty detailed documentation on embedding python in C, see
   /* Get the model name, then strip off the '.py' from it:
   */
   if(arguments.modelfilename==NULL){
-    sprintf(message, "Usage: %s <python model file>", nameOfExecutable);
+    sprintf(message, "Usage: %s [<arguments>] <python model file>", nameOfExecutable);
     error(message);
   }
 
@@ -343,14 +207,13 @@ For pretty detailed documentation on embedding python in C, see
 
   /* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
   Py_Initialize();
-//***  PyEval_InitThreads();//**************** seems to be needed even here in LIME where we thread in C not python.
 
   /* The first thing to do is add the PWD to sys.path, which doesn't happen by default when embedding.
   */
   oldModulePath = Py_GetPath();
   strlenOMPath = strlen(oldModulePath);
   newModulePath = malloc(sizeof(char)*strlenOMPath+3);
-  myStrCpy(oldModulePath, newModulePath, strlenOMPath+2);
+  myStrNCpy(newModulePath, oldModulePath, strlenOMPath+2);
 
   newModulePath[strlenOMPath] = ':';
   newModulePath[strlenOMPath+1] = '.';
@@ -364,17 +227,20 @@ For pretty detailed documentation on embedding python in C, see
 pyerror("Could not append PWD to sys.path");
   }
 
-  /* Now get the lists of attribute names from the 2 classes in par_classes.py:
+  /* Now get the lists of attribute names from the 2 classes in limepar_classes.py:
   */
-  getParTemplatesWrapper(headerModuleName, &parTemplates, &nPars\
-    , &imgParTemplates, &nImgPars);
+  status = getParTemplatesWrapper(headerModuleName, &parTemplates, &nPars\
+    , &imgParTemplates, &nImgPars, message); /* in py_utils.c */
+  if(status!=0){
+pyerror(message);
+  }
 
   /* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
   /* Construct the 'macro' list argument:
   */
-  status = setMacros(); // in userfuncs.c
+  status = setMacros(); /* in py_utils.c */
   if(status){
-    unsetMacros(); // in userfuncs.c
+    unsetMacros(); /* in py_utils.c */
     sprintf(message, "Function setMacros() returned with status %d", status);
 pyerror(message);
   }
@@ -426,7 +292,7 @@ pyerror(message);
 
   /* Python-object clean up before status check and possible exit.
   */
-  decrefAllUserFuncs(); // in userfuncs.c
+  decrefAllUserFuncs(); /* in py_utils.c */
 
   if(status){
     sprintf(message, "Function run() returned with status %d", status);
@@ -435,8 +301,8 @@ pyerror(message);
 
   Py_Finalize();
 
-  _freeInputImg(nImages, img);
-  _freeInputPars(&par);
+  pyFreeInputImgPars(img, nImages);
+  pyFreeInputPars(&par);
 
   return 0;
 }

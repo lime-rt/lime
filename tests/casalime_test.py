@@ -1,30 +1,27 @@
 #!/usr/bin/python
 
-# I've designed this as a quick-and-dirty test of the casalime modules.
+# I've designed this as a quick-and-dirty test of the casalime executable.
 
 import math
 import task_limesolver as lsol
 import task_raytrace as lray
 
-#AU = 1.49598e11    # AU to m
-#PC = 3.08568025e16 # PC to m
-
-doSolve = True
-#doSolve = False
-doRay   = True
+#doSolve = True
 #doRay   = False
+doSolve = True
+doRay   = True
 
-radius                  = 800# * AU
-minScale                = 1.0# * AU
+radius                  = 800.0
+minScale                = 1.0
 distUnit                = 'au'
 tcmb                    = 2.728
-sinkPoints              = 1000
 pIntensity              = 1000
+sinkPoints              = 1000
 samplingAlgorithm       = 0
 sampling                = 2
 lte_only                = False
 init_lte                = False
-nThreads                = 1
+nThreads                = 4
 nSolveIters             = 12
 moldatfile              = 'hco+@xpol.dat'
 dust                    = 'jena_thin_e6.tab'
@@ -59,38 +56,38 @@ Tcloud			= None
 age			= None
 Rn			= None
 
-userModelPath = '' # Not yet used.
+userModelPath		= ''#model.py'
 
-abundance          = 'scalarConst'
+abundance_func     = 'scalarConst'
 abundance_args     = [1.0e-9]
-bmag               = 'vectorConstR'
+bmag_func          = 'vectorConstR'
 bmag_args          = [0.0]
-density            = ''
+density_func       = ''
 density_args       = []
-doppler            = 'scalarConst'
+doppler_func       = 'scalarConst'
 doppler_args       = [100.0]
-tdust              = ''
+tdust_func         = ''
 tdust_args         = []
-temperature        = ''
+temperature_func   = ''
 temperature_args   = []
-velocity           = ''
+velocity_func      = ''
 velocity_args      = []
 
 if doSolve:
   lsol.limesolver(radius,minScale,distUnit,tcmb,sinkPoints,pIntensity,samplingAlgorithm,sampling
     ,lte_only,init_lte,nThreads,nSolveIters,moldatfile,dust,gridInFile,gridOutFile,resetRNG
     ,modelID,T,rhoc,Mstar,Rstar,Tstar,bgdens,hph,plsig1,rin,rout,sig0,mdisk,soundspeed,h0,ab0,mdot
-    ,tin,ve,mdota,mu,nu,rc,Tcloud,age,Rn,userModelPath,abundance,abundance_args
-    ,bmag,bmag_args,density,density_args,doppler,doppler_args,tdust,tdust_args
-    ,temperature,temperature_args,velocity,velocity_args)
+    ,tin,ve,mdota,mu,nu,rc,Tcloud,age,Rn,userModelPath,abundance_func,abundance_args
+    ,bmag_func,bmag_args,density_func,density_args,doppler_func,doppler_args,tdust_func,tdust_args
+    ,temperature_func,temperature_args,velocity_func,velocity_args)
 
-gridInFile              = 'grid_5_CG97.ds'
-moldatfile              = 'hco+@xpol.dat'
-dust                    = 'jena_thin_e6.tab'
+gridInFile		= 'grid_5_CG97.ds'
+moldatfile		= 'hco+@xpol.dat'
+dust			= 'jena_thin_e6.tab'
 
-filename                = 'image0_CG97.fits'
-imgres                  = 0.02
-pxls                    = 101
+filename		= 'image1_CG97_casa.fits'
+imgres                  = 0.02            # Resolution in arc seconds
+pxls                    = 101            # Pixels per dimension
 unit                    = 0
 freq                    = 0.0
 rotationStyle           = 0
@@ -99,17 +96,18 @@ phi                     = 0.0
 incl                    = 0.0
 posang                  = 0.0
 azimuth                 = 0.0
-distance                = 140# * PC
+distance                = 140
 distUnit                = 'pc'
-nThreads                = 1
-traceRayAlgorithm       = 1
 doLine                  = True
 nchan                   = 60
 velres                  = 100.0
-trans                   = 3
+trans                   = 2
 molI                    = 0
 bandwidth               = 0.0
 source_vel              = 0.0
+
+nThreads                = 1
+traceRayAlgorithm       = 1
 doInterpolateVels       = True
 polarization            = False
 

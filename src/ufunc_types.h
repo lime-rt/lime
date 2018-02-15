@@ -22,8 +22,6 @@
 #define USERFUNC_gasIIdust     7
 #define USERFUNC_gridDensity   8
 
-//extern int defaultFuncFlags;
-
 void	density(double,double,double,double *);
 void	temperature(double,double,double,double *);
 void	abundance(double,double,double,double *);

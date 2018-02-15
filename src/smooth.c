@@ -9,6 +9,10 @@
 
 #include "lime.h"
 
+#ifdef NO_STDOUT
+#include "pyshared_io.h"
+#endif
+
 
 /* Based on Lloyds Algorithm (Lloyd, S. IEEE, 1982) */	
 void
@@ -74,7 +78,12 @@ smooth(configInfo *par, struct grid *gp){
     }
 
     progFraction = (double)(sg+1)/(double)N_SMOOTH_ITERS;
+#ifndef NO_PROGBARS
     if(!silent) progressbar(progFraction, 5);
+#endif
+#ifdef NO_STDOUT
+    statusObj.progressGridSmoothing = progFraction;
+#endif
     free(dc);
   }
 }

@@ -9,7 +9,7 @@
 import math
 
 # For definitions of the classes ModelParameters and ImageParameters:
-from par_classes import *
+from limepar_classes import *
 
 # Note that the useful macros defined in lime.h are also provided here in the dictionary 'macros' provided as an argument to each function below. See the example code at the end for the full list of macro values provided.
 

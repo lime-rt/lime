@@ -88,7 +88,7 @@ required. Do not try to `make` or `make install` LIME as this will produce an er
 Configuring LIME
 ----------------
 
-We added a configure script with LIME version 1.9 to avoid the necessity to set extra environment variables or hack the Makefile etc. in order to deal with different names for cfitsio/qhull headers and libraries on different systems. You should run this script once after you install LIME on your machine, viz:
+We added a configure script with LIME version 1.9 to avoid the necessity to set extra environment variables or hack the Makefile etc in order to deal with different names for cfitsio/qhull headers and libraries on different systems. You should run this script once after you install LIME on your machine, viz:
 
 ```
  $ cd <LIME directory>

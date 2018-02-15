@@ -246,7 +246,7 @@ file:///opt/casa/code/xmlcasa/xml/casa.xsd">
     </param>
 
 
-    <param type="string" name="abundance">
+    <param type="string" name="abundance_func">
       <description>Name of special function to use for this result.</description>
       <value></value>
     </param>
@@ -256,7 +256,7 @@ file:///opt/casa/code/xmlcasa/xml/casa.xsd">
         <value></value>
       </value>
     </param>
-    <param type="string" name="bmag">
+    <param type="string" name="bmag_func">
       <description>Name of special function to use for this result.</description>
       <value></value>
     </param>
@@ -266,7 +266,7 @@ file:///opt/casa/code/xmlcasa/xml/casa.xsd">
         <value></value>
       </value>
     </param>
-    <param type="string" name="density">
+    <param type="string" name="density_func">
       <description>Name of special function to use for this result.</description>
       <value></value>
     </param>
@@ -276,7 +276,7 @@ file:///opt/casa/code/xmlcasa/xml/casa.xsd">
         <value></value>
       </value>
     </param>
-    <param type="string" name="doppler">
+    <param type="string" name="doppler_func">
       <description>Name of special function to use for this result.</description>
       <value></value>
     </param>
@@ -286,7 +286,7 @@ file:///opt/casa/code/xmlcasa/xml/casa.xsd">
         <value></value>
       </value>
     </param>
-    <param type="string" name="tdust">
+    <param type="string" name="tdust_func">
       <description>Name of special function to use for this result.</description>
       <value></value>
     </param>
@@ -296,7 +296,7 @@ file:///opt/casa/code/xmlcasa/xml/casa.xsd">
         <value></value>
       </value>
     </param>
-    <param type="string" name="temperature">
+    <param type="string" name="temperature_func">
       <description>Name of special function to use for this result.</description>
       <value></value>
     </param>
@@ -306,7 +306,7 @@ file:///opt/casa/code/xmlcasa/xml/casa.xsd">
         <value></value>
       </value>
     </param>
-    <param type="string" name="velocity">
+    <param type="string" name="velocity_func">
       <description>Name of special function to use for this result.</description>
       <value></value>
     </param>
