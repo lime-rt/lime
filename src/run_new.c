@@ -804,16 +804,23 @@ exit(1);
 
   par->edgeVelsAvailable=0; /* default value, this is set within getEdgeVelocities(). */
 
-  if(!silent && par->nSolveIters>0 && par->lte_only)
-    warning("Requesting par->nSolveIters>0 will have no effect if LTE calculation is also requested.");
+  if(!silent){
+    if(par->lte_only){
+      if(par->nSolveIters>0)
+        warning("Requesting par->nSolveIters>0 will have no effect if LTE calculation is also requested.");
+    }else if(par->nSolveIters<=par->nSolveItersDone && !allBitsSet(par->dataFlags, DS_mask_populations)){
+      warning("No supplied pops values, and par->nSolveIters <= par->nSolveItersDone.");
+    }
+  }
+
+//  if(par->nSolveIters>0 || par->lte_only) /* To save the user having to set par->doSolveRTE as well as par->nSolveIters>0 or par->lte_only. */
+  if(par->nSolveIters>par->nSolveItersDone || par->lte_only) /* To save the user having to set par->doSolveRTE as well as par->nSolveIters>0 or par->lte_only. */
+    par->doSolveRTE = TRUE;
 
   if(par->samplingAlgorithm==0)
     defaultDensyPower = DENSITY_POWER;
   else
     defaultDensyPower = TREE_POWER;
-
-  if(par->nSolveIters>0 || par->lte_only) /* To save the user having to set par->doSolveRTE as well as par->nSolveIters>0 or par->lte_only. */
-    par->doSolveRTE = TRUE;
 
   par->doMolCalcs = par->doSolveRTE || par->nLineImages>0;
   if(par->doMolCalcs && par->moldatfile==NULL){
@@ -934,8 +941,10 @@ exit(1);
     for(gi=0;gi<par.ncell;gi++){
       for(si=0;si<par.nSpecies;si++){
         gp[gi].mol[si].specNumDens = malloc(sizeof(double)*md[si].nlev);
+        gp[gi].mol[si].pops        = malloc(sizeof(double)*md[si].nlev);
         for(ei=0;ei<md[si].nlev;ei++){
           gp[gi].mol[si].specNumDens[ei] = 0.0;
+          gp[gi].mol[si].pops[ei] = 0.0;
         }
       }
     }
