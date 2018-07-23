@@ -89,7 +89,7 @@ def getParamUnit(modelID, paramID):
 
 def _getParamDefVal(modelID, paramID, dTypeStr):
   if mc._modelsDict[modelID]._paramDict[paramID].dType != dTypeStr:
-    raise 'wrong type'
+    raise ValueError("wrong type")
   return mc._modelsDict[modelID]._paramDict[paramID].defaultValue
 
 def getParamDefValDouble(modelID, paramID):
@@ -213,7 +213,7 @@ def setParamEnumIndex(paramID, index):
 
 def _getParam(paramID, dTypeStr):
   if mc._currentModel._paramDict[paramID].dType!=dTypeStr:
-    raise 'parameter data type is not %s' % dTypeStr########### make an error class
+    raise ValueError("parameter data type is not %s" % (dTypeStr))
   return mc._currentModel._paramDict[paramID].value ######### None if it has not been set.
 
 def getParamDouble(paramID):
