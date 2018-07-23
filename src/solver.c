@@ -764,7 +764,7 @@ Note that this is called from within the multi-threaded block.
   for(k=0;k<md[ispec].nlev;k++){     
     ctot[k]=0.0;
     for(l=0;l<md[ispec].nlev;l++)
-      ctot[k] += gsl_matrix_get(colli,k,l);
+      ctot[k] += gsl_matrix_get(colli,l,k);
     gsl_matrix_set(colli,k,k,gsl_matrix_get(colli,k,k) - ctot[k]);
   }
   free(ctot);
