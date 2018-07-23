@@ -59,12 +59,6 @@ struct arguments
   double modelRadius,tempCMB;
 };
 
-#ifdef TEST
-_Bool fixRandomSeeds = TRUE;
-#else
-_Bool fixRandomSeeds = FALSE;
-#endif
-
 /*....................................................................*/
 void myPrintUsage(){
   const int maxNumOptions=20,maxOptFieldLen=28;

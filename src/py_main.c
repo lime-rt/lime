@@ -124,6 +124,9 @@ pyerror(message);
 pyerror(message);
   }
 
+  /*
+Unpack all the model and image parameters from the pPars object, returning them as (i) a pointer 'par' to an inputPars struct, and (ii) a pointer 'img' to a series of image structs.
+  */
   status = readParImg(pPars, parTemplates, nPars, imgParTemplates, nImgPars, par, img, nImages, pywarning);
   if(status){
     Py_DECREF(pPars);

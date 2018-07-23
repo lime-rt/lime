@@ -818,7 +818,7 @@ exit(1);
   if(!silent && par->nSolveIters>0 && par->lte_only)
     warning("Requesting par->nSolveIters>0 will have no effect if LTE calculation is also requested.");
 
-  if(par->nSolveIters>0 || par->lte_only) /* To save the user having to set par->doSolveRTE as well as par->nSolveIters>0 or par->lte_only. */
+  if(par->nSolveIters>par->nSolveItersDone || par->lte_only) /* To save the user having to set par->doSolveRTE as well as par->nSolveIters>0 or par->lte_only. */
     par->doSolveRTE = TRUE;
 
   par->doMolCalcs = par->doSolveRTE || par->nLineImages>0;

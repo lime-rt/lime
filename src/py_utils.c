@@ -404,9 +404,10 @@ The user should set and return both 'ordinary' and 'image' parameters as attribu
 Note that this routine can be, and is, used both for 'ordinary' and 'image' parameters.
   */
 
-  int i,nItems,nItems1,status=0;
-  PyObject *pAttr,*pFirstItem,*pFirstItem1;
-  _Bool typesMatch=TRUE;
+  int i,j,nItems,nItems1,status=0;
+  PyObject *pAttr,*pFirstItem,*pFirstItem1,*pListOfAttrs,*pString;
+  _Bool typesMatch=TRUE,parFound;
+  char *tempStr;
 
   for(i=0;i<nPars;i++){
     pAttr = PyObject_GetAttrString(pParInstance, parTemplates[i].name);
@@ -445,6 +446,27 @@ return CA_LISTLIST_ITEM_READ_FAIL;
 
     if(!typesMatch)
 return CA_TYPES_DONT_MATCH;
+  }
+
+  /* We want now to check that the user has not specified any extra, non-recognized attributes. These will have no effect on the running of the program but the user should be warned that such things are simply thrown away.
+  */
+  pListOfAttrs = PyObject_Dir(pParInstance);
+  nItems = (int)PyList_Size(pListOfAttrs);
+  for(i=0;i<nItems;i++){
+    pString = PyList_GetItem(pListOfAttrs, (Py_ssize_t)i); /* Don't have to DECREF pItem, it is a borrowed reference. */
+    tempStr = PyString_AsString(pString);
+    if(tempStr[0]!='_'){
+      parFound = FALSE; /* default */
+
+      for(j=0;j<nPars;j++){
+        if(strcmp(tempStr, parTemplates[j].name)==0){
+          parFound = TRUE;
+      break;
+        }
+      }
+
+      if(!parFound) status = CA_ILLEGAL_PAR;
+    }
   }
 
 return status;

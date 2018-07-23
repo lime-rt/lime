@@ -865,7 +865,6 @@ exit(1);
     par.doMolCalcs = (par.nLineImages>0);
 
   }else{
-//    if(par.nSolveIters>0 || par.lte_only) /* To save the user having to set par.doSolveRTE as well as par.nSolveIters>0 or par.lte_only. */
     if(par.nSolveIters>par.nSolveItersDone || par.lte_only) /* To save the user having to set par->doSolveRTE as well as par->nSolveIters>0 or par->lte_only. */
       par.doSolveRTE = TRUE;
 
@@ -929,7 +928,9 @@ exit(1);
       for(si=0;si<par.nSpecies;si++){
         gp[gi].mol[si].specNumDens = malloc(sizeof(double)*md[si].nlev);
         gp[gi].mol[si].pops        = malloc(sizeof(double)*md[si].nlev);
-        for(ei=0;ei<md[si].nlev;ei++){
+        gp[gi].mol[si].specNumDens[0] = 0.0;
+        gp[gi].mol[si].pops[0] = 1.0;
+        for(ei=1;ei<md[si].nlev;ei++){
           gp[gi].mol[si].specNumDens[ei] = 0.0;
           gp[gi].mol[si].pops[ei] = 0.0;
         }
