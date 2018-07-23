@@ -846,7 +846,8 @@ void _gridPopsInit(configInfo *par, molData *md, struct grid *gp){
     for(id=0;id<par->ncell; id++){
       free(gp[id].mol[i].pops);
       gp[id].mol[i].pops = malloc(sizeof(double)*md[i].nlev);
-      for(ilev=0;ilev<md[i].nlev;ilev++)
+      gp[id].mol[i].pops[0] = 1.0;
+      for(ilev=1;ilev<md[i].nlev;ilev++)
         gp[id].mol[i].pops[ilev] = 0.0;
     }
   }
@@ -942,7 +943,9 @@ exit(1);
       for(si=0;si<par.nSpecies;si++){
         gp[gi].mol[si].specNumDens = malloc(sizeof(double)*md[si].nlev);
         gp[gi].mol[si].pops        = malloc(sizeof(double)*md[si].nlev);
-        for(ei=0;ei<md[si].nlev;ei++){
+        gp[gi].mol[si].specNumDens[0] = 0.0;
+        gp[gi].mol[si].pops[0] = 1.0;
+        for(ei=1;ei<md[si].nlev;ei++){
           gp[gi].mol[si].specNumDens[ei] = 0.0;
           gp[gi].mol[si].pops[ei] = 0.0;
         }
