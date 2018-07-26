@@ -50,7 +50,7 @@ void readDummyCollPart(FILE *fp, const int strLen){
 void
 checkFirstLineMolDat(FILE *fp, char *moldatfile){
   const int sizeI=200;
-  char string[sizeI],message[80];
+  char string[sizeI],message[STR_LEN_0];
   char *expectedLine="!MOLECULE";
 
   if(fgets(string, sizeI, fp)==NULL){
@@ -78,7 +78,7 @@ void readMolData(configInfo *par, molData *md, int **allUniqueCollPartIds, int *
   double dummy;
   _Bool cpWasFoundInUserList,previousCpFound;
   const int sizeI=200;
-  char string[sizeI],message[80];
+  char string[sizeI],message[STR_LEN_0+1];
   FILE *fp;
 
   /* Stops compiler warnings when -Wunused-variable */
@@ -167,7 +167,7 @@ exit(1);
           /* The presence now of a final \0 means the comment string was either just long enough for the buffer, or too long; the absence of \n in the 2nd-last place means it was too long.
           */
           if(!silent){
-            sprintf(message, "Collision-partner comment line must be shorter than %d characters.", sizeI-1);
+            snprintf(message, STR_LEN_0, "Collision-partner comment line must be shorter than %d characters.", sizeI-1);
             bail_out(message);
           }
 exit(1);
@@ -198,7 +198,7 @@ exit(1);
         if(!previousCpFound){
           if((*numUniqueCollPartsFound)>=MAX_N_COLL_PART){
             if(!silent){
-              sprintf(message, "More than %d unique collision partners found in the moldata files.", MAX_N_COLL_PART);
+              snprintf(message, STR_LEN_0, "More than %d unique collision partners found in the moldata files.", MAX_N_COLL_PART);
               bail_out(message);
             }
 exit(1);
@@ -269,7 +269,7 @@ void assignMolCollPartsToDensities(configInfo *par, molData *md){
 If we have reached this point, par->collPartIds (and par->nMolWeights) should have been malloc'd and filled with sensible values. Here we set up indices which allow us to associate a density function with each collision partner of each radiating molecule. This information is made use of in solver.c.
   */
   int i,j,ipart;
-  char message[STR_LEN_0];
+  char message[STR_LEN_0+1];
 
   for(i=0;i<par->nSpecies;i++){
     for(ipart=0;ipart<md[i].npart;ipart++){
@@ -308,6 +308,7 @@ void setUpGir(configInfo *par, molData *md){
   int i,ilev,jlev;
   double dummy;
   FILE *fp;
+  char message[STR_LEN_0+1];
 
   for(i=0;i<par->nSpecies;i++){
     md[i].gir = malloc(sizeof(double)*md[i].nlev*md[i].nlev);
@@ -318,7 +319,21 @@ void setUpGir(configInfo *par, molData *md){
       }
     }
     if((fp=fopen(par->girdatfile[i], "r")) != NULL){
-      while (fscanf(fp, "%d %d %lf", &ilev, &jlev, &dummy) != EOF) {
+      while (fscanf(fp, "%d %d %lf", &ilev, &jlev, &dummy) != EOF){
+        if(ilev<=0 || jlev<=0){
+          if(!silent){
+            snprintf(message, STR_LEN_0, "Girdat file %d: level <1 found. (Values found on the bad line: %d, %d.)", i, ilev, jlev);
+            bail_out(message);
+exit(1);
+          }
+        }
+        if(ilev>md[i].nlev || jlev>md[i].nlev){
+          if(!silent){
+            snprintf(message, STR_LEN_0, "Girdat file %d: level >%d found. (Values found on the bad line: %d, %d.)", i, md[i].nlev, ilev, jlev);
+            bail_out(message);
+exit(1);
+          }
+        }
         md[i].gir[(ilev-1)*md[i].nlev+jlev-1] = dummy;
       }
       fclose(fp);
