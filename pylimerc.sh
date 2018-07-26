@@ -10,7 +10,7 @@ else
   basedir=$PYLIMEDIR
 fi
 
-py_extras=${basedir}/python:${basedir}:${basedir}/example
+py_extras=${basedir}/python:${basedir}:${basedir}/example:${basedir}/casa
 if [ -z "$PYTHONPATH" ]; then
   export PYTHONPATH=$py_extras
 else

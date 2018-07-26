@@ -36,6 +36,9 @@ def raytrace(gridInFile,moldatfile,dust,filename,imgres,pxls,unit,freq,rotationS
     casalog.post("Could not import module 'limepar_classes'", priority='ERROR')
     casalog.post("Error message: %s" % err, priority='ERROR')
     return
+  except:
+    casalog.post('Import of limepar_classes failed with an unrecognized exception.', priority='ERROR')
+    return
 
   if _doTest: print '+++ In casaray version of raytrace(). aaa'
 
@@ -139,6 +142,9 @@ def raytrace(gridInFile,moldatfile,dust,filename,imgres,pxls,unit,freq,rotationS
     p = sub.Popen([execName, pklFileName], bufsize=0, stdout=sub.PIPE)
   except OSError:
     casalog.post('Cannot execute %s (not in PATH, or wrong permissions?)' % (execName), priority='ERROR')
+    return
+  except:
+    casalog.post('Execution of %s failed with an unrecognized exception.' % (execName), priority='ERROR')
     return
 
   while True:

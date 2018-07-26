@@ -51,7 +51,11 @@ static PyObject* py_get_silent(PyObject* self, PyObject* args){
 
 /*....................................................................*/
 static PyObject* py_run_wrapper(PyObject* self, PyObject* args){
-  /* args should be an instance of type limepar_classes.py:ModelParameters. */
+  /*
+This is the function which is invoked to actually run LIME.
+
+Note that 'args' should be an instance of type limepar_classes.py:ModelParameters.
+  */
 
   int status=0,nPars,nImgPars=0,nImages=0;
   parTemplateType *parTemplates=NULL,*imgParTemplates=NULL;

@@ -4,7 +4,7 @@
 #
 #	- You should run lime with this script in the form
 #		pylime model.py
-#	  You will need the location of pylime in your PATH environment variable; also you need to have the location of the par_classes.py module in your PYTHONPATH environment variable.
+#	  You will need the location of pylime in your PATH environment variable; also you need to have the location of the limepar_classes.py module in your PYTHONPATH environment variable.
 
 import math
 
@@ -29,9 +29,9 @@ def input(macros):
   # Parameters which may be omitted (i.e. left at their default values) under some circumstances.
   #
   par.dust              = "jena_thin_e6.tab"
-  par.outputfile        = "populations.pop"
-  par.binoutputfile     = "restart.pop"
-  par.gridfile          = "grid.vtk"
+#  par.outputfile        = "populations.pop"
+#  par.binoutputfile     = "restart.pop"
+#  par.gridfile          = "grid.vtk"
 #  par.pregrid           = "pregrid.asc"
 #  par.restart           = "restart.pop"
 #  par.gridInFile        = "grid_5.ds"
@@ -91,17 +91,16 @@ def input(macros):
 #  par.init_lte          = False
 #  par.samplingAlgorithm = 0
   par.sampling          = 2 # Now only accessed if par.samplingAlgorithm==0 (the default).
-#  par.blend             = False
+  par.blend             = False
 #  par.polarization      = False
 #  par.nThreads          = 1
   par.nSolveIters       = 14
-  par.traceRayAlgorithm = 1
+#  par.traceRayAlgorithm = 1
 #  par.resetRNG          = False
 #  par.doSolveRTE        = False
-#  par.gridOutFiles      = ['','','','',"grid_5.ds"] # must be a list with 5 string elements, although some or all can be empty.
+#  par.gridOutFiles      = ['','','','',"grid_5_pylime.ds"]
   par.moldatfile        = ["hco+@xpol.dat"] # must be a list, even when there is only 1 item.
 #  par.girdatfile        = ["myGIRs.dat"] # must be a list, even when there is only 1 item.
-
 
   # Definitions for image #0. Add further similar blocks for additional images.
   #
@@ -123,8 +122,8 @@ def input(macros):
 #  par.img[-1].posang            = 0.0
 #  par.img[-1].azimuth           = 0.0
   par.img[-1].distance          = 140.0*macros["PC"] # source distance in m
-  par.img[-1].doInterpolateVels = True
-  par.img[-1].filename          = "image0.fits"  # Output filename
+#  par.img[-1].doInterpolateVels = False
+  par.img[-1].filename          = "image0_pylime.fits"  # Output filename
 #  par.img[-1].units             = "0,1"
 
   return par

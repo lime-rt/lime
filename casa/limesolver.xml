@@ -241,7 +241,7 @@ file:///opt/casa/code/xmlcasa/xml/casa.xsd">
     </param>
 
     <param type="string" name="userModelPath">
-      <description>Path of a bespoke model file (not yet available).</description>
+      <description>Path of a bespoke model file.</description>
       <value></value>
     </param>
 

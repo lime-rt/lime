@@ -38,8 +38,28 @@ void _gridPopsInit(configInfo *par, molData *md, struct grid *gp){
         gp[id].mol[i].pops[ilev] = 0.0;
     }
   }
+
+  par->popsHasBeenInit = TRUE;
 }
 
+
+/*....................................................................*/
+void _specNumDensInit(configInfo *par, molData *md, struct grid *gp){
+  int i,id,ilev;
+
+  for(i=0;i<par->nSpecies;i++){
+    /* Allocate space for populations etc */
+    for(id=0;id<par->ncell; id++){
+      free(gp[id].mol[i].specNumDens);
+      gp[id].mol[i].specNumDens = malloc(sizeof(double)*md[i].nlev);
+      gp[id].mol[i].specNumDens[0] = 0.0;
+      for(ilev=1;ilev<md[i].nlev;ilev++)
+        gp[id].mol[i].specNumDens[ilev] = 0.0;
+    }
+  }
+
+  par->SNDhasBeenInit = TRUE;
+}
 /*....................................................................*/
 int
 run_new(inputPars inpars, image *inimg, const int nImages){
@@ -49,7 +69,7 @@ run_new(inputPars inpars, image *inimg, const int nImages){
      programs. In this case, inpars and img must be specified by the
      external program.
   */
-  int i,gi,si,ei,status=0,sigactionStatus=0,numCollPartRead=0;
+  int nSpecies,i,status=0,sigactionStatus=0,numCollPartRead=0;
   int initime=time(0);
   int dummyPopsdone=0,nExtraSolverIters=0;
   molData *md=NULL;
@@ -82,15 +102,17 @@ exit(1);
 #endif
   fillErfTable();
 
-  par.nSpecies = copyInpars(inpars, inimg, nImages, &par, &img);
-  setOtherEasyConfigValues(nImages, &par, &img);
+  nSpecies = copyInpars(inpars, inimg, nImages, &par, &img); /* In init.c */
+  par.nSpecies = nSpecies;
+  setOtherEasyConfigValues(nImages, &par, &img); /* In init.c */
 
   if(par.gridInFile!=NULL)
-    readGridWrapper(&par, &gp, &collPartNamesRead, &numCollPartRead); /* In gridio.c */
+    readGridWrapper(&par, &gp, &collPartNamesRead, &numCollPartRead); /* In gridio.c. Sets values in par.dataFlags. */
 
   parChecks(&par);
-  parseInputWhenIncompleteGridFile(&par, TRUE); /* Sets par.numDensities */
-  parseImagePars(&par, &img);
+  parseInputWhenIncompleteGridFile(&par, TRUE); /* In init.c. Sets par.numDensities */
+  parseImagePars(&par, &img); /* In init.c */
+  furtherParChecks(&par); /* In init.c */
 
   /* Allocate moldata array.
   */
@@ -126,27 +148,16 @@ exit(1);
 
     if(par.useAbun)
       calcGridMolDensities(&par, &gp);
+  }
 
-    for(gi=0;gi<par.ncell;gi++){
-      for(si=0;si<par.nSpecies;si++){
-        gp[gi].mol[si].specNumDens = malloc(sizeof(double)*md[si].nlev);
-        gp[gi].mol[si].pops        = malloc(sizeof(double)*md[si].nlev);
-        gp[gi].mol[si].specNumDens[0] = 0.0;
-        gp[gi].mol[si].pops[0] = 1.0;
-        for(ei=1;ei<md[si].nlev;ei++){
-          gp[gi].mol[si].specNumDens[ei] = 0.0;
-          gp[gi].mol[si].pops[ei] = 0.0;
-        }
-      }
-    }
+  if(par.needToInitPops)
+    _gridPopsInit(&par,md,gp);
 
-    if(par.doSolveRTE){
-      _gridPopsInit(&par,md,gp);
-      nExtraSolverIters = levelPops(md, &par, gp, &dummyPopsdone, lamtab, kaptab, nEntries); /* In solver.c */
-    }
+  if(par.needToInitSND)
+    _specNumDensInit(&par,md,gp);
 
-    calcGridMolSpecNumDens(&par,md,gp); /* In grid_aux.c */
-
+  if(par.doSolveRTE){
+    nExtraSolverIters = levelPops(md, &par, gp, &dummyPopsdone, lamtab, kaptab, nEntries); /* In solver.c */
     par.nSolveItersDone += nExtraSolverIters;
   }
 
@@ -158,6 +169,9 @@ exit(1);
     snprintf(message, STR_LEN_1, "Data flags %x match neither mask 3 %x (cont.) or 5 %x (line).", par.dataFlags, DS_mask_3, DS_mask_5);
     warning(message);
   }
+
+  if(par.nLineImages>0)
+    calcGridMolSpecNumDens(&par,md,gp); /* In grid_aux.c */
 
   freeSomeGridFields((unsigned int)par.ncell, (unsigned short)par.nSpecies, gp);
 

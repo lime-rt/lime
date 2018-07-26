@@ -16,8 +16,6 @@ TODO:
 #include "ml_funcs.h"
 #include "ml_models.h"
 
-_Bool _doTest = FALSE;
-
 int copyTemp = 0; /* <0 means tgas should be set to equal tdust, >0 means the other way, ==0 means no action. */
 int silent = 0;
 int defaultFuncFlags = 0;
@@ -43,8 +41,6 @@ NOTE that I have used sequence-access routines here rather than tuple-access one
   int status=0,nTupleMembers=0;
   PyObject *pModule,*pFunc,*pArgs,*pResult,*pCopyTemperatureI,*pUserModuleName;
   char message[STR_LEN_1],*tempStr;
-
-if(_doTest) printf(">>> Entering _readParsObjWrapper()\n");
 
   status = getModuleFromName(moduleNameNoSuffix, &pModule); /* In py_utils.c */
   if(status!=0){ /* Don't need to decref pModule. */
@@ -176,8 +172,6 @@ pyerror(message);
   }
 
   Py_DECREF(pResult);
-
-if(_doTest) printf("<<< Leaving _readParsObjWrapper()\n");
 }
 
 /*....................................................................*/
@@ -204,8 +198,6 @@ exit(1);
   /* pCurrentModel should be a modellib_classes._Model instance, pLimePars should be a limepar_classes.ModelParameters instance. */
   _readParsObjWrapper(argv[1], &pCurrentModel, userModuleNameNoSuffix, maxLenName, &copyTemp, &pLimePars);
 
-if(_doTest) printf("pre-AAA userModuleNameNoSuffix=%s strlen=%d\n", userModuleNameNoSuffix, (int)strlen(userModuleNameNoSuffix));
-
   /* Do some initialization */
   setDefaultFuncStuffs(); /* in ml_funcs */
   silent = 0;//********** pass it as argument?
@@ -222,11 +214,9 @@ pyerror(message);
     }
 
     currentModelI = modelI; /* global var. */
-if(_doTest) printf("AAA Model I = %d\n", modelI);
 
     /* Set some global arrays defined in the header of ml_models.c */
     status = extractParams(pCurrentModel, message); /* in ml_aux.c */
-if(_doTest) printf("BBB\n");
     if(status!=0){
       Py_DECREF(pCurrentModel);
       Py_DECREF(pLimePars);
@@ -235,7 +225,6 @@ pyerror(message);
 
     /* Set some global arrays defined in the header of ml_funcs.c */
     status = extractFuncs(pCurrentModel, message); /* in ml_aux.c */
-if(_doTest) printf("CCC\n");
     if(status!=0){
       Py_DECREF(pCurrentModel);
       Py_DECREF(pLimePars);
@@ -246,7 +235,6 @@ pyerror(message);
   Py_DECREF(pCurrentModel);
 
   status = finalizeModelConfig(currentModelI); /* in ml_models.c */
-if(_doTest) printf("DDD\n");
   if(status!=0){
     Py_DECREF(pLimePars);
     sprintf(message, "finalizeModelConfig() returned status value %d", status);
@@ -266,7 +254,6 @@ pyerror(message);
 
   /* Set up any user-supplied result functions: */
   if(strlen(userModuleNameNoSuffix)>0){
-if(_doTest) printf("userModuleNameNoSuffix=%s strlen=%d\n", userModuleNameNoSuffix, (int)strlen(userModuleNameNoSuffix));
     status = getModuleFromName(userModuleNameNoSuffix, &pModule); /* in py_utils.c */
     if(status!=0){ /* Don't need to decref pModule. */
       Py_DECREF(pLimePars);
@@ -290,7 +277,6 @@ pyerror(message);
   */
   status = getParTemplatesWrapper(headerModuleName, &parTemplates, &nPars\
     , &imgParTemplates, &nImgPars, message); /* in py_utils.c */
-if(_doTest) printf("EEE\n");
   if(status!=0){
     Py_DECREF(pLimePars);
 pyerror(message);

@@ -7,20 +7,14 @@
 # Platform-dependent stuff:
 include Makefile.defs
 
-##
-## Make sure to put the correct paths.
-##
-PREFIX  =  ${PATHTOLIME}
-
 # Paths:
 srcdir		= ${CURDIR}/src
 docdir		= ${CURDIR}/doc
 exampledir	= ${CURDIR}/example
 pydir		= ${CURDIR}/python
-#*** better to use ${PREFIX} here rather than ${CURDIR}? (the latter is used in artist/lime.)
 
-ifneq (,$(wildcard ${PREFIX}/lib/.))
-    LIBS += -L${PREFIX}/lib
+ifneq (,$(wildcard ${CURDIR}/lib/.))
+    LIBS += -L${CURDIR}/lib
 endif
 ifneq (,$(wildcard ${HOME}/lib/.))
     LIBS += -L${HOME}/lib
@@ -36,8 +30,8 @@ ifneq (,$(wildcard /usr/local/lib/.))
 endif
 
 
-CPPFLAGS += -I${PREFIX}/include \
-	    -I${PREFIX}/src \
+CPPFLAGS += -I${CURDIR}/include \
+	    -I${CURDIR}/src \
 	    -I${HOME}/include \
 	    -I/opt/local/include \
 	    -I/sw//include \
@@ -57,7 +51,6 @@ LLRUMP = lime
 MLTARGET = lib${MLRUMP}.so
 LLTARGET = lib${LLRUMP}.so
 CC	= gcc -fopenmp
-MODELS  = model.c # Overwritten in usual practice by the value passed in by the 'lime' script.
 MODELO 	= ${srcdir}/model.o
 
 CCFLAGS += -O3 -falign-loops=16 -fno-strict-aliasing
@@ -126,7 +119,7 @@ ${CONV_OBJS} : ${CONVINCLUDES}
 ${MODELO}: ${INCS}
 	${CC} ${CCFLAGS} ${CPPFLAGS} -o ${MODELO} -c ${MODELS}
 
-${TARGET}: ${OBJS} ${MODELO} 
+${TARGET}: ${MODELO} ${OBJS}
 	${CC} -o $@ $^ ${LIBS} ${LDFLAGS}
 
 pylime: CCFLAGS += ${PYCCFLAGS}

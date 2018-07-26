@@ -14,7 +14,7 @@ else
   set basedir = $mypwd
 endif
 
-set py_extras = ${basedir}/python:${basedir}:${basedir}/example
+set py_extras = ${basedir}/python:${basedir}:${basedir}/example:${basedir}/casa
 if $?PYTHONPATH then
   if ( "$PYTHONPATH" == "" ) then
     setenv PYTHONPATH $py_extras

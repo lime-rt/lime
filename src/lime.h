@@ -205,6 +205,7 @@ void	freeInputPars(inputPars *par);
 void	freeMolData(const int, molData*);
 void	freePopulation(const unsigned short, struct populations*);
 void	freeSomeGridFields(const unsigned int, const unsigned short, struct grid*);
+void	furtherParChecks(configInfo *par);
 double	geterf(const double, const double);
 void	getEdgeVelocities(configInfo *, struct grid *);
 void	input(inputPars*, image*);

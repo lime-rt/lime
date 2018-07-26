@@ -29,21 +29,6 @@ _doTest = False
 libmodellib.initialize()#*********** could pass in all the template info to spare some duplication.
 
 #.......................................................................
-# Things that used to be in lime.py:
-
-def createInputPars():
-  par = pc.ModelParameters()  
-  return par
-
-def setSilent(silent):
-  mc.set_silent(silent) # technically returns 0 when it succeeds, NULL otherwise.
-
-# New:
-def setPars(parsObject):
-  # 
-  return mc.set_lime_pars(parsObject)#*******************************
-
-#.......................................................................
 # Functions. First those that don't need to talk to the C code:
 
 def getModelIDs():
@@ -190,15 +175,6 @@ def isRegisteredFunctionParam(functionID, functionParamID):
 
 #### there are a variety of bespoke functions for returning values of different parameter types.
 
-def isSetCurrentModel():
-  if mc._currentModel is None:
-    return False
-  else:
-    return True
-
-def getCurrentModelID():
-  return mc._currentModel.idStr
-
 def setParamDouble(paramID, value):
   mu.setParam(paramID, value, 'double')
 
@@ -304,8 +280,14 @@ def isCurrentResultFunction(resultID):
   # Checks if a Result is linked to a Function
   pass
 
-#.......................................................................
-# Now define those functions that need to talk to the C code.
+def isSetCurrentModel():
+  if mc._currentModel is None:
+    return False
+  else:
+    return True
+
+def getCurrentModelID():
+  return mc._currentModel.idStr
 
 def setCurrentModel(modelID):
   mu.setCurrentModel(modelID)
@@ -313,6 +295,11 @@ def setCurrentModel(modelID):
 def unsetCurrentModel():
   mc._currentModel = None
 
+def setUserModel(userModelPath):
+  return mu.setUserModel(userModelPath)
+
+#.......................................................................
+# Now define those functions that need to talk to the C code.
 
 #def isConfigurationComplete():
 #  # Checks if all Results are either provided by the Current Model or linked to a Function
@@ -337,9 +324,6 @@ def density(x, y, z):
 
 def doppler(x, y, z):
   return libmodellib.doppler(x, y, z)
-
-def frogs(x, y, z):
-  return libmodellib.frogs(x, y, z)
 
 def cleanUp():
   # This should be called after all work is finished.

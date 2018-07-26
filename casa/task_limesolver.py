@@ -37,6 +37,9 @@ def limesolver(radius,minScale,distUnit,tcmb,sinkPoints,pIntensity,samplingAlgor
     casalog.post("Could not import module 'modellib_classes'", priority='ERROR')
     casalog.post("Error message: %s" % err, priority='ERROR')
     return
+  except:
+    casalog.post('Import of modellib_classes failed with an unrecognized exception.', priority='ERROR')
+    return
 
   try:
     import modellib_utils as mu
@@ -44,12 +47,18 @@ def limesolver(radius,minScale,distUnit,tcmb,sinkPoints,pIntensity,samplingAlgor
     casalog.post("Could not import module 'modellib_utils'", priority='ERROR')
     casalog.post("Error message: %s" % err, priority='ERROR')
     return
+  except:
+    casalog.post('Import of modellib_utils failed with an unrecognized exception.', priority='ERROR')
+    return
 
   try:
     import limepar_classes as pc
   except ImportError as err:
     casalog.post("Could not import module 'limepar_classes'", priority='ERROR')
     casalog.post("Error message: %s" % err, priority='ERROR')
+    return
+  except:
+    casalog.post('Import of limepar_classes failed with an unrecognized exception.', priority='ERROR')
     return
 
   if _doTest: print '+++ In task_limesolver.limesolver(). aaa'
@@ -326,6 +335,9 @@ def limesolver(radius,minScale,distUnit,tcmb,sinkPoints,pIntensity,samplingAlgor
     p = sub.Popen([execName, pklFileName], bufsize=1, stdout=sub.PIPE)
   except OSError:
     casalog.post('Cannot execute %s (not in PATH, or wrong permissions?)' % (execName), priority='ERROR')
+    return
+  except:
+    casalog.post('Execution of %s failed with an unrecognized exception.' % (execName), priority='ERROR')
     return
 
   while True:

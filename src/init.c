@@ -143,7 +143,7 @@ exit(1);
 void
 setOtherEasyConfigValues(const int nImages, configInfo *par, imageInfo **img){
   /*
-Already set by this time should be:
+Already set by this time should be all the user-settable parameters, plus:
 	nSpecies
 
 Harder things which we will calculate and set later:
@@ -154,6 +154,7 @@ Harder things which we will calculate and set later:
 	doMolCalcs
 	useVelFuncInRaytrace
 	edgeVelsAvailable
+	dataFlags
   */
 
   int i,j;
@@ -481,7 +482,7 @@ Run through all the user functions and set flags in the global defaultFuncFlags 
 void
 parseInputWhenIncompleteGridFile(configInfo *par, _Bool checkForSingularities){
   /*
-The parameters visible to the user have now been strictly confined to members of the structs 'inputPars' and 'image', both of which are defined in inpars.h. There are however further internally-set values which is is convenient to bundle together with the user-set ones. At present we have a fairly clunky arrangement in which the user-set values are copied member-by-member from the user-dedicated structs to the generic internal structs 'configInfo' and 'imageInfo'. This is done in the present function, along with some checks and other initialization.
+Does a bunch of checks and initializations relating to the density() and gridDensity() functions.
   */
   int numFuncDensities,i,j;
   _Bool foundGoodValue;
@@ -595,13 +596,9 @@ exit(1);
 /*....................................................................*/
 void
 parseImagePars(configInfo *par, imageInfo **img){
-  /*
-The parameters visible to the user have now been strictly confined to members of the structs 'inputPars' and 'image', both of which are defined in inpars.h. There are however further internally-set values which is is convenient to bundle together with the user-set ones. At present we have a fairly clunky arrangement in which the user-set values are copied member-by-member from the user-dedicated structs to the generic internal structs 'configInfo' and 'imageInfo'. This is done in the present function, along with some checks and other initialization.
-  */
   _Bool changedInterp;
   int i,j,id;
-  FILE *fp;
-  char message[STR_LEN_1];
+  char message[STR_LEN_1+1];
   char *pch_sep = " ,:_", *pch, *pch_end, *units_str;
 
   /* Allocate pixel space and parse image information.
@@ -646,9 +643,8 @@ exit(1);
       if(par->polarization){
         (*img)[i].nchan=3;
 
-        if(!silent && bitIsSet(defaultFuncFlags, USERFUNC_magfield)){
+        if(!silent && bitIsSet(defaultFuncFlags, USERFUNC_magfield) && !allBitsSet(par->dataFlags, DS_mask_magfield)){
           warning("You need to supply a magfield function for a polarized image.");
-//***** NOTE that this test is incomplete because the values might be supplied via the gridInFile.
         }
       }else
         (*img)[i].nchan=1;
@@ -781,6 +777,14 @@ exit(1);
   if(!silent && changedInterp)
     warning("You cannot call a python velocity function when multi-threaded. Vels will be interpolated from grid values.");
 
+}
+
+/*....................................................................*/
+void
+furtherParChecks(configInfo *par){
+  FILE *fp;
+  char message[STR_LEN_1+1];
+
   if(par->nContImages>0){
     if(par->dust==NULL){
       if(!silent) bail_out("You must point par->dust to a dust opacity file for a continuum image.");
@@ -815,11 +819,33 @@ exit(1);
 
   par->edgeVelsAvailable=0; /* default value, this is set within getEdgeVelocities(). */
 
-  if(!silent && par->nSolveIters>0 && par->lte_only)
-    warning("Requesting par->nSolveIters>0 will have no effect if LTE calculation is also requested.");
+  if(!silent){
+    if(par->nSolveIters>0 && par->lte_only)
+      warning("Requesting par->nSolveIters>0 will have no effect if LTE calculation is also requested.");
+
+    if(allBitsSet(par->dataFlags, DS_mask_populations) && par->lte_only)
+      warning("LTE calculation will overwrite the population values read from file.");
+  }
 
   if(par->nSolveIters>par->nSolveItersDone || par->lte_only) /* To save the user having to set par->doSolveRTE as well as par->nSolveIters>0 or par->lte_only. */
     par->doSolveRTE = TRUE;
+
+  if(allBitsSet(par->dataFlags, DS_mask_populations))
+    par->popsHasBeenInit = TRUE;
+  else
+    par->popsHasBeenInit = FALSE;
+
+  if(!par->popsHasBeenInit && par->doSolveRTE)
+    par->needToInitPops = TRUE;
+  else
+    par->needToInitPops = FALSE;
+
+  if((!par->lte_only && par->doSolveRTE) || par->nLineImages>0)
+    par->needToInitSND = TRUE;
+  else
+    par->needToInitSND = FALSE;
+
+  par->SNDhasBeenInit = FALSE; /* default */
 
   par->doMolCalcs = par->doSolveRTE || par->nLineImages>0;
   if(par->doMolCalcs && par->moldatfile==NULL){

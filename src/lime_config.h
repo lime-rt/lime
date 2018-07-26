@@ -37,6 +37,7 @@ typedef struct {
   int nLineImages,nContImages,dataFlags,nSolveItersDone;
   _Bool doInterpolateVels,useAbun,doMolCalcs;
   _Bool writeGridAtStage[NUM_GRID_STAGES],useVelFuncInRaytrace,edgeVelsAvailable;
+  _Bool needToInitPops,needToInitSND,SNDhasBeenInit,popsHasBeenInit;
 } configInfo;
 
 struct spec {
