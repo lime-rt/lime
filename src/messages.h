@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#ifndef NO_NCURSES
+#ifdef NCURSES
 #include <curses.h>
 #endif
 #include <time.h>

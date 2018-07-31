@@ -18,3 +18,5 @@ example/*.txt
 doc/_html
 
 src/archive
+Makefile.defs
+

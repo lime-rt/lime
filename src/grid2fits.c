@@ -84,12 +84,12 @@ processFitsError(int status){
 
   if(status){
     if(!silent){
-#ifdef NO_NCURSES
-      fits_report_error(stderr, status); /* print error report */
-#else
+#ifdef NCURSES
       char message[STR_LEN_0];
       sprintf(message, "Error in cfitsio: status=%d", status);
       bail_out(message);
+#else
+      fits_report_error(stderr, status); /* print error report */
 #endif
     }
     exit( status );    /* terminate the program, returning error status */

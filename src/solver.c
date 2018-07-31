@@ -16,10 +16,6 @@ TODO:
 #include <gsl/gsl_permutation.h>
 #include <gsl/gsl_errno.h>
 
-#ifdef NO_STDOUT
-#include "pyshared_io.h"
-#endif
-
 /* Data concerning a single grid vertex which is passed from calculateJBar() to solveStatEq(). This data needs to be thread-safe. */
 typedef struct {
   double *jbar,*phot,*vfac,*vfac_loc;
@@ -908,7 +904,7 @@ Note that this is called from within the multi-threaded block.
 int
 levelPops(molData *md, configInfo *par, struct grid *gp, int *popsdone, double *lamtab, double *kaptab, const int nEntries){
   int id,iter,ilev,ispec,c=0,n,i,threadI,nVerticesDone,nItersDone,nlinetot,nExtraSolverIters=0;
-  double percent=0.,*median,result1=0,result2=0,snr,delta_pop,progFraction;
+  double percent=0.,*median,result1=0,result2=0,snr,delta_pop;
   int nextMolWithBlend,nMaserWarnings=0,totalNMaserWarnings=0;
   struct statistics { double *pop, *ave, *sigma; } *stat;
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
@@ -918,7 +914,7 @@ levelPops(molData *md, configInfo *par, struct grid *gp, int *popsdone, double *
   int RNG_seeds[par->nThreads];
   char message[STR_LEN_0];
 #ifndef NO_PROGBARS
-  double progFracToPrint,progressIncrement;
+  double progFracToPrint,progFraction,progressIncrement;
   const int numProgressIncrements=10;
   int progressIncrementNum=1;
 
@@ -988,11 +984,6 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
     nItersDone = par->nSolveItersDone;
     while(nItersDone < par->nSolveIters){ /* Not a 'for' loop because we will probably later want to add a convergence criterion. */
       if(!silent) progressbar2(par->nSolveIters, 0, nItersDone, 0, result1, result2);
-#ifdef NO_STDOUT
-      statusObj.minsnr = result1;//0.0;
-      statusObj.median = result2;//0.0;
-      statusObj.numberIterations = nItersDone;
-#endif
 
       for(id=0;id<par->pIntensity;id++){
         for(ilev=0;ilev<md[0].nlev;ilev++) {
@@ -1034,19 +1025,16 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
           }
           halfFirstDs = malloc(sizeof(*halfFirstDs)*gp[id].nphot);
 
+#ifndef NO_PROGBARS
           if (threadI == 0){ /* i.e., is master thread. */
             progFraction = nVerticesDone/(double)par->pIntensity;
-#ifndef NO_PROGBARS
             if(!silent && progFraction > progFracToPrint){
               progressbar(progFracToPrint,10);
               progressIncrementNum++;
               progFracToPrint = progressIncrementNum*progressIncrement;
             }
-#endif
-#ifdef NO_STDOUT
-            statusObj.progressPhotonPropagation = progFraction;
-#endif
           }
+#endif
           if(gp[id].dens[0] > 0 && gp[id].t[0] > 0){
             _calculateJBar(id,gp,md,threadRans[threadI],par,nlinetot,blends,mp,halfFirstDs,&nMaserWarnings);
             nextMolWithBlend = 0;
@@ -1115,11 +1103,6 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
       free(median);
 
       if(!silent) progressbar2(par->nSolveIters, 1, nItersDone, percent, result1, result2);
-#ifdef NO_STDOUT
-      statusObj.minsnr = 0.0;
-      statusObj.median = 0.0;
-      statusObj.numberIterations = nItersDone;
-#endif
       if(par->outputfile != NULL) popsout(par,gp,md);
       nItersDone++;
     }

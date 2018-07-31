@@ -13,10 +13,6 @@ TODO:
 #include "lime.h"
 #include "raythrucells.h"
 
-#ifdef NO_STDOUT
-#include "pyshared_io.h"
-#endif
-
 typedef struct {
   double x,y, *intensity, *tau;
   unsigned int ppi;
@@ -1217,7 +1213,7 @@ Note that the argument 'md', and the grid element '.mol', are only accessed for 
   const int nStepsThruCell=10;
   const double oneOnNSteps=1.0/(double)nStepsThruCell;
 
-  double pixelSize,oneOnNumActiveRaysMinus1,imgCentreXPixels,imgCentreYPixels,minfreq,absDeltaFreq,x,xs[2],sum,oneOnNumRays;
+  double pixelSize,imgCentreXPixels,imgCentreYPixels,minfreq,absDeltaFreq,x,xs[2],sum,oneOnNumRays;
   unsigned int totalNumImagePixels,ppi,numPixelsForInterp;
   int ichan,numCircleRays,numActiveRaysInternal,numActiveRays,lastChan;
   int gi,molI,lineI,i,di,xi,yi,ri,vi,ei,i0,i1;
@@ -1226,10 +1222,13 @@ Note that the argument 'md', and the grid element '.mol', are only accessed for 
   struct cell *dc=NULL;
   struct simplex *cells=NULL;
   unsigned long numCells,dci,numPointsInAnnulus;
-  double local_cmb,cmbFreq,circleSpacing,scale,angle,rSqu,progFraction;
+  double local_cmb,cmbFreq,circleSpacing,scale,angle,rSqu;
   double *vertexCoords=NULL;
   gsl_error_handler_t *defaultErrorHandler=NULL;
   struct baryVelBuffType velBuff,*ptrToBuff=NULL;
+#ifndef NO_PROGBARS
+  double progFraction,oneOnNumActiveRaysMinus1;
+#endif
 
   pixelSize = img[im].distance*img[im].imgres;
   totalNumImagePixels = img[im].pxls*img[im].pxls;
@@ -1348,7 +1347,9 @@ How to calculate this distance? Well if we have N points randomly but evenly dis
       assignRayOnImage(xs, pixelSize, imgCentreXPixels, imgCentreYPixels, img, im, maxNumRaysPerPixel, rays, &numActiveRays);
     }
   }
+#ifndef NO_PROGBARS
   oneOnNumActiveRaysMinus1 = 1.0/(double)(numActiveRaysInternal-1);
+#endif
 
   if(numActiveRays<par->pIntensity+numCircleRays)
     rays = realloc(rays, sizeof(rayData)*numActiveRays);
@@ -1439,7 +1440,9 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
   {
     /* Declaration of thread-private pointers.
     */
+#ifndef NO_PROGBARS
     int threadI = omp_get_thread_num();
+#endif
     int ii, si, ri;
     gridInterp gips[numInterpPoints];
 
@@ -1474,15 +1477,12 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
           , cells, numCells, epsilon, gips, ptrToBuff\
           , numSegments, oneOnNumSegments);
 
+#ifndef NO_PROGBARS
       if (threadI == 0){ /* i.e., is master thread */
         progFraction = (double)(ri)*oneOnNumActiveRaysMinus1;
-#ifndef NO_PROGBARS
         if(!silent) progressbar(progFraction, 13);
-#endif
-#ifdef NO_STDOUT
-        statusObj.progressRayTracing = progFraction;
-#endif
       }
+#endif
     }
 
     if(par->traceRayAlgorithm==1){
@@ -1493,9 +1493,6 @@ While this is off however, gsl_* calls will not exit if they encounter a problem
 
   gsl_set_error_handler(defaultErrorHandler);
   if(!silent) printDone(13);
-#ifdef NO_STDOUT
-  statusObj.statusRayTracing = 1;
-#endif
 
   if(par->traceRayAlgorithm==1){
     free(cells);

@@ -14,10 +14,6 @@ TODO:
 #include "gridio.h"
 #include "defaults.h"
 
-#ifdef NO_STDOUT
-#include "pyshared_io.h"
-#endif
-
 /*....................................................................*/
 void
 dumpGrid(configInfo *par, struct grid *g){
@@ -40,7 +36,7 @@ void randomsViaRejection(configInfo *par, const unsigned int desiredNumPoints, g
 
   double lograd; /* The logarithm of the model radius. */
   double logmin; /* Logarithm of par->minScale. */
-  double r,theta,phi,sinPhi,z,semiradius,progFraction;
+  double r,theta,phi,sinPhi,z,semiradius;
   double uniformRandom;
   int j,di;
   unsigned int i_u;
@@ -49,6 +45,9 @@ void randomsViaRejection(configInfo *par, const unsigned int desiredNumPoints, g
   const int maxNumAttempts=1000;
   int numRandomsThisPoint,numSecondRandoms=0;
   char errStr[STR_LEN_0];
+#ifndef NO_PROGBARS
+  double progFraction;
+#endif
 
   lograd=log10(par->radius);
   logmin=log10(par->minScale);
@@ -105,12 +104,9 @@ void randomsViaRejection(configInfo *par, const unsigned int desiredNumPoints, g
     for(di=0;di<DIM;di++)
       outRandLocations[i_u][di]=x[di];
 
-    progFraction = (double)i_u/((double)desiredNumPoints-1);
 #ifndef NO_PROGBARS
+    progFraction = (double)i_u/((double)desiredNumPoints-1);
     if(!silent) progressbar(progFraction, 4);
-#endif
-#ifdef NO_STDOUT
-    statusObj.progressGridBuilding = progFraction;
 #endif
   }
 
@@ -314,9 +310,6 @@ exit(1);
     if(par->samplingAlgorithm==0){
       smooth(par,*gp);
       if(!silent) printDone(5);
-#ifdef NO_STDOUT
-      statusObj.statusGrid = 1;
-#endif
     }
 
     par->dataFlags |= DS_mask_1;

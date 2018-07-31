@@ -17,7 +17,6 @@ CORESOURCES = \
 	src/gridio.c\
 	src/grid_aux.c\
 	src/init.c\
-	src/messages.c\
 	src/molinit.c\
 	src/popsin.c\
 	src/popsout.c\
@@ -36,6 +35,9 @@ CORESOURCES = \
 STDSOURCES = \
 	src/lime_defaults.c\
 	src/main.c
+
+MSG_SOURCE = src/messages.c
+CUR_SOURCE = src/curses_msg.c
 
 FITSSOURCES = \
 	src/grid2fits.c
@@ -60,6 +62,7 @@ CONVSOURCES = \
 	src/predefgrid.c
 
 PYSOURCES = \
+	src/messages.c\
 	src/py_main.c\
 	src/py_messages.c\
 	src/py_models.c\
@@ -89,13 +92,16 @@ MLSOURCES = \
 
 LLSOURCES = \
 	src/ll_main.c\
+	src/messages.c\
 	src/py_utils.c
 
 CLSOURCES = \
 	src/casalime.c\
+	src/messages.c\
 	src/ml_aux.c\
 	src/py_messages.c\
 	src/py_utils.c
+
 
 COREINCLUDES = \
 	src/collparts.h\
@@ -106,6 +112,7 @@ COREINCLUDES = \
 	src/inpars.h\
 	src/lime_config.h\
 	src/lime.h\
+	src/messages.h\
 	src/raythrucells.h\
 	src/tree_random.h\
 	src/ufunc_types.h
@@ -128,10 +135,24 @@ PYINCLUDES = \
 	src/py_lime.h\
 	src/py_utils.h
 
-LLINCLUDES = \
-	src/pyshared_io.h
+LLINCLUDES =
 
-MLCOREINCLUDES = \
+MLINCLUDES2 = \
+	src/aux.h\
+	src/collparts.h\
+	src/constants.h\
+	src/defaults.h\
+	src/dims.h\
+	src/error_codes.h\
+	src/inpars.h\
+	src/lime.h\
+	src/lime_config.h\
+	src/messages.h\
+	src/py_lime.h\
+	src/py_utils.h\
+	src/ufunc_types.h
+
+MLINCLUDES = \
 	src/ml_funcs.h\
 	src/ml_models.h\
 	src/ml_recipes/ml_recipes.h\

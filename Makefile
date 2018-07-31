@@ -54,7 +54,7 @@ CC	= gcc -fopenmp
 MODELO 	= ${srcdir}/model.o
 
 CCFLAGS += -O3 -falign-loops=16 -fno-strict-aliasing
-LDFLAGS += -lgsl -lgslcblas -l${LIB_QHULL} -lcfitsio -lncurses -lm 
+LDFLAGS += -lgsl -lgslcblas -l${LIB_QHULL} -lcfitsio -lm 
 
 ifeq (${DOTEST},yes)
   CCFLAGS += -DTEST
@@ -64,6 +64,11 @@ endif
 
 ifeq (${VERBOSE},no)
   CCFLAGS += -DNOVERBOSE
+endif
+
+ifeq (${USECURSES},yes)
+  LDFLAGS += -lncurses
+  CCFLAGS += -DNCURSES
 endif
 
 ifeq (${USEHDF5},yes)
@@ -83,12 +88,18 @@ SRCS = ${CORESOURCES} ${STDSOURCES}
 INCS = ${COREINCLUDES}
 OBJS = $(SRCS:.c=.o)
 
+ifeq (${USECURSES},yes)
+  SRCS += ${CUR_SOURCE}
+else
+  SRCS += ${MSG_SOURCE}
+endif
+
 PYSRCS = ${CORESOURCES} ${PYSOURCES}
 PYINCS = ${COREINCLUDES} ${PYINCLUDES}
 PYOBJS = $(PYSRCS:.c=.o)
 
 MLSRCS = ${MLCORESOURCES} ${MLSOURCES}
-MLINCS = ${MLINCLUDES}
+MLINCS = ${MLINCLUDES} ${MLINCLUDES2}
 MLOBJS = $(MLSRCS:.c=.o)
 
 LLSRCS = ${CORESOURCES} ${LLSOURCES}
@@ -123,7 +134,7 @@ ${TARGET}: ${MODELO} ${OBJS}
 	${CC} -o $@ $^ ${LIBS} ${LDFLAGS}
 
 pylime: CCFLAGS += ${PYCCFLAGS}
-pylime: CPPFLAGS += -DNO_NCURSES -DIS_PYTHON
+pylime: CPPFLAGS += -DIS_PYTHON
 pylime: LDFLAGS += ${PYLDFLAGS}
 
 pylime: ${PYOBJS}
@@ -131,17 +142,17 @@ pylime: ${PYOBJS}
 	rm -f ${srcdir}/*.o ${srcdir}/*/*.o
 
 casalime: CCFLAGS  += ${PYCCFLAGS}
-casalime: CPPFLAGS += -DNO_NCURSES -DIS_PYTHON -DNO_PROGBARS
+casalime: CPPFLAGS += -DIS_PYTHON -DNO_PROGBARS
 casalime: LDFLAGS  += ${PYLDFLAGS}
 
-pyshared: CCFLAGS  += ${PYCCFLAGS} -fPIC
-pyshared: CPPFLAGS += -DNO_NCURSES -DIS_PYTHON -DNO_STDOUT
-pyshared: LDFLAGS  += ${PYLDFLAGS} -shared
-
-${LLTARGET}: LIBS += -L${CURDIR}
+casalime: ${CLOBJS}
+	${CC} -o $@ $^ ${LIBS} ${LDFLAGS}
+	rm -f ${srcdir}/*.o ${srcdir}/*/*.o
 
 ${MLTARGET}: ${MLOBJS}
 	${CC} -o $@ $^ ${LIBS} ${LDFLAGS}
+
+${LLTARGET}: LIBS += -L${CURDIR}
 
 # This way liblime.so can always find libmodellib.so without the user needing to set LD_LIBRARY_PATH. The extra $ seems to be an escape character needed by make; the command output string should be
 #	-Wl,-rpath,'$ORIGIN'
@@ -152,13 +163,11 @@ ${LLTARGET}: LDFLAGS += ${XLDFLAGS}
 ${LLTARGET}: ${MLTARGET} ${LLOBJS}
 	${CC} -o $@ ${LLOBJS} ${LIBS} ${LDFLAGS} -l${MLRUMP}
 
-casalime: ${CLOBJS}
-	${CC} -o $@ $^ ${LIBS} ${LDFLAGS}
-	rm -f ${srcdir}/*.o ${srcdir}/*/*.o
+pyshared: CCFLAGS  += ${PYCCFLAGS} -fPIC
+pyshared: CPPFLAGS += -DIS_PYTHON
+pyshared: LDFLAGS  += ${PYLDFLAGS} -shared
 
-pyshared: ${MLTARGET} ${LLTARGET}
-
-gridconvert : CPPFLAGS += -DNO_NCURSES
+pyshared: ${LLTARGET}
 
 gridconvert: ${CONV_OBJS}
 	${CC} -o $@ $^ ${LIBS} ${LDFLAGS}

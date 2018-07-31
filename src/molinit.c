@@ -74,12 +74,12 @@ void readDummyCollPart(FILE *fp, const int strLen){
 void
 checkFirstLineMolDat(FILE *fp, char *moldatfile){
   const int sizeI=200;
-  char string[sizeI],message[STR_LEN_0];
+  char string[sizeI],message[STR_LEN_0+1];
   char *expectedLine="!MOLECULE";
 
   if(fgets(string, sizeI, fp)==NULL){
     if(!silent){
-      sprintf(message, "Moldat file %s seems to be empty.", moldatfile);
+      snprintf(message, STR_LEN_0, "Moldat file %s seems to be empty.", moldatfile);
       bail_out(message);
     }
 exit(1);
@@ -87,7 +87,7 @@ exit(1);
 
   if(strncmp(string, expectedLine, strlen(expectedLine))!=0){
     if(!silent){
-      sprintf(message, "Bad format first line of moldat file %s.", moldatfile);
+      snprintf(message, STR_LEN_0, "Bad format first line of moldat file %s.", moldatfile);
       bail_out(message);
     }
 exit(1);
@@ -327,6 +327,7 @@ void _calcMolCMBs(configInfo *par, molData *md){
     }
   }
 }
+
 /*....................................................................*/
 void setUpGir(configInfo *par, molData *md){
   int i,ilev,jlev;

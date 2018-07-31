@@ -9,32 +9,11 @@ TODO:
  */
 
 #include "lime.h"
-#include "pyshared_io.h"
 #include "py_utils.h"
 
 
 int silent = 0;
-statusType statusObj;
-_Bool statusObjInitialized=FALSE;
-
 int _cl_verbosity=0;
-
-/*....................................................................*/
-void initializeStatusObj(void){
-  statusObj.progressGridBuilding      = 0.0;
-  statusObj.progressGridSmoothing     = 0.0;
-  statusObj.statusGrid                = 0;
-  statusObj.progressConvergence       = 0.0;
-  statusObj.numberIterations          = 0;
-  statusObj.minsnr                    = 0.0;
-  statusObj.median                    = 0.0;
-  statusObj.progressPhotonPropagation = 0.0;
-  statusObj.progressRayTracing        = 0.0;
-  statusObj.statusRayTracing          = 0;
-  statusObj.statusGlobal              = 0;
-  statusObj.error                     = 0;
-  statusObj.message[0]                = '\0';
-}
 
 /*....................................................................*/
 static PyObject* py_set_silent(PyObject* self, PyObject* args){
@@ -152,42 +131,12 @@ Py_RETURN_NONE;
 }
 
 /*....................................................................*/
-static PyObject* py_read_status(PyObject* self, PyObject* args){
-  /* args should be empty */
-  PyObject *pStatusTuple;
-
-  if(!statusObjInitialized){
-    initializeStatusObj();
-    statusObjInitialized=TRUE;
-  }
-
-  pStatusTuple = Py_BuildValue("ffifiddffiiis"\
-    , statusObj.progressGridBuilding\
-    , statusObj.progressGridSmoothing\
-    , statusObj.statusGrid\
-    , statusObj.progressConvergence\
-    , statusObj.numberIterations\
-    , statusObj.minsnr\
-    , statusObj.median\
-    , statusObj.progressPhotonPropagation\
-    , statusObj.progressRayTracing\
-    , statusObj.statusRayTracing\
-    , statusObj.statusGlobal\
-    , statusObj.error\
-    , statusObj.message\
-  );
-
-  return pStatusTuple;
-}
-
-/*....................................................................*/
 /*
  * Bind Python function names to our C functions
  */
 static PyMethodDef myModule_methods[] = {
   {"set_silent",   py_set_silent,  METH_VARARGS, "Not intended for direct user import"},
   {"get_silent",   py_get_silent,  METH_VARARGS, "Not intended for direct user import"},
-  {"read_status",  py_read_status, METH_VARARGS, "Not intended for direct user import"},
   {"run_wrapper",  py_run_wrapper, METH_VARARGS, "Not intended for direct user import"},
   {NULL, NULL, 0, NULL}
 };

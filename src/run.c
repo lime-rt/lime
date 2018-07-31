@@ -13,10 +13,6 @@ TODO:
 #include "gridio.h" /* For countDensityCols() */
 #include "defaults.h"
 
-#ifdef NO_STDOUT
-#include "pyshared_io.h"
-#endif
-
 /*....................................................................*/
 int
 checkUserFunctions(configInfo *par, _Bool checkForSingularities){
@@ -901,10 +897,6 @@ exit(1);
   if(par.dust != NULL)
     readDustFile(par.dust, &lamtab, &kaptab, &nEntries);
 
-#ifdef NO_STDOUT
-  statusObj.statusGrid = 1;
-#endif
-
   /* Make all the continuum images:
   */
   if(par.nContImages>0){
@@ -969,10 +961,6 @@ exit(1);
     }
   }
 
-#ifdef NO_STDOUT
-  statusObj.statusRayTracing = 1;
-#endif
-
   if(!silent){
     if(par.nImages>0) reportOutput(img[0].filename);
     goodnight(initime);
@@ -987,10 +975,6 @@ exit(1);
     free(kaptab);
     free(lamtab);
   }
-
-#ifdef NO_STDOUT
-  statusObj.statusGlobal = 1;
-#endif
 
   return status; /* This is a bit of a placeholder for now. Ideally we would like all the functions called to return status values rather than exiting. This would allow python-calling versions of Lime to exit 'nicely' at the top level. */
 }

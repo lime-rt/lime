@@ -12,10 +12,6 @@ TODO:
 #include <locale.h>
 #include "defaults.h"
 
-#ifdef NO_STDOUT
-#include "pyshared_io.h"
-#endif
-
 #ifdef TEST
 _Bool fixRandomSeeds = TRUE;
 #else
