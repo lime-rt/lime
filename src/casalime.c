@@ -10,6 +10,7 @@ TODO:
 
 #include "lime.h"
 #include "error_codes.h"
+#include "local_err.h"
 #include "py_lime.h"
 #include "py_utils.h"
 #include "ml_types.h"
@@ -36,22 +37,16 @@ These are constructed as python objects by the top-layer python script and writt
 NOTE that I have used sequence-access routines here rather than tuple-access ones. This is because sequence access returns new references for the contents whereas tuple access only returns borrowed references. In practice this seems to mean that when I decref the tuple, the references to its contents disappear as well. Of course this means that the three objects extracted (*pCurrentModel, pUserModuleName, *pLimePars) must now be decrefed, 2 of them by the calling routine.
   */
 
+  errType err=init_local_err();
   const int expectedNTupleMembers=4;
   const char *moduleNameNoSuffix="casalime_read",*funcName="readPars";
-  int status=0,nTupleMembers=0;
+  int nTupleMembers=0;
   PyObject *pModule,*pFunc,*pArgs,*pResult,*pCopyTemperatureI,*pUserModuleName;
   char message[STR_LEN_1],*tempStr;
 
-  status = getModuleFromName(moduleNameNoSuffix, &pModule); /* In py_utils.c */
-  if(status!=0){ /* Don't need to decref pModule. */
-    if(status==PY_STRING_READ_FAIL){
-      snprintf(message, STR_LEN_1, "Could not convert module name %s to python string.", moduleNameNoSuffix);
-    }else if(status==PY_IMPORT_FAIL){
-      snprintf(message, STR_LEN_1, "Failed to load module %s", moduleNameNoSuffix);
-    }else{
-      snprintf(message, STR_LEN_1, "getModuleFromName() returned with unknown status %d", status);
-    }
-pyerror(message);
+  err = getModuleFromName(moduleNameNoSuffix, &pModule); /* In py_utils.c */
+  if(err.status!=0){ /* Don't need to decref pModule. */
+pyerror(err.message);
   }
 
   getPythonFunc(pModule, funcName, &pFunc); /* In py_utils.c */
@@ -177,6 +172,7 @@ pyerror(message);
 /*....................................................................*/
 int
 main(int argc, char *argv[]){
+  errType err=init_local_err();
   PyObject *pCurrentModel,*pLimePars,*pModule;
   const int maxLenName=100;
   char userModuleNameNoSuffix[maxLenName+1];
@@ -206,29 +202,29 @@ exit(1);
   if(pCurrentModel==Py_None){
     currentModelI = MODEL_None;
   }else{
-    status = getModelI(pCurrentModel, &modelI, message); /* in ml_aux.c */
-    if(status!=0){
+    err = getModelI(pCurrentModel, &modelI); /* in ml_aux.c */
+    if(err.status!=0){
       Py_DECREF(pCurrentModel);
       Py_DECREF(pLimePars);
-pyerror(message);
+pyerror(err.message);
     }
 
     currentModelI = modelI; /* global var. */
 
     /* Set some global arrays defined in the header of ml_models.c */
-    status = extractParams(pCurrentModel, message); /* in ml_aux.c */
-    if(status!=0){
+    err = extractParams(pCurrentModel); /* in ml_aux.c */
+    if(err.status!=0){
       Py_DECREF(pCurrentModel);
       Py_DECREF(pLimePars);
-pyerror(message);
+pyerror(err.message);
     }
 
     /* Set some global arrays defined in the header of ml_funcs.c */
-    status = extractFuncs(pCurrentModel, message); /* in ml_aux.c */
-    if(status!=0){
+    err = extractFuncs(pCurrentModel); /* in ml_aux.c */
+    if(err.status!=0){
       Py_DECREF(pCurrentModel);
       Py_DECREF(pLimePars);
-pyerror(message);
+pyerror(err.message);
     }
   }
 
@@ -244,27 +240,19 @@ pyerror(message);
   /* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
   /* Construct the 'macro' list argument:
   */
-  status = setMacros(); /* in py_utils.c */
-  if(status){
+  err = setMacros(); /* in py_utils.c */
+  if(err.status){
     Py_DECREF(pLimePars);
     unsetMacros(); /* in py_utils.c */
-    sprintf(message, "Function setMacros() returned with status %d", status);
-pyerror(message);
+pyerror(err.message);
   }
 
   /* Set up any user-supplied result functions: */
   if(strlen(userModuleNameNoSuffix)>0){
-    status = getModuleFromName(userModuleNameNoSuffix, &pModule); /* in py_utils.c */
-    if(status!=0){ /* Don't need to decref pModule. */
+    err = getModuleFromName(userModuleNameNoSuffix, &pModule); /* in py_utils.c */
+    if(err.status!=0){ /* Don't need to decref pModule. */
       Py_DECREF(pLimePars);
-      if(status==PY_STRING_READ_FAIL){
-        snprintf(message, STR_LEN_1, "Could not convert module name %s to python string.", userModuleNameNoSuffix);
-      }else if(status==PY_IMPORT_FAIL){
-        snprintf(message, STR_LEN_1, "Failed to load module %s", userModuleNameNoSuffix);
-      }else{
-        snprintf(message, STR_LEN_1, "getModuleFromName() returned with unknown status %d", status);
-      }
-pyerror(message);
+pyerror(err.message);
     }
 
     /* Sets up global objects defined in the header of py_utils.c */
@@ -275,29 +263,27 @@ pyerror(message);
 
   /* Now get the lists of attribute names from the 2 classes in limepar_classes.py:
   */
-  status = getParTemplatesWrapper(headerModuleName, &parTemplates, &nPars\
-    , &imgParTemplates, &nImgPars, message); /* in py_utils.c */
-  if(status!=0){
+  err = getParTemplatesWrapper(headerModuleName, &parTemplates, &nPars\
+    , &imgParTemplates, &nImgPars); /* in py_utils.c */
+  if(err.status!=0){
     Py_DECREF(pLimePars);
-pyerror(message);
+pyerror(err.message);
   }
 
-  status = mallocInputParStrs(&par);
-  if(status){
+  err = mallocInputParStrs(&par);
+  if(err.status){
     unsetMacros();
     Py_DECREF(pLimePars);
-    sprintf(message, "Function mallocInputParStrs() returned with status %d", status);
-pyerror(message);
+pyerror(err.message);
   }
 
   /* Finally, unpack the LIME parameter values, following the templates: */
-  status = readParImg(pLimePars, parTemplates, nPars, imgParTemplates\
+  err = readParImg(pLimePars, parTemplates, nPars, imgParTemplates\
     , nImgPars, &par, &img, &nImages, pywarning); /* in py_utils.c */
 
-  if(status){
+  if(err.status){
     Py_DECREF(pLimePars);
-    sprintf(message, "readParImg() returned status value %d", status);
-pyerror(message);
+pyerror(err.message);
   }
 
   Py_DECREF(pLimePars);

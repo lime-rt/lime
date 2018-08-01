@@ -9,6 +9,7 @@ TODO:
 
 #include "constants.h" /* for TRUE and FALSE */
 #include "defaults.h"
+#include "local_err.h"
 #include "ml_types.h"
 #include "ml_funcs.h"
 #include "ml_models.h"
@@ -27,16 +28,13 @@ int _verbosity=0;
 
 /*....................................................................*/
 static PyObject* py_initialize(PyObject* self, PyObject* args){
-
-  int status=0;
-  char message[STR_LEN_0+1];
+  errType err=init_local_err();
 
   if(!isInitialized){
     setDefaultFuncStuffs(); /* In ml_funcs.c */ 
-    status = setMacros(); /* In py_utils.c */
-    if(status){
-      sprintf(message, "Function setMacros() returned with status %d.", status);
-      PyErr_SetString(PyExc_AttributeError, message);
+    err = setMacros(); /* In py_utils.c */
+    if(err.status){
+      PyErr_SetString(PyExc_AttributeError, err.message);
 return NULL;
     }
 
@@ -68,6 +66,7 @@ Py_RETURN_NONE;
 static PyObject* py_finalize_config(PyObject* self, PyObject* args){
   /* The calling routine is expected to pass in 'args' a tuple whose single element is model object which conforms to the pattern of class _Model in ../python/modellib.py.
   */
+  errType err=init_local_err();
   char *functionName="finalize_config",message[STR_LEN_0+1],*userModuleNameNoSuffix;
   int modelI=-1,status=0;
   PyObject *pModelObj,*pModule;
@@ -92,9 +91,9 @@ if(_verbosity>0) printf("ooo In py_finalize_config(). User model is %s\n", userM
 return NULL;
     }
 
-    status = getModelI(pModelObj, &modelI, message); /* in ml_aux.c */
-    if(status!=0){
-      PyErr_SetString(PyExc_ValueError, message);
+    err = getModelI(pModelObj, &modelI); /* in ml_aux.c */
+    if(err.status!=0){
+      PyErr_SetString(PyExc_ValueError, err.message);
 return NULL;
     }
 
@@ -106,17 +105,17 @@ if(_verbosity>0) printf("ooo In py_finalize_config(). Model I is %d\n", modelI);
     free(modelDblPars);
     freeFuncsPars();
 
-    status = extractParams(pModelObj, message); /* in ml_aux.c */
-    if(status!=0){
-      PyErr_SetString(PyExc_AttributeError, message);
+    err = extractParams(pModelObj); /* in ml_aux.c */
+    if(err.status!=0){
+      PyErr_SetString(PyExc_AttributeError, err.message);
 return NULL;
     }
 
 if(_verbosity>0) printf("ooo In py_finalize_config(). Extracted model parameters.\n");
 
-    status = extractFuncs(pModelObj, message); /* in ml_aux.c */
-    if(status!=0){
-      PyErr_SetString(PyExc_AttributeError, message);
+    err = extractFuncs(pModelObj); /* in ml_aux.c */
+    if(err.status!=0){
+      PyErr_SetString(PyExc_AttributeError, err.message);
 return NULL;
     }
 if(_verbosity>0) printf("ooo In py_finalize_config(). Extracted model functions.\n");
@@ -133,10 +132,9 @@ if(_verbosity>0) printf("ooo In py_finalize_config(). Finalized model config.\n"
 
   /* Set up any user-supplied result functions: */
   if(strlen(userModuleNameNoSuffix)>0){
-    status = getModuleFromName(userModuleNameNoSuffix, &pModule); /* in py_utils.c */
-    if(status){
-      sprintf(message, "getModuleFromName() returned status value %d", status);
-      PyErr_SetString(PyExc_ValueError, message);
+    err = getModuleFromName(userModuleNameNoSuffix, &pModule); /* in py_utils.c */
+    if(err.status){
+      PyErr_SetString(PyExc_ValueError, err.message);
 return NULL;
     }
 

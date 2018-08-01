@@ -13,6 +13,7 @@
 #include <Python.h>
 
 #include "inpars.h"
+#include "local_err.h"
 
 #define PY_MAX_LEN_PAR_NAME      30
 #define PY_MAX_LEN_PAR_TYPE      20
@@ -49,24 +50,23 @@ extern _Bool userFuncsInitialized;
 
 parTemplateType*	setTemplateDefaults(void);
 void	myStrNCpy(char *destination, const char *source, const size_t strlenDest);
-int	getModuleFromName(const char *moduleNameNoSuffix, PyObject **pModule);
-int	getParTemplates(PyObject *pParsClassOrInstance, parTemplateType **parTemplates, int *nPars);
-int	getParTemplatesWrapper(const char *headerModuleName, parTemplateType **parTemplates, int *nPars, parTemplateType **imgParTemplates, int *nImgPars, char *errStr);
-int	mallocInputParStrs(inputPars *par);
-int	readParImg(PyObject *pPars, parTemplateType *parTemplates, const int nPars, parTemplateType *imgParTemplates, const int nImgPars, inputPars *par, image **img, int *nImages, void (*warning)(char *message));
+errType	getModuleFromName(const char *moduleNameNoSuffix, PyObject **pModule);
+errType	getParTemplates(PyObject *pParsClassOrInstance, parTemplateType **parTemplates, int *nPars);
+errType	getParTemplatesWrapper(const char *headerModuleName, parTemplateType **parTemplates, int *nPars, parTemplateType **imgParTemplates, int *nImgPars);
+errType	mallocInputParStrs(inputPars *par);
+errType	readParImg(PyObject *pPars, parTemplateType *parTemplates, const int nPars, parTemplateType *imgParTemplates, const int nImgPars, inputPars *par, image **img, int *nImages, void (*warning)(char *message));
 
-int	setMacros(void);
+errType	setMacros(void);
 void	unsetMacros(void);
 void	getPythonFunc(PyObject *pModule, const char *funcName, PyObject **pFunc);
 void	setUpUserPythonFuncs(PyObject *pModule);
 void	setUpUserPythonFuncs_new(void);
 void	decrefAllUserFuncs(void);
-int	userFuncWrapper(PyObject *pFunc, const char *funcName\
+errType	userFuncWrapper(PyObject *pFunc, const char *funcName, const int requiredNumElements\
   , double x, double y, double z, double *resultBuffer, int *numElemInUserFuncReturn);
 
 void	pyFreeInputPars(inputPars *par);
 void	pyFreeInputImgPars(image *inimg, int nImages);
-int	getStringAttribute(PyObject *pInstance, char *attrName, const int maxStrLenAttr, char *attrStrValue);
 
 
 #endif /* PY_UTILS_H */

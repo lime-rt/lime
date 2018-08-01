@@ -10,6 +10,8 @@
 #include <gsl/gsl_spline.h>
 #include <gsl/gsl_sf_erf.h>
 
+#include "local_err.h"
+
 #define MAX_LEN_MODEL_NAME    30
 #define MAX_LEN_RESULT_NAME   20
 
@@ -29,9 +31,9 @@
 extern int funcIs[NUM_MODELS][NUM_RESULTS];
 extern double *funcPars[NUM_MODELS][NUM_RESULTS];
 
-int	extractParams(PyObject *pModelObj, char *errStr);
-int	extractFuncs(PyObject *pModelObj, char *errStr);
-int	getModelI(PyObject *pModelObj, int *modelI, char *errMsg);
+errType	extractParams(PyObject *pModelObj);
+errType	extractFuncs(PyObject *pModelObj);
+errType	getModelI(PyObject *pModelObj, int *modelI);
 
 #endif /* ML_TYPES_H */
 

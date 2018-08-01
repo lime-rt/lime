@@ -23,7 +23,6 @@ void	casaStyleProgressBar(const int, int);
 void	collpartmesg(char*, int);
 void	collpartmesg2(char*);
 void	collpartmesg3(int, int);
-void	error(char*);
 void	goodnight(int);
 void	greetings(char*);
 void	greetings_parallel(int, char*);

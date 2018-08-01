@@ -13,6 +13,36 @@ TODOs:
 
 #include "constants.h" // for STR_LEN_0 etc
 #include "messages.h"
+#include "local_err.h"
+
+/*....................................................................*/
+errType
+init_local_err(void){
+  errType err;
+
+  err.status = 0;
+  err.message[0] = '\0';
+
+return err;
+}
+
+/*....................................................................*/
+errType
+write_local_err(int status, char *message){
+  errType err;
+
+  err.status = status;
+  strncpy(err.message, message, ERR_STR_LEN);
+
+return err;
+}
+
+/*....................................................................*/
+void
+error(int exitStatus, char *message){
+  printf("ERROR: %s\n", message);
+exit(exitStatus);
+}
 
 /*....................................................................*/
 void
@@ -174,10 +204,10 @@ warning(char *message){
 }
 
 /*....................................................................*/
-void error(char *message){
-  if(!silent) bail_out(message);
-  exit(1);
-}
+//void error(char *message){
+//  if(!silent) bail_out(message);
+//  exit(1);
+//}
 
 /*....................................................................*/
 void

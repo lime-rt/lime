@@ -10,6 +10,7 @@ TODO:
 
 #include "lime.h"
 #include "py_utils.h"
+#include "local_err.h"
 
 
 int silent = 0;
@@ -36,6 +37,7 @@ This is the function which is invoked to actually run LIME.
 Note that 'args' should be an instance of type limepar_classes.py:ModelParameters.
   */
 
+  errType err=init_local_err();
   int status=0,nPars,nImgPars=0,nImages=0;
   parTemplateType *parTemplates=NULL,*imgParTemplates=NULL;
   PyObject *pParClass,*pImgList,*pImgPars;
@@ -50,11 +52,9 @@ return NULL;
 
 if(_cl_verbosity>0) printf("In py_run_wrapper(): extracted par class\n");
 
-  status = getParTemplates(pParClass, &parTemplates, &nPars);
-  if(status){
-    snprintf(message, STR_LEN_0, "getParTemplates() returned status value %d", status);
-if(_cl_verbosity>0) printf("getParTemplates() returned status value %d", status);
-    PyErr_SetString(PyExc_ValueError, message);
+  err = getParTemplates(pParClass, &parTemplates, &nPars);
+  if(err.status){
+    PyErr_SetString(PyExc_ValueError, err.message);
     free(parTemplates);
 return NULL;
   }
@@ -78,8 +78,9 @@ if(_cl_verbosity>0) printf("In py_run_wrapper(): got number of images\n");
   if(nImages>0){
     pImgPars = PyList_GetItem(pImgList, (Py_ssize_t)0); /* Don't have to DECREF pImgPars, it is a borrowed reference. */
 
-    status = getParTemplates(pImgPars, &imgParTemplates, &nImgPars);
-    if(status){
+    err = getParTemplates(pImgPars, &imgParTemplates, &nImgPars);
+    if(err.status){
+      PyErr_SetString(PyExc_ValueError, err.message);
       free(imgParTemplates);
       free(parTemplates);
       Py_DECREF(pImgList);
@@ -91,22 +92,21 @@ return NULL;
 
 if(_cl_verbosity>0) printf("In py_run_wrapper(): got image parameter templates\n");
 
-  status = mallocInputParStrs(&inpars); /* Note that the inimg equivalents are malloc'd in readParImg(). This separation seems a little messy. */
-  if(status){
+  err = mallocInputParStrs(&inpars); /* Note that the inimg equivalents are malloc'd in readParImg(). This separation seems a little messy. */
+  if(err.status){
     PyErr_NoMemory();
 return NULL;
   }
 
 if(_cl_verbosity>0) printf("In py_run_wrapper(): malloc'd input pars\n");
 
-  status = readParImg(pParClass, parTemplates, nPars, imgParTemplates, nImgPars, &inpars, &inimg, &nImages, warning);
+  err = readParImg(pParClass, parTemplates, nPars, imgParTemplates, nImgPars, &inpars, &inimg, &nImages, warning);
 
   free(imgParTemplates);
   free(parTemplates);
 
-  if(status){
-    snprintf(message, STR_LEN_0, "Function readParImg() returned with status %d.", status);
-    PyErr_SetString(PyExc_AttributeError, message);
+  if(err.status){
+    PyErr_SetString(PyExc_AttributeError, err.message);
 return NULL;
   }
 

@@ -10,6 +10,7 @@ TODO:
 
 #include "lime.h"
 #include "error_codes.h"
+#include "local_err.h"
 #include "py_lime.h"
 #include <argp.h>
 #include "py_utils.h"
@@ -84,11 +85,11 @@ static struct argp argp = { options, parse_opt, args_doc, doc };
 
 /*....................................................................*/
 void
-readParImgWrapper(PyObject *pModule, parTemplateType *parTemplates\
+_readParImgWrapper(PyObject *pModule, parTemplateType *parTemplates\
   , const int nPars, parTemplateType *imgParTemplates, const int nImgPars\
   , inputPars *par, image **img, int *nImages){
 
-  int status=0;
+  errType err=init_local_err();
   PyObject *pUserInputFunc=NULL,*pMacroArgs,*pPars;
   char message[STR_LEN_0];
 
@@ -127,11 +128,10 @@ pyerror(message);
   /*
 Unpack all the model and image parameters from the pPars object, returning them as (i) a pointer 'par' to an inputPars struct, and (ii) a pointer 'img' to a series of image structs.
   */
-  status = readParImg(pPars, parTemplates, nPars, imgParTemplates, nImgPars, par, img, nImages, pywarning);
-  if(status){
+  err = readParImg(pPars, parTemplates, nPars, imgParTemplates, nImgPars, par, img, nImages, pywarning); /* In py_utils.c */
+  if(err.status){
     Py_DECREF(pPars);
-    sprintf(message, "readParImg() returned status value %d", status);
-pyerror(message);
+pyerror(err.message);
   }
 
   Py_DECREF(pPars);
@@ -148,10 +148,11 @@ For pretty detailed documentation on embedding python in C, see
   https://docs.python.org/2/c-api/index.html
   */
 
+  errType err=init_local_err();
   const int lenSuffix=3,maxLenNoSuffix=STR_LEN_0;
   const char *nameOfExecutable="pylime",*headerModuleName="limepar_classes";
   const char *oldModulePath;
-  char *modelName,modelNameNoSuffix[maxLenNoSuffix+1],message[STR_LEN_0],*newModulePath;
+  char modelNameNoSuffix[maxLenNoSuffix+1],message[STR_LEN_0],*newModulePath;
   char suffix[lenSuffix+1];
   int lenNoSuffix,nPars,nImgPars,nImages,status=0,strlenOMPath;
   PyObject *pModule = NULL;
@@ -184,17 +185,17 @@ For pretty detailed documentation on embedding python in C, see
   */
   if(arguments.modelfilename==NULL){
     sprintf(message, "Usage: %s [<arguments>] <python model file>", nameOfExecutable);
-    error(message);
+    error(1, message);
   }
 
   lenNoSuffix = strlen(arguments.modelfilename) - lenSuffix;
   if(lenNoSuffix<1){
     sprintf(message, "Model file name must be more than %d characters long!", lenSuffix);
-    error(message);
+    error(1, message);
   }
   if(lenNoSuffix>maxLenNoSuffix){
     sprintf(message, "Model file name is longer than the permitted %d characters.\n", maxLenNoSuffix);
-    error(message);
+    error(1, message);
   }
 
   strncpy(suffix, arguments.modelfilename + lenNoSuffix, lenSuffix);
@@ -202,7 +203,7 @@ For pretty detailed documentation on embedding python in C, see
 
   if(strcmp(suffix,".py")!=0){
     sprintf(message, "Python files must end in '.py'");
-    error(message);
+    error(1, message);
   }
 
   strncpy(modelNameNoSuffix, arguments.modelfilename, strlen(arguments.modelfilename)-lenSuffix);
@@ -232,51 +233,42 @@ pyerror("Could not append PWD to sys.path");
 
   /* Now get the lists of attribute names from the 2 classes in limepar_classes.py:
   */
-  status = getParTemplatesWrapper(headerModuleName, &parTemplates, &nPars\
-    , &imgParTemplates, &nImgPars, message); /* in py_utils.c */
-  if(status!=0){
-pyerror(message);
+  err = getParTemplatesWrapper(headerModuleName, &parTemplates, &nPars\
+    , &imgParTemplates, &nImgPars); /* in py_utils.c */
+  if(err.status!=0){
+pyerror(err.message);
   }
 
   /* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
   /* Construct the 'macro' list argument:
   */
-  status = setMacros(); /* in py_utils.c */
-  if(status){
+  err = setMacros(); /* in py_utils.c */
+  if(err.status){
     unsetMacros(); /* in py_utils.c */
-    sprintf(message, "Function setMacros() returned with status %d", status);
-pyerror(message);
+pyerror(err.message);
   }
 
   /* Now we open the user's 'model' module:
   */
-  status = getModuleFromName(modelNameNoSuffix, &pModule);
-  if(status){
-    if(status==PY_STRING_READ_FAIL){
-      sprintf(message, "Could not convert module name to python string.");
-    }else if(status==PY_IMPORT_FAIL){
-      sprintf(message, "Failed to load %s", modelName);
-    }else{
-      sprintf(message, "getModuleFromName() returned with unknown status %d", status);
-    }
+  err = getModuleFromName(modelNameNoSuffix, &pModule);
+  if(err.status){
     if(!silent)
       PyErr_Print();
     unsetMacros();
-pyerror(message);
+pyerror(err.message);
   }
 
   /* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
   /* Read user-supplied parameters from the 'model' module they supply:
   */
-  status = mallocInputParStrs(&par);
-  if(status){
+  err = mallocInputParStrs(&par);
+  if(err.status){
     unsetMacros();
     Py_DECREF(pModule);
-    sprintf(message, "Function mallocInputParStrs() returned with status %d", status);
-pyerror(message);
+pyerror(err.message);
   }
 
-  readParImgWrapper(pModule, parTemplates, nPars, imgParTemplates, nImgPars, &par, &img, &nImages);
+  _readParImgWrapper(pModule, parTemplates, nPars, imgParTemplates, nImgPars, &par, &img, &nImages);
 
   free(imgParTemplates);
   free(parTemplates);

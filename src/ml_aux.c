@@ -9,16 +9,44 @@ TODO:
  */
 
 #include "constants.h"
-#include "py_utils.h"
+#include "py_utils.h" /* For myStrNCpy */
 #include "ml_types.h"
 #include "ml_funcs.h"
 #include "ml_models.h"
-
-_Bool mla_doTest = FALSE;
+#include "local_err.h"
 
 /*....................................................................*/
-int
-extractParams(PyObject *pModelObj, char *errStr){
+errType
+_getStringAttribute(PyObject *pInstance, char *attrName, const int maxStrLenAttr\
+  , char *attrStrValue){
+
+  PyObject *pAttr;
+  errType err=init_local_err();
+  char message[ERR_STR_LEN];
+
+  attrStrValue[0] = '\0';
+
+  pAttr = PyObject_GetAttrString(pInstance, attrName);
+  if(pAttr==NULL){
+    snprintf(message, ERR_STR_LEN-1, "Model parameter attribute '%s' not read.", attrName);
+return write_local_err(1, message);
+  }
+
+  if(!PyString_CheckExact(pAttr)){
+    Py_DECREF(pAttr);
+    snprintf(message, ERR_STR_LEN-1, "Model parameter attribute '%s' is not a string.", attrName);
+return write_local_err(2, message);
+  }
+
+  myStrNCpy(attrStrValue, PyString_AsString(pAttr), maxStrLenAttr);
+  Py_DECREF(pAttr);
+
+return err;
+}
+
+/*....................................................................*/
+errType
+extractParams(PyObject *pModelObj){
   /*
 The input argument pModelObj should be an instance of the python class 'modellib_classes._Model'. This is expected to have an attribute 'paramList' which is a simple python list of objects, each of which is expected to be an instance of the class 'modellib_classes._ModelParam'. The purpose of the present function is to unpack these parameters and store them in lists modelIntPars, modelDblPars and modelParams, all of which are declared in ml_models.h.
 
@@ -29,19 +57,21 @@ Note that errStr should be malloc'd (or declared as an array) by the calling rou
   char *attrName="paramList",dType[MAX_LEN_PAR_TYPE+1],idStr[MAX_LEN_PAR_NAME+1],*attrNameValue="_value",*tempStr=NULL;
   PyObject *pAttr,*pParamObj,*pParamValue;
   int numElements=-1,numDoubles=0,numInts=0,numStrings=0,i,maxStrLen,status=0;
+  errType err=init_local_err();
+  char message[ERR_STR_LEN];
 
   /* Extract the parameters:
   */
   pAttr = PyObject_GetAttrString(pModelObj, attrName);
   if(pAttr==NULL){
-    snprintf(errStr, STR_LEN_0, "Attribute %s not found in model instance.", attrName);
-return 1;
+    snprintf(message, ERR_STR_LEN-1, "Attribute %s not found in model instance.", attrName);
+return write_local_err(1, message);
   }
 
   if(!PyList_CheckExact(pAttr)){
     Py_DECREF(pAttr);
-    snprintf(errStr, STR_LEN_0, "Attribute %s in model instance is not a list.", attrName);
-return 2;
+    snprintf(message, ERR_STR_LEN-1, "Attribute %s in model instance is not a list.", attrName);
+return write_local_err(2, message);
   }
 
   /* Find out first how many int, double and string parameters there are:
@@ -49,35 +79,23 @@ return 2;
   numElements = (int)PyList_Size(pAttr);
   if(numElements<0){
     Py_DECREF(pAttr);
-    snprintf(errStr, STR_LEN_0, "Bad size of list %s in model instance.", attrName);
-return 3;
+    snprintf(message, ERR_STR_LEN-1, "Bad size of list %s in model instance.", attrName);
+return write_local_err(3, message);
   }
-
-if(mla_doTest) printf("  +++ In ml_aux.extractParams(). Num elements in %s is %d\n", attrName, numElements);
 
   for(i=0;i<numElements;i++){
     pParamObj = PyList_GetItem(pAttr, (Py_ssize_t)i); /* Don't have to DECREF pParamObj, it is a borrowed reference. */
 
     if(!PyInstance_Check(pParamObj)){
       Py_DECREF(pAttr);
-      snprintf(errStr, STR_LEN_0, "Element %d of %s is not an instance.", i, attrName);
-return 4;
+      snprintf(message, ERR_STR_LEN-1, "Element %d of %s is not an instance.", i, attrName);
+return write_local_err(4, message);
     }
 
-    status = getStringAttribute(pParamObj, "dType", MAX_LEN_PAR_TYPE, dType);
-    if(status!=0){
+    err = _getStringAttribute(pParamObj, "dType", MAX_LEN_PAR_TYPE, dType);
+    if(err.status!=0){
       Py_DECREF(pAttr);
-      if(status==1){
-        snprintf(errStr, STR_LEN_0, "Model parameter attribute 'dType' not read.");
-        status = 5;
-      }else if(status==2){
-        snprintf(errStr, STR_LEN_0, "Model parameter attribute 'dType' is not a string.");
-        status = 6;
-      }else{
-        snprintf(errStr, STR_LEN_0, "Call to read model parameter attribute 'dType' returned status %d", status);
-        status = 7;
-      }
-return status;
+return err;
     }
 
     if(strcmp(dType, "double")==0)
@@ -88,15 +106,15 @@ return status;
       numStrings++;
     else{
       Py_DECREF(pAttr);
-      snprintf(errStr, STR_LEN_0, "Datatype %s not recognized.", dType);
-return 8;
+      snprintf(message, ERR_STR_LEN-1, "Datatype %s not recognized.", dType);
+return write_local_err(8, message);
     }
   } /* end loop over paramList. */
 
   if(numStrings>1){
     Py_DECREF(pAttr);
-    snprintf(errStr, STR_LEN_0, "Can only handle %d string parameter, not the %d supplied.", 1, numStrings);
-return 9;
+    snprintf(message, ERR_STR_LEN-1, "Can only handle %d string parameter, not the %d supplied.", 1, numStrings);
+return write_local_err(9, message);
   }
 
   numModelParams = numElements; /* numModelParams is defined extern in the header of ml_models.h */
@@ -104,22 +122,22 @@ return 9;
   modelParams = malloc(sizeof(*modelParams)*numModelParams); /* modelParams is defined extern in ml_models.h */
   if(modelParams==NULL){ /* malloc failed */
     Py_DECREF(pAttr);
-    snprintf(errStr, STR_LEN_0, "Malloc of modelParams failed.");
-return 10;
+    snprintf(message, ERR_STR_LEN-1, "Malloc of modelParams failed.");
+return write_local_err(10, message);
   }
 
   modelDblPars = malloc(sizeof(*modelDblPars)*numDoubles); // defined extern in ml_models
   if(modelDblPars==NULL){ /* malloc failed */
     Py_DECREF(pAttr);
-    snprintf(errStr, STR_LEN_0, "Malloc of modelDblPars failed.");
-return 11;
+    snprintf(message, ERR_STR_LEN-1, "Malloc of modelDblPars failed.");
+return write_local_err(11, message);
   }
 
   modelIntPars = malloc(sizeof(*modelIntPars)*numDoubles); // defined extern in ml_models
   if(modelIntPars==NULL){ /* malloc failed */
     Py_DECREF(pAttr);
-    snprintf(errStr, STR_LEN_0, "Malloc of modelIntPars failed.");
-return 12;
+    snprintf(message, ERR_STR_LEN-1, "Malloc of modelIntPars failed.");
+return write_local_err(12, message);
   }
 
   /* Now we know how many parameters of what type we have, we can copy them over. We don't have to duplicate error checks we've already done.
@@ -129,43 +147,23 @@ return 12;
   for(i=0;i<numElements;i++){
     pParamObj = PyList_GetItem(pAttr, (Py_ssize_t)i); /* Don't have to DECREF pParamObj, it is a borrowed reference. */
 
-    status = getStringAttribute(pParamObj, "dType", MAX_LEN_PAR_TYPE, dType);
-    if(status!=0){
+    err = _getStringAttribute(pParamObj, "dType", MAX_LEN_PAR_TYPE, dType);
+    if(err.status!=0){
       Py_DECREF(pAttr);
-      if(status==1){
-        snprintf(errStr, STR_LEN_0, "Model parameter attribute 'dType' not read.");
-        status = 13;
-      }else if(status==2){
-        snprintf(errStr, STR_LEN_0, "Model parameter attribute 'dType' is not a string.");
-        status = 14;
-      }else{
-        snprintf(errStr, STR_LEN_0, "Call to read model parameter attribute 'dType' returned status %d", status);
-        status = 15;
-      }
-return status;
+return err;
     }
 
-    status = getStringAttribute(pParamObj, "idStr", MAX_LEN_PAR_NAME, idStr);
+    err = _getStringAttribute(pParamObj, "idStr", MAX_LEN_PAR_NAME, idStr);
     if(status!=0){
       Py_DECREF(pAttr);
-      if(status==1){
-        snprintf(errStr, STR_LEN_0, "Model parameter attribute 'idStr' not read.");
-        status = 16;
-      }else if(status==2){
-        snprintf(errStr, STR_LEN_0, "Model parameter attribute 'idStr' is not a string.");
-        status = 17;
-      }else{
-        snprintf(errStr, STR_LEN_0, "Call to read model parameter attribute 'idStr' returned status %d", status);
-        status = 18;
-      }
-return status;
+return err;
     }
 
     pParamValue = PyObject_GetAttrString(pParamObj, attrNameValue);
     if(pParamValue==NULL){
       Py_DECREF(pAttr);
-      snprintf(errStr, STR_LEN_0, "Attribute %s not found in model parameter instance.", attrNameValue);
-return 19;
+      snprintf(message, ERR_STR_LEN-1, "Attribute %s not found in model parameter instance.", attrNameValue);
+return write_local_err(19, message);
     }
 
     myStrNCpy(modelParams[i].name,  idStr, MAX_LEN_PAR_NAME); /* Note that the .name and .dtype attributes */
@@ -175,8 +173,8 @@ return 19;
       if(!(PyFloat_CheckExact(pParamValue) || PyInt_CheckExact(pParamValue))){ /* We also allow ints for this */
         Py_DECREF(pParamValue);
         Py_DECREF(pAttr);
-        snprintf(errStr, STR_LEN_0, "Parameter %s flagged as double is not convertable to double.", idStr);
-return 20;
+        snprintf(message, ERR_STR_LEN-1, "Parameter %s flagged as double is not convertable to double.", idStr);
+return write_local_err(20, message);
       }
 
       if(PyInt_CheckExact(pParamValue))
@@ -191,8 +189,8 @@ return 20;
       if(!PyInt_CheckExact(pParamValue)){
         Py_DECREF(pParamValue);
         Py_DECREF(pAttr);
-        snprintf(errStr, STR_LEN_0, "Parameter %s flagged as int is not convertable to int.", idStr);
-return 21;
+        snprintf(message, ERR_STR_LEN-1, "Parameter %s flagged as int is not convertable to int.", idStr);
+return write_local_err(21, message);
       }
 
       if(PyInt_CheckExact(pParamValue))
@@ -205,15 +203,15 @@ return 21;
       if(!PyString_CheckExact(pParamValue)){
         Py_DECREF(pParamValue);
         Py_DECREF(pAttr);
-        snprintf(errStr, STR_LEN_0, "Parameter %s flagged as string is not in fact a string.", idStr);
-return 22;
+        snprintf(message, ERR_STR_LEN-1, "Parameter %s flagged as string is not in fact a string.", idStr);
+return write_local_err(22, message);
       }
       tempStr = PyString_AsString(pParamValue); /* This should NOT be deallocated or written to. */
       if(tempStr==NULL){
         Py_DECREF(pParamValue);
         Py_DECREF(pAttr);
-        snprintf(errStr, STR_LEN_0, "String parameter returned NULL.");
-return 23;
+        snprintf(message, ERR_STR_LEN-1, "String parameter returned NULL.");
+return write_local_err(23, message);
       }
 
       maxStrLen = strlen(tempStr);
@@ -221,8 +219,8 @@ return 23;
       if(modelStrPar==NULL){ /* malloc failed */
         Py_DECREF(pParamValue);
         Py_DECREF(pAttr);
-        snprintf(errStr, STR_LEN_0, "Malloc of modelStrPar failed.");
-return 24;
+        snprintf(message, ERR_STR_LEN-1, "Malloc of modelStrPar failed.");
+return write_local_err(24, message);
       }
 
       myStrNCpy(modelStrPar, tempStr, maxStrLen); /* Last use of tempStr. */
@@ -235,13 +233,13 @@ return 24;
 
   Py_DECREF(pAttr); /* .paramList */
 
-return 0;
+return err;
 }
 
 /*....................................................................*/
-int
+errType
 _extractFuncParams(PyObject *pFuncObj, const int resultI, char *funcName\
-  , const int funcI, const int funcTypeI, char *errStr){
+  , const int funcI, const int funcTypeI){
   /*
 These are parameters of the functions listed in ml_funcs.c as _scalar*() or _vector(). Since we should not assume that they have the same order in the python code which sets them and supplies them via the Python object pFuncObj to the present function, a key connecting the name of each parameter with its index in modelDblPars etc is available via the function getFuncParIndexFromName().
 
@@ -251,17 +249,19 @@ Note that errStr should be malloc'd (or declared as an array) by the calling rou
   PyObject *pAttr,*pFuncParamValue,*pParamName,*pParamObj;
   int numPars,expectedNumPars,i,parIndex,status=0;
   Py_ssize_t pos=0;
+  errType err=init_local_err();
+  char message[ERR_STR_LEN];
 
   pAttr = PyObject_GetAttrString(pFuncObj, attrName);
   if(pAttr==NULL){
-    snprintf(errStr, STR_LEN_0, "Attribute %s not found in function instance.", attrName);
-return 1;
+    snprintf(message, ERR_STR_LEN-1, "Attribute %s not found in function instance.", attrName);
+return write_local_err(1, message);
   }
 
   if(!PyDict_CheckExact(pAttr)){
     Py_DECREF(pAttr);
-    snprintf(errStr, STR_LEN_0, "Attribute %s in function instance is not a dictionary.", attrName);
-return 2;
+    snprintf(message, ERR_STR_LEN-1, "Attribute %s in function instance is not a dictionary.", attrName);
+return write_local_err(2, message);
   }
 
   /* Check that the dictionary has the right number of key:value pairs:
@@ -274,14 +274,14 @@ return 2;
     expectedNumPars = numVectorFuncPars[funcI]; /* defined extern in ml_funcs.c */
   else{
     Py_DECREF(pAttr);
-    snprintf(errStr, STR_LEN_0, "Unrecognized function type integer %d", funcTypeI);
-return 3;
+    snprintf(message, ERR_STR_LEN-1, "Unrecognized function type integer %d", funcTypeI);
+return write_local_err(3, message);
   }
 
   if(numPars!=expectedNumPars){
     Py_DECREF(pAttr);
-    snprintf(errStr, STR_LEN_0, "Expected %d parameters for function %s but found %d.", expectedNumPars, funcName, numPars);
-return 4;
+    snprintf(message, ERR_STR_LEN-1, "Expected %d parameters for function %s but found %d.", expectedNumPars, funcName, numPars);
+return write_local_err(4, message);
   }
 
   /* Global variable defined in ml_funcs.h.
@@ -289,8 +289,8 @@ return 4;
   funcPars[currentModelI][resultI] = malloc(sizeof(***funcPars)*numPars);
   if(funcPars[currentModelI][resultI]==NULL){ /* malloc failed */
     Py_DECREF(pAttr);
-    snprintf(errStr, STR_LEN_0, "Malloc of funcPars[%d][%d] failed.", currentModelI, resultI);
-return 5;
+    snprintf(message, ERR_STR_LEN-1, "Malloc of funcPars[%d][%d] failed.", currentModelI, resultI);
+return write_local_err(5, message);
   }
 
   pos = 0;
@@ -299,52 +299,42 @@ return 5;
     */
     if(!PyString_CheckExact(pParamName)){
       Py_DECREF(pAttr);
-      snprintf(errStr, STR_LEN_0, "Non-string key found for %s.", attrName);
-return 6;
+      snprintf(message, ERR_STR_LEN-1, "Non-string key found for %s.", attrName);
+return write_local_err(6, message);
     }
 
     if(!PyInstance_Check(pParamObj)){
       Py_DECREF(pAttr);
-      snprintf(errStr, STR_LEN_0, "Element %d of %s is not an instance.", i, attrName);
-return 7;
+      snprintf(message, ERR_STR_LEN-1, "Element %d of %s is not an instance.", i, attrName);
+return write_local_err(7, message);
     }
 
-    status = getStringAttribute(pParamObj, "name", MAX_LEN_PAR_NAME, funcParName);
-    if(status!=0){
+    err = _getStringAttribute(pParamObj, "name", MAX_LEN_PAR_NAME, funcParName);
+    if(err.status!=0){
       Py_DECREF(pAttr);
-      if(status==1){
-        snprintf(errStr, STR_LEN_0, "Model parameter attribute 'name' not read.");
-        status = 8;
-      }else if(status==2){
-        snprintf(errStr, STR_LEN_0, "Model parameter attribute 'name' is not a string.");
-        status = 9;
-      }else{
-        snprintf(errStr, STR_LEN_0, "Call to read model parameter attribute 'name' returned status %d", status);
-        status = 10;
-      }
-return status;
+return err;
     }
 
     pFuncParamValue = PyObject_GetAttrString(pParamObj, attrNameValue);
     if(pFuncParamValue==NULL){
       Py_DECREF(pAttr);
-      snprintf(errStr, STR_LEN_0, "Attribute %s not found in function parameter instance.", attrNameValue);
-return 11;
+      snprintf(message, ERR_STR_LEN-1, "Attribute %s not found in function parameter instance.", attrNameValue);
+return write_local_err(11, message);
     }
 
     if(!(PyFloat_CheckExact(pFuncParamValue) || PyInt_CheckExact(pFuncParamValue))){ /* We also allow ints for this */
       Py_DECREF(pFuncParamValue);
       Py_DECREF(pAttr);
-      snprintf(errStr, STR_LEN_0, "Function parameter type is not convertable to double.");
-return 12;
+      snprintf(message, ERR_STR_LEN-1, "Function parameter type is not convertable to double.");
+return write_local_err(12, message);
     }
 
     status = getFuncParIndexFromName(funcI, funcTypeI, funcParName, &parIndex);
     if(status){
       Py_DECREF(pFuncParamValue);
       Py_DECREF(pAttr);
-      snprintf(errStr, STR_LEN_0, "getFuncParIndexFromName() returned status %d", status);
-return 13;
+      snprintf(message, ERR_STR_LEN-1, "getFuncParIndexFromName() returned status %d", status);
+return write_local_err(13, message);
     }
 
     if(PyInt_CheckExact(pFuncParamValue))
@@ -357,32 +347,31 @@ return 13;
 
   Py_DECREF(pAttr); /* .funcDict[resultName]._argList */
 
-return 0;
+return err;
 }
 
 /*....................................................................*/
-int
-extractFuncs(PyObject *pModelObj, char *errStr){
+errType
+extractFuncs(PyObject *pModelObj){
   char *attrName="funcDict",resultName[MAX_LEN_RESULT_NAME+1],funcTypeName[MAX_LEN_PAR_TYPE+1],funcName[MAX_LEN_PAR_NAME+1];
   PyObject *pAttr,*pResultName,*pFuncObj;
   Py_ssize_t pos=0;
   int resultI,funcTypeI,funcI=0,status=0;
-  char message[STR_LEN_0];
-
-if(mla_doTest) printf("  >>> Entering ml_aux.extractFuncs()\n");
+  char message[ERR_STR_LEN];
+  errType err=init_local_err();
 
   /* Time now to set up any functions.
   */
   pAttr = PyObject_GetAttrString(pModelObj, attrName);
   if(pAttr==NULL){
-    snprintf(errStr, STR_LEN_0, "Attribute %s not found in model instance.", attrName);
-return 1;
+    snprintf(message, ERR_STR_LEN-1, "Attribute %s not found in model instance.", attrName);
+return write_local_err(1, message);
   }
 
   if(!PyDict_CheckExact(pAttr)){
     Py_DECREF(pAttr);
-    snprintf(errStr, STR_LEN_0, "Attribute %s in model instance is not a dictionary.", attrName);
-return 2;
+    snprintf(message, ERR_STR_LEN-1, "Attribute %s in model instance is not a dictionary.", attrName);
+return write_local_err(2, message);
   }
 
   pos = 0;
@@ -391,67 +380,47 @@ return 2;
     */
     if(!PyString_CheckExact(pResultName)){
       Py_DECREF(pAttr);
-      snprintf(errStr, STR_LEN_0, "Non-string key found for %s.", attrName);
-return 3;
+      snprintf(message, ERR_STR_LEN-1, "Non-string key found for %s.", attrName);
+return write_local_err(3, message);
     }
 
     myStrNCpy(resultName, PyString_AsString(pResultName), MAX_LEN_RESULT_NAME);
     resultI = getResultIFromName(resultName);
     if(resultI<0){
       Py_DECREF(pAttr);
-      snprintf(errStr, STR_LEN_0, "Result name %s is not recognized.", resultName);
-return 4;
+      snprintf(message, ERR_STR_LEN-1, "Result name %s is not recognized.", resultName);
+return write_local_err(4, message);
     }
 
     /* Now get the value - should be a _Function object.
     */
     if(!PyInstance_Check(pFuncObj)){
       Py_DECREF(pAttr);
-      snprintf(errStr, STR_LEN_0, "Value for key %s is not an instance.", resultName);
-return 5;
+      snprintf(message, ERR_STR_LEN-1, "Value for key %s is not an instance.", resultName);
+return write_local_err(5, message);
     }
 
     /* Get the type ('scalar' or 'vector') of the function.
     */
-    status = getStringAttribute(pFuncObj, "typeStr", MAX_LEN_PAR_TYPE, funcTypeName);
-    if(status!=0){
+    err = _getStringAttribute(pFuncObj, "typeStr", MAX_LEN_PAR_TYPE, funcTypeName);
+    if(err.status!=0){
       Py_DECREF(pAttr);
-      if(status==1){
-        snprintf(errStr, STR_LEN_0, "Function object attribute 'typeStr' not read.");
-        status = 6;
-      }else if(status==2){
-        snprintf(errStr, STR_LEN_0, "Function object attribute 'typeStr' is not a string.");
-        status = 7;
-      }else{
-        snprintf(errStr, STR_LEN_0, "Call to read function object attribute 'typeStr' returned status %d", status);
-        status = 8;
-      }
-return status;
+return err;
     }
 
     funcTypeI = getFuncTypeIFromName(funcTypeName);
     if(funcTypeI<0){
       Py_DECREF(pAttr);
-      snprintf(errStr, STR_LEN_0, "Unrecognized function type %s", funcTypeName);
-return 9;
+      snprintf(message, ERR_STR_LEN-1, "Unrecognized function type %s", funcTypeName);
+return write_local_err(9, message);
     }
 
     /* Get the name of the function.
     */
-    status = getStringAttribute(pFuncObj, "idStr", MAX_LEN_PAR_NAME, funcName);
+    err = _getStringAttribute(pFuncObj, "idStr", MAX_LEN_PAR_NAME, funcName);
     if(status!=0){
       Py_DECREF(pAttr);
-      if(status==1){
-        snprintf(errStr, STR_LEN_0, "Function object attribute 'idStr' not read.");
-        status = 10;
-      }else if(status==2){
-        snprintf(errStr, STR_LEN_0, "Function object attribute 'idStr' is not a string.");
-        status = 11;
-      }else{
-        snprintf(errStr, STR_LEN_0, "Call to read function object attribute 'idStr' returned status %d", status);
-        status = 12;
-      }
-return status;
+return err;
     }
 
     /* Convert the function name to an ID integer.
@@ -462,14 +431,14 @@ return status;
       funcI = getVectorFuncIFromName(funcName);
     else{
       Py_DECREF(pAttr);
-      snprintf(errStr, STR_LEN_0, "Unrecognized function type integer %d", funcTypeI);
-return 13;
+      snprintf(message, ERR_STR_LEN-1, "Unrecognized function type integer %d", funcTypeI);
+return write_local_err(13, message);
     }
 
     if(funcI<0){
       Py_DECREF(pAttr);
-      snprintf(errStr, STR_LEN_0, "Unrecognized function %s", funcName);
-return 14;
+      snprintf(message, ERR_STR_LEN-1, "Unrecognized function %s", funcName);
+return write_local_err(14, message);
     }
 
     /* Global variables defined in ml_funcs.h.
@@ -479,46 +448,38 @@ return 14;
 
     /* Now we can copy over the function parameters. These are in the _argsDict attribute of the function object.
     */
-    status = _extractFuncParams(pFuncObj, resultI, funcName, funcI, funcTypeI, message);
-    if(status!=0){
-      snprintf(errStr, STR_LEN_0, "_extractFuncParams() returned status %d", status);
-return 15;
+    err = _extractFuncParams(pFuncObj, resultI, funcName, funcI, funcTypeI);//, message);
+    if(err.status!=0){
+return write_local_err(15, message);
     }
   } /* end loop over funcDict keys. */
 
   Py_DECREF(pAttr); /* .funcDict */
 
-if(mla_doTest) printf("  <<< Leaving ml_aux.extractFuncs()\n");
-return 0;
+return err;
 }
 
 /*....................................................................*/
-int
-getModelI(PyObject *pModelObj, int *modelI, char *errMsg){
+errType
+getModelI(PyObject *pModelObj, int *modelI){
   /* Note that errMsg is expected to have been malloc'd (or to be an array) to length STR_LEN_0. */
   char modelName[MAX_LEN_MODEL_NAME+1];
-  int status=0;
+  errType err=init_local_err();
+  char message[ERR_STR_LEN];
 
   *modelI = -1;
 
-  status = getStringAttribute(pModelObj, "idStr", MAX_LEN_MODEL_NAME, modelName); /* in py_utils.c */
-  if(status!=0){
-    if(status==1){
-      snprintf(errMsg, STR_LEN_0, "Model object attribute 'idStr' not read.");
-    }else if(status==2){
-      snprintf(errMsg, STR_LEN_0, "Model object attribute 'idStr' is not a string.");
-    }else{
-      snprintf(errMsg, STR_LEN_0, "Call to read model object attribute 'idStr' returned status %d", status);
-    }
-return status;
+  err = _getStringAttribute(pModelObj, "idStr", MAX_LEN_MODEL_NAME, modelName);
+  if(err.status!=0){
+return err;
   }
 
   *modelI = getModelIFromName(modelName); /* in ml_models.c */
   if(*modelI<0){
-    snprintf(errMsg, STR_LEN_0, "Model name %s was not recognized.", modelName);
-return 3;
+    snprintf(message, ERR_STR_LEN-1, "Model name %s was not recognized.", modelName);
+return write_local_err(3, message);
   }
 
-return 0;
+return err;
 }
 

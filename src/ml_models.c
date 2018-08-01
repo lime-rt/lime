@@ -14,6 +14,7 @@
 #include "py_utils.h" /* for getPythonFunc() etc */
 #include "ufunc_types.h" /* for all user-function templates */
 #include "messages.h" /* for all user-function templates */
+#include "local_err.h"
 
 int currentModelI = -1; /* <0 signifies it has not yet been set. */
 int *modelIntPars=NULL,numModelParams=0;
@@ -21,8 +22,6 @@ double *modelDblPars=NULL;
 char *modelStrPar=NULL;
 
 modelParamType *modelParams=NULL;
-
-int _model_verbosity=0;
 
 /*....................................................................*/
 int
@@ -153,9 +152,10 @@ int finalizeModelConfig(const int modelI){
 /*....................................................................*/
 void
 density(double x, double y, double z, double *density){
-  char *ufuncName="density",message[STR_LEN_0+1];
-  int status=0,numElemInUserFuncReturn,i;
+  char *ufuncName="density";
+  int numElemInUserFuncReturn,i;
   double resultsBuffer[UFUNC_BUFFER_SIZE];
+  errType err=init_local_err();
 
   switch(currentModelI){
     case MODEL_Al03:
@@ -187,14 +187,13 @@ density(double x, double y, double z, double *density){
       break;
     default:
       if(pDensity!=NULL){ /* User supplied this function. */
-        status = userFuncWrapper(pDensity, ufuncName, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
+        err = userFuncWrapper(pDensity, ufuncName, -1, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
 
-        if(status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
+        if(err.status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
           unsetMacros();
           decrefAllUserFuncs();
           if(!silent){
-            sprintf(message, "User %s() function generated error status %d", ufuncName, status);
-            bail_out(message);
+            bail_out(err.message);
           }
 exit(1);
         }
@@ -215,9 +214,8 @@ temperature(double x, double y, double z, double *temperature){
   double rVec[ML_NUM_DIMS],*funcParA=NULL,*funcParB=NULL;
   int funcIa=-1,funcIb=-1;
   double resultsBuffer[UFUNC_BUFFER_SIZE];
-
-  char message[STR_LEN_0+1];
-  int status=0,numElemInUserFuncReturn,i;
+  errType err=init_local_err();
+  int numElemInUserFuncReturn,i;
 
   if(currentModelI>=0){//********************* shouldn't it dump out if no model has been set?
     funcIa   = funcIs[  currentModelI][RESULT_temperature];
@@ -265,24 +263,13 @@ temperature(double x, double y, double z, double *temperature){
 //      break;
     default: /* Catches MODEL_Me09 and MODEL_Ul76. */
       if(pTemperature!=NULL){ /* User supplied this function. */
-        status = userFuncWrapper(pTemperature, ufuncName, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
+        err = userFuncWrapper(pTemperature, ufuncName, 2, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
 
-        if(status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
+        if(err.status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
           unsetMacros();
           decrefAllUserFuncs();
           if(!silent){
-            sprintf(message, "User %s() function generated error status %d", ufuncName, status);
-            bail_out(message);
-          }
-exit(1);
-        }
-
-        if(numElemInUserFuncReturn>2){
-          unsetMacros();
-          decrefAllUserFuncs();
-          if(!silent){
-            sprintf(message, "User %s() function should return %d results.", ufuncName, 2);
-            bail_out(message);
+            bail_out(err.message);
           }
 exit(1);
         }
@@ -315,9 +302,8 @@ abundance(double x, double y, double z, double *abundance){
   const int resultI=RESULT_abundance;
   int funcI=-1;
   double resultsBuffer[UFUNC_BUFFER_SIZE];
-
-  char message[STR_LEN_0+1];
-  int status=0,numElemInUserFuncReturn,i;
+  errType err=init_local_err();
+  int numElemInUserFuncReturn,i;
 
   if(currentModelI>=0){
     funcI   = funcIs[  currentModelI][resultI];
@@ -350,14 +336,13 @@ abundance(double x, double y, double z, double *abundance){
 //      break;
     default:
       if(pAbundance!=NULL){ /* User supplied this function. */
-        status = userFuncWrapper(pAbundance, ufuncName, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
+        err = userFuncWrapper(pAbundance, ufuncName, -1, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
 
-        if(status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
+        if(err.status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
           unsetMacros();
           decrefAllUserFuncs();
           if(!silent){
-            sprintf(message, "User %s() function generated error status %d", ufuncName, status);
-            bail_out(message);
+            bail_out(err.message);
           }
 exit(1);
         }
@@ -377,31 +362,25 @@ void
 molNumDensity(double x, double y, double z, double *molNumDens){
   char *ufuncName="molNumDensity";
   double resultsBuffer[UFUNC_BUFFER_SIZE];
+  errType err=init_local_err();
+  int numElemInUserFuncReturn,i;
 
-  char message[STR_LEN_0+1];
-  int status=0,numElemInUserFuncReturn,i;
+  if(pMolNumDensity!=NULL){ /* User supplied this function. */
+    err = userFuncWrapper(pMolNumDensity, ufuncName, -1, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
 
-if(_model_verbosity>0){
-  printf("  In molNumDensity(): currentModelI=%d\n", currentModelI);
-}
-
-      if(pMolNumDensity!=NULL){ /* User supplied this function. */
-        status = userFuncWrapper(pMolNumDensity, ufuncName, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
-
-        if(status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
-          unsetMacros();
-          decrefAllUserFuncs();
-          if(!silent){
-            sprintf(message, "User %s() function generated error status %d", ufuncName, status);
-            bail_out(message);
-          }
+    if(err.status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
+      unsetMacros();
+      decrefAllUserFuncs();
+      if(!silent){
+        bail_out(err.message);
+      }
 exit(1);
-        }
+    }
 
-        for(i=0;i<numElemInUserFuncReturn;i++)
-          molNumDens[i] = resultsBuffer[i];
-      }else /* There's no library function specified. */
-        default_molNumDensity(x, y, z, molNumDens);
+    for(i=0;i<numElemInUserFuncReturn;i++)
+      molNumDens[i] = resultsBuffer[i];
+  }else /* There's no library function specified. */
+    default_molNumDensity(x, y, z, molNumDens);
 }
 
 /*....................................................................*/
@@ -412,11 +391,8 @@ doppler(double x, double y, double z, double *doppler){
   const int resultI=RESULT_doppler;
   int funcI=-1;
   double resultsBuffer[UFUNC_BUFFER_SIZE];
-
-  char message[STR_LEN_0+1];
-  int status=0,numElemInUserFuncReturn,i;
-
-if(_model_verbosity>0) printf("Entering ml_models.doppler()\n");
+  errType err=init_local_err();
+  int numElemInUserFuncReturn,i;
 
   if(currentModelI>=0){
     funcI   = funcIs[  currentModelI][resultI];
@@ -427,42 +403,25 @@ if(_model_verbosity>0) printf("Entering ml_models.doppler()\n");
   rVec[1] = y;
   rVec[2] = z;
 
-      if(pDoppler!=NULL){ /* User supplied this function. */
-if(_model_verbosity>0) printf("Using user-supplied doppler()\n");
+  if(pDoppler!=NULL){ /* User supplied this function. */
+    err = userFuncWrapper(pDoppler, ufuncName, 1, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
 
-        status = userFuncWrapper(pDoppler, ufuncName, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
-
-        if(status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
-          unsetMacros();
-          decrefAllUserFuncs();
-          if(!silent){
-            sprintf(message, "User %s() function generated error status %d", ufuncName, status);
-            bail_out(message);
-          }
-exit(1);
-        }
-
-        if(numElemInUserFuncReturn>1){
-          unsetMacros();
-          decrefAllUserFuncs();
-          if(!silent){
-            sprintf(message, "User %s() function should return a scalar result.", ufuncName);
-            bail_out(message);
-          }
-exit(1);
-        }
-
-        i=0;
-        *doppler = resultsBuffer[i];
-      }else if(funcI<0){ /* There's no library function specified. */
-if(_model_verbosity>0) printf("Using default_doppler()\n");
-        default_doppler(x, y, z, doppler);
-      }else{
-if(_model_verbosity>0) printf("Using bespoke function for doppler()\n");
-        *doppler = scalarFunctionSwitch(funcI, funcPar, rVec);
+    if(err.status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
+      unsetMacros();
+      decrefAllUserFuncs();
+      if(!silent){
+        bail_out(err.message);
       }
+exit(1);
+    }
 
-if(_model_verbosity>0) printf("Leaving ml_models.doppler()\n");
+    i=0;
+    *doppler = resultsBuffer[i];
+  }else if(funcI<0){ /* There's no library function specified. */
+    default_doppler(x, y, z, doppler);
+  }else{
+    *doppler = scalarFunctionSwitch(funcI, funcPar, rVec);
+  }
 }
 
 /*....................................................................*/
@@ -473,9 +432,8 @@ velocity(double x, double y, double z, double *vel){
   const int resultI=RESULT_velocity;
   int funcI=-1;
   double resultsBuffer[UFUNC_BUFFER_SIZE];
-
-  char message[STR_LEN_0+1];
-  int status=0,numElemInUserFuncReturn,i;
+  int numElemInUserFuncReturn,i;
+  errType err=init_local_err();
 
   if(currentModelI>=0){
     funcI   = funcIs[  currentModelI][resultI];
@@ -516,24 +474,13 @@ velocity(double x, double y, double z, double *vel){
       break;
     default:
       if(pVelocity!=NULL){ /* User supplied this function. */
-        status = userFuncWrapper(pVelocity, ufuncName, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
+        err = userFuncWrapper(pVelocity, ufuncName, ML_NUM_DIMS, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
 
-        if(status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
+        if(err.status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
           unsetMacros();
           decrefAllUserFuncs();
           if(!silent){
-            sprintf(message, "User %s() function generated error status %d", ufuncName, status);
-            bail_out(message);
-          }
-exit(1);
-        }
-
-        if(numElemInUserFuncReturn!=ML_NUM_DIMS){
-          unsetMacros();
-          decrefAllUserFuncs();
-          if(!silent){
-            sprintf(message, "User %s() function should return %d results.", ufuncName, ML_NUM_DIMS);
-            bail_out(message);
+            bail_out(err.message);
           }
 exit(1);
         }
@@ -556,9 +503,8 @@ magfield(double x, double y, double z, double *B){
   const int resultI=RESULT_bmag;
   int funcI=-1;
   double resultsBuffer[UFUNC_BUFFER_SIZE];
-
-  char message[STR_LEN_0+1];
-  int status=0,numElemInUserFuncReturn,i;
+  errType err=init_local_err();
+  int numElemInUserFuncReturn,i;
 
   if(currentModelI>=0){
     funcI   = funcIs[  currentModelI][resultI];
@@ -592,24 +538,13 @@ magfield(double x, double y, double z, double *B){
 //      break;
     default:
       if(pMagfield!=NULL){ /* User supplied this function. */
-        status = userFuncWrapper(pMagfield, ufuncName, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
+        err = userFuncWrapper(pMagfield, ufuncName, ML_NUM_DIMS, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
 
-        if(status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
+        if(err.status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
           unsetMacros();
           decrefAllUserFuncs();
           if(!silent){
-            sprintf(message, "User %s() function generated error status %d", ufuncName, status);
-            bail_out(message);
-          }
-exit(1);
-        }
-
-        if(numElemInUserFuncReturn!=ML_NUM_DIMS){
-          unsetMacros();
-          decrefAllUserFuncs();
-          if(!silent){
-            sprintf(message, "User %s() function should return %d results.", ufuncName, ML_NUM_DIMS);
-            bail_out(message);
+            bail_out(err.message);
           }
 exit(1);
         }
@@ -629,37 +564,25 @@ void
 gasIIdust(double x, double y, double z, double *gas2dust){
   char *ufuncName="gasIIdust";
   double resultsBuffer[UFUNC_BUFFER_SIZE];
+  errType err=init_local_err();
+  int numElemInUserFuncReturn,i;
 
-  char message[STR_LEN_0+1];
-  int status=0,numElemInUserFuncReturn,i;
+  if(pGasIIdust!=NULL){ /* User supplied this function. */
+    err = userFuncWrapper(pGasIIdust, ufuncName, 1, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
 
-      if(pGasIIdust!=NULL){ /* User supplied this function. */
-        status = userFuncWrapper(pGasIIdust, ufuncName, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
-
-        if(status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
-          unsetMacros();
-          decrefAllUserFuncs();
-          if(!silent){
-            sprintf(message, "User %s() function generated error status %d", ufuncName, status);
-            bail_out(message);
-          }
+    if(err.status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
+      unsetMacros();
+      decrefAllUserFuncs();
+      if(!silent){
+        bail_out(err.message);
+      }
 exit(1);
-        }
+    }
 
-        if(numElemInUserFuncReturn>1){
-          unsetMacros();
-          decrefAllUserFuncs();
-          if(!silent){
-            sprintf(message, "User %s() function should return a scalar result.", ufuncName);
-            bail_out(message);
-          }
-exit(1);
-        }
-
-        i=0;
-        *gas2dust = resultsBuffer[i];
-      }else /* There's no library function specified. */
-        default_gasIIdust(x, y, z, gas2dust);
+    i=0;
+    *gas2dust = resultsBuffer[i];
+  }else /* There's no library function specified. */
+    default_gasIIdust(x, y, z, gas2dust);
 }
 
 /*....................................................................*/
@@ -668,38 +591,26 @@ gridDensity(configInfo *par, double *rVec){
   char *ufuncName="gridDensity";
   double value;
   double resultsBuffer[UFUNC_BUFFER_SIZE];
+  errType err=init_local_err();
+  int numElemInUserFuncReturn,i;
 
-  char message[STR_LEN_0+1];
-  int status=0,numElemInUserFuncReturn,i;
+  if(pGridDensity!=NULL){ /* User supplied this function. */
+    /*  ***** NOTE ***** that we are throwing away the config info! */
+    err = userFuncWrapper(pGridDensity, ufuncName, 1, rVec[0], rVec[1], rVec[2], resultsBuffer, &numElemInUserFuncReturn);
 
-      if(pGridDensity!=NULL){ /* User supplied this function. */
-        /*  ***** NOTE ***** that we are throwing away the config info! */
-        status = userFuncWrapper(pGridDensity, ufuncName, rVec[0], rVec[1], rVec[2], resultsBuffer, &numElemInUserFuncReturn);
-
-        if(status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
-          unsetMacros();
-          decrefAllUserFuncs();
-          if(!silent){
-            sprintf(message, "User %s() function generated error status %d", ufuncName, status);
-            bail_out(message);
-          }
+    if(err.status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
+      unsetMacros();
+      decrefAllUserFuncs();
+      if(!silent){
+        bail_out(err.message);
+      }
 exit(1);
-        }
+    }
 
-        if(numElemInUserFuncReturn>1){
-          unsetMacros();
-          decrefAllUserFuncs();
-          if(!silent){
-            sprintf(message, "User %s() function should return a scalar result.", ufuncName);
-            bail_out(message);
-          }
-exit(1);
-        }
-
-        i=0;
-        value = resultsBuffer[i];
-      }else /* There's no library function specified. */
-        value = default_gridDensity(par, rVec, density);
+    i=0;
+    value = resultsBuffer[i];
+  }else /* There's no library function specified. */
+    value = default_gridDensity(par, rVec, density);
 
   return value;
 }
