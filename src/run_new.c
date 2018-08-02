@@ -2,15 +2,13 @@
  *  run_new.c
  *  This file is part of LIME, the versatile line modeling engine
  *
- *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015-2017 The LIME development team
+ *  See ../COPYRIGHT
  *
 TODO:
  */
 
 #include "lime.h"
 #include <locale.h>
-#include "defaults.h"
 
 #ifdef TEST
 _Bool fixRandomSeeds = TRUE;
@@ -20,42 +18,6 @@ _Bool fixRandomSeeds = FALSE;
 
 double defaultDensyPower = DENSITY_POWER;
 
-/*....................................................................*/
-void _gridPopsInit(configInfo *par, molData *md, struct grid *gp){
-  int i,id,ilev;
-
-  for(i=0;i<par->nSpecies;i++){
-    /* Allocate space for populations etc */
-    for(id=0;id<par->ncell; id++){
-      free(gp[id].mol[i].pops);
-      gp[id].mol[i].pops = malloc(sizeof(double)*md[i].nlev);
-      gp[id].mol[i].pops[0] = 1.0;
-      for(ilev=1;ilev<md[i].nlev;ilev++)
-        gp[id].mol[i].pops[ilev] = 0.0;
-    }
-  }
-
-  par->popsHasBeenInit = TRUE;
-}
-
-
-/*....................................................................*/
-void _specNumDensInit(configInfo *par, molData *md, struct grid *gp){
-  int i,id,ilev;
-
-  for(i=0;i<par->nSpecies;i++){
-    /* Allocate space for populations etc */
-    for(id=0;id<par->ncell; id++){
-      free(gp[id].mol[i].specNumDens);
-      gp[id].mol[i].specNumDens = malloc(sizeof(double)*md[i].nlev);
-      gp[id].mol[i].specNumDens[0] = 0.0;
-      for(ilev=1;ilev<md[i].nlev;ilev++)
-        gp[id].mol[i].specNumDens[ilev] = 0.0;
-    }
-  }
-
-  par->SNDhasBeenInit = TRUE;
-}
 /*....................................................................*/
 int
 run_new(inputPars inpars, image *inimg, const int nImages){
@@ -72,7 +34,7 @@ run_new(inputPars inpars, image *inimg, const int nImages){
   configInfo par;
   imageInfo *img=NULL;
   struct grid *gp=NULL;
-  char message[STR_LEN_1];
+  char message[STR_LEN_1+1];
   int nEntries=0;
   double *lamtab=NULL,*kaptab=NULL;
   char **collPartNamesRead=NULL;
@@ -147,10 +109,10 @@ exit(1);
   }
 
   if(par.needToInitPops)
-    _gridPopsInit(&par,md,gp);
+    gridPopsInit(&par,md,gp);
 
   if(par.needToInitSND)
-    _specNumDensInit(&par,md,gp);
+    specNumDensInit(&par,md,gp);
 
   if(par.doSolveRTE){
     nExtraSolverIters = levelPops(md, &par, gp, &dummyPopsdone, lamtab, kaptab, nEntries); /* In solver.c */

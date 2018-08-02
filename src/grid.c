@@ -12,7 +12,6 @@ TODO:
 #include "lime.h"
 #include "tree_random.h"
 #include "gridio.h"
-#include "defaults.h"
 
 /*....................................................................*/
 void

@@ -104,6 +104,7 @@ CLSOURCES = \
 
 
 COREINCLUDES = \
+	src/aux.h\
 	src/collparts.h\
 	src/constants.h\
 	src/defaults.h\
@@ -123,34 +124,10 @@ FITSINCLUDES =\
 HDF5INCLUDES = \
 	src/grid2hdf5.h
 
-CONVINCLUDES = \
-	src/dims.h\
-	src/collparts.h\
-	src/gridio.h\
-	src/inpars.h\
-	src/lime.h
-
 PYINCLUDES = \
 	src/error_codes.h\
 	src/py_lime.h\
 	src/py_utils.h
-
-LLINCLUDES =
-
-MLINCLUDES2 = \
-	src/aux.h\
-	src/collparts.h\
-	src/constants.h\
-	src/defaults.h\
-	src/dims.h\
-	src/error_codes.h\
-	src/inpars.h\
-	src/lime.h\
-	src/lime_config.h\
-	src/messages.h\
-	src/py_lime.h\
-	src/py_utils.h\
-	src/ufunc_types.h
 
 MLINCLUDES = \
 	src/ml_funcs.h\

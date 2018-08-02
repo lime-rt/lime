@@ -2,14 +2,12 @@
  *  init.c
  *  This file is part of LIME, the versatile line modeling engine
  *
- *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015-2017 The LIME development team
+ *  See ../COPYRIGHT
  *
 TODO:
  */
 
 #include "lime.h"
-#include "defaults.h"
 
 /*....................................................................*/
 int
@@ -386,7 +384,7 @@ exit(1);
 
 /*....................................................................*/
 int
-_checkUserFunctions(configInfo *par, _Bool checkForSingularities){
+checkUserFunctions(configInfo *par, _Bool checkForSingularities){
   /*
 Run through all the user functions and set flags in the global defaultFuncFlags for those which have defaulted. NOTE however that we will not check which of these functions the user has provided until readOrBuildGrid(), because this will depend on the appropriate data being present or not in any grid file we read in. There are two exceptions to this:
 
@@ -480,19 +478,100 @@ Run through all the user functions and set flags in the global defaultFuncFlags 
 
 /*....................................................................*/
 void
+calcGridDensGlobalMax(configInfo *par){
+  /* In the case that we need to calculate grid point locations, we will need to call the function gridDensity(). The default one is ok, but this (i) needs the user to supply a density function, and (ii) requires par->gridDensGlobalMax etc to be calculated.
+  */
+
+  int i,j;
+  double tempPointDensity,r[3];
+  const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
+  gsl_rng *randGen;
+  _Bool foundGoodValue;
+
+  if(bitIsSet(defaultFuncFlags, USERFUNC_gridDensity)){
+    if(bitIsSet(defaultFuncFlags, USERFUNC_density)){
+      if(!silent) bail_out("You need to supply either a density() function or a gridDensity() function which doesn't call density().");
+exit(1);
+    }
+
+    par->gridDensGlobalMax = 1.0; /* We need some sort of >0 value for par->gridDensGlobalMax before we call the default gridDensity(). */
+
+    /* First try gridDensity() at the origin of coordinates, where the density is often highest:
+    */
+    for(i=0;i<DIM;i++) r[i] = 0.0;
+    tempPointDensity = gridDensity(par, r);
+
+    if(isinf(tempPointDensity) || isnan(tempPointDensity)){
+      if(!silent) warning("There is a singularity at the origin of the gridDensity() function.");
+    }else if(tempPointDensity<=0.0){
+      if(!silent) warning("The gridDensity() function returns zero at the origin.");
+    }else if (tempPointDensity>par->gridDensGlobalMax)
+      par->gridDensGlobalMax = tempPointDensity;
+
+    if(isinf(tempPointDensity) || isnan(tempPointDensity) || tempPointDensity<=0.0){
+      /* Try gridDensity() a little offset from the origin.
+      */
+      for(i=0;i<DIM;i++) r[i] = par->minScale;
+      tempPointDensity = gridDensity(par, r);
+
+      if(!isinf(tempPointDensity) && !isnan(tempPointDensity) && tempPointDensity>0.0)
+        par->gridDensGlobalMax = tempPointDensity;
+
+      else{
+        /* Hmm ok, let's try a spread of random locations!
+        */
+        randGen = gsl_rng_alloc(ranNumGenType);	/* Random number generator */
+        if(fixRandomSeeds)
+          gsl_rng_set(randGen,140978);
+        else
+          gsl_rng_set(randGen,time(0));
+
+        foundGoodValue = FALSE; /* the default. */
+        for(j=0;j<NUM_RAN_DENS;j++){
+          for(i=0;i<DIM;i++) r[i] = par->radius*(2.0*gsl_rng_uniform(randGen) - 1.0);
+          tempPointDensity = gridDensity(par, r);
+          if(!isinf(tempPointDensity) && !isnan(tempPointDensity) && tempPointDensity>0.0){
+            foundGoodValue = TRUE;
+        break;
+          }
+        }
+
+        if(foundGoodValue){
+          if(tempPointDensity>par->gridDensGlobalMax)
+            par->gridDensGlobalMax = tempPointDensity;
+
+        }else if(par->numGridDensMaxima>0){
+          /* Test any maxima the user has provided:
+          */
+          par->gridDensGlobalMax = par->gridDensMaxValues[0];
+          for(i=1;i<par->numGridDensMaxima;i++)
+            if(par->gridDensMaxValues[i]>par->gridDensGlobalMax) par->gridDensGlobalMax = par->gridDensMaxValues[i];
+        }else{
+#ifdef KLUDGE_FOR_BAD_DENS
+          /* This has been added under protest to cope with modellib's crappy density functions. */
+          defaultDensyPower = 1.0;
+          par->gridDensGlobalMax = 1.0;
+#else
+          if(!silent) bail_out("Can't find non-pathological values of the gridDensity() function.");
+exit(1);
+#endif
+        }
+      }
+    }
+  }
+}
+
+/*....................................................................*/
+void
 parseInputWhenIncompleteGridFile(configInfo *par, _Bool checkForSingularities){
   /*
 Does a bunch of checks and initializations relating to the density() and gridDensity() functions.
   */
-  int numFuncDensities,i,j;
-  _Bool foundGoodValue;
-  double tempPointDensity,r[3];
-  const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
-  gsl_rng *randGen;
+  int numFuncDensities;
 
   /* Checks which functions the user has supplied and which fall through to default (setting thereby the appropriate flag in defaultFuncFlags). It also checks for singularities and counts how many density values are returned by the density() function.
   */
-  numFuncDensities = _checkUserFunctions(par, checkForSingularities);
+  numFuncDensities = checkUserFunctions(par, checkForSingularities);
 
   /* Calculate par->numDensities if we have not read it from file.
   */
@@ -511,78 +590,7 @@ exit(1);
   }
 
   if(!anyBitSet(par->dataFlags, DS_mask_x)){ /* This should only happen if we did not read a file. */
-    /* In this case we will need to calculate grid point locations, thus we will need to call the function gridDensity(). The default one is ok, but this (i) needs the user to supply a density function, and (ii) requires par->gridDensGlobalMax etc to be calculated.
-    */
-    if(bitIsSet(defaultFuncFlags, USERFUNC_gridDensity)){
-      if(bitIsSet(defaultFuncFlags, USERFUNC_density)){
-        if(!silent) bail_out("You need to supply either a density() function or a gridDensity() function which doesn't call density().");
-exit(1);
-      }
-
-      par->gridDensGlobalMax = 1.0; /* We need some sort of >0 value for par->gridDensGlobalMax before we call the default gridDensity(). */
-
-      /* First try gridDensity() at the origin of coordinates, where the density is often highest:
-      */
-      for(i=0;i<DIM;i++) r[i] = 0.0;
-      tempPointDensity = gridDensity(par, r);
-
-      if(isinf(tempPointDensity) || isnan(tempPointDensity)){
-        if(!silent) warning("There is a singularity at the origin of the gridDensity() function.");
-      }else if(tempPointDensity<=0.0){
-        if(!silent) warning("The gridDensity() function returns zero at the origin.");
-      }else if (tempPointDensity>par->gridDensGlobalMax)
-        par->gridDensGlobalMax = tempPointDensity;
-
-      if(isinf(tempPointDensity) || isnan(tempPointDensity) || tempPointDensity<=0.0){
-        /* Try gridDensity() a little offset from the origin.
-        */
-        for(i=0;i<DIM;i++) r[i] = par->minScale;
-        tempPointDensity = gridDensity(par, r);
-
-        if(!isinf(tempPointDensity) && !isnan(tempPointDensity) && tempPointDensity>0.0)
-          par->gridDensGlobalMax = tempPointDensity;
-
-        else{
-          /* Hmm ok, let's try a spread of random locations!
-          */
-          randGen = gsl_rng_alloc(ranNumGenType);	/* Random number generator */
-          if(fixRandomSeeds)
-            gsl_rng_set(randGen,140978);
-          else
-            gsl_rng_set(randGen,time(0));
-
-          foundGoodValue = FALSE; /* the default. */
-          for(j=0;j<NUM_RAN_DENS;j++){
-            for(i=0;i<DIM;i++) r[i] = par->radius*(2.0*gsl_rng_uniform(randGen) - 1.0);
-            tempPointDensity = gridDensity(par, r);
-            if(!isinf(tempPointDensity) && !isnan(tempPointDensity) && tempPointDensity>0.0){
-              foundGoodValue = TRUE;
-          break;
-            }
-          }
-
-          if(foundGoodValue){
-            if (tempPointDensity>par->gridDensGlobalMax)
-              par->gridDensGlobalMax = tempPointDensity;
-
-          }else if(par->numGridDensMaxima>0){
-            /* Test any maxima the user has provided:
-            */
-            par->gridDensGlobalMax = par->gridDensMaxValues[0];
-            for(i=1;i<par->numGridDensMaxima;i++)
-              if(par->gridDensMaxValues[i]>par->gridDensGlobalMax) par->gridDensGlobalMax = par->gridDensMaxValues[i];
-          }else{
-#ifdef KLUDGE_FOR_BAD_DENS
-            /* This has been added under protest to cope with modellib's crappy density functions. */
-            defaultDensyPower = 1.0;
-            par->gridDensGlobalMax = 1.0;
-            if(!silent) bail_out("Can't find non-pathological values of the gridDensity() function.");
-exit(1);
-#endif
-          }
-        }
-      }
-    }
+    calcGridDensGlobalMax(par);
   }
 
 #ifndef KLUDGE_FOR_BAD_DENS
@@ -820,7 +828,7 @@ exit(1);
   par->edgeVelsAvailable=0; /* default value, this is set within getEdgeVelocities(). */
 
   if(!silent){
-    if(par->nSolveIters>0 && par->lte_only)
+    if(par->lte_only && par->nSolveIters>0)
       warning("Requesting par->nSolveIters>0 will have no effect if LTE calculation is also requested.");
 
     if(allBitsSet(par->dataFlags, DS_mask_populations) && par->lte_only)
@@ -860,5 +868,41 @@ exit(1);
     if(!silent) bail_out("If you want only continuum calculations you must supply zero moldatfiles.");
 exit(1);
   }
+}
+
+/*....................................................................*/
+void gridPopsInit(configInfo *par, molData *md, struct grid *gp){
+  int i,id,ilev;
+
+  for(i=0;i<par->nSpecies;i++){
+    /* Allocate space for populations etc */
+    for(id=0;id<par->ncell; id++){
+      free(gp[id].mol[i].pops);
+      gp[id].mol[i].pops = malloc(sizeof(double)*md[i].nlev);
+      gp[id].mol[i].pops[0] = 1.0;
+      for(ilev=1;ilev<md[i].nlev;ilev++)
+        gp[id].mol[i].pops[ilev] = 0.0;
+    }
+  }
+
+  par->popsHasBeenInit = TRUE;
+}
+
+/*....................................................................*/
+void specNumDensInit(configInfo *par, molData *md, struct grid *gp){
+  int i,id,ilev;
+
+  for(i=0;i<par->nSpecies;i++){
+    /* Allocate space for populations etc */
+    for(id=0;id<par->ncell; id++){
+      free(gp[id].mol[i].specNumDens);
+      gp[id].mol[i].specNumDens = malloc(sizeof(double)*md[i].nlev);
+      gp[id].mol[i].specNumDens[0] = 0.0;
+      for(ilev=1;ilev<md[i].nlev;ilev++)
+        gp[id].mol[i].specNumDens[ilev] = 0.0;
+    }
+  }
+
+  par->SNDhasBeenInit = TRUE;
 }
 

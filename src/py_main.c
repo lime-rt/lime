@@ -12,7 +12,7 @@ TODO:
 #include "error_codes.h"
 #include "local_err.h"
 #include "py_lime.h"
-#include <argp.h>
+#include <getopt.h>
 #include "py_utils.h"
 
 #ifdef NOVERBOSE
@@ -23,65 +23,141 @@ int silent = 0;
 
 int defaultFuncFlags = 0;
 
-const char *argp_program_version = VERSION;
-const char *argp_program_bug_address = "https://github.com/lime-rt/lime";
-/* Program documentation. */
-static char doc[] = "pylime - the version of LIME which accepts a model file written in python.";
-
-/* A description of the arguments we accept. */
-static char args_doc[] = "modelfilename";
-
-/* The options we understand. */
-static struct argp_option options[] = {
-  {"silent",   's',     0, 0, "Suppress output messages." },
-  {"testmode", 't',     0, 0, "Use fixed RNG seeds." },
-  {"nthreads", 'p', "int", 0, "Run in parallel with NTHREADS threads (default: 1)" },
-  { 0 }
-};
-
-/* Used by main to communicate with parse_opt. */
-struct arguments
-{
+typedef struct {
   _Bool doSilent,fixSeeds;
   char *modelfilename;
   int numThreads;
-};
+} infoType;
 
 /*....................................................................*/
-/* Parse a single option. */
-static error_t
-parse_opt(int key, char *arg, struct argp_state *state){
-  /* Get the input argument from argp_parse, which we
-     know is a pointer to our arguments structure. */
-  struct arguments *arguments = state->input;
+void
+printUsageAndQuit(void){
+  printf("\nUseage:\n  pylime [-s] [-t] [-p <num threads>] <model file>\n");
 
-  switch (key)
-    {
-    case 's':
-      arguments->doSilent = TRUE;
-      break;
-    case 't':
-      arguments->fixSeeds = TRUE;
-      break;
-    case 'p':
-      arguments->numThreads = atoi(arg);
-      break;
-
-    case ARGP_KEY_ARG:
-      arguments->modelfilename = arg;
-      break;
-
-    case ARGP_KEY_END:
-      break;
-
-    default:
-      return ARGP_ERR_UNKNOWN;
-    }
-  return 0;
+exit(1);
 }
 
-/* Our argp parser. */
-static struct argp argp = { options, parse_opt, args_doc, doc };
+/*....................................................................*/
+infoType
+_initInfo(void){
+  infoType info;
+
+  info.doSilent = FALSE;
+  info.fixSeeds = FALSE;
+  info.numThreads = 0;
+  info.modelfilename = NULL;
+
+return info;
+}
+
+/*....................................................................*/
+errType
+strToInt(char *inStr, int *result){
+  errType err=init_local_err();
+  char *nonIntPtr;
+  long trialLong;
+  char message[ERR_STR_LEN]; /* Allow an extra character for the \0 in snprintf. */
+
+  trialLong = strtol(inStr, &nonIntPtr, 0);
+  if (*nonIntPtr != '\0'){
+    snprintf(message, ERR_STR_LEN-1, "Supposed integer string field %s contains bad characters.", inStr);
+return write_local_err(1, message);
+  }
+
+  /* The compiler directive is needed only when `int` and `long` have different ranges. */
+#if LONG_MIN < INT_MIN || LONG_MAX > INT_MAX
+  if (trialLong < INT_MIN || trialLong > INT_MAX){
+    snprintf(message, ERR_STR_LEN-1, "Integer string field %s is out of range.", inStr);
+return write_local_err(2, message);
+  }
+#endif
+
+  *result = (int)trialLong;
+
+return err;
+}
+
+/*....................................................................*/
+infoType
+_parseArgs(int argc, char *argv[]){
+  /*
+This extracts information from the command-line arguments, storing it in the returned struct 'info'.
+
+  */
+  infoType info;
+  int optI;
+  /* getopt_long stores the option index here. */
+  int option_index=0,numNonOptionArgs;
+  char message[STR_LEN_0+1]; /* Allow an extra character for the \0 in snprintf. */
+  const int specifiedNumNonOptionArgs=1;
+  errType err=init_local_err();
+
+  info = _initInfo();
+
+  while(TRUE){
+    static struct option long_options[] = {
+          {"version", no_argument,       0, 'v'},
+          {"help",    no_argument,       0, 'h'},
+          {"silent",  no_argument,       0, 's'},
+          {"test",    no_argument,       0, 't'},
+          {"threads", required_argument, 0, 'p'},
+          {0, 0, 0, 0}
+    };
+
+    optI = getopt_long(argc, argv, "stp:",
+                       long_options, &option_index);
+
+    /* Detect the end of the options. */
+    if (optI == -1)
+  break;
+
+    switch (optI){
+        case 'v':
+          printf("LIME (pylime) %s\n", VERSION);
+exit(0);
+
+        case 'h':
+printUsageAndQuit();
+
+        case 's':
+          info.doSilent = TRUE;
+    break;
+
+        case 't':
+          info.fixSeeds = TRUE;
+    break;
+
+        case 'p':
+          err = strToInt(optarg, &info.numThreads);
+          if(err.status){
+error(1,err.message);
+          }
+    break;
+
+        case '?':
+          /* getopt_long already printed an error message. */
+    break;
+
+        default:
+printUsageAndQuit();
+    }
+  }
+
+  /* Parse the non-option arguments:
+  */
+  numNonOptionArgs = argc - optind;
+  if(numNonOptionArgs<specifiedNumNonOptionArgs)
+error(1,"Too few non-option args");
+
+  if(numNonOptionArgs>specifiedNumNonOptionArgs){
+    snprintf(message, STR_LEN_0, "You have %d non-option arguments but you only should have %d.", numNonOptionArgs, specifiedNumNonOptionArgs);
+    warning(message);
+  }
+
+  info.modelfilename = argv[optind++];
+
+return info;
+}
 
 /*....................................................................*/
 void
@@ -148,6 +224,7 @@ For pretty detailed documentation on embedding python in C, see
   https://docs.python.org/2/c-api/index.html
   */
 
+  infoType info;
   errType err=init_local_err();
   const int lenSuffix=3,maxLenNoSuffix=STR_LEN_0;
   const char *nameOfExecutable="pylime",*headerModuleName="limepar_classes";
@@ -159,36 +236,28 @@ For pretty detailed documentation on embedding python in C, see
   inputPars par;
   image *img = NULL;
   parTemplateType *parTemplates=NULL,*imgParTemplates=NULL;
-  struct arguments arguments;
-
-  /* Set defaults for argument returns:
-  */
-  arguments.doSilent      = FALSE;
-  arguments.fixSeeds      = FALSE;
-  arguments.numThreads    = -1;
-  arguments.modelfilename = NULL;
 
   /* Parse our arguments; every option seen by parse_opt will be reflected in arguments.
   */
-  argp_parse(&argp, argc, argv, 0, 0, &arguments);
+  info = _parseArgs(argc, argv);
 
   /* Interpret the options (numThreads is left until later):
   */
-  if(arguments.doSilent)
+  if(info.doSilent)
     silent = 1;
 
-  if(arguments.fixSeeds)
+  if(info.fixSeeds)
     fixRandomSeeds = TRUE;
 
   /* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
   /* Get the model name, then strip off the '.py' from it:
   */
-  if(arguments.modelfilename==NULL){
+  if(info.modelfilename==NULL){
     sprintf(message, "Usage: %s [<arguments>] <python model file>", nameOfExecutable);
     error(1, message);
   }
 
-  lenNoSuffix = strlen(arguments.modelfilename) - lenSuffix;
+  lenNoSuffix = strlen(info.modelfilename) - lenSuffix;
   if(lenNoSuffix<1){
     sprintf(message, "Model file name must be more than %d characters long!", lenSuffix);
     error(1, message);
@@ -198,7 +267,7 @@ For pretty detailed documentation on embedding python in C, see
     error(1, message);
   }
 
-  strncpy(suffix, arguments.modelfilename + lenNoSuffix, lenSuffix);
+  strncpy(suffix, info.modelfilename + lenNoSuffix, lenSuffix);
   suffix[lenSuffix] = '\0';
 
   if(strcmp(suffix,".py")!=0){
@@ -206,7 +275,7 @@ For pretty detailed documentation on embedding python in C, see
     error(1, message);
   }
 
-  strncpy(modelNameNoSuffix, arguments.modelfilename, strlen(arguments.modelfilename)-lenSuffix);
+  strncpy(modelNameNoSuffix, info.modelfilename, strlen(info.modelfilename)-lenSuffix);
   modelNameNoSuffix[lenNoSuffix] = '\0';
 
   /* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -273,8 +342,8 @@ pyerror(err.message);
   free(imgParTemplates);
   free(parTemplates);
 
-  if(arguments.numThreads>0) /* Indicates that the user has set it to something sensible on the command line. */
-    par.nThreads = arguments.numThreads;
+  if(info.numThreads>0) /* Indicates that the user has set it to something sensible on the command line. */
+    par.nThreads = info.numThreads;
 
   setUpUserPythonFuncs(pModule);
 

@@ -2,8 +2,7 @@
  *  lime.h
  *  This file is part of LIME, the versatile line modeling engine
  *
- *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015-2017 The LIME development team
+ *  See ../COPYRIGHT
  *
  */
 
@@ -103,9 +102,9 @@
 #define DS_mask_all_but_mag  DS_mask_all & ~(1<<DS_bit_magfield)
 
 
-#include "ufunc_types.h"
+#include "ufunc_types.h" /* includes lime_config.h */
 #include "collparts.h"
-#include "inpars.h"
+#include "inpars.h" /* includes dims.h */
 #include "defaults.h" /* includes lime_config.h */
 #include "messages.h"
 #include "aux.h"
@@ -185,6 +184,7 @@ void	binpopsout(configInfo*, struct grid*, molData*);
 void	buildGrid(configInfo*, struct grid**);
 void	calcDustData(configInfo*, double*, double*, const double, double*, const int, const double ts[], double*, double*);
 void	calcExpTableEntries(const int, const int);
+void	calcGridDensGlobalMax(configInfo *par);
 void	calcGridMolDensities(configInfo*, struct grid**);
 void	calcGridMolDoppler(configInfo*, molData*, struct grid*);
 void	calcGridMolSpecNumDens(configInfo*, molData*, struct grid*);
@@ -192,6 +192,7 @@ void	calcSourceFn(double, const configInfo*, double*, double*);
 void	checkFirstLineMolDat(FILE *fp, char *moldatfile);
 void	checkGridDensities(configInfo*, struct grid*);
 void	checkUserDensWeights(configInfo*);
+int	checkUserFunctions(configInfo *par, _Bool checkForSingularities);
 int	copyInpars(const inputPars inpars, image *inimg, const int nImages, configInfo *par, imageInfo **img);
 void	delaunay(const int, struct grid*, const unsigned long, const _Bool, const _Bool, struct cell**, unsigned long*);
 void	distCalc(configInfo*, struct grid*);
@@ -208,6 +209,7 @@ void	freeSomeGridFields(const unsigned int, const unsigned short, struct grid*);
 void	furtherParChecks(configInfo *par);
 double	geterf(const double, const double);
 void	getEdgeVelocities(configInfo *, struct grid *);
+void	gridPopsInit(configInfo *par, molData *md, struct grid *gp);
 void	input(inputPars*, image*);
 double	interpolateKappa(const double, double*, double*, const int, gsl_spline*, gsl_interp_accel*);
 int	levelPops(molData*, configInfo*, struct grid*, int*, double*, double*, const int);
@@ -235,6 +237,7 @@ void	smooth(configInfo*, struct grid*);
 void	sourceFunc_line(const molData*, const double, const struct populations*, const int, double*, double*);
 void	sourceFunc_cont(const struct continuumLine, double*, double*);
 void	sourceFunc_pol(double*, const struct continuumLine, double (*rotMat)[3], double*, double*);
+void	specNumDensInit(configInfo *par, molData *md, struct grid *gp);
 void	writeFitsAllUnits(const int, configInfo*, imageInfo*);
 void	writeGridIfRequired(configInfo*, struct grid*, molData*, const int);
 void	writeGridToAscii(char *outFileName, struct grid *gp, const unsigned int nInternalPoints, const int dataFlags);
