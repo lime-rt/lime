@@ -2,23 +2,11 @@
  *  model_CG97.c
  *  This file is part of LIME, the versatile line modeling engine
  *
- *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015-2017 The LIME development team
+ *  See ../COPYRIGHT
  *
  */
 
 #include "ml_recipes.h"
-
-//#define ms 1.99e+33				MSUN_cgs
-//#define rs 69600000000.0			RSUN_cgs
-//#define au 14960000000000.0			AU_cgs
-//#define pi 3.14159265358979323846264338328
-//#define gsize 1e-5
-//#define kk 1.3807e-16				KBOLTZ_cgs
-//#define hh 6.6262e-27				HPLANCK_cgs
-//#define cc 29979245800.0			CLIGHT_cgs
-//#define gg 6.674e-8 //			GRAV_cgs
-//#define mp 1.6726e-24  // Proton mass		AMU_cgs
 
 double m_rin,m_rout,m_plsig1,m_hph,m_sig0,m_mstar,m_rstar,m_tstar,m_bgdens,rootTwoPi;
 

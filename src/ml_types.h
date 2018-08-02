@@ -1,3 +1,11 @@
+/*
+ *  ml_types.h
+ *  This file is part of LIME, the versatile line modeling engine
+ *
+ *  See ../COPYRIGHT
+ *
+ */
+
 #ifndef ML_TYPES_H
 #define ML_TYPES_H
 

@@ -2,8 +2,7 @@
  *  curses_msg.c
  *  This file is part of LIME, the versatile line modeling engine
  *
- *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015-2017 The LIME development team
+ *  See ../COPYRIGHT
  *
 TODOs:
 	- Are all these char arguments better as pointers, or arrays of unspecified length? Do we need to specify the length?

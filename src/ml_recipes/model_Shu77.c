@@ -2,8 +2,7 @@
  *  model_Shu77.c
  *  This file is part of LIME, the versatile line modeling engine
  *
- *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015-2017 The LIME development team
+ *  See ../COPYRIGHT
  *
  */
 
@@ -19,10 +18,6 @@ double stab_alpha[20] = {71.5000 ,27.8000 ,16.4000 ,11.5000 ,8.76000 ,7.09000 ,5
 /*....................................................................*/
 int 
 Shu77_onFinalizeConfiguration(void){
-//  m_T = m_paramDouble["T"];
-////  m_time = m_paramDouble["time"]*31536000e+0;
-//  m_time = m_paramDouble["time"]*YJULIAN;
-
   int i;
 
   if(getParamI("T", &i)) return ML_UNRECOG_PARAM;
@@ -36,12 +31,6 @@ Shu77_onFinalizeConfiguration(void){
 /*....................................................................*/
 double 
 Shu77_density(const double x, const double y, const double z){
-//#define pi 3.14159265358979323846264338328e0
-//#define gg_si 6.674e-11 //
-//#define mp_si 1.6726e-27  // Proton mass	
-
-//  double mp = 1.6726000e-27; // Proton mass
-//  double kk =1.3807e-23; // Boltzman constant
   double r, a, rc, mod_x, dlx, dly, alpha;
   unsigned long id ;
   double rho;

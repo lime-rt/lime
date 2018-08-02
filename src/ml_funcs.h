@@ -1,3 +1,12 @@
+/*
+ *  ml_funcs.h
+ *  This file is part of LIME, the versatile line modeling engine
+ *
+ *  See ../COPYRIGHT
+ *
+************ change sprintfs to snprintfs
+ */
+
 #ifndef ML_FUNCS_H
 #define ML_FUNCS_H
 

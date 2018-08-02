@@ -4,7 +4,6 @@
  *
  *  See ../COPYRIGHT
  *
-TODO:
  */
 
 #include "lime.h"

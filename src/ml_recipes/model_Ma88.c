@@ -2,8 +2,7 @@
  *  model_Ma88.c
  *  This file is part of LIME, the versatile line modeling engine
  *
- *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015-2017 The LIME development team
+ *  See ../COPYRIGHT
  *
  */
 
@@ -19,16 +18,6 @@ double m_rhalf;
 
 
 
-//double
-//bilinearInterpol(const double& x,
-//		         const double& y,
-//		         const vector<double>& xgrid,
-//		         const vector<double>& ygrid,
-//		         const vector< vector<double> > zgrid){
-//double
-//bilinearInterpol(const double x, const double y, const double xgrid[13], const double ygrid[3], const double zgrid[13][3], const int xiSize, const int yiSize){
-//double
-//bilinearInterpol(const double x, const double y, const double xgrid[], const double ygrid[], const double zgrid[][yiSize], const int xiSize, const int yiSize){
 double
 bilinearInterpol(const double x, const double y, const int xiSize, const int yiSize, double xgrid[], double ygrid[], double zgrid[][yiSize]){
 	// Do a bi-linear interpolation to determine the value z at (x, y)
@@ -40,7 +29,6 @@ bilinearInterpol(const double x, const double y, const int xiSize, const int yiS
 
   // Find i with xgrid[i] <= x < xgrid[i+1]:
   int i = -1;
-//  int imax = xgrid.size() - 1;
   int imax = xiSize - 1;
   while (i < imax && x >= xgrid[i+1])
     i++;

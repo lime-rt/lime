@@ -2,8 +2,7 @@
  *  model_LiSh96.c
  *  This file is part of LIME, the versatile line modeling engine
  *
- *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015-2017 The LIME development team
+ *  See ../COPYRIGHT
  *
  */
 
@@ -18,9 +17,6 @@ unsigned m_h0Index;
 /*....................................................................*/
 int
 LiSh96_onFinalizeConfiguration(void){
-//  m_cs = m_paramDouble["cs"];
-//  m_h0Index = m_paramEnumIndex["h0"];
-
   int i;
 
   if(getParamI("cs", &i)) return ML_UNRECOG_PARAM;

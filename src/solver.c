@@ -2,8 +2,7 @@
  *  solver.c
  *  This file is part of LIME, the versatile line modeling engine
  *
- *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015-2017 The LIME development team
+ *  See ../COPYRIGHT
  *
 TODO:
   - The test to run _calculateJBar() etc in levelPops just tests dens[0]. This is a bit sloppy.

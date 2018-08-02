@@ -2,8 +2,7 @@
  *  molinit.c
  *  This file is part of LIME, the versatile line modeling engine
  *
- *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015-2017 The LIME development team
+ *  See ../COPYRIGHT
  *
 TODO:
 	- Clean up all the new messages which are going to dick with the stdout when curses are selected? (Sigh.)

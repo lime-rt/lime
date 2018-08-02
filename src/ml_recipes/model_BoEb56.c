@@ -1,9 +1,8 @@
 /*
- *  model.c
+ *  model_BoEb56.c
  *  This file is part of LIME, the versatile line modeling engine
  *
- *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015-2017 The LIME development team
+ *  See ../COPYRIGHT
  *
  */
 
@@ -15,9 +14,6 @@ double m_rhoc,m_T,logQ,or1,cs2;
 /*....................................................................*/
 int
 BoEb56_onFinalizeConfiguration(void){
-//  m_rhoc   = m_paramDouble["rhoc"]*AMU*ML_MEAN_MOL_WT*1.0e6; /* Using AMU rather than the proton mass as AJ had it. */
-//  m_T      = m_paramDouble["T"];
-
   int i;
 
   if(getParamI("rhoc", &i)) return ML_UNRECOG_PARAM;
@@ -35,8 +31,6 @@ BoEb56_onFinalizeConfiguration(void){
 /*....................................................................*/
 double
 BoEb56_density(double x, double y, double z){
-//  static _Bool isFirstCall=1;
-//  static double logQ=0.0,or1=0.0,m_rhoc=0.0,cs2=0.0;
   double r0,r1,rho,r,dum,mr05,dr=0.0,ri;
   int nstep,i;
 

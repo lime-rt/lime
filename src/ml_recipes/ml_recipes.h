@@ -1,7 +1,15 @@
+/*
+ *  ml_recipes.h
+ *  This file is part of LIME, the versatile line modeling engine
+ *
+ *  See ../COPYRIGHT
+ *
+ */
+
 #ifndef ML_RECIPES_H
 #define ML_RECIPES_H
 
-//The stuff in this directory is a fairly light port of the godawful bloody CC code in modellib. I didn't dare change too much because of the proliferation of meaningless, ueber-short variable names. Way to go for incomprehensible code. :-/
+//The stuff in this directory is a fairly light port of the godawful bloody CC code in ARTIST's modellib. I didn't dare change too much because of the proliferation of meaningless, ueber-short variable names. Way to go for incomprehensible code. :-/
 
 #include "../ml_types.h"
 #include "../constants.h"

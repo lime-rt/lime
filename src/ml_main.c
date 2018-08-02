@@ -2,9 +2,8 @@
  *  ml_main.c
  *  This file is part of LIME, the versatile line modeling engine.
  *
- *  Copyright: see the files ../COPYRIGHT.md and ../COPYING.md.
+ *  See ../COPYRIGHT
  *
-TODO:
  */
 
 #include "constants.h" /* for TRUE and FALSE */

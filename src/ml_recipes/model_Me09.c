@@ -2,8 +2,7 @@
  *  model_Me09.c
  *  This file is part of LIME, the versatile line modeling engine
  *
- *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015-2017 The LIME development team
+ *  See ../COPYRIGHT
  *
  */
 
@@ -29,13 +28,6 @@ double vk,norm;
 /*....................................................................*/
 int 
 Me09_onFinalizeConfiguration(void){
-////  m_mdot      = m_paramDouble["mdot"]*6.3102486e+22;
-//  m_mdot      = m_paramDouble["mdot"]*MSUN/YJULIAN; // Msun/yr to kg/s
-//  m_mstar     = m_paramDouble["mstar"]*MSUN;
-//  m_rc        = m_paramDouble["rc"]*AU;
-//  m_mu        = m_paramDouble["mu"];
-//  m_nu        = m_paramDouble["nu"];
-
   int i;
 
   if(getParamI("mdot", &i)) return ML_UNRECOG_PARAM;
@@ -59,18 +51,10 @@ Me09_onFinalizeConfiguration(void){
 /*....................................................................*/
 double
 get_theta0(double r, double theta_inp, double mu, double nu){
-
-
-//#define pi 3.14159265358979323846264338328
-	
-//#define ngrid 100
-
   int i;
   double theta0_final;
   double theta0[Me09_ngrid], sint02[Me09_ngrid], diff, rr_old, rr_new, th0_old, th0_new;
   double epsilon, e, phi0, zeta, der, theta, dum, dum2;
-
-//	theta = theta_inp;
 
   if (theta_inp>M_PI/2.){
     theta = M_PI - theta_inp;

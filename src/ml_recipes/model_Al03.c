@@ -2,8 +2,7 @@
  *  model_Al03.c
  *  This file is part of LIME, the versatile line modeling engine
  *
- *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015-2017 The LIME development team
+ *  See ../COPYRIGHT
  *
  */
 
@@ -14,12 +13,6 @@ double m_v0,m_t0,m_rn,m_T,m_r0,m_n0,m_b0;
 /*....................................................................*/
 int
 Al03_onFinalizeConfiguration(void){
-//  m_v0 = m_paramDouble["cs"];
-////  m_t0 = m_paramDouble["age"]*31536000e+0; Pur-lease bitch, 365.0 days in the year?
-//  m_t0 = m_paramDouble["age"]*YJULIAN;
-//  m_rn = m_paramDouble["Rn"]*AU;
-//  m_T  = m_paramDouble["T"];
-
   int i;
 
   if(getParamI("cs", &i)) return ML_UNRECOG_PARAM;
