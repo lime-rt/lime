@@ -1001,12 +1001,14 @@ exit(1);
 
 /*....................................................................*/
 void
-readGridWrapper(configInfo *par, struct grid **gp, char ***collPartNames, int *numCollPartRead){
+readGridWrapper(configInfo *par, struct grid **gp, char ***collPartNames\
+  , int *numCollPartRead){
 
   const int numDesiredKwds=3;
   struct keywordType *desiredKwds=malloc(sizeof(struct keywordType)*numDesiredKwds);
   int i,status=0;
   struct gridInfoType gridInfoRead;
+  _Bool densMolColsExists;
 
   i = 0;
   initializeKeyword(&desiredKwds[i]);
@@ -1024,11 +1026,15 @@ readGridWrapper(configInfo *par, struct grid **gp, char ***collPartNames, int *n
   snprintf(desiredKwds[i].keyname, STRLEN_KNAME, "NSOLITER");
 
   status = readGrid(par->gridInFile, &gridInfoRead, desiredKwds\
-    , numDesiredKwds, gp, collPartNames, numCollPartRead, &(par->dataFlags));
+    , numDesiredKwds, gp, collPartNames, numCollPartRead\
+    , &(par->dataFlags), &densMolColsExists);
 
   par->nSolveItersDone = desiredKwds[2].intValue;
 
   sanityCheckOfRead(status, par, gridInfoRead);
+
+  if(gridInfoRead.nSpecies>0)
+    par->useAbun = !densMolColsExists;
 
   par->radius          = desiredKwds[0].doubleValue;
   par->minScale        = desiredKwds[1].doubleValue;

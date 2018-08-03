@@ -1212,7 +1212,6 @@ Note that the calling routine needs to free gp, firstNearNeigh and collPartNames
       free(abunm);
     }
 
-//    par->useAbun = !densMolColsExists;
     (*dataFlags) |= (1 << DS_bit_abundance);
   }
 
