@@ -149,9 +149,12 @@ This deals with four user-settable list parameters which relate to collision par
     par->collPartIds = realloc(par->collPartIds, sizeof(*(par->collPartIds))*par->numDensities);
   }
 
+  if(!silent && !par->useAbun && numUserSetNMWs>0)
+    warning("You only need to set par->nMolWeights if you have provided an abundance function.");
+
   /* Check if we have either 0 par->nMolWeights or the same number as the number of density values.
   */
-  if(numUserSetNMWs != par->numDensities){
+  if(par->useAbun && numUserSetNMWs != par->numDensities){
     free(par->nMolWeights);
     par->nMolWeights = NULL;
     /* Note that in the present case we will (for a line-emission image) look for the collision partners listed in the moldatfiles and set par->nMolWeights from them. */
@@ -236,7 +239,7 @@ This deals with four user-settable list parameters which relate to collision par
     free(uniqueCPIds);
   }
 
-  if(numUserSetNMWs>0){
+  if(par->useAbun && numUserSetNMWs>0){
     /* Check that they do not sum to zero.
     */
     sum = 0.0;
@@ -320,40 +323,42 @@ To preserve backward compatibility I am going to try to make the same guesses as
 #endif
     }
 
-    if(par->nMolWeights==NULL){
-      /*
+    if(par->useAbun){
+      if(par->nMolWeights==NULL){
+        /*
 The same backward-compatible guesses are made here as for par->collPartIds in the foregoing section of code. I've omitted warnings and errors because they have already been issued during the treatment of par->collPartIds.
-      */
-      if(numUniqueCollParts==1){
-        if(allUniqueCollPartIds[0]==CP_H2 || allUniqueCollPartIds[0]==CP_p_H2 || allUniqueCollPartIds[0]==CP_o_H2){
+        */
+        if(numUniqueCollParts==1){
+          if(allUniqueCollPartIds[0]==CP_H2 || allUniqueCollPartIds[0]==CP_p_H2 || allUniqueCollPartIds[0]==CP_o_H2){
+            par->nMolWeights = malloc(sizeof(double)*par->numDensities);
+            par->nMolWeights[0] = 1.0;
+          }
+
+        }else if(numUniqueCollParts==2){
+          if((allUniqueCollPartIds[0]==CP_p_H2 && allUniqueCollPartIds[1]==CP_o_H2)\
+          || (allUniqueCollPartIds[1]==CP_p_H2 && allUniqueCollPartIds[0]==CP_o_H2)){
+            par->nMolWeights = malloc(sizeof(double)*par->numDensities);
+            for(i=0;i<par->numDensities;i++) /* At this point par->numDensities can be only ==1 (previously signalled via 'flag') or ==2. */
+              par->nMolWeights[i] = 1.0;
+          }
+
+        }else if(numUniqueCollParts==par->numDensities){ /* At this point, numUniqueCollParts must be >2. */
           par->nMolWeights = malloc(sizeof(double)*par->numDensities);
+          for(i=0;i<par->numDensities;i++)
+            par->nMolWeights[i] = 0.0;
           par->nMolWeights[0] = 1.0;
+          par->nMolWeights[1] = 1.0;
         }
 
-      }else if(numUniqueCollParts==2){
-        if((allUniqueCollPartIds[0]==CP_p_H2 && allUniqueCollPartIds[1]==CP_o_H2)\
-        || (allUniqueCollPartIds[1]==CP_p_H2 && allUniqueCollPartIds[0]==CP_o_H2)){
-          par->nMolWeights = malloc(sizeof(double)*par->numDensities);
-          for(i=0;i<par->numDensities;i++) /* At this point par->numDensities can be only ==1 (previously signalled via 'flag') or ==2. */
-            par->nMolWeights[i] = 1.0;
+      }else{
+        if(!silent){
+          warning("Your choices for par.nMolWeights have been let stand, but it");
+          warning("is risky to set them without also setting par.collPartIds.");
         }
-
-      }else if(numUniqueCollParts==par->numDensities){ /* At this point, numUniqueCollParts must be >2. */
-        par->nMolWeights = malloc(sizeof(double)*par->numDensities);
-        for(i=0;i<par->numDensities;i++)
-          par->nMolWeights[i] = 0.0;
-        par->nMolWeights[0] = 1.0;
-        par->nMolWeights[1] = 1.0;
-      }
-
-    }else{
-      if(!silent){
-        warning("Your choices for par.nMolWeights have been let stand, but it");
-        warning("is risky to set them without also setting par.collPartIds.");
       }
     }
 
-  }else if(par->nMolWeights==NULL){ /* We get here only if the user has not supplied these values (or not supplied the right number of them) in their model.c. */
+  }else if(par->useAbun && par->nMolWeights==NULL){ /* We get here only if the user has not supplied these values (or not supplied the right number of them) in their model.c. */
     if(par->numDensities==1){
       if(par->collPartIds[0]==CP_H2 || par->collPartIds[0]==CP_p_H2 || par->collPartIds[0]==CP_o_H2){
         par->nMolWeights = malloc(sizeof(double)*par->numDensities);
