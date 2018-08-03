@@ -45,7 +45,7 @@ Where column names contain a lower-case letter, this is a placeholder for a digi
 1                    FIRST_NN   V	# See explanation in section 3 below.
 2                    VELj       D	# 1 col per jth dimension.
 3                    DENSITYn   D	# 1 per nth collision partner.
-4                    ABUNMOLm   E	# 1 per mth molecular species.
+4                    DENSMOLm   E	# 1 per mth molecular species. (Note that we will allow reading of ABUNMOLm for backwards compatibility.)
 5                    TURBDPLR   E	# Given Gaussian lineshape exp(-v^2/[B^2 + 2*k*T/m]), this is B.
 6                    TEMPKNTC   E	# From t[0].
 6                    TEMPDUST   E	# From t[1].
@@ -327,7 +327,7 @@ NOTES:
   /* should rather have a vector column? */
   for(i_us=0;i_us<gridInfo.nSpecies;i_us++){
     colI++;
-    sprintf((*allColNames)[colI], "ABUNMOL%d", (int)i_us+1);
+    sprintf((*allColNames)[colI], "DENSMOL%d", (int)i_us+1);
     if(bitIsSet(dataFlags, DS_bit_abundance)){
       colToWriteI++;
       (*allColNumbers)[colI] = colToWriteI;
@@ -608,17 +608,17 @@ Note that data types in all capitals are defined in fitsio.h.
   _Bool *sink=NULL;/* Probably should be char* but this seems to work. */
   unsigned short *numNeigh=NULL,i_us,localNumCollPart;
   double *velj=NULL,*densn=NULL;
-  float *dopb=NULL, *t=NULL, *abunm=NULL, *bField=NULL;
+  float *dopb=NULL,*t=NULL,*densm=NULL,*bField=NULL;
   int colI=0,i,di,maxNumCols,numValidCols,numKwds;
   char message[80];
   char colName[STRLEN_KCHAR];
   char **allColNames=NULL,**colUnits=NULL;
-  int *allColNumbers=NULL, *colDataTypes=NULL;
+  int *allColNumbers=NULL,*colDataTypes=NULL;
   hid_t hduGroup,dataGroup;
   herr_t status=0;
   struct keywordType *kwds=NULL;
 
-  (void)status; // just to stop compiler warnings because this return value is currently unused.
+  (void)status; /* just to stop compiler warnings because this return value is currently unused. */
 
   if(!allBitsSet(dataFlags, DS_mask_x)){
     if(!silent) bail_out("Data stage indicates no grid data!");
@@ -737,13 +737,13 @@ Ok we have a bit of a tricky situation here in that the number of columns we wri
     free(densn);
   }
 
-  /* Check if first ABUNMOL column has info:
+  /* Check if first DENSMOL column has info:
   */
-  colI = allColNumbers[_getColIndex(allColNames, maxNumCols, "ABUNMOL1")];
+  colI = allColNumbers[_getColIndex(allColNames, maxNumCols, "DENSMOL1")];
   if(colI>0){
-    abunm = malloc(sizeof(*abunm)*totalNumGridPoints);
+    densm = malloc(sizeof(*densm)*totalNumGridPoints);
     for(i_us=0;i_us<gridInfo.nSpecies;i_us++){
-      sprintf(colName, "ABUNMOL%d", (int)i_us+1);
+      sprintf(colName, "DENSMOL%d", (int)i_us+1);
       colI = allColNumbers[_getColIndex(allColNames, maxNumCols, colName)];
       if(colI<=0){
         if(!silent) bail_out("This should not occur, it is some sort of bug.");
@@ -751,10 +751,10 @@ Ok we have a bit of a tricky situation here in that the number of columns we wri
       }
 
       for(i_ui=0;i_ui<totalNumGridPoints;i_ui++)
-        abunm[i_ui] = (float)gp[i_ui].mol[i_us].abun;
-      status = _writeColumnToHDF5_float(dataGroup, colI, colName, colUnits[colI-1], totalNumGridPoints, abunm);
+        densm[i_ui] = (float)gp[i_ui].mol[i_us].nmol;
+      status = _writeColumnToHDF5_float(dataGroup, colI, colName, colUnits[colI-1], totalNumGridPoints, densm);
     }
-    free(abunm);
+    free(densm);
   }
 
   colI = allColNumbers[_getColIndex(allColNames, maxNumCols, "TURBDPLR")];
@@ -899,7 +899,7 @@ Note that data types in all capitals are defined in fitsio.h.
   herr_t status=0;
   struct keywordType *kwds=NULL;
 
-  (void)status; // just to stop compiler warnings because this return value is currently unused.
+  (void)status; /* just to stop compiler warnings because this return value is currently unused. */
 
   if (nnLinks==NULL){
     if(!silent) bail_out("No link or near-neighbour data!");
@@ -991,7 +991,7 @@ Notes:
   herr_t status=0;
   struct keywordType *kwds=NULL;
 
-  (void)status; // just to stop compiler warnings because this return value is currently unused.
+  (void)status; /* just to stop compiler warnings because this return value is currently unused. */
 
   if(links==NULL){
     if(!silent) bail_out("No link data!");
@@ -1130,7 +1130,7 @@ Note that data types in all capitals are defined in fitsio.h.
   unsigned int i_ui;
   struct keywordType *kwds=NULL;
 
-  (void)status; // just to stop compiler warnings because this return value is currently unused.
+  (void)status; /* just to stop compiler warnings because this return value is currently unused. */
 
   sprintf(groupName, "LEVEL_POPS_%d", (int)speciesI+1);
 
@@ -1287,7 +1287,7 @@ readKeywordsFromHDF5(hid_t parent, struct keywordType *kwds\
   hsize_t lenStr;
   char message[80];
 
-  (void)status; // just to stop compiler warnings because this return value is currently unused.
+  (void)status; /* just to stop compiler warnings because this return value is currently unused. */
 
   for(i=0;i<numKeywords;i++){
     kwdAttr = H5Aopen(parent, kwds[i].keyname, H5P_DEFAULT);
@@ -1328,10 +1328,9 @@ readKeywordsFromHDF5(hid_t parent, struct keywordType *kwds\
 
 /*....................................................................*/
 void
-readGridExtFromHDF5(hid_t file\
-  , struct gridInfoType *gridInfoRead, struct grid **gp\
-  , unsigned int **firstNearNeigh, char ***collPartNames\
-  , int *numCollPartRead, int *dataFlags){
+readGridExtFromHDF5(hid_t file, struct gridInfoType *gridInfoRead\
+  , struct grid **gp, unsigned int **firstNearNeigh, char ***collPartNames\
+  , int *numCollPartRead, int *dataFlags, _Bool *densMolColsExists){
   /*
 The present function mallocs 'gp' and sets defaults for all the simple or first-level struct elements.
 
@@ -1352,10 +1351,10 @@ Note that the calling routine needs to free gp, firstNearNeigh and collPartNames
   short *sink=NULL;
   unsigned short *numNeigh=NULL, i_us;
   double *velj=NULL,*densn=NULL;
-  float *abunm=NULL,*dopb=NULL,*t=NULL,*bField=NULL;
+  float *abunm=NULL,*densm=NULL,*dopb=NULL,*t=NULL,*bField=NULL;
   htri_t myi;
 
-  (void)status; // just to stop compiler warnings because this return value is currently unused.
+  (void)status; /* just to stop compiler warnings because this return value is currently unused. */
 
   hduGroup = H5Gopen(file, "GRID", H5P_DEFAULT);
   dataGroup = H5Gopen(hduGroup, "columns", H5P_DEFAULT);
@@ -1396,9 +1395,20 @@ Note that the calling routine needs to free gp, firstNearNeigh and collPartNames
     return; /* I.e. with dataFlags left unchanged. */
   }
 
-  /* Count the numbers of ABUNMOL columns:
+  /* Find out if the user has supplied ABUNMOLn or DENSMOLn columns.
   */
-  gridInfoRead->nSpecies = (unsigned short)countDataSetNamePlusInt(dataGroup, "ABUNMOL");
+  *densMolColsExists = FALSE;
+  dset = H5Dopen(dataGroup, "DENSMOL1", H5P_DEFAULT);
+  if(dset==0)
+    *densMolColsExists = TRUE;
+  status = H5Dclose(dset);
+
+  /* Count the numbers of ABUNMOLn/DENSMOLn columns to get the number of species:
+  */
+  if(*densMolColsExists)
+    gridInfoRead->nSpecies = (unsigned short)countDataSetNamePlusInt(dataGroup, "DENSMOL");
+  else
+    gridInfoRead->nSpecies = (unsigned short)countDataSetNamePlusInt(dataGroup, "ABUNMOL");
   mallocAndSetDefaultGrid(gp, (size_t)numGridCells, gridInfoRead->nSpecies);
 
   /* Read the columns.
@@ -1409,9 +1419,8 @@ Note that the calling routine needs to free gp, firstNearNeigh and collPartNames
   status = H5Dclose(dset);
 //*** check status?
 
-  for(i_ui=0;i_ui<numGridCells;i_ui++) {
+  for(i_ui=0;i_ui<numGridCells;i_ui++)
     (*gp)[i_ui].id = (int)ids[i_ui];
-  }
   free(ids);
 
   gridInfoRead->nDims = (unsigned short)countDataSetNamePlusInt(dataGroup, "X");
@@ -1566,24 +1575,45 @@ Note that the calling routine needs to free gp, firstNearNeigh and collPartNames
   }
 
   if(gridInfoRead->nSpecies > 0){
-    /* Read the ABUNMOL columns:
-    */
-    abunm = malloc(sizeof(*abunm)*numGridCells);
-    for(i_us=0;i_us<gridInfoRead->nSpecies;i_us++){
-      sprintf(datasetName, "ABUNMOL%d", (int)i_us+1);
-      dset = H5Dopen(dataGroup, datasetName, H5P_DEFAULT);
+    if(*densMolColsExists){
+      /* Read the DENSMOL columns:
+      */
+      densm = malloc(sizeof(*densm)*numGridCells);
+      for(i_us=0;i_us<gridInfoRead->nSpecies;i_us++){
+        sprintf(datasetName, "DENSMOL%d", (int)i_us+1);
+        dset = H5Dopen(dataGroup, datasetName, H5P_DEFAULT);
 
-      status = H5Dread(dset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, abunm);
+        status = H5Dread(dset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, densm);
 //*** check status?
-      status = H5Dclose(dset);
+        status = H5Dclose(dset);
 //*** check status?
 
-      for(i_ui=0;i_ui<numGridCells;i_ui++) {
-        (*gp)[i_ui].mol[i_us].abun = (double)abunm[i_ui];
+        for(i_ui=0;i_ui<numGridCells;i_ui++) {
+          (*gp)[i_ui].mol[i_us].nmol = (double)densm[i_ui];
+        }
       }
-    }
-    free(abunm);
+      free(densm);
+    }else{
+      /* Read the ABUNMOL columns:
+      */
+      abunm = malloc(sizeof(*abunm)*numGridCells);
+      for(i_us=0;i_us<gridInfoRead->nSpecies;i_us++){
+        sprintf(datasetName, "ABUNMOL%d", (int)i_us+1);
+        dset = H5Dopen(dataGroup, datasetName, H5P_DEFAULT);
 
+        status = H5Dread(dset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, abunm);
+//*** check status?
+        status = H5Dclose(dset);
+//*** check status?
+
+        for(i_ui=0;i_ui<numGridCells;i_ui++) {
+          (*gp)[i_ui].mol[i_us].abun = (double)abunm[i_ui];
+        }
+      }
+      free(abunm);
+    }
+
+//    par->useAbun = !densMolColsExists;
     (*dataFlags) |= (1 << DS_bit_abundance);
   }
 

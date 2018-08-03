@@ -47,7 +47,7 @@ Where column names contain a lower-case letter, this is a placeholder for a digi
 1		FIRST_NN	V	# See explanation in section 3 below.
 2		VELj		D	# 1 col per jth dimension.
 3		DENSITYn	D	# 1 per nth collision partner.
-4		ABUNMOLm	E	# 1 per mth molecular species.
+4		DENSMOLm	E	# 1 per mth molecular species. (Note that we will allow reading of ABUNMOLm for backwards compatibility.)
 5		TURBDPLR	E	# Given Gaussian lineshape exp(-v^2/[B^2 + 2*k*T/m]), this is B.
 6		TEMPKNTC	E	# From t[0].
 6		TEMPDUST	E	# From t[1].
@@ -285,10 +285,10 @@ NOTES:
     dataTypeAllCols[colI] = TDOUBLE;
   }
 
-  /* should rather have a vector column? */
+  /* Should rather have a vector column? */
   for(i_us=0;i_us<gridInfo.nSpecies;i_us++){
     colI++;
-    sprintf((*allColNames)[colI], "ABUNMOL%d", (int)i_us+1);
+    sprintf((*allColNames)[colI], "DENSMOL%d", (int)i_us+1);
     if(bitIsSet(dataFlags, DS_bit_abundance)){
       colToWriteI++;
       (*allColNumbers)[colI] = colToWriteI;
@@ -409,7 +409,7 @@ Note that data types in all capitals are defined in fitsio.h.
   _Bool *sink=NULL;/* Probably should be char* but this seems to work. */
   unsigned short *numNeigh=NULL,i_us,localNumCollPart;
   double *velj=NULL,*densn=NULL;
-  float *dopb=NULL, *t=NULL, *abunm=NULL, *bField=NULL;
+  float *dopb=NULL, *t=NULL, *densm=NULL, *bField=NULL;
   int status=0, colI=0, i, di, maxNumCols;
   LONGLONG firstRow=1, firstElem=1;
   char genericComment[80];
@@ -537,13 +537,13 @@ Ok we have a bit of a tricky situation here in that the number of columns we wri
     free(densn);
   }
 
-  /* Check if first ABUNMOL column has info:
+  /* Check if first DENSMOL column has info:
   */
-  colI = allColNumbers[getColIndex(allColNames, maxNumCols, "ABUNMOL1")];
+  colI = allColNumbers[getColIndex(allColNames, maxNumCols, "DENSMOL1")];
   if(colI>0){
-    abunm = malloc(sizeof(*abunm)*totalNumGridPoints);
+    densm = malloc(sizeof(*densm)*totalNumGridPoints);
     for(i_us=0;i_us<gridInfo.nSpecies;i_us++){
-      sprintf(colName, "ABUNMOL%d", (int)i_us+1);
+      sprintf(colName, "DENSMOL%d", (int)i_us+1);
       colI = allColNumbers[getColIndex(allColNames, maxNumCols, colName)];
       if(colI<=0){
         if(!silent) bail_out("This should not occur, it is some sort of bug.");
@@ -551,11 +551,11 @@ Ok we have a bit of a tricky situation here in that the number of columns we wri
       }
 
       for(i_ui=0;i_ui<totalNumGridPoints;i_ui++)
-        abunm[i_ui] = (float)gp[i_ui].mol[i_us].abun;
-      fits_write_col(fptr, colDataTypes[colI-1], colI, firstRow, firstElem, (LONGLONG)totalNumGridPoints, abunm, &status);
+        densm[i_ui] = (float)gp[i_ui].mol[i_us].nmol;
+      fits_write_col(fptr, colDataTypes[colI-1], colI, firstRow, firstElem, (LONGLONG)totalNumGridPoints, densm, &status);
       processFitsError(status);
     }
-    free(abunm);
+    free(densm);
   }
 
   colI = allColNumbers[getColIndex(allColNames, maxNumCols, "TURBDPLR")];
@@ -944,10 +944,9 @@ readKeywordsFromFITS(fitsfile *fptr, struct keywordType *kwds\
 
 /*....................................................................*/
 void
-readGridExtFromFITS(fitsfile *fptr\
-  , struct gridInfoType *gridInfoRead, struct grid **gp\
-  , unsigned int **firstNearNeigh, char ***collPartNames\
-  , int *numCollPartRead, int *dataFlags){
+readGridExtFromFITS(fitsfile *fptr, struct gridInfoType *gridInfoRead\
+  , struct grid **gp, unsigned int **firstNearNeigh, char ***collPartNames\
+  , int *numCollPartRead, int *dataFlags, _Bool *densMolColsExists){
   /*
 The present function mallocs 'gp' and sets defaults for all the simple or first-level struct elements.
 
@@ -956,17 +955,17 @@ If COLLPARn keywords are found in the GRID extension header then collPartNames i
 Note that the calling routine needs to free gp, firstNearNeigh and collPartNames after use.
   */
 
-  LONGLONG numGridCells, firstRow=1, firstElem=1, i_LL;
-  int status=0, colNum, anynul=0, i;
+  LONGLONG numGridCells,firstRow=1,firstElem=1,i_LL;
+  int status=0,colNum,anynul=0,i;
   char colName[20];
   char genericKwd[9];
   char message[STR_LEN_0];
   unsigned int *ids=NULL;
   double *xj=NULL;
   _Bool *sink=NULL;/* Probably should be char* but this seems to work. */
-  unsigned short *numNeigh=NULL, i_us;
-  double *velj=NULL, *densn=NULL;
-  float *dopb=NULL, *t=NULL, *abunm=NULL, *bField=NULL;
+  unsigned short *numNeigh=NULL,i_us;
+  double *velj=NULL,*densn=NULL;
+  float *dopb=NULL,*t=NULL,*abunm=NULL,*densm=NULL,*bField=NULL;
 
   /* Go to the GRID extension.
   */
@@ -982,9 +981,21 @@ Note that the calling routine needs to free gp, firstNearNeigh and collPartNames
     return; /* I.e. with dataFlags left unchanged. */
   }
 
-  /* Count the numbers of ABUNMOL columns to get the number of species:
+  /* Find out if the user has supplied ABUNMOLn or DENSMOLn columns.
   */
-  gridInfoRead->nSpecies = (unsigned short)countColsBasePlusInt(fptr, "ABUNMOL");
+  *densMolColsExists = FALSE;
+  fits_get_colnum(fptr, CASEINSEN, "DENSMOL1", &colNum, &status);
+  if(status==0)
+    *densMolColsExists = TRUE;
+  else
+    processFitsError(status);
+
+  /* Count the numbers of ABUNMOLn/DENSMOLn columns to get the number of species:
+  */
+  if(*densMolColsExists)
+    gridInfoRead->nSpecies = (unsigned short)countColsBasePlusInt(fptr, "DENSMOL");
+  else
+    gridInfoRead->nSpecies = (unsigned short)countColsBasePlusInt(fptr, "ABUNMOL");
   mallocAndSetDefaultGrid(gp, (size_t)numGridCells, gridInfoRead->nSpecies);
 
   /* Read the columns.
@@ -1144,23 +1155,43 @@ Note that the calling routine needs to free gp, firstNearNeigh and collPartNames
   }
 
   if(gridInfoRead->nSpecies > 0){
-    /* Read the ABUNMOL columns:
-    */
-    abunm = malloc(sizeof(*abunm)*numGridCells);
-    for(i_us=0;i_us<gridInfoRead->nSpecies;i_us++){
-      sprintf(colName, "ABUNMOL%d", (int)i_us+1);
-      fits_get_colnum(fptr, CASEINSEN, colName, &colNum, &status);
-      processFitsError(status);
+    if(*densMolColsExists){
+      /* Read the DENSMOL columns:
+      */
+      densm = malloc(sizeof(*densm)*numGridCells);
+      for(i_us=0;i_us<gridInfoRead->nSpecies;i_us++){
+        sprintf(colName, "DENSMOL%d", (int)i_us+1);
+        fits_get_colnum(fptr, CASEINSEN, colName, &colNum, &status);
+        processFitsError(status);
 
-      fits_read_col(fptr, TFLOAT, colNum, firstRow, firstElem, numGridCells, 0, abunm, &anynul, &status);
-      processFitsError(status);
+        fits_read_col(fptr, TFLOAT, colNum, firstRow, firstElem, numGridCells, 0, densm, &anynul, &status);
+        processFitsError(status);
 
-      for(i_LL=0;i_LL<numGridCells;i_LL++) {
-        (*gp)[i_LL].mol[i_us].abun = (double)abunm[i_LL];
+        for(i_LL=0;i_LL<numGridCells;i_LL++) {
+          (*gp)[i_LL].mol[i_us].nmol = (double)densm[i_LL];
+        }
       }
-    }
-    free(abunm);
+      free(densm);
+    }else{
+      /* Read the ABUNMOL columns:
+      */
+      abunm = malloc(sizeof(*abunm)*numGridCells);
+      for(i_us=0;i_us<gridInfoRead->nSpecies;i_us++){
+        sprintf(colName, "ABUNMOL%d", (int)i_us+1);
+        fits_get_colnum(fptr, CASEINSEN, colName, &colNum, &status);
+        processFitsError(status);
 
+        fits_read_col(fptr, TFLOAT, colNum, firstRow, firstElem, numGridCells, 0, abunm, &anynul, &status);
+        processFitsError(status);
+
+        for(i_LL=0;i_LL<numGridCells;i_LL++) {
+          (*gp)[i_LL].mol[i_us].abun = (double)abunm[i_LL];
+        }
+      }
+      free(abunm);
+    }
+
+//    par->useAbun = !densMolColsExists;
     (*dataFlags) |= (1 << DS_bit_abundance);
   }
 
