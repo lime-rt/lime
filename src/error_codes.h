@@ -2,8 +2,7 @@
  *  error_codes.h
  *  This file is part of LIME, the versatile line modeling engine
  *
- *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015-2017 The LIME development team
+ *  See ../COPYRIGHT
  *
  */
 
@@ -41,10 +40,11 @@
 #define CA_LIST_ITEM_READ_FAIL       25
 #define CA_LISTLIST_ITEM_READ_FAIL   26
 #define CA_TYPES_DONT_MATCH          27
+#define CA_ILLEGAL_PAR               28
 
-#define RPI_ATTR_READ_FAIL           28
-#define RPI_LIST_ITEM_READ_FAIL      29
-#define RPI_MALLOC_FAIL              30
+#define RPI_ATTR_READ_FAIL           29
+#define RPI_LIST_ITEM_READ_FAIL      30
+#define RPI_MALLOC_FAIL              31
 
 
 #endif /* ERROR_CODES_H */

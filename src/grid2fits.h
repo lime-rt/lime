@@ -2,8 +2,7 @@
  *  grid2fits.h
  *  This file is part of LIME, the versatile line modeling engine
  *
- *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015-2017 The LIME development team
+ *  See ../COPYRIGHT
  *
 
 NOTE! This file is not stand-alone, in needs to be included in an environment which defines (on top of the usual types) the following data types:

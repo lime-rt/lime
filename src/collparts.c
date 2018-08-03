@@ -2,10 +2,8 @@
  *  collparts.c
  *  This file is part of LIME, the versatile line modeling engine
  *
- *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015-2017 The LIME development team
+ *  See ../COPYRIGHT
  *
-TODO:
 
 Some explanation:
 =================
@@ -259,7 +257,9 @@ allUniqueCollPartIds is the list of all unique CP ID integers detected in the su
   */
   double lamdaMolWeights[] = {2.0159,2.0159,2.0159,5.486e-4,1.00794,4.0026,1.00739};
   char *lamdaNames[] = {"H2","p-H2","o-H2","electrons","H","He","H+"};
-  char message[STR_LEN_0];
+#ifndef NCURSES
+  char message[STR_LEN_0+1];
+#endif
   int i;
 
   if(par->collPartIds==NULL){ /* For this to happen means that the user set neither par->collPartIds nor par->collPartNames. */
@@ -308,15 +308,15 @@ To preserve backward compatibility I am going to try to make the same guesses as
     }
 
     if(!silent) {
-#ifdef NO_NCURSES
+#ifdef NCURSES
+      printMessage("User didn't set par.collPartIds, I'm having to guess them.");
+#else
       printMessage("User didn't set par.collPartIds, I'm having to guess them. Guessed:");
       for(i=0;i<par->numDensities;i++){
         snprintf(message, STR_LEN_0, "  Collision partner %d assigned code %d (=%s)\n", i, par->collPartIds[i], lamdaNames[par->collPartIds[i]-1]);
         printMessage(message);
       }
       printMessage("\n");
-#else
-      printMessage("User didn't set par.collPartIds, I'm having to guess them.");
 #endif
     }
 

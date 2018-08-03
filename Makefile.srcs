@@ -16,6 +16,7 @@ CORESOURCES = \
 	src/grid.c\
 	src/gridio.c\
 	src/grid_aux.c\
+	src/init.c\
 	src/molinit.c\
 	src/popsin.c\
 	src/popsout.c\
@@ -33,8 +34,10 @@ CORESOURCES = \
 
 STDSOURCES = \
 	src/lime_defaults.c\
-	src/main.c\
-	src/messages.c
+	src/main.c
+
+MSG_SOURCE = src/messages.c
+CUR_SOURCE = src/curses_msg.c
 
 FITSSOURCES = \
 	src/grid2fits.c
@@ -46,6 +49,7 @@ CONVSOURCES = \
 	src/aux.c\
 	src/collparts.c\
 	src/defaults.c\
+	src/dust.c\
 	src/frees.c\
 	src/gridconvert.c\
 	src/gridio.c\
@@ -64,28 +68,43 @@ PYSOURCES = \
 	src/py_models.c\
 	src/py_utils.c
 
-CRSOURCES = \
+MLCORESOURCES = \
+	src/ml_models.c\
+	src/ml_funcs.c\
+	src/ml_recipes/model_Al03.c\
+	src/ml_recipes/model_BoEb56.c\
+	src/ml_recipes/model_CG97.c\
+	src/ml_recipes/model_DDN01.c\
+	src/ml_recipes/model_LiSh96.c\
+	src/ml_recipes/model_Ma88.c\
+	src/ml_recipes/model_Me09.c\
+	src/ml_recipes/model_Shu77.c\
+	src/ml_recipes/model_Ul76.c
+
+MLSOURCES = \
 	src/aux.c\
-	src/casaray.c\
-	src/casa_messages.c\
-	src/collparts.c\
 	src/defaults.c\
-	src/dust.c\
-	src/fastexp.c\
-	src/frees.c\
-	src/gridio.c\
-	src/grid_aux.c\
-	src/lime_defaults.c\
-	src/molinit.c\
-	src/py_utils.c\
-	src/raythrucells.c\
-	src/raytrace.c\
-	src/run_new.c\
-	src/sourcefunc.c\
-	src/tcpsocket.c\
-	src/writefits.c
+	src/messages.c\
+	src/ml_aux.c\
+	src/ml_main.c\
+	src/py_messages.c\
+	src/py_utils.c
+
+LLSOURCES = \
+	src/ll_main.c\
+	src/messages.c\
+	src/py_utils.c
+
+CLSOURCES = \
+	src/casalime.c\
+	src/messages.c\
+	src/ml_aux.c\
+	src/py_messages.c\
+	src/py_utils.c
+
 
 COREINCLUDES = \
+	src/aux.h\
 	src/collparts.h\
 	src/constants.h\
 	src/defaults.h\
@@ -94,6 +113,7 @@ COREINCLUDES = \
 	src/inpars.h\
 	src/lime_config.h\
 	src/lime.h\
+	src/messages.h\
 	src/raythrucells.h\
 	src/tree_random.h\
 	src/ufunc_types.h
@@ -104,15 +124,14 @@ FITSINCLUDES =\
 HDF5INCLUDES = \
 	src/grid2hdf5.h
 
-CONVINCLUDES = \
-	src/dims.h\
-	src/collparts.h\
-	src/gridio.h\
-	src/inpars.h\
-	src/lime.h
-
 PYINCLUDES = \
 	src/error_codes.h\
 	src/py_lime.h\
 	src/py_utils.h
+
+MLINCLUDES = \
+	src/ml_funcs.h\
+	src/ml_models.h\
+	src/ml_recipes/ml_recipes.h\
+	src/ml_types.h
 

@@ -2,8 +2,7 @@
  *  main.c
  *  This file is part of LIME, the versatile line modeling engine
  *
- *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015-2017 The LIME development team
+ *  See ../COPYRIGHT
  *
  */
 
@@ -14,6 +13,8 @@ int silent = 1;
 #else
 int silent = 0;
 #endif
+
+int defaultFuncFlags = 0;
 
 /*....................................................................*/
 int

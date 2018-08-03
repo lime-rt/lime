@@ -2,13 +2,11 @@
  *  smooth.c
  *  This file is part of LIME, the versatile line modeling engine
  *
- *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015-2017 The LIME development team
+ *  See ../COPYRIGHT
  *
  */
 
 #include "lime.h"
-
 
 /* Based on Lloyds Algorithm (Lloyd, S. IEEE, 1982) */	
 void
@@ -21,7 +19,9 @@ smooth(configInfo *par, struct grid *gp){
   double dist;		/* Distance to a neighbor					*/
   struct cell *dc=NULL; /* Not used at present. */
   unsigned long numCells;
+#ifndef NO_PROGBARS
   double progFraction;
+#endif
 
   for(sg=0;sg<N_SMOOTH_ITERS;sg++){
     delaunay(DIM, gp, (unsigned long)par->ncell, 0, 0, &dc, &numCells);
@@ -73,8 +73,10 @@ smooth(configInfo *par, struct grid *gp){
       }
     }
 
+#ifndef NO_PROGBARS
     progFraction = (double)(sg+1)/(double)N_SMOOTH_ITERS;
     if(!silent) progressbar(progFraction, 5);
+#endif
     free(dc);
   }
 }

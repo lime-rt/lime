@@ -2,11 +2,10 @@
  *  solver.c
  *  This file is part of LIME, the versatile line modeling engine
  *
- *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015-2017 The LIME development team
+ *  See ../COPYRIGHT
  *
 TODO:
-  - The test to run calculateJBar() etc in levelPops just tests dens[0]. This is a bit sloppy.
+  - The test to run _calculateJBar() etc in levelPops just tests dens[0]. This is a bit sloppy.
  */
 
 #include "lime.h"
@@ -42,43 +41,343 @@ struct blendInfo{
 };
 
 /*....................................................................*/
-void calcSourceFn(double dTau, const configInfo *par, double *remnantSnu, double *expDTau){
+int
+_getNextEdge(double *inidir, const int startGi, const int presentGi\
+  , struct grid *gp, const gsl_rng *ran){
   /*
-  The source function S is defined as j_nu/alpha, which is clearly not
-  defined for alpha==0. However S is used in the algorithm only in the
-  term (1-exp[-alpha*ds])*S, which is defined for all values of alpha.
-  The present function calculates this term and returns it in the
-  argument remnantSnu. For values of abs(alpha*ds) less than a pre-
-  calculated cutoff supplied in configInfo, a Taylor approximation is
-  used.
+The idea here is to select for the next grid point, that one which lies closest (with a little randomizing jitter) to the photon track, while requiring the direction of the edge to be in the 'forward' hemisphere of the photon direction.
 
-  Note that the same cutoff condition holds for replacement of
-  exp(-dTau) by its Taylor expansion to 3rd order.
+Note that this is called from within the multi-threaded block.
+  */
+  int i,ni,niOfSmallest=-1,niOfNextSmallest=-1;
+  double dirCos,distAlongTrack,dirFromStart[3],coord,distToTrackSquared,smallest=0.0,nextSmallest=0.0;
+  const static double scatterReduction = 0.4;
+  /*
+This affects the ratio of N_2/N_1, where N_2 is the number of times the edge giving the 2nd-smallest distance from the photon track is chosen and N_1 ditto the smallest. Some ratio values obtained from various values of scatterReduction:
 
-  Note that this is called from within the multi-threaded block.
+	scatterReduction	<N_2/N_1>
+		1.0		  0.42
+		0.5		  0.75
+		0.4		  0.90
+		0.2		  1.52
+
+Note that the equivalent ratio value produced by the 1.6 code was 0.91.
   */
 
-#ifdef FASTEXP
-  *expDTau = FastExp(dTau);
-  if (fabs(dTau)<par->taylorCutoff){
-    *remnantSnu = 1. - dTau*(1. - dTau*(1./3.))*(1./2.);
-  } else {
-    *remnantSnu = (1.-(*expDTau))/dTau;
+  i = 0;
+  for(ni=0;ni<gp[presentGi].numNeigh;ni++){
+    dirCos = dotProduct3D(inidir, gp[presentGi].dir[ni].xn);
+
+    if(dirCos<=0.0)
+  continue; /* because the edge points in the backward direction. */
+
+    dirFromStart[0] = gp[presentGi].neigh[ni]->x[0] - gp[startGi].x[0];
+    dirFromStart[1] = gp[presentGi].neigh[ni]->x[1] - gp[startGi].x[1];
+    dirFromStart[2] = gp[presentGi].neigh[ni]->x[2] - gp[startGi].x[2];
+    distAlongTrack = dotProduct3D(inidir, dirFromStart);
+
+    coord = dirFromStart[0] - distAlongTrack*inidir[0];
+    distToTrackSquared  = coord*coord;
+    coord = dirFromStart[1] - distAlongTrack*inidir[1];
+    distToTrackSquared += coord*coord;
+    coord = dirFromStart[2] - distAlongTrack*inidir[2];
+    distToTrackSquared += coord*coord;
+
+    if(i==0){
+      smallest = distToTrackSquared;
+      niOfSmallest = ni;
+    }else{
+      if(distToTrackSquared<smallest){
+        nextSmallest = smallest;
+        niOfNextSmallest = niOfSmallest;
+        smallest = distToTrackSquared;
+        niOfSmallest = ni;
+      }else if(i==1 || distToTrackSquared<nextSmallest){
+        nextSmallest = distToTrackSquared;
+        niOfNextSmallest = ni;
+      }
+    }
+
+    i++;
   }
-#else
-  if (fabs(dTau)<par->taylorCutoff){
-    *remnantSnu = 1. - dTau*(1. - dTau*(1./3.))*(1./2.);
-    *expDTau = 1. - dTau*(*remnantSnu);
-  } else {
-    *expDTau = exp(-dTau);
-    *remnantSnu = (1.-(*expDTau))/dTau;
+
+  /* Choose the edge to follow.
+  */
+  if(i>1){ /* then nextSmallest, niOfNextSmallest should exist. */
+    if((smallest + scatterReduction*nextSmallest)*gsl_rng_uniform(ran)<smallest){
+      return niOfNextSmallest;
+    }else{
+      return niOfSmallest;
+    }
+  }else if(i>0){
+    return niOfSmallest;
+  }else{
+    if(!silent)
+      bail_out("Photon propagation error - no valid edges.");
+    exit(1);
   }
-#endif
+}
+
+/*....................................................................*/
+void _calcLineAmpPWLin(struct grid *g, const int id, const int k\
+  , const int molI, const double deltav, double *inidir, double *vfac_in, double *vfac_out){
+  /*
+Note that this is called from within the multi-threaded block.
+  */
+
+  /* convolution of a Gaussian with a box */
+  double binv_this, binv_next, v[5];
+
+  binv_this=g[id].mol[molI].binv;
+  binv_next=(g[id].neigh[k])->mol[molI].binv;
+  v[0]=deltav-dotProduct3D(inidir,g[id].vel);
+  v[1]=deltav-dotProduct3D(inidir,&(g[id].v1[3*k]));
+  v[2]=deltav-dotProduct3D(inidir,&(g[id].v2[3*k]));
+  v[3]=deltav-dotProduct3D(inidir,&(g[id].v3[3*k]));
+  v[4]=deltav-dotProduct3D(inidir,g[id].neigh[k]->vel);
+
+  /* multiplying by the appropriate binv changes from velocity to doppler widths(?) */
+  /* if the values were be no more than 2 erf table bins apart, we just take a single Gaussian */
+
+  /*
+  vfac_out is the lineshape for the part of the edge in the current Voronoi cell,
+  vfac_in is for the part in the next cell
+  */
+
+  if (fabs(v[1]-v[0])*binv_this>(2.0*BIN_WIDTH)) {
+     *vfac_out=0.5*geterf(v[0]*binv_this,v[1]*binv_this);
+  } else *vfac_out=0.5*gaussline(0.5*(v[0]+v[1]),binv_this);
+  if (fabs(v[2]-v[1])*binv_this>(2.0*BIN_WIDTH)) {
+    *vfac_out+=0.5*geterf(v[1]*binv_this,v[2]*binv_this);
+  } else *vfac_out+=0.5*gaussline(0.5*(v[1]+v[2]),binv_this);
+
+  if (fabs(v[3]-v[2])*binv_next>(2.0*BIN_WIDTH)) {
+     *vfac_in=0.5*geterf(v[2]*binv_next,v[3]*binv_next);
+  } else *vfac_in=0.5*gaussline(0.5*(v[2]+v[3]),binv_next);
+  if (fabs(v[4]-v[3])*binv_next>(2.0*BIN_WIDTH)) {
+    *vfac_in+=0.5*geterf(v[3]*binv_next,v[4]*binv_next);
+  } else *vfac_in+=0.5*gaussline(0.5*(v[3]+v[4]),binv_next);
+}
+
+/*....................................................................*/
+void _calcLineAmpLin(struct grid *g, const int id, const int k\
+  , const int molI, const double deltav, double *inidir, double *vfac_in, double *vfac_out){
+  /*
+Note that this is called from within the multi-threaded block.
+  */
+
+  /* convolution of a Gaussian with a box */
+  double binv_this, binv_next, v[3];
+
+  binv_this=g[id].mol[molI].binv;
+  binv_next=(g[id].neigh[k])->mol[molI].binv;
+  v[0]=deltav-dotProduct3D(inidir,g[id].vel);
+  v[2]=deltav-dotProduct3D(inidir,g[id].neigh[k]->vel);
+  v[1]=0.5*(v[0]+v[2]);
+
+  if (fabs(v[1]-v[0])*binv_this>(2.0*BIN_WIDTH)) {
+     *vfac_out=geterf(v[0]*binv_this,v[1]*binv_this);
+  } else *vfac_out+=gaussline(0.5*(v[0]+v[1]),binv_this);
+
+  if (fabs(v[2]-v[1])*binv_next>(2.0*BIN_WIDTH)) {
+     *vfac_in=geterf(v[1]*binv_next,v[2]*binv_next);
+  } else *vfac_in+=gaussline(0.5*(v[1]+v[2]),binv_next);
 }
 
 /*....................................................................*/
 void
-freeMolsWithBlends(struct molWithBlends *mols, const int numMolsWithBlends){
+_calculateJBar(int id, struct grid *gp, molData *md, const gsl_rng *ran\
+  , configInfo *par, const int nlinetot, struct blendInfo blends\
+  , gridPointData *mp, double *halfFirstDs, int *nMaserWarnings){
+  /*
+Note that this is called from within the multi-threaded block.
+  */
+
+  int iphot,iline,here,there,firststep,neighI,numLinks=0;
+  int nextMolWithBlend, nextLineWithBlend, molI, lineI, molJ, lineJ, bi;
+  double segment,vblend_in,vblend_out,dtau,expDTau,ds_in=0.0,ds_out=0.0,pt_theta,pt_z,semiradius;
+  double deltav[par->nSpecies],vfac_in[par->nSpecies],vfac_out[par->nSpecies],vfac_inprev[par->nSpecies];
+  double expTau[nlinetot],inidir[3];
+  double remnantSnu,velProj;
+  char message[STR_LEN_0];
+
+  for(iphot=0;iphot<gp[id].nphot;iphot++){
+    firststep=1;
+    iline = 0;
+    for(molI=0;molI<par->nSpecies;molI++){
+      for(lineI=0;lineI<md[molI].nline;lineI++){
+        mp[molI].phot[lineI+iphot*md[molI].nline]=0.;
+        expTau[iline]=1.;
+        iline++;
+      }
+    }
+
+    /* Choose random initial photon direction (the distribution used here is even over the surface of a sphere of radius 1).
+    */
+    pt_theta=gsl_rng_uniform(ran)*2*M_PI;
+    pt_z=2*gsl_rng_uniform(ran)-1;
+    semiradius = sqrt(1.-pt_z*pt_z);
+    inidir[0]=semiradius*cos(pt_theta);
+    inidir[1]=semiradius*sin(pt_theta);
+    inidir[2]=pt_z;
+
+    /* Choose the photon frequency/velocity offset.
+    */
+    segment=gsl_rng_uniform(ran)-0.5;
+    /*
+    Values of segment should be evenly distributed (considering the
+    entire ensemble of photons) between -0.5 and +0.5.
+    */
+
+    for (molI=0;molI<par->nSpecies;molI++){
+      /* Is factor 4.3=[-2.15,2.15] enough?? */
+      deltav[molI]=4.3*segment*gp[id].mol[molI].dopb+dotProduct3D(inidir,gp[id].vel);
+      /*
+      This is the local (=evaluated at a grid point, not averaged over the local cell) lineshape.
+      We store this for later use in ALI loops.
+      */
+      mp[molI].vfac_loc[iphot]=gaussline(deltav[molI]-dotProduct3D(inidir,gp[id].vel),gp[id].mol[molI].binv);
+    }
+
+    here = gp[id].id;
+
+    /* Photon propagation loop */
+    numLinks=0;
+    while(!gp[here].sink){ /* Testing for sink at loop start is redundant for the first step, since we only start photons from non-sink points, but it makes for simpler code. */
+      numLinks++;
+      if(numLinks>par->ncell){
+        if(!silent){
+          snprintf(message, STR_LEN_0, "Bad grid? Too many links in photon path, point %d photon %d", id, iphot);
+          bail_out(message);
+        }
+exit(1);
+      }
+
+      neighI = _getNextEdge(inidir,id,here,gp,ran);
+
+      there=gp[here].neigh[neighI]->id;
+
+      if(firststep){
+        firststep=0;
+        ds_out=0.5*gp[here].ds[neighI]*dotProduct3D(inidir,gp[here].dir[neighI].xn);
+        halfFirstDs[iphot]=ds_out;
+
+        for(molI=0;molI<par->nSpecies;molI++){
+          if(par->edgeVelsAvailable) {
+            _calcLineAmpPWLin(gp,here,neighI,molI,deltav[molI],inidir,&vfac_in[molI],&vfac_out[molI]);
+         } else
+            _calcLineAmpLin(gp,here,neighI,molI,deltav[molI],inidir,&vfac_in[molI],&vfac_out[molI]);
+
+          mp[molI].vfac[iphot]=vfac_out[molI];
+        }
+        /*
+        Contribution of the local cell to emission and absorption is done in _updateJBar.
+        We only store the vfac for the local cell for use in ALI loops.
+        */
+        here=there;
+    continue;
+      }
+
+      /* If we've got to here, we have progressed beyond the first edge. Length of the new "in" edge is the length of the previous "out".
+      */
+      ds_in=ds_out;
+      ds_out=0.5*gp[here].ds[neighI]*dotProduct3D(inidir,gp[here].dir[neighI].xn);
+
+      for(molI=0;molI<par->nSpecies;molI++){
+        vfac_inprev[molI]=vfac_in[molI];
+        if(par->edgeVelsAvailable)
+          _calcLineAmpPWLin(gp,here,neighI,molI,deltav[molI],inidir,&vfac_in[molI],&vfac_out[molI]);
+        else
+          _calcLineAmpLin(gp,here,neighI,molI,deltav[molI],inidir,&vfac_in[molI],&vfac_out[molI]);
+      }
+
+      nextMolWithBlend = 0;
+      iline = 0;
+      for(molI=0;molI<par->nSpecies;molI++){
+        nextLineWithBlend = 0;
+        for(lineI=0;lineI<md[molI].nline;lineI++){
+          double jnu_line_in=0., jnu_line_out=0., jnu_cont=0., jnu_blend=0.;
+          double alpha_line_in=0., alpha_line_out=0., alpha_cont=0., alpha_blend=0.;
+
+          sourceFunc_line(&md[molI],vfac_inprev[molI],&(gp[here].mol[molI]),lineI,&jnu_line_in,&alpha_line_in);
+          sourceFunc_line(&md[molI],vfac_out[molI],&(gp[here].mol[molI]),lineI,&jnu_line_out,&alpha_line_out);
+          sourceFunc_cont(gp[here].mol[molI].cont[lineI],&jnu_cont,&alpha_cont);
+
+          /* cont and blend could use the same alpha and jnu counter, but maybe it's clearer this way */
+
+          /* Line blending part.
+          */
+          if(par->blend && blends.mols!=NULL && molI==blends.mols[nextMolWithBlend].molI\
+          && lineI==blends.mols[nextMolWithBlend].lines[nextLineWithBlend].lineI){
+
+            for(bi=0;bi<blends.mols[nextMolWithBlend].lines[nextLineWithBlend].numBlends;bi++){
+              molJ  = blends.mols[nextMolWithBlend].lines[nextLineWithBlend].blends[bi].molJ;
+              lineJ = blends.mols[nextMolWithBlend].lines[nextLineWithBlend].blends[bi].lineJ;
+              velProj = deltav[molI] - blends.mols[nextMolWithBlend].lines[nextLineWithBlend].blends[bi].deltaV;
+	      /*  */
+              if(par->edgeVelsAvailable)
+                _calcLineAmpPWLin(gp,here,neighI,molJ,velProj,inidir,&vblend_in,&vblend_out);
+              else
+                _calcLineAmpLin(gp,here,neighI,molJ,velProj,inidir,&vblend_in,&vblend_out);
+
+	      /* we should use also the previous vblend_in, but I don't feel like writing the necessary code now */
+              sourceFunc_line(&md[molJ],vblend_out,&(gp[here].mol[molJ]),lineJ,&jnu_blend,&alpha_blend);
+              /* note that sourceFunc* increment jnu and alpha, they don't overwrite it  */
+            }
+
+            nextLineWithBlend++;
+            if(nextLineWithBlend>=blends.mols[nextMolWithBlend].numLinesWithBlends){
+              nextLineWithBlend = 0;
+              /* The reason for doing this is as follows. Firstly, we only enter the present IF block if molI has at least 1 line which is blended with others; and further, if we have now processed all blended lines for that molecule. Thus no matter what value lineI takes for the present molecule, it won't appear as blends.mols[nextMolWithBlend].lines[i].lineI for any i. Yet we will still test blends.mols[nextMolWithBlend].lines[nextLineWithBlend], thus we want nextLineWithBlend to at least have a sensible value between 0 and blends.mols[nextMolWithBlend].numLinesWithBlends-1. We could set nextLineWithBlend to any number in this range in safety, but zero is simplest. */
+            }
+          }
+          /* End of line blending part */
+
+	  /* as said above, out-in split should be done also for blended lines... */
+
+	  dtau=(alpha_line_out+alpha_cont+alpha_blend)*ds_out;
+          if(dtau < -MAX_NEG_OPT_DEPTH) dtau = -MAX_NEG_OPT_DEPTH;
+          calcSourceFn(dtau, par, &remnantSnu, &expDTau);
+          remnantSnu *= (jnu_line_out+jnu_cont+jnu_blend)*ds_out;
+          mp[molI].phot[lineI+iphot*md[molI].nline]+=expTau[iline]*remnantSnu;
+	  expTau[iline]*=expDTau;
+
+	  dtau=(alpha_line_in+alpha_cont+alpha_blend)*ds_in;
+          if(dtau < -MAX_NEG_OPT_DEPTH) dtau = -MAX_NEG_OPT_DEPTH;
+          calcSourceFn(dtau, par, &remnantSnu, &expDTau);
+          remnantSnu *= (jnu_line_in+jnu_cont+jnu_blend)*ds_in;
+          mp[molI].phot[lineI+iphot*md[molI].nline]+=expTau[iline]*remnantSnu;
+	  expTau[iline]*=expDTau;
+
+          if(expTau[iline] > exp(MAX_NEG_OPT_DEPTH)){
+            (*nMaserWarnings)++;
+            expTau[iline]=exp(MAX_NEG_OPT_DEPTH);
+          }
+
+          iline++;
+        } /* Next line this molecule. */
+
+        if(par->blend && blends.mols!=NULL && molI==blends.mols[nextMolWithBlend].molI)
+          nextMolWithBlend++;
+      }
+
+      here=there;
+    };
+
+    /* Add cmb contribution.
+    */
+    iline = 0;
+    for(molI=0;molI<par->nSpecies;molI++){
+      for(lineI=0;lineI<md[molI].nline;lineI++){
+        mp[molI].phot[lineI+iphot*md[molI].nline]+=expTau[iline]*md[molI].cmb[lineI];
+        iline++;
+      }
+    }
+  }
+}
+/*....................................................................*/
+void
+_freeMolsWithBlends(struct molWithBlends *mols, const int numMolsWithBlends){
   int mi, li;
 
   if(mols != NULL){
@@ -95,7 +394,7 @@ freeMolsWithBlends(struct molWithBlends *mols, const int numMolsWithBlends){
 
 /*....................................................................*/
 void
-freeGridPointData(const int nSpecies, gridPointData *mol){
+_freeGridPointData(const int nSpecies, gridPointData *mol){
   /*
 Note that this is called from within the multi-threaded block.
   */
@@ -111,7 +410,7 @@ Note that this is called from within the multi-threaded block.
 }
 
 /*....................................................................*/
-void lineBlend(molData *m, configInfo *par, struct blendInfo *blends){
+void _lineBlend(molData *m, configInfo *par, struct blendInfo *blends){
   /*
 This obtains information on all the lines of all the radiating species which have other lines within some cutoff velocity separation.
 
@@ -212,7 +511,7 @@ Pointers are indicated by a * before the attribute name and an arrow to the memo
 }
 
 /*....................................................................*/
-void calcGridCollRates(configInfo *par, molData *md, struct grid *gp){
+void _calcGridCollRates(configInfo *par, molData *md, struct grid *gp){
   int i,id,ipart,itrans,itemp,tnint=-1;
   struct cpData part;
   double fac;
@@ -250,7 +549,7 @@ void calcGridCollRates(configInfo *par, molData *md, struct grid *gp){
 }
 
 /*....................................................................*/
-void mallocGridCont(configInfo *par, molData *md, struct grid *gp){
+void _mallocGridCont(configInfo *par, molData *md, struct grid *gp){
   int id,si,li;
 
   for(id=0;id<par->ncell;id++){
@@ -265,7 +564,7 @@ void mallocGridCont(configInfo *par, molData *md, struct grid *gp){
 }
 
 /*....................................................................*/
-void freeGridCont(configInfo *par, struct grid *gp){
+void _freeGridCont(configInfo *par, struct grid *gp){
   int id,si;
 
   for(id=0;id<par->ncell;id++){
@@ -280,7 +579,7 @@ void freeGridCont(configInfo *par, struct grid *gp){
 }
 
 /*....................................................................*/
-void calcGridLinesDustOpacity(configInfo *par, molData *md, double *lamtab\
+void _calcGridLinesDustOpacity(configInfo *par, molData *md, double *lamtab\
   , double *kaptab, const int nEntries, struct grid *gp){
 
   int iline,id,si;
@@ -330,344 +629,8 @@ void calcGridLinesDustOpacity(configInfo *par, molData *md, double *lamtab\
 }
 
 /*....................................................................*/
-int
-getNextEdge(double *inidir, const int startGi, const int presentGi\
-  , struct grid *gp, const gsl_rng *ran){
-  /*
-The idea here is to select for the next grid point, that one which lies closest (with a little randomizing jitter) to the photon track, while requiring the direction of the edge to be in the 'forward' hemisphere of the photon direction.
-
-Note that this is called from within the multi-threaded block.
-  */
-  int i,ni,niOfSmallest=-1,niOfNextSmallest=-1;
-  double dirCos,distAlongTrack,dirFromStart[3],coord,distToTrackSquared,smallest=0.0,nextSmallest=0.0;
-  const static double scatterReduction = 0.4;
-  /*
-This affects the ratio of N_2/N_1, where N_2 is the number of times the edge giving the 2nd-smallest distance from the photon track is chosen and N_1 ditto the smallest. Some ratio values obtained from various values of scatterReduction:
-
-	scatterReduction	<N_2/N_1>
-		1.0		  0.42
-		0.5		  0.75
-		0.4		  0.90
-		0.2		  1.52
-
-Note that the equivalent ratio value produced by the 1.6 code was 0.91.
-  */
-
-  i = 0;
-  for(ni=0;ni<gp[presentGi].numNeigh;ni++){
-    dirCos = dotProduct3D(inidir, gp[presentGi].dir[ni].xn);
-
-    if(dirCos<=0.0)
-  continue; /* because the edge points in the backward direction. */
-
-    dirFromStart[0] = gp[presentGi].neigh[ni]->x[0] - gp[startGi].x[0];
-    dirFromStart[1] = gp[presentGi].neigh[ni]->x[1] - gp[startGi].x[1];
-    dirFromStart[2] = gp[presentGi].neigh[ni]->x[2] - gp[startGi].x[2];
-    distAlongTrack = dotProduct3D(inidir, dirFromStart);
-
-    coord = dirFromStart[0] - distAlongTrack*inidir[0];
-    distToTrackSquared  = coord*coord;
-    coord = dirFromStart[1] - distAlongTrack*inidir[1];
-    distToTrackSquared += coord*coord;
-    coord = dirFromStart[2] - distAlongTrack*inidir[2];
-    distToTrackSquared += coord*coord;
-
-    if(i==0){
-      smallest = distToTrackSquared;
-      niOfSmallest = ni;
-    }else{
-      if(distToTrackSquared<smallest){
-        nextSmallest = smallest;
-        niOfNextSmallest = niOfSmallest;
-        smallest = distToTrackSquared;
-        niOfSmallest = ni;
-      }else if(i==1 || distToTrackSquared<nextSmallest){
-        nextSmallest = distToTrackSquared;
-        niOfNextSmallest = ni;
-      }
-    }
-
-    i++;
-  }
-
-  /* Choose the edge to follow.
-  */
-  if(i>1){ /* then nextSmallest, niOfNextSmallest should exist. */
-    if((smallest + scatterReduction*nextSmallest)*gsl_rng_uniform(ran)<smallest){
-      return niOfNextSmallest;
-    }else{
-      return niOfSmallest;
-    }
-  }else if(i>0){
-    return niOfSmallest;
-  }else{
-    if(!silent)
-      bail_out("Photon propagation error - no valid edges.");
-    exit(1);
-  }
-}
-
-/*....................................................................*/
-void calcLineAmpPWLin(struct grid *g, const int id, const int k\
-  , const int molI, const double deltav, double *inidir, double *vfac_in, double *vfac_out){
-  /*
-Note that this is called from within the multi-threaded block.
-  */
-
-  /* convolution of a Gaussian with a box */
-  double binv_this, binv_next, v[5];
-
-  binv_this=g[id].mol[molI].binv;
-  binv_next=(g[id].neigh[k])->mol[molI].binv;
-  v[0]=deltav-dotProduct3D(inidir,g[id].vel);
-  v[1]=deltav-dotProduct3D(inidir,&(g[id].v1[3*k]));
-  v[2]=deltav-dotProduct3D(inidir,&(g[id].v2[3*k]));
-  v[3]=deltav-dotProduct3D(inidir,&(g[id].v3[3*k]));
-  v[4]=deltav-dotProduct3D(inidir,g[id].neigh[k]->vel);
-
-  /* multiplying by the appropriate binv changes from velocity to doppler widths(?) */
-  /* if the values were be no more than 2 erf table bins apart, we just take a single Gaussian */
-
-  /*
-  vfac_out is the lineshape for the part of the edge in the current Voronoi cell,
-  vfac_in is for the part in the next cell
-  */
-
-  if (fabs(v[1]-v[0])*binv_this>(2.0*BIN_WIDTH)) {
-     *vfac_out=0.5*geterf(v[0]*binv_this,v[1]*binv_this);
-  } else *vfac_out=0.5*gaussline(0.5*(v[0]+v[1]),binv_this);
-  if (fabs(v[2]-v[1])*binv_this>(2.0*BIN_WIDTH)) {
-    *vfac_out+=0.5*geterf(v[1]*binv_this,v[2]*binv_this);
-  } else *vfac_out+=0.5*gaussline(0.5*(v[1]+v[2]),binv_this);
-
-  if (fabs(v[3]-v[2])*binv_next>(2.0*BIN_WIDTH)) {
-     *vfac_in=0.5*geterf(v[2]*binv_next,v[3]*binv_next);
-  } else *vfac_in=0.5*gaussline(0.5*(v[2]+v[3]),binv_next);
-  if (fabs(v[4]-v[3])*binv_next>(2.0*BIN_WIDTH)) {
-    *vfac_in+=0.5*geterf(v[3]*binv_next,v[4]*binv_next);
-  } else *vfac_in+=0.5*gaussline(0.5*(v[3]+v[4]),binv_next);
-}
-
-/*....................................................................*/
-void calcLineAmpLin(struct grid *g, const int id, const int k\
-  , const int molI, const double deltav, double *inidir, double *vfac_in, double *vfac_out){
-  /*
-Note that this is called from within the multi-threaded block.
-  */
-
-  /* convolution of a Gaussian with a box */
-  double binv_this, binv_next, v[3];
-
-  binv_this=g[id].mol[molI].binv;
-  binv_next=(g[id].neigh[k])->mol[molI].binv;
-  v[0]=deltav-dotProduct3D(inidir,g[id].vel);
-  v[2]=deltav-dotProduct3D(inidir,g[id].neigh[k]->vel);
-  v[1]=0.5*(v[0]+v[2]);
-
-  if (fabs(v[1]-v[0])*binv_this>(2.0*BIN_WIDTH)) {
-     *vfac_out=geterf(v[0]*binv_this,v[1]*binv_this);
-  } else *vfac_out+=gaussline(0.5*(v[0]+v[1]),binv_this);
-
-  if (fabs(v[2]-v[1])*binv_next>(2.0*BIN_WIDTH)) {
-     *vfac_in=geterf(v[1]*binv_next,v[2]*binv_next);
-  } else *vfac_in+=gaussline(0.5*(v[1]+v[2]),binv_next);
-}
-
-/*....................................................................*/
 void
-calculateJBar(int id, struct grid *gp, molData *md, const gsl_rng *ran\
-  , configInfo *par, const int nlinetot, struct blendInfo blends\
-  , gridPointData *mp, double *halfFirstDs, int *nMaserWarnings){
-  /*
-Note that this is called from within the multi-threaded block.
-  */
-
-  int iphot,iline,here,there,firststep,neighI,numLinks=0;
-  int nextMolWithBlend, nextLineWithBlend, molI, lineI, molJ, lineJ, bi;
-  double segment,vblend_in,vblend_out,dtau,expDTau,ds_in=0.0,ds_out=0.0,pt_theta,pt_z,semiradius;
-  double deltav[par->nSpecies],vfac_in[par->nSpecies],vfac_out[par->nSpecies],vfac_inprev[par->nSpecies];
-  double expTau[nlinetot],inidir[3];
-  double remnantSnu,velProj;
-  char message[STR_LEN_0];
-
-  for(iphot=0;iphot<gp[id].nphot;iphot++){
-    firststep=1;
-    iline = 0;
-    for(molI=0;molI<par->nSpecies;molI++){
-      for(lineI=0;lineI<md[molI].nline;lineI++){
-        mp[molI].phot[lineI+iphot*md[molI].nline]=0.;
-        expTau[iline]=1.;
-        iline++;
-      }
-    }
-
-    /* Choose random initial photon direction (the distribution used here is even over the surface of a sphere of radius 1).
-    */
-    pt_theta=gsl_rng_uniform(ran)*2*M_PI;
-    pt_z=2*gsl_rng_uniform(ran)-1;
-    semiradius = sqrt(1.-pt_z*pt_z);
-    inidir[0]=semiradius*cos(pt_theta);
-    inidir[1]=semiradius*sin(pt_theta);
-    inidir[2]=pt_z;
-
-    /* Choose the photon frequency/velocity offset.
-    */
-    segment=gsl_rng_uniform(ran)-0.5;
-    /*
-    Values of segment should be evenly distributed (considering the
-    entire ensemble of photons) between -0.5 and +0.5.
-    */
-
-    for (molI=0;molI<par->nSpecies;molI++){
-      /* Is factor 4.3=[-2.15,2.15] enough?? */
-      deltav[molI]=4.3*segment*gp[id].mol[molI].dopb+dotProduct3D(inidir,gp[id].vel);
-      /*
-      This is the local (=evaluated at a grid point, not averaged over the local cell) lineshape.
-      We store this for later use in ALI loops.
-      */
-      mp[molI].vfac_loc[iphot]=gaussline(deltav[molI]-dotProduct3D(inidir,gp[id].vel),gp[id].mol[molI].binv);
-    }
-
-    here = gp[id].id;
-
-    /* Photon propagation loop */
-    numLinks=0;
-    while(!gp[here].sink){ /* Testing for sink at loop start is redundant for the first step, since we only start photons from non-sink points, but it makes for simpler code. */
-      numLinks++;
-      if(numLinks>par->ncell){
-        if(!silent){
-          snprintf(message, STR_LEN_0, "Bad grid? Too many links in photon path, point %d photon %d", id, iphot);
-          bail_out(message);
-        }
-exit(1);
-      }
-
-      neighI = getNextEdge(inidir,id,here,gp,ran);
-
-      there=gp[here].neigh[neighI]->id;
-
-      if(firststep){
-        firststep=0;
-        ds_out=0.5*gp[here].ds[neighI]*dotProduct3D(inidir,gp[here].dir[neighI].xn);
-        halfFirstDs[iphot]=ds_out;
-
-        for(molI=0;molI<par->nSpecies;molI++){
-          if(par->edgeVelsAvailable) {
-            calcLineAmpPWLin(gp,here,neighI,molI,deltav[molI],inidir,&vfac_in[molI],&vfac_out[molI]);
-         } else
-            calcLineAmpLin(gp,here,neighI,molI,deltav[molI],inidir,&vfac_in[molI],&vfac_out[molI]);
-
-          mp[molI].vfac[iphot]=vfac_out[molI];
-        }
-        /*
-        Contribution of the local cell to emission and absorption is done in updateJBar.
-        We only store the vfac for the local cell for use in ALI loops.
-        */
-        here=there;
-    continue;
-      }
-
-      /* If we've got to here, we have progressed beyond the first edge. Length of the new "in" edge is the length of the previous "out".
-      */
-      ds_in=ds_out;
-      ds_out=0.5*gp[here].ds[neighI]*dotProduct3D(inidir,gp[here].dir[neighI].xn);
-
-      for(molI=0;molI<par->nSpecies;molI++){
-        vfac_inprev[molI]=vfac_in[molI];
-        if(par->edgeVelsAvailable)
-          calcLineAmpPWLin(gp,here,neighI,molI,deltav[molI],inidir,&vfac_in[molI],&vfac_out[molI]);
-        else
-          calcLineAmpLin(gp,here,neighI,molI,deltav[molI],inidir,&vfac_in[molI],&vfac_out[molI]);
-      }
-
-      nextMolWithBlend = 0;
-      iline = 0;
-      for(molI=0;molI<par->nSpecies;molI++){
-        nextLineWithBlend = 0;
-        for(lineI=0;lineI<md[molI].nline;lineI++){
-          double jnu_line_in=0., jnu_line_out=0., jnu_cont=0., jnu_blend=0.;
-          double alpha_line_in=0., alpha_line_out=0., alpha_cont=0., alpha_blend=0.;
-
-          sourceFunc_line(&md[molI],vfac_inprev[molI],&(gp[here].mol[molI]),lineI,&jnu_line_in,&alpha_line_in);
-          sourceFunc_line(&md[molI],vfac_out[molI],&(gp[here].mol[molI]),lineI,&jnu_line_out,&alpha_line_out);
-          sourceFunc_cont(gp[here].mol[molI].cont[lineI],&jnu_cont,&alpha_cont);
-
-          /* cont and blend could use the same alpha and jnu counter, but maybe it's clearer this way */
-
-          /* Line blending part.
-          */
-          if(par->blend && blends.mols!=NULL && molI==blends.mols[nextMolWithBlend].molI\
-          && lineI==blends.mols[nextMolWithBlend].lines[nextLineWithBlend].lineI){
-
-            for(bi=0;bi<blends.mols[nextMolWithBlend].lines[nextLineWithBlend].numBlends;bi++){
-              molJ  = blends.mols[nextMolWithBlend].lines[nextLineWithBlend].blends[bi].molJ;
-              lineJ = blends.mols[nextMolWithBlend].lines[nextLineWithBlend].blends[bi].lineJ;
-              velProj = deltav[molI] - blends.mols[nextMolWithBlend].lines[nextLineWithBlend].blends[bi].deltaV;
-	      /*  */
-              if(par->edgeVelsAvailable)
-                calcLineAmpPWLin(gp,here,neighI,molJ,velProj,inidir,&vblend_in,&vblend_out);
-              else
-                calcLineAmpLin(gp,here,neighI,molJ,velProj,inidir,&vblend_in,&vblend_out);
-
-	      /* we should use also the previous vblend_in, but I don't feel like writing the necessary code now */
-              sourceFunc_line(&md[molJ],vblend_out,&(gp[here].mol[molJ]),lineJ,&jnu_blend,&alpha_blend);
-              /* note that sourceFunc* increment jnu and alpha, they don't overwrite it  */
-            }
-
-            nextLineWithBlend++;
-            if(nextLineWithBlend>=blends.mols[nextMolWithBlend].numLinesWithBlends){
-              nextLineWithBlend = 0;
-              /* The reason for doing this is as follows. Firstly, we only enter the present IF block if molI has at least 1 line which is blended with others; and further, if we have now processed all blended lines for that molecule. Thus no matter what value lineI takes for the present molecule, it won't appear as blends.mols[nextMolWithBlend].lines[i].lineI for any i. Yet we will still test blends.mols[nextMolWithBlend].lines[nextLineWithBlend], thus we want nextLineWithBlend to at least have a sensible value between 0 and blends.mols[nextMolWithBlend].numLinesWithBlends-1. We could set nextLineWithBlend to any number in this range in safety, but zero is simplest. */
-            }
-          }
-          /* End of line blending part */
-
-	  /* as said above, out-in split should be done also for blended lines... */
-
-	  dtau=(alpha_line_out+alpha_cont+alpha_blend)*ds_out;
-          if(dtau < -MAX_NEG_OPT_DEPTH) dtau = -MAX_NEG_OPT_DEPTH;
-          calcSourceFn(dtau, par, &remnantSnu, &expDTau);
-          remnantSnu *= (jnu_line_out+jnu_cont+jnu_blend)*ds_out;
-          mp[molI].phot[lineI+iphot*md[molI].nline]+=expTau[iline]*remnantSnu;
-	  expTau[iline]*=expDTau;
-
-	  dtau=(alpha_line_in+alpha_cont+alpha_blend)*ds_in;
-          if(dtau < -MAX_NEG_OPT_DEPTH) dtau = -MAX_NEG_OPT_DEPTH;
-          calcSourceFn(dtau, par, &remnantSnu, &expDTau);
-          remnantSnu *= (jnu_line_in+jnu_cont+jnu_blend)*ds_in;
-          mp[molI].phot[lineI+iphot*md[molI].nline]+=expTau[iline]*remnantSnu;
-	  expTau[iline]*=expDTau;
-
-          if(expTau[iline] > exp(MAX_NEG_OPT_DEPTH)){
-            (*nMaserWarnings)++;
-            expTau[iline]=exp(MAX_NEG_OPT_DEPTH);
-          }
-
-          iline++;
-        } /* Next line this molecule. */
-
-        if(par->blend && blends.mols!=NULL && molI==blends.mols[nextMolWithBlend].molI)
-          nextMolWithBlend++;
-      }
-
-      here=there;
-    };
-
-    /* Add cmb contribution.
-    */
-    iline = 0;
-    for(molI=0;molI<par->nSpecies;molI++){
-      for(lineI=0;lineI<md[molI].nline;lineI++){
-        mp[molI].phot[lineI+iphot*md[molI].nline]+=expTau[iline]*md[molI].cmb[lineI];
-        iline++;
-      }
-    }
-  }
-}
-
-/*....................................................................*/
-void
-updateJBar(int posn, molData *md, struct grid *gp, const int molI\
+_updateJBar(int posn, molData *md, struct grid *gp, const int molI\
   , configInfo *par, struct blendInfo blends, int nextMolWithBlend\
   , gridPointData *mp, double *halfFirstDs){
   /*
@@ -725,7 +688,7 @@ Note that this is called from within the multi-threaded block.
 
 /*....................................................................*/
 void
-getFixedMatrix(molData *md, int ispec, struct grid *gp, int id, gsl_matrix *colli, configInfo *par){
+_getFixedMatrix(molData *md, int ispec, struct grid *gp, int id, gsl_matrix *colli, configInfo *par){
   int ipart,k,l,ti;
   /*
 Note that this is called from within the multi-threaded block.
@@ -733,7 +696,7 @@ Note that this is called from within the multi-threaded block.
 
   /* Initialize matrix with zeros */
   if(md[ispec].nlev<=0){
-    if(!silent) bail_out("Matrix initialization error in solveStatEq");
+    if(!silent) bail_out("Matrix initialization error in _solveStatEq");
     exit(1);
   }
   gsl_matrix_set_zero(colli);
@@ -791,7 +754,7 @@ Note that this is called from within the multi-threaded block.
 
 /*....................................................................*/
 void
-getMatrix(gsl_matrix *matrix, molData *md, int ispec, gridPointData *mp, gsl_matrix *colli){
+_getMatrix(gsl_matrix *matrix, molData *md, int ispec, gridPointData *mp, gsl_matrix *colli){
   int k,l,li;
   /*
 Note that this is called from within the multi-threaded block.
@@ -813,7 +776,7 @@ Note that this is called from within the multi-threaded block.
 
 /*....................................................................*/
 void
-lteOnePoint(molData *md, const int ispec, const double temp, double *pops){
+_lteOnePoint(molData *md, const int ispec, const double temp, double *pops){
   int ilev;
   double sum;
 
@@ -828,12 +791,12 @@ lteOnePoint(molData *md, const int ispec, const double temp, double *pops){
 
 /*....................................................................*/
 void
-LTE(configInfo *par, struct grid *gp, molData *md){
+_LTE(configInfo *par, struct grid *gp, molData *md){
   int id,ispec;
 
   for(id=0;id<par->pIntensity;id++){
     for(ispec=0;ispec<par->nSpecies;ispec++){
-      lteOnePoint(md, ispec, gp[id].t[0], gp[id].mol[ispec].pops);
+      _lteOnePoint(md, ispec, gp[id].t[0], gp[id].mol[ispec].pops);
     }
   }
   if(par->outputfile) popsout(par,gp,md);
@@ -841,7 +804,7 @@ LTE(configInfo *par, struct grid *gp, molData *md){
 
 /*....................................................................*/
 void
-solveStatEq(int id, struct grid *gp, molData *md, const int ispec, configInfo *par\
+_solveStatEq(int id, struct grid *gp, molData *md, const int ispec, configInfo *par\
   , struct blendInfo blends, int nextMolWithBlend, gridPointData *mp\
   , double *halfFirstDs, _Bool *luWarningGiven){
   /*
@@ -873,14 +836,14 @@ Note that this is called from within the multi-threaded block.
   diff=1;
   iter=0;
 
-  getFixedMatrix(md,ispec,gp,id,colli,par);
+  _getFixedMatrix(md,ispec,gp,id,colli,par);
 
   while((diff>TOL && iter<MAXITER) || iter<5){
-    updateJBar(id,md,gp,ispec,par,blends,nextMolWithBlend,mp,halfFirstDs);
+    _updateJBar(id,md,gp,ispec,par,blends,nextMolWithBlend,mp,halfFirstDs);
 
-    getMatrix(matrix,md,ispec,mp,colli);
+    _getMatrix(matrix,md,ispec,mp,colli);
 
-    /* this could also be done in getFixedMatrix */ 
+    /* this could also be done in _getFixedMatrix */ 
     for(s=0;s<md[ispec].nlev;s++){
       gsl_matrix_set(matrix,md[ispec].nlev-1,s,1.);
     }
@@ -902,7 +865,7 @@ Note that this is called from within the multi-threaded block.
         warning(errStr);
         warning("Doing LSE for this point. NOTE that no further warnings will be issued.");
       }
-      lteOnePoint(md, ispec, gp[id].t[0], tempNewPop);
+      _lteOnePoint(md, ispec, gp[id].t[0], tempNewPop);
       for(s=0;s<md[ispec].nlev;s++)
         gsl_vector_set(newpop,s,tempNewPop[s]);
     }
@@ -940,7 +903,7 @@ Note that this is called from within the multi-threaded block.
 int
 levelPops(molData *md, configInfo *par, struct grid *gp, int *popsdone, double *lamtab, double *kaptab, const int nEntries){
   int id,iter,ilev,ispec,c=0,n,i,threadI,nVerticesDone,nItersDone,nlinetot,nExtraSolverIters=0;
-  double percent=0.,*median,result1=0,result2=0,snr,delta_pop,progFraction;
+  double percent=0.,*median,result1=0,result2=0,snr,delta_pop;
   int nextMolWithBlend,nMaserWarnings=0,totalNMaserWarnings=0;
   struct statistics { double *pop, *ave, *sigma; } *stat;
   const gsl_rng_type *ranNumGenType = gsl_rng_ranlxs2;
@@ -949,13 +912,20 @@ levelPops(molData *md, configInfo *par, struct grid *gp, int *popsdone, double *
   gsl_error_handler_t *defaultErrorHandler=NULL;
   int RNG_seeds[par->nThreads];
   char message[STR_LEN_0];
+#ifndef NO_PROGBARS
+  double progFracToPrint,progFraction,progressIncrement;
+  const int numProgressIncrements=10;
+  int progressIncrementNum=1;
+
+  progressIncrement = 1.0/(double)numProgressIncrements;
+#endif
 
   nlinetot = 0;
   for(ispec=0;ispec<par->nSpecies;ispec++)
     nlinetot += md[ispec].nline;
 
   if(par->lte_only){
-    LTE(par,gp,md);
+    _LTE(par,gp,md);
     if(par->outputfile) popsout(par,gp,md);
 
   }else{ /* Non-LTE */
@@ -977,15 +947,15 @@ levelPops(molData *md, configInfo *par, struct grid *gp, int *popsdone, double *
       else gsl_rng_set(threadRans[i],(int)(gsl_rng_uniform(ran)*1e6));
     }
 
-    calcGridCollRates(par,md,gp);
-    freeGridCont(par, gp);
-    mallocGridCont(par, md, gp);
-    calcGridLinesDustOpacity(par, md, lamtab, kaptab, nEntries, gp);
+    _calcGridCollRates(par,md,gp);
+    _freeGridCont(par, gp);
+    _mallocGridCont(par, md, gp);
+    _calcGridLinesDustOpacity(par, md, lamtab, kaptab, nEntries, gp);
 
     /* Check for blended lines */
-    lineBlend(md, par, &blends);
+    _lineBlend(md, par, &blends);
 
-    if(par->init_lte) LTE(par,gp,md);
+    if(par->init_lte) _LTE(par,gp,md);
 
     for(id=0;id<par->pIntensity;id++){
       stat[id].pop=malloc(sizeof(double)*md[0].nlev*5);
@@ -1005,7 +975,7 @@ levelPops(molData *md, configInfo *par, struct grid *gp, int *popsdone, double *
 
     defaultErrorHandler = gsl_set_error_handler_off();
     /*
-This is done to allow proper handling of errors which may arise in the LU solver within solveStatEq(). It is done here because the GSL documentation does not recommend leaving the error handler at the default within multi-threaded code.
+This is done to allow proper handling of errors which may arise in the LU solver within _solveStatEq(). It is done here because the GSL documentation does not recommend leaving the error handler at the default within multi-threaded code.
 
 While this is off however, other gsl_* etc calls will not exit if they encounter a problem. We may need to pay some attention to trapping their errors.
     */
@@ -1024,6 +994,10 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
 
       totalNMaserWarnings = 0;
       nVerticesDone=0;
+#ifndef NO_PROGBARS
+      progressIncrementNum=1;
+      progFracToPrint = progressIncrementNum*progressIncrement;
+#endif
       omp_set_dynamic(0);
 #pragma omp parallel private(id,ispec,threadI,nextMolWithBlend,nMaserWarnings) num_threads(par->nThreads)
       {
@@ -1050,15 +1024,21 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
           }
           halfFirstDs = malloc(sizeof(*halfFirstDs)*gp[id].nphot);
 
+#ifndef NO_PROGBARS
           if (threadI == 0){ /* i.e., is master thread. */
             progFraction = nVerticesDone/(double)par->pIntensity;
-            if(!silent) progressbar(progFraction,10);
+            if(!silent && progFraction > progFracToPrint){
+              progressbar(progFracToPrint,10);
+              progressIncrementNum++;
+              progFracToPrint = progressIncrementNum*progressIncrement;
+            }
           }
+#endif
           if(gp[id].dens[0] > 0 && gp[id].t[0] > 0){
-            calculateJBar(id,gp,md,threadRans[threadI],par,nlinetot,blends,mp,halfFirstDs,&nMaserWarnings);
+            _calculateJBar(id,gp,md,threadRans[threadI],par,nlinetot,blends,mp,halfFirstDs,&nMaserWarnings);
             nextMolWithBlend = 0;
             for(ispec=0;ispec<par->nSpecies;ispec++){
-              solveStatEq(id,gp,md,ispec,par,blends,nextMolWithBlend,mp,halfFirstDs,&luWarningGiven);
+              _solveStatEq(id,gp,md,ispec,par,blends,nextMolWithBlend,mp,halfFirstDs,&luWarningGiven);
               if(par->blend && blends.mols!=NULL && ispec==blends.mols[nextMolWithBlend].molI)
                 nextMolWithBlend++;
             }
@@ -1066,7 +1046,7 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
           if (threadI == 0){ /* i.e., is master thread */
             if(!silent) warning("");
           }
-          freeGridPointData(par->nSpecies, mp);
+          _freeGridPointData(par->nSpecies, mp);
           free(halfFirstDs);
 
 #pragma omp atomic
@@ -1092,7 +1072,7 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
             delta_pop = stat[id].pop[ilev+md[0].nlev*iter]-stat[id].ave[ilev];
             stat[id].sigma[ilev]+=delta_pop*delta_pop;
           }
-          stat[id].sigma[ilev]=sqrt(stat[id].sigma[ilev])/5.;
+          stat[id].sigma[ilev]=sqrt(stat[id].sigma[ilev]/5.0);
           if(gp[id].mol[0].pops[ilev] > 1e-12) c++;
 
           if(gp[id].mol[0].pops[ilev] > 1e-12 && stat[id].sigma[ilev] > 0.){
@@ -1128,8 +1108,8 @@ While this is off however, other gsl_* etc calls will not exit if they encounter
     gsl_set_error_handler(defaultErrorHandler);
     nExtraSolverIters = nItersDone - par->nSolveItersDone;
 
-    freeMolsWithBlends(blends.mols, blends.numMolsWithBlends);
-    freeGridCont(par, gp);
+    _freeMolsWithBlends(blends.mols, blends.numMolsWithBlends);
+    _freeGridCont(par, gp);
 
     for (i=0;i<par->nThreads;i++){
       gsl_rng_free(threadRans[i]);

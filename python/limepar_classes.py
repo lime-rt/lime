@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #
-#  par_classes.py
+#  limepar_classes.py
 #  This file is part of LIME, the versatile line modeling engine
 #
 #  Copyright (C) 2006-2014 Christian Brinch
@@ -166,5 +166,12 @@ def loadTestParValues(inGridFileName, outImageName):
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 if __name__ == '__main__':
-  pass
+
+  fred = ModelParameters()
+
+  print fred.sampling
+
+  print fred._listOfAttrs[16][0]
+
+
 

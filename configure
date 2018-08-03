@@ -7,7 +7,7 @@ touch $defsfile
 
 echo "LIB_QHULL = qhull" >> $defsfile
 
-qhull_incs=( "/usr/include/libqhull" "/usr/include/qhull" "/opt/local/include/qhull" "/sw/include/qhull" )
+qhull_incs=( "./include" "/usr/include/libqhull" "/usr/include/qhull" "/opt/local/include/qhull" "/sw/include/qhull" )
 
 for incdir in ${qhull_incs[@]}
 do
@@ -16,9 +16,9 @@ do
     echo "CCFLAGS += -I$incdir" >> $defsfile
     break
   fi
-done 
+done
 
-fitsio_incs=( "/usr/include/cfitsio" "/usr/include/libcfitsio0" )
+fitsio_incs=( "./include" "/usr/include/cfitsio" "/usr/include/libcfitsio0" )
 
 for incdir in ${fitsio_incs[@]}
 do
@@ -27,7 +27,7 @@ do
     echo "CCFLAGS += -I$incdir" >> $defsfile
     break
   fi
-done 
+done
 
 pybin="python"
 pyconf="$pybin-config"

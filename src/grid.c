@@ -2,8 +2,7 @@
  *  grid.c
  *  This file is part of LIME, the versatile line modeling engine
  *
- *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015-2017 The LIME development team
+ *  See ../COPYRIGHT
  *
 TODO:
 	- In readOrBuildGrid(), test for the presence of the 5 mandatory functions (actually 4, since velocity() is already tested in aux.c:parseInput() ) before doing smoothing.
@@ -12,8 +11,6 @@ TODO:
 #include "lime.h"
 #include "tree_random.h"
 #include "gridio.h"
-#include "defaults.h"
-
 
 /*....................................................................*/
 void
@@ -37,7 +34,7 @@ void randomsViaRejection(configInfo *par, const unsigned int desiredNumPoints, g
 
   double lograd; /* The logarithm of the model radius. */
   double logmin; /* Logarithm of par->minScale. */
-  double r,theta,phi,sinPhi,z,semiradius,progFraction;
+  double r,theta,phi,sinPhi,z,semiradius;
   double uniformRandom;
   int j,di;
   unsigned int i_u;
@@ -46,6 +43,9 @@ void randomsViaRejection(configInfo *par, const unsigned int desiredNumPoints, g
   const int maxNumAttempts=1000;
   int numRandomsThisPoint,numSecondRandoms=0;
   char errStr[STR_LEN_0];
+#ifndef NO_PROGBARS
+  double progFraction;
+#endif
 
   lograd=log10(par->radius);
   logmin=log10(par->minScale);
@@ -102,8 +102,10 @@ void randomsViaRejection(configInfo *par, const unsigned int desiredNumPoints, g
     for(di=0;di<DIM;di++)
       outRandLocations[i_u][di]=x[di];
 
+#ifndef NO_PROGBARS
     progFraction = (double)i_u/((double)desiredNumPoints-1);
     if(!silent) progressbar(progFraction, 4);
+#endif
   }
 
   if(!silent && numSecondRandoms>0){
@@ -145,7 +147,6 @@ buildGrid(configInfo *par, struct grid **gp){
   gsl_rng *randGen;
   struct cell *dc=NULL; /* Not used at present. */
   unsigned long numCells;
-  char message[STR_LEN_0];
 
   /* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 Check for the existence of any mandatory functions we have not supplied grid values for.
@@ -203,20 +204,6 @@ exit(1);
     if(!allBitsSet(par->dataFlags, DS_mask_ACOEFF)){
       if(bitIsSet(defaultFuncFlags, USERFUNC_velocity)){
         if(!silent) warning("There were no edge velocities in the file, and you haven't supplied a velocity() function.");
-      }
-    }
-
-//    if(!par->restart && !(par->lte_only && !allBitsSet(par->dataFlags, DS_mask_populations))){
-    if(!par->lte_only && allBitsSet(par->dataFlags, DS_mask_populations) && par->doSolveRTE){
-      /*
-I don't understand the basis of the commented-out variant (e.g. we certainly won't arrive at this point if par->restart==TRUE), thus I can't be certain if it was right to modify it or not.
-      */
-      if(par->nSolveIters<=par->nSolveItersDone){
-        if(!silent){
-          snprintf(message, STR_LEN_0, "par->nSolveIters %d must be > par->nSolveItersDone %d", par->nSolveIters, par->nSolveItersDone);
-          bail_out(message);
-        }
-exit(1);
       }
     }
   } /* End if par->doMolCalcs */

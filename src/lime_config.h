@@ -2,8 +2,7 @@
  *  lime_config.h
  *  This file is part of LIME, the versatile line modeling engine
  *
- *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015-2017 The LIME development team
+ *  See ../COPYRIGHT
  *
  */
 
@@ -37,6 +36,7 @@ typedef struct {
   int nLineImages,nContImages,dataFlags,nSolveItersDone;
   _Bool doInterpolateVels,useAbun,doMolCalcs;
   _Bool writeGridAtStage[NUM_GRID_STAGES],useVelFuncInRaytrace,edgeVelsAvailable;
+  _Bool needToInitPops,needToInitSND,SNDhasBeenInit,popsHasBeenInit;
 } configInfo;
 
 struct spec {

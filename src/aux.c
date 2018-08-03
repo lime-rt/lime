@@ -2,11 +2,13 @@
  *  aux.c
  *  This file is part of LIME, the versatile line modeling engine
  *
- *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015-2017 The LIME development team
+ *  See ../COPYRIGHT
  *
-TODO:
  */
+
+#ifdef IS_PYTHON
+#include "lime.h" // actually just for Python.h
+#endif
 
 #include "constants.h" // for STR_LEN_0 etc
 #include "messages.h" // for warning(), bail_out() etc

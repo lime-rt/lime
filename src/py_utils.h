@@ -2,8 +2,7 @@
  *  py_utils.h
  *  This file is part of LIME, the versatile line modeling engine
  *
- *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015-2017 The LIME development team
+ *  See ../COPYRIGHT
  *
  */
 
@@ -13,6 +12,7 @@
 #include <Python.h>
 
 #include "inpars.h"
+#include "local_err.h"
 
 #define PY_MAX_LEN_PAR_NAME      30
 #define PY_MAX_LEN_PAR_TYPE      20
@@ -48,22 +48,25 @@ extern PyObject *pModule_global;
 extern _Bool userFuncsInitialized;
 
 parTemplateType*	setTemplateDefaults(void);
-void	myStrCpy(const char source[], char destination[], const int strlenDest);
-int	getModuleFromName(char *moduleNameNoSuffix, PyObject **pModule);
-int	getParTemplates(PyObject *pParsClassOrInstance, parTemplateType **parTemplates, int *nPars);
-int	mallocInputParStrs(inputPars *par);
-int	readParImg(PyObject *pPars, parTemplateType *parTemplates, const int nPars, parTemplateType *imgParTemplates, const int nImgPars, inputPars *par, image **img, int *nImages, void (*warning)(char *message));
+void	myStrNCpy(char *destination, const char *source, const size_t strlenDest);
+errType	getModuleFromName(const char *moduleNameNoSuffix, PyObject **pModule);
+errType	getParTemplates(PyObject *pParsClassOrInstance, parTemplateType **parTemplates, int *nPars);
+errType	getParTemplatesWrapper(const char *headerModuleName, parTemplateType **parTemplates, int *nPars, parTemplateType **imgParTemplates, int *nImgPars);
+errType	mallocInputParStrs(inputPars *par);
+errType	readParImg(PyObject *pPars, parTemplateType *parTemplates, const int nPars, parTemplateType *imgParTemplates, const int nImgPars, inputPars *par, image **img, int *nImages, void (*warning)(char *message));
 
-int	setMacros(void);
+errType	setMacros(void);
 void	unsetMacros(void);
 void	getPythonFunc(PyObject *pModule, const char *funcName, PyObject **pFunc);
 void	setUpUserPythonFuncs(PyObject *pModule);
 void	setUpUserPythonFuncs_new(void);
 void	decrefAllUserFuncs(void);
-int	userFuncWrapper(PyObject *pFunc, const char *funcName\
+errType	userFuncWrapper(PyObject *pFunc, const char *funcName, const int requiredNumElements\
   , double x, double y, double z, double *resultBuffer, int *numElemInUserFuncReturn);
 
+void	pyFreeInputPars(inputPars *par);
 void	pyFreeInputImgPars(image *inimg, int nImages);
+
 
 #endif /* PY_UTILS_H */
 

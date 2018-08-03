@@ -8,10 +8,16 @@
 example/*.vtk
 example/*.pop
 example/*.fits*
+example/*.ds
 example/lime_*.x
 example/*.dat
-example/*_archive
-example/vlog.txt
+example/archive
+example/*.txt
 
 # Ignore html doc files
-doc/*.html
+doc/_html
+
+src/archive
+Makefile.defs
+*.pyc
+

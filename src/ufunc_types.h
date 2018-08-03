@@ -2,8 +2,7 @@
  *  ufunc_types.h
  *  This file is part of LIME, the versatile line modeling engine
  *
- *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015-2017 The LIME development team
+ *  See ../COPYRIGHT
  *
  */
 
@@ -21,8 +20,6 @@
 #define USERFUNC_magfield      6
 #define USERFUNC_gasIIdust     7
 #define USERFUNC_gridDensity   8
-
-//extern int defaultFuncFlags;
 
 void	density(double,double,double,double *);
 void	temperature(double,double,double,double *);

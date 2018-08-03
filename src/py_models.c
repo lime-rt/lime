@@ -2,8 +2,7 @@
  *  py_models.c
  *  This file is part of LIME, the versatile line modeling engine
  *
- *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015-2017 The LIME development team
+ *  See ../COPYRIGHT
  *
  */
 
@@ -11,24 +10,25 @@
 #include "py_lime.h" /* for pyerror definitions. */
 #include "defaults.h"
 #include "py_utils.h"
+#include "local_err.h"
 
 #define PY_NUM_DIMS    3
 
 /*....................................................................*/
 void
 density(double x, double y, double z, double *density){
-  char *resultName="density",message[STR_LEN_0+1];
-  int status=0,numElemInUserFuncReturn,i;
+  char *resultName="density";
+  int numElemInUserFuncReturn,i;
   double resultsBuffer[UFUNC_BUFFER_SIZE];
+  errType err=init_local_err();
 
   if(pDensity!=NULL){ /* User supplied this function. */
-    status = userFuncWrapper(pDensity, resultName, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
+    err = userFuncWrapper(pDensity, resultName, -1, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
 
-    if(status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
+    if(err.status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
       unsetMacros();
       decrefAllUserFuncs();
-      sprintf(message, "User %s() function generated error status %d", resultName, status);
-      pyerror(message);
+      pyerror(err.message);
     }
 
     for(i=0;i<numElemInUserFuncReturn;i++)
@@ -40,25 +40,18 @@ density(double x, double y, double z, double *density){
 /*....................................................................*/
 void
 temperature(double x, double y, double z, double *temperature){
-  char *resultName="temperature",message[STR_LEN_0+1];
-  int status=0,numElemInUserFuncReturn,i;
+  char *resultName="temperature";
+  int numElemInUserFuncReturn,i;
   double resultsBuffer[UFUNC_BUFFER_SIZE];
+  errType err=init_local_err();
 
   if(pTemperature!=NULL){ /* User supplied this function. */
-    status = userFuncWrapper(pTemperature, resultName, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
+    err = userFuncWrapper(pTemperature, resultName, 2, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
 
-    if(status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
+    if(err.status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
       unsetMacros();
       decrefAllUserFuncs();
-      sprintf(message, "User %s() function generated error status %d", resultName, status);
-      pyerror(message);
-    }
-
-    if(numElemInUserFuncReturn!=2){
-      unsetMacros();
-      decrefAllUserFuncs();
-      sprintf(message, "User %s() function should return %d results.", resultName, 2);
-      pyerror(message);
+      pyerror(err.message);
     }
 
     for(i=0;i<numElemInUserFuncReturn;i++)
@@ -70,18 +63,18 @@ temperature(double x, double y, double z, double *temperature){
 /*....................................................................*/
 void
 abundance(double x, double y, double z, double *abundance){
-  char *resultName="abundance",message[STR_LEN_0+1];
-  int status=0,numElemInUserFuncReturn,i;
+  char *resultName="abundance";
+  int numElemInUserFuncReturn,i;
   double resultsBuffer[UFUNC_BUFFER_SIZE];
+  errType err=init_local_err();
 
   if(pAbundance!=NULL){ /* User supplied this function. */
-    status = userFuncWrapper(pAbundance, resultName, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
+    err = userFuncWrapper(pAbundance, resultName, -1, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
 
-    if(status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
+    if(err.status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
       unsetMacros();
       decrefAllUserFuncs();
-      sprintf(message, "User %s() function generated error status %d", resultName, status);
-      pyerror(message);
+      pyerror(err.message);
     }
 
     for(i=0;i<numElemInUserFuncReturn;i++)
@@ -93,18 +86,18 @@ abundance(double x, double y, double z, double *abundance){
 /*....................................................................*/
 void
 molNumDensity(double x, double y, double z, double *molNumDens){
-  char *resultName="molNumDensity",message[STR_LEN_0+1];
-  int status=0,numElemInUserFuncReturn,i;
+  char *resultName="molNumDensity";
+  int numElemInUserFuncReturn,i;
   double resultsBuffer[UFUNC_BUFFER_SIZE];
+  errType err=init_local_err();
 
   if(pMolNumDensity!=NULL){ /* User supplied this function. */
-    status = userFuncWrapper(pMolNumDensity, resultName, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
+    err = userFuncWrapper(pMolNumDensity, resultName, -1, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
 
-    if(status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
+    if(err.status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
       unsetMacros();
       decrefAllUserFuncs();
-      sprintf(message, "User %s() function generated error status %d", resultName, status);
-      pyerror(message);
+      pyerror(err.message);
     }
 
     for(i=0;i<numElemInUserFuncReturn;i++)
@@ -116,25 +109,18 @@ molNumDensity(double x, double y, double z, double *molNumDens){
 /*....................................................................*/
 void
 doppler(double x, double y, double z, double *doppler){
-  char *resultName="doppler",message[STR_LEN_0+1];
-  int status=0,numElemInUserFuncReturn,i;
+  char *resultName="doppler";
+  int numElemInUserFuncReturn,i;
   double resultsBuffer[UFUNC_BUFFER_SIZE];
+  errType err=init_local_err();
 
   if(pDoppler!=NULL){ /* User supplied this function. */
-    status = userFuncWrapper(pDoppler, resultName, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
+    err = userFuncWrapper(pDoppler, resultName, 1, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
 
-    if(status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
+    if(err.status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
       unsetMacros();
       decrefAllUserFuncs();
-      sprintf(message, "User %s() function generated error status %d", resultName, status);
-      pyerror(message);
-    }
-
-    if(numElemInUserFuncReturn>1){
-      unsetMacros();
-      decrefAllUserFuncs();
-      sprintf(message, "User %s() function should return a scalar result.", resultName);
-      pyerror(message);
+      pyerror(err.message);
     }
 
     i=0;
@@ -146,25 +132,18 @@ doppler(double x, double y, double z, double *doppler){
 /*....................................................................*/
 void
 velocity(double x, double y, double z, double *vel){
-  char *resultName="velocity",message[STR_LEN_0+1];
-  int status=0,numElemInUserFuncReturn,i;
+  char *resultName="velocity";
+  int numElemInUserFuncReturn,i;
   double resultsBuffer[UFUNC_BUFFER_SIZE];
+  errType err=init_local_err();
 
   if(pVelocity!=NULL){ /* User supplied this function. */
-    status = userFuncWrapper(pVelocity, resultName, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
+    err = userFuncWrapper(pVelocity, resultName, PY_NUM_DIMS, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
 
-    if(status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
+    if(err.status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
       unsetMacros();
       decrefAllUserFuncs();
-      sprintf(message, "User %s() function generated error status %d", resultName, status);
-      pyerror(message);
-    }
-
-    if(numElemInUserFuncReturn!=PY_NUM_DIMS){
-      unsetMacros();
-      decrefAllUserFuncs();
-      sprintf(message, "User %s() function should return %d results.", resultName, PY_NUM_DIMS);
-      pyerror(message);
+      pyerror(err.message);
     }
 
     for(i=0;i<numElemInUserFuncReturn;i++)
@@ -176,25 +155,18 @@ velocity(double x, double y, double z, double *vel){
 /*....................................................................*/
 void
 magfield(double x, double y, double z, double *B){
-  char *resultName="magfield",message[STR_LEN_0+1];
-  int status=0,numElemInUserFuncReturn,i;
+  char *resultName="magfield";
+  int numElemInUserFuncReturn,i;
   double resultsBuffer[UFUNC_BUFFER_SIZE];
+  errType err=init_local_err();
 
   if(pMagfield!=NULL){ /* User supplied this function. */
-    status = userFuncWrapper(pMagfield, resultName, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
+    err = userFuncWrapper(pMagfield, resultName, PY_NUM_DIMS, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
 
-    if(status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
+    if(err.status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
       unsetMacros();
       decrefAllUserFuncs();
-      sprintf(message, "User %s() function generated error status %d", resultName, status);
-      pyerror(message);
-    }
-
-    if(numElemInUserFuncReturn!=PY_NUM_DIMS){
-      unsetMacros();
-      decrefAllUserFuncs();
-      sprintf(message, "User %s() function should return %d results.", resultName, PY_NUM_DIMS);
-      pyerror(message);
+      pyerror(err.message);
     }
 
     for(i=0;i<numElemInUserFuncReturn;i++)
@@ -206,25 +178,18 @@ magfield(double x, double y, double z, double *B){
 /*....................................................................*/
 void
 gasIIdust(double x, double y, double z, double *gas2dust){
-  char *resultName="gasIIdust",message[STR_LEN_0+1];
-  int status=0,numElemInUserFuncReturn,i;
+  char *resultName="gasIIdust";
+  int numElemInUserFuncReturn,i;
   double resultsBuffer[UFUNC_BUFFER_SIZE];
+  errType err=init_local_err();
 
   if(pGasIIdust!=NULL){ /* User supplied this function. */
-    status = userFuncWrapper(pGasIIdust, resultName, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
+    err = userFuncWrapper(pGasIIdust, resultName, 1, x, y, z, resultsBuffer, &numElemInUserFuncReturn);
 
-    if(status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
+    if(err.status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
       unsetMacros();
       decrefAllUserFuncs();
-      sprintf(message, "User %s() function generated error status %d", resultName, status);
-      pyerror(message);
-    }
-
-    if(numElemInUserFuncReturn>1){
-      unsetMacros();
-      decrefAllUserFuncs();
-      sprintf(message, "User %s() function should return a scalar result.", resultName);
-      pyerror(message);
+      pyerror(err.message);
     }
 
     i=0;
@@ -236,27 +201,20 @@ gasIIdust(double x, double y, double z, double *gas2dust){
 /*....................................................................*/
 double
 gridDensity(configInfo *par, double *rVec){
-  char *resultName="gridDensity",message[STR_LEN_0+1];
-  int status=0,numElemInUserFuncReturn,i;
+  char *resultName="gridDensity";
+  int numElemInUserFuncReturn,i;
   double resultsBuffer[UFUNC_BUFFER_SIZE];
   double value;
+  errType err=init_local_err();
 
   if(pGridDensity!=NULL){ /* User supplied this function. */
     /*  ***** NOTE ***** that we are throwing away the config info! */
-    status = userFuncWrapper(pGridDensity, resultName, rVec[0], rVec[1], rVec[2], resultsBuffer, &numElemInUserFuncReturn);
+    err = userFuncWrapper(pGridDensity, resultName, 1, rVec[0], rVec[1], rVec[2], resultsBuffer, &numElemInUserFuncReturn);
 
-    if(status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
+    if(err.status!=0){ /* All we can do is quit. There's no 'nice' way, e.g. passing on the status value, since we're constrained by the function interface. */
       unsetMacros();
       decrefAllUserFuncs();
-      sprintf(message, "User %s() function generated error status %d", resultName, status);
-      pyerror(message);
-    }
-
-    if(numElemInUserFuncReturn>1){
-      unsetMacros();
-      decrefAllUserFuncs();
-      sprintf(message, "User %s() function should return a scalar result.", resultName);
-      pyerror(message);
+      pyerror(err.message);
     }
 
     i=0;

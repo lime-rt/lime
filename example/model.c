@@ -22,17 +22,10 @@ input(inputPars *par, image *img){
   par->minScale                 = 0.5*AU;
   par->pIntensity               = 4000;
   par->sinkPoints               = 3000;
-
   par->dust                     = "jena_thin_e6.tab";
   par->moldatfile[0]            = "hco+@xpol.dat";
-  par->antialias                = 4;
-  par->sampling                 = 2; // log distr. for radius, directions distr. uniformly on a sphere.
+  par->sampling                 = 2; /* log distr. for radius, directions distr. uniformly on a sphere. */
   par->nSolveIters              = 14;
-  par->resetRNG	                = 0;
-
-  par->outputfile               = "populations.pop";
-  par->binoutputfile            = "restart.pop";
-  par->gridfile                 = "grid.vtk";
 
   /*
     Setting elements of the following three arrays is optional. NOTE
@@ -71,11 +64,10 @@ input(inputPars *par, image *img){
     then this is multiplied by the abundance to return the number
     density.
 
-    par->collPartNames: this helps make a firm connection between the density functions and the collision partner information in the moldatfile.
+    par->dustWeights: this is similar, but the weighted sum of
+    densities now feeds into the calculation of the dust opacity.
 
-    par->collPartMolWeights: this now allows control over the calculation of the dust opacity.
-
-    Note that there are convenient macros defined in ../src/collparts.h for
+    Note that there are convenient macros defined in ../src/lime.h for
     7 types of collision partner.
 
     Below is an example of how you might use these parameters:
@@ -83,10 +75,8 @@ input(inputPars *par, image *img){
 
   par->collPartIds[0]           = CP_H2;
   par->nMolWeights[0]           = 1.0;
-  par->collPartNames[0]         = "H2";
-  par->collPartMolWeights[0]    = 2.0159;
 
-  /* Set one or more of the following parameters for full output of the grid-specific data at any of 4 stages during the processing. (See the header of gridio.c for information about the stages.)
+  /* Set one or more of the following parameters for full output of the grid-specific data at any of 5 stages during the processing. (See the header of gridio.c for information about the stages.)
   par->gridOutFiles[0] = "grid_1.ds";
   par->gridOutFiles[1] = "grid_2.ds";
   par->gridOutFiles[2] = "grid_3.ds";
@@ -95,20 +85,20 @@ input(inputPars *par, image *img){
   */
 
   /* You can also optionally read in a FITS file stored via the previous parameters, or prepared externally. See the header of grid2fits.c for information about the correct file format. LIME can cope with almost any sensible subset of the recognized columns; it will use the file values if they are present, then calculate the missing ones.
-  par->gridInFile = "grid_5.ds";
+  par->gridInFile = "grid_4.ds";
   */
 
   /*
    * Definitions for image #0. Add blocks with successive values of i for additional images.
    */
   i=0;
-  img[i].nchan                  = 61;             // Number of channels
-  img[i].velres                 = 500.;           // Channel resolution in m/s
-  img[i].trans                  = 3;              // zero-indexed J quantum number
-  img[i].pxls                   = 100;            // Pixels per dimension
-  img[i].imgres                 = 0.1;            // Resolution in arc seconds
-  img[i].distance               = 140*PC;         // source distance in m
-  img[i].source_vel             = 0;              // source velocity in m/s
+  img[i].nchan                  = 61;             /* Number of channels            */
+  img[i].velres                 = 500.;           /* Channel resolution in m/s     */
+  img[i].trans                  = 3;              /* zero-indexed J quantum number */
+  img[i].pxls                   = 100;            /* Pixels per dimension          */
+  img[i].imgres                 = 0.1;            /* Resolution in arc seconds     */
+  img[i].distance               = 140*PC;         /* source distance in m          */
+  img[i].source_vel             = 0;              /* source velocity in m/s        */
   img[i].azimuth                = 0.0;
   img[i].incl                   = 0.0;
   img[i].posang                 = 0.0;
@@ -128,7 +118,7 @@ input(inputPars *par, image *img){
    * only img[].units or img[].unit should be set for each image.
   */
   img[i].unit                   = 0;
-  img[i].filename               = "image0.fits";   // Output filename
+  img[i].filename               = "image0.fits";   /* Output filename. */
 }
 
 /******************************************************************************/

@@ -2,8 +2,7 @@
  *  grid2fits.c
  *  This file is part of LIME, the versatile line modeling engine
  *
- *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015-2017 The LIME development team
+ *  See ../COPYRIGHT
  *
 TODOS (some day):
 	- Change the type of g[i].id to unsigned int.
@@ -84,12 +83,12 @@ processFitsError(int status){
 
   if(status){
     if(!silent){
-#ifdef NO_NCURSES
-      fits_report_error(stderr, status); /* print error report */
-#else
+#ifdef NCURSES
       char message[STR_LEN_0];
       sprintf(message, "Error in cfitsio: status=%d", status);
       bail_out(message);
+#else
+      fits_report_error(stderr, status); /* print error report */
 #endif
     }
     exit( status );    /* terminate the program, returning error status */

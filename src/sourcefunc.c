@@ -2,8 +2,7 @@
  *  sourcefunc.c
  *  This file is part of LIME, the versatile line modeling engine
  *
- *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015-2017 The LIME development team
+ *  See ../COPYRIGHT
  *
  */
 
@@ -142,4 +141,38 @@ Note that this is called from within a multi-threaded block.
   *alpha = cont.knu;
 }
 
+/*....................................................................*/
+void calcSourceFn(double dTau, const configInfo *par, double *remnantSnu, double *expDTau){
+  /*
+  The source function S is defined as j_nu/alpha, which is clearly not
+  defined for alpha==0. However S is used in the algorithm only in the
+  term (1-exp[-alpha*ds])*S, which is defined for all values of alpha.
+  The present function calculates this term and returns it in the
+  argument remnantSnu. For values of abs(alpha*ds) less than a pre-
+  calculated cutoff supplied in configInfo, a Taylor approximation is
+  used.
+
+  Note that the same cutoff condition holds for replacement of
+  exp(-dTau) by its Taylor expansion to 3rd order.
+
+  Note that this is called from within the multi-threaded block.
+  */
+
+#ifdef FASTEXP
+  *expDTau = FastExp(dTau);
+  if (fabs(dTau)<par->taylorCutoff){
+    *remnantSnu = 1. - dTau*(1. - dTau*(1./3.))*(1./2.);
+  } else {
+    *remnantSnu = (1.-(*expDTau))/dTau;
+  }
+#else
+  if (fabs(dTau)<par->taylorCutoff){
+    *remnantSnu = 1. - dTau*(1. - dTau*(1./3.))*(1./2.);
+    *expDTau = 1. - dTau*(*remnantSnu);
+  } else {
+    *expDTau = exp(-dTau);
+    *remnantSnu = (1.-(*expDTau))/dTau;
+  }
+#endif
+}
 

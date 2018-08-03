@@ -7,20 +7,14 @@
 # Platform-dependent stuff:
 include Makefile.defs
 
-##
-## Make sure to put the correct paths.
-##
-PREFIX  =  ${PATHTOLIME}
-
 # Paths:
 srcdir		= ${CURDIR}/src
 docdir		= ${CURDIR}/doc
 exampledir	= ${CURDIR}/example
 pydir		= ${CURDIR}/python
-#*** better to use ${PREFIX} here rather than ${CURDIR}? (the latter is used in artist/lime.)
 
-ifneq (,$(wildcard ${PREFIX}/lib/.))
-    LIBS += -L${PREFIX}/lib
+ifneq (,$(wildcard ${CURDIR}/lib/.))
+    LIBS += -L${CURDIR}/lib
 endif
 ifneq (,$(wildcard ${HOME}/lib/.))
     LIBS += -L${HOME}/lib
@@ -36,8 +30,8 @@ ifneq (,$(wildcard /usr/local/lib/.))
 endif
 
 
-CPPFLAGS += -I${PREFIX}/include \
-	    -I${PREFIX}/src \
+CPPFLAGS += -I${CURDIR}/include \
+	    -I${CURDIR}/src \
 	    -I${HOME}/include \
 	    -I/opt/local/include \
 	    -I/sw//include \
@@ -52,13 +46,15 @@ include Makefile.srcs
 ##
 
 TARGET  = lime.x # Overwritten in usual practice by the value passed in by the 'lime' script.
-CASATARGET = casaray.so
+MLRUMP = modellib
+LLRUMP = lime
+MLTARGET = lib${MLRUMP}.so
+LLTARGET = lib${LLRUMP}.so
 CC	= gcc -fopenmp
-MODELS  = model.c # Overwritten in usual practice by the value passed in by the 'lime' script.
 MODELO 	= ${srcdir}/model.o
 
 CCFLAGS += -O3 -falign-loops=16 -fno-strict-aliasing
-LDFLAGS += -lgsl -lgslcblas -l${LIB_QHULL} -lcfitsio -lncurses -lm 
+LDFLAGS += -lgsl -lgslcblas -l${LIB_QHULL} -lcfitsio -lm 
 
 ifeq (${DOTEST},yes)
   CCFLAGS += -DTEST
@@ -70,39 +66,53 @@ ifeq (${VERBOSE},no)
   CCFLAGS += -DNOVERBOSE
 endif
 
+ifeq (${USECURSES},yes)
+  LDFLAGS += -lncurses
+  CCFLAGS += -DNCURSES
+endif
+
 ifeq (${USEHDF5},yes)
   CPPFLAGS += -DUSEHDF5
   CCFLAGS += -DH5_NO_DEPRECATED_SYMBOLS
   LDFLAGS += -lhdf5_hl -lhdf5 -lz
   CORESOURCES += ${HDF5SOURCES}
   CONVSOURCES += ${HDF5SOURCES}
-  CASASOURCES += ${HDF5SOURCES}
   COREINCLUDES += ${HDF5INCLUDES}
-#  CASAINCLUDES += ${HDF5INCLUDES}
 else
   CORESOURCES += ${FITSSOURCES}
   CONVSOURCES += ${FITSSOURCES}
-  CASASOURCES += ${FITSSOURCES}
   COREINCLUDES += ${FITSINCLUDES}
-#  CASAINCLUDES += ${FITSINCLUDES}
 endif
 
 SRCS = ${CORESOURCES} ${STDSOURCES}
 INCS = ${COREINCLUDES}
 OBJS = $(SRCS:.c=.o)
 
+ifeq (${USECURSES},yes)
+  SRCS += ${CUR_SOURCE}
+else
+  SRCS += ${MSG_SOURCE}
+endif
+
 PYSRCS = ${CORESOURCES} ${PYSOURCES}
 PYINCS = ${COREINCLUDES} ${PYINCLUDES}
 PYOBJS = $(PYSRCS:.c=.o)
 
-CASASRCS = ${CASASOURCES}
-#CASAINCS = ${CASAINCLUDES}
-CASAINCS = ${COREINCLUDES}
-CASAOBJS = $(CASASRCS:.c=.o)
+MLSRCS = ${MLCORESOURCES} ${MLSOURCES}
+MLINCS = ${COREINCLUDES} ${MLINCLUDES}
+MLOBJS = $(MLSRCS:.c=.o)
+
+LLSRCS = ${CORESOURCES} ${LLSOURCES}
+LLINCS = ${COREINCLUDES}
+LLOBJS = $(LLSRCS:.c=.o)
+
+CLSRCS = ${CORESOURCES} ${MLCORESOURCES} ${CLSOURCES}
+CLINCS = ${COREINCLUDES}
+CLOBJS = $(CLSRCS:.c=.o)
 
 CONV_OBJS = $(CONVSOURCES:.c=.o)
 
-.PHONY: all doc docclean objclean limeclean clean distclean pyclean casa
+.PHONY: all doc docclean objclean limeclean clean distclean pyclean pyshared pyshclean casa casaclean
 
 all:: ${TARGET} 
 
@@ -110,32 +120,54 @@ all:: ${TARGET}
 %.o : %.c
 	${CC} ${CCFLAGS} ${CPPFLAGS} -o $@ -c $<
 
-${TARGET}: ${OBJS} ${MODELO} 
-	${CC} -o $@ $^ ${LIBS} ${LDFLAGS}
-
 ${OBJS} : ${INCS}
 ${PYOBJS} : ${PYINCS}
-${CONV_OBJS} : ${CONVINCLUDES}
+${MLOBJS} : ${MLINCS}
+${LLOBJS} : ${LLINCS}
+${CLOBJS} : ${CLINCS}
+${CONV_OBJS} : ${COREINCLUDES}
 
 ${MODELO}: ${INCS}
 	${CC} ${CCFLAGS} ${CPPFLAGS} -o ${MODELO} -c ${MODELS}
 
+${TARGET}: ${MODELO} ${OBJS}
+	${CC} -o $@ $^ ${LIBS} ${LDFLAGS}
+
 pylime: CCFLAGS += ${PYCCFLAGS}
-pylime: CPPFLAGS += -DNO_NCURSES -DIS_PYTHON
+pylime: CPPFLAGS += -DIS_PYTHON
 pylime: LDFLAGS += ${PYLDFLAGS}
 
 pylime: ${PYOBJS}
 	${CC} -o $@ $^ ${LIBS} ${LDFLAGS}
+	rm -f ${srcdir}/*.o ${srcdir}/*/*.o
 
-casa: CCFLAGS += ${PYCCFLAGS} -fPIC
-casa: CPPFLAGS += -DNO_NCURSES -DIS_PYTHON -DCASARAY
-casa: LDFLAGS += ${PYLDFLAGS} -shared
-casa: ${CASATARGET}
+casalime: CCFLAGS  += ${PYCCFLAGS}
+casalime: CPPFLAGS += -DIS_PYTHON -DNO_PROGBARS
+casalime: LDFLAGS  += ${PYLDFLAGS}
 
-${CASATARGET}: ${CASAOBJS}
+casalime: ${CLOBJS}
+	${CC} -o $@ $^ ${LIBS} ${LDFLAGS}
+	rm -f ${srcdir}/*.o ${srcdir}/*/*.o
+
+${MLTARGET}: ${MLOBJS}
 	${CC} -o $@ $^ ${LIBS} ${LDFLAGS}
 
-gridconvert : CPPFLAGS += -DNO_NCURSES
+${LLTARGET}: LIBS += -L${CURDIR}
+
+# This way liblime.so can always find libmodellib.so without the user needing to set LD_LIBRARY_PATH. The extra $ seems to be an escape character needed by make; the command output string should be
+#	-Wl,-rpath,'$ORIGIN'
+#
+XLDFLAGS = -Wl,-rpath,'$$ORIGIN'
+${LLTARGET}: LDFLAGS += ${XLDFLAGS}
+
+${LLTARGET}: ${MLTARGET} ${LLOBJS}
+	${CC} -o $@ ${LLOBJS} ${LIBS} ${LDFLAGS} -l${MLRUMP}
+
+pyshared: CCFLAGS  += ${PYCCFLAGS} -fPIC
+pyshared: CPPFLAGS += -DIS_PYTHON
+pyshared: LDFLAGS  += ${PYLDFLAGS} -shared
+
+pyshared: ${LLTARGET}
 
 gridconvert: ${CONV_OBJS}
 	${CC} -o $@ $^ ${LIBS} ${LDFLAGS}
@@ -148,7 +180,7 @@ docclean::
 	rm -rf ${docdir}/_html
 
 objclean::
-	rm -f ${srcdir}/*.o
+	rm -f ${srcdir}/*.o ${srcdir}/*/*.o
 
 limeclean:: objclean
 	rm -f ${TARGET}
@@ -156,9 +188,15 @@ limeclean:: objclean
 pyclean:: objclean
 	rm -f ${pydir}/*.pyc pylime
 
-clean:: objclean pyclean
+pyshclean:: objclean
+	rm -f ${MLTARGET} ${LLTARGET}
+
+casaclean:: objclean
+	rm -f casalime
+
+clean:: objclean pyclean pyshclean casaclean
 	rm -f gridconvert
-	rm -f *~ ${srcdir}/*~ ${CASATARGET}
+	rm -f *~ ${srcdir}/*~ ${srcdir}/*/*~
 
 distclean:: clean docclean limeclean
 	rm Makefile.defs

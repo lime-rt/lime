@@ -2,8 +2,7 @@
  *  messages.h
  *  This file is part of LIME, the versatile line modeling engine
  *
- *  Copyright (C) 2006-2014 Christian Brinch
- *  Copyright (C) 2015-2017 The LIME development team
+ *  See ../COPYRIGHT
  *
  */
 
@@ -13,7 +12,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#ifndef NO_NCURSES
+#ifdef NCURSES
 #include <curses.h>
 #endif
 #include <time.h>
@@ -23,7 +22,6 @@ void	casaStyleProgressBar(const int, int);
 void	collpartmesg(char*, int);
 void	collpartmesg2(char*);
 void	collpartmesg3(int, int);
-void	error(char*);
 void	goodnight(int);
 void	greetings(char*);
 void	greetings_parallel(int, char*);

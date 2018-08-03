@@ -2,7 +2,7 @@
  *  gridconvert.c
  *  This is an auxiliary program to convert LIME grid files to and from ASCII/FITS.
  *
- *  Copyright (C) 2015-2017 The LIME development team
+ *  See ../COPYRIGHT
  *
 Examples of valid patterns of options:
 
@@ -58,12 +58,6 @@ struct arguments
   int numInternalPoints,numBoundaryPoints;
   double modelRadius,tempCMB;
 };
-
-#ifdef TEST
-_Bool fixRandomSeeds = TRUE;
-#else
-_Bool fixRandomSeeds = FALSE;
-#endif
 
 /*....................................................................*/
 void myPrintUsage(){

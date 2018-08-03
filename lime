@@ -41,6 +41,7 @@ options=":Vfnstp:h"
 cpp_flags=""
 verbose="yes"
 do_test="no"
+use_curses="yes"
 
 while getopts ${options} opt; do
     case $opt in
@@ -56,7 +57,7 @@ while getopts ${options} opt; do
 	    cpp_flags+="-DFASTEXP "
 	    ;;
 	n)
-	    cpp_flags+="-DNO_NCURSES "
+	    use_curses="no"
 	    ;;
 	p)
 	    nthreads=${OPTARG}
@@ -96,7 +97,7 @@ export WORKDIR=$PWD
 
 # Compile the code
 pushd ${PATHTOLIME} >> /dev/null
-make -s EXTRACPPFLAGS="${cpp_flags}" MODELS=$WORKDIR/$1 TARGET=$WORKDIR/lime_$$.x DOTEST=$do_test VERBOSE=$verbose
+make -s EXTRACPPFLAGS="${cpp_flags}" MODELS=$WORKDIR/$1 TARGET=$WORKDIR/lime_$$.x DOTEST=$do_test VERBOSE=$verbose USECURSES=$use_curses
 # USEHDF5="yes"
 make -s limeclean
 
