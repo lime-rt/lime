@@ -28,7 +28,10 @@ popsout(configInfo *par, struct grid *gp, molData *md){
   fprintf(fp,"\n");
   for(j=0;j<par->pIntensity;j++){
     dens=0.;
-    for(l=0;l<par->numDensities;l++) dens+=gp[j].dens[l]*par->nMolWeights[l];
+    if(par->nMolWeights==NULL)
+      for(l=0;l<par->numDensities;l++) dens+=gp[j].dens[l];
+    else
+      for(l=0;l<par->numDensities;l++) dens+=gp[j].dens[l]*par->nMolWeights[l];
     fprintf(fp,"%e %e %e %e %e %e %d ", gp[j].x[0], gp[j].x[1], gp[j].x[2], dens, gp[j].t[0], gp[j].mol[0].nmol/dens, gp[j].conv);
     for(k=0;k<md[0].nlev;k++) fprintf(fp,"%e ",gp[j].mol[0].pops[k]);
     fprintf(fp,"\n");

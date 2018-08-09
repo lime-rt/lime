@@ -25,14 +25,15 @@ input(inputPars *par, image *img){
 
   par->dust                     = "jena_thin_e6.tab";
   par->moldatfile[0]            = "hco+@xpol.dat";
-  par->antialias                = 4;
   par->sampling                 = 2; // log distr. for radius, directions distr. uniformly on a sphere.
   par->nSolveIters              = 14;
   par->resetRNG	                = 0;
 
+/* The following are deprecated. Only the VTK output is still considered useful.
   par->outputfile               = "populations.pop";
   par->binoutputfile            = "restart.pop";
   par->gridfile                 = "grid.vtk";
+*/
 
   /*
     Setting elements of the following three arrays is optional. NOTE
