@@ -284,7 +284,7 @@ if(!if(par->useVelFuncInRaytrace)): vel
                 /* Calculate the red shift of the transition wrt to the frequency specified for the image.
                 */
                 if(img[im].trans > -1){
-                  lineRedShift=(md[molI].freq[img[im].trans]-md[molI].freq[lineI])/md[molI].freq[img[im].trans]*CLIGHT;
+                  lineRedShift=(md[img[im].molI].freq[img[im].trans]-md[molI].freq[lineI])/md[img[im].molI].freq[img[im].trans]*CLIGHT;
                 } else {
                   lineRedShift=(img[im].freq-md[molI].freq[lineI])/img[im].freq*CLIGHT;
                 }
@@ -886,7 +886,7 @@ At the moment I will fix the number of segments, but it might possibly be faster
                   /* Calculate the red shift of the transition wrt to the frequency specified for the image.
                   */
                   if(img[im].trans > -1){
-                    lineRedShift=(md[molI].freq[img[im].trans]-md[molI].freq[lineI])/md[molI].freq[img[im].trans]*CLIGHT;
+                    lineRedShift=(md[img[im].molI].freq[img[im].trans]-md[molI].freq[lineI])/md[img[im].molI].freq[img[im].trans]*CLIGHT;
                   } else {
                     lineRedShift=(img[im].freq-md[molI].freq[lineI])/img[im].freq*CLIGHT;
                   }
